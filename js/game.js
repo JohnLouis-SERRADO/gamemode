@@ -398,7 +398,17 @@ function ecranDefaite() {
 // =====================================================================
 // Initialisation
 // =====================================================================
-document.addEventListener('DOMContentLoaded', () => {
+function reinitialiserPartie() {
+  etat.nbJoueurs = 0;
+  etat.joueurs = [];
+  etat.indexCreation = 0;
+  etat.rencontreIndex = 0;
+  etat.combat = null;
+  etat.brouillon = null;
+  montrerEcran('ecran-accueil');
+}
+
+function initialiser() {
   initAccueil();
   el('creation-valider').addEventListener('click', validerCreation);
   el('groupe-commencer').addEventListener('click', () => demarrerCombat(etat.rencontreIndex));
@@ -406,5 +416,11 @@ document.addEventListener('DOMContentLoaded', () => {
     etat.rencontreIndex++;
     demarrerCombat(etat.rencontreIndex);
   });
-  el('fin-rejouer').addEventListener('click', () => window.location.reload());
-});
+  el('fin-rejouer').addEventListener('click', reinitialiserPartie);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initialiser);
+} else {
+  initialiser();
+}
