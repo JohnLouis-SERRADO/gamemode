@@ -1,49 +1,58 @@
-# ⚔️ GameMode — Les Profondeurs
+# ⚔️ GameMode — Les Royaumes de Valciel
 
-Un RPG **tour par tour coopératif**, dans l'esprit d'un MMORPG, à jouer **entre amis dans la vraie vie** sur un même écran (mode « hot-seat » : on se passe l'écran à chaque tour).
+Un **RPG tour par tour dans l'esprit d'un MMORPG** (façon Final Fantasy XIV, en tout petit) : monde persistant, personnages sauvegardés, zones par niveau, équipement, artisanat… et un **multijoueur asynchrone** — chacun joue quand il veut, seul ou avec les autres.
 
-Aucune installation, aucun serveur : tout tourne dans le navigateur.
+Le tout en JavaScript pur, sans dépendance ni étape de build, jouable dans n'importe quel navigateur — mobile compris.
 
-## 🎮 Comment jouer
+## 🎮 Ce qu'on y fait
 
-1. Ouvrez `index.html` dans un navigateur (double-clic suffit), ou servez le dossier :
-   ```bash
-   npx serve .
-   ```
-2. Choisissez le nombre de joueurs (1 à 5).
-3. **Chaque joueur crée son personnage** :
-   - un nom et un avatar ;
-   - **10 points** à répartir entre Force 💪, Intelligence 🧠, Agilité 🏃 et Vitalité ❤️ ;
-   - **4 compétences choisies librement** parmi 18 (physiques, magiques, soutien) ;
-   - des modèles rapides (Guerrier, Mage, Archer, Clerc) pour démarrer vite — modifiables.
-4. Le groupe affronte les **5 combats du donjon**, jusqu'au gardien final.
-5. À chaque tour de combat, on passe l'écran au joueur dont c'est le tour : il choisit son action et sa cible.
+- **Créer son héros** : nom, avatar, 10 points de caractéristiques (Force 💪, Intelligence 🧠, Agilité 🏃, Vitalité ❤️) et **4 compétences choisies librement** parmi 18. Les héros sont **persistants** : sauvegardés sur l'appareil et, quand le monde en ligne est joignable, dans le cloud.
+- **Explorer la carte** : 6 zones débloquées par niveau (des Plaines de l'Aube niv. 1 au Cœur des Profondeurs niv. 18), chacune avec ses créatures, ses matériaux à récolter et son **boss de zone**.
+- **Combattre au tour par tour** : initiative, critiques, effets de statut, potions en plein combat, fuite… En **solo** ou jusqu'à **3 héros sur le même écran** (on se passe la main à chaque tour).
+- **S'équiper** : 6 emplacements (arme, tête, torse, jambes, 2 accessoires), une cinquantaine d'objets qui améliorent réellement les stats.
+- **Ville de Valciel** : boutique (achat/vente), **atelier de craft** (matériaux → potions et équipements légendaires introuvables en boutique), auberge (repos gratuit).
+- **Progresser** : niveau 1 à 20, +2 points de caractéristiques par niveau, nouvelles compétences aux niveaux 4, 8, 12, 16 et 20.
+- **Se retrouver à la taverne** (multijoueur asynchrone) :
+  - 💬 **chat** entre tous les joueurs ;
+  - 🏆 **classement** des héros ;
+  - 🌍 **boss du monde** : une barre de vie géante **partagée par tout le monde** — chacun affronte sa propre instance du boss quand il veut, et tous les dégâts s'additionnent. Quand elle tombe à zéro, un boss plus redoutable apparaît.
+- **Jouer sur plusieurs appareils** : chaque héros a un **code de sauvegarde** (fiche du héros) pour le reprendre ailleurs.
 
-## ⚙️ Les règles en bref
+## 🌍 Multijoueur : comment ça marche
 
-- **Initiative** : l'ordre des tours dépend de l'Agilité (plus un dé).
-- **Actions** : Attaque gratuite, Défendre (−50 % de dégâts subis, +3 PM), ou une compétence (coût en mana, temps de recharge).
-- **Effets de statut** : poison 🧪, étourdissement 💫, bouclier 🛡️, bénédiction 🙏, provocation 😤, régénération 💧.
-- **Coups critiques** : 5 % de base + 1 % par point d'Agilité.
-- **KO** : un héros à 0 PV est hors combat, mais se relève au campement. Défaite si tout le groupe tombe.
-- **Progression** : chaque victoire rapporte de l'XP. Aux niveaux 2 à 5 : +2 points de caractéristiques ; aux niveaux 3 et 5 : une **nouvelle compétence** à apprendre.
-- **Campement** : entre deux combats, le groupe récupère des PV et du mana et gère ses montées de niveau.
+Le jeu détecte tout seul s'il peut joindre le monde en ligne (un backend Supabase — PostgreSQL + API REST) :
+
+- **En ligne** : héros synchronisés, taverne active, boss du monde commun. Toutes les écritures passent par des fonctions RPC vérifiant un token secret par personnage (avec plafond anti-triche sur les dégâts de boss). Le token n'est jamais lisible publiquement.
+- **Hors ligne** : tout le reste du jeu fonctionne normalement, sauvegardé sur l'appareil.
+
+Aucun compte, aucun mot de passe : on crée un héros et on joue.
+
+## 🚀 Lancer le jeu
+
+Ouvrez simplement `index.html` dans un navigateur, ou servez le dossier :
+
+```bash
+npx serve .
+```
 
 ## 🗂️ Structure du projet
 
 ```
-index.html      — les écrans du jeu (accueil, création, groupe, combat, camp, fin)
-css/style.css   — thème sombre fantasy
-js/data.js      — données : caractéristiques, 18 compétences, monstres, rencontres, progression
-js/game.js      — état global, création de personnage, campement, montées de niveau
-js/combat.js    — moteur de combat tour par tour (initiative, effets, IA des monstres)
+index.html      — les écrans du jeu (titre, création, carte, zone, combat, butin, ville, boutique, atelier, héros, taverne)
+css/style.css   — thème sombre fantasy, pensé mobile d'abord
+js/data.js      — caractéristiques, compétences, progression (niveaux 1-20), stats effectives
+js/objets.js    — ~50 objets (armes, armures, accessoires, potions, matériaux) + recettes d'atelier
+js/zones.js     — 6 zones, ~25 monstres avec butins
+js/reseau.js    — client REST Supabase (fetch pur), synchronisation, taverne multijoueur
+js/game.js      — profils persistants, création, fiche du héros, inventaire, équipement, navigation
+js/monde.js     — carte, exploration, récolte, boss, récompenses, boss du monde
+js/ville.js     — boutique, atelier, auberge
+js/combat.js    — moteur de combat tour par tour
 ```
-
-Le code est en JavaScript pur, sans dépendance ni étape de build.
 
 ## 🔮 Pistes pour la suite
 
-- **Jouer en ligne (chacun sur son appareil)** : ajouter un backend temps réel (par exemple Supabase Realtime ou un petit serveur Node + WebSocket) qui synchronise l'état du combat entre les navigateurs. La logique de `combat.js` est déjà séparée de l'affichage, ce qui facilitera cette évolution.
-- Sauvegarde du groupe dans `localStorage` pour reprendre une partie.
-- Plus de donjons, d'objets et d'équipement.
-- Du PvP : deux équipes de joueurs l'une contre l'autre.
+- Groupes en ligne en temps réel (combat à plusieurs appareils via Supabase Realtime ou WebSocket).
+- Quêtes et histoire, donjons instanciés, PvP en arène.
+- Métiers de récolte et de craft avec niveaux dédiés.
+- Événements mondiaux programmés (invasions, saisons).

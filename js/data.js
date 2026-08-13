@@ -1,8 +1,8 @@
 'use strict';
 
 // =====================================================================
-// Données du jeu : caractéristiques, compétences, modèles, monstres,
-// rencontres et progression.
+// Données de base : caractéristiques, compétences, modèles, progression.
+// Les objets sont dans objets.js, les zones et monstres dans zones.js.
 // =====================================================================
 
 const AVATARS = ['⚔️', '🧙‍♂️', '🧝‍♀️', '🏹', '🛡️', '🗡️', '🔮', '🌿', '🐺', '🦊', '👑', '🎭'];
@@ -17,7 +17,7 @@ const CARACS = {
 const POINTS_CREATION = 10;   // points à répartir à la création
 const STAT_BASE = 2;          // valeur de départ de chaque caractéristique
 const STAT_MAX_CREATION = 8;  // maximum par caractéristique à la création
-const NB_COMPETENCES = 4;     // compétences à choisir à la création
+const NB_COMPETENCES = 4;     // compétences choisies à la création
 
 const CATEGORIES = {
   physique: '⚔️ Physique',
@@ -153,127 +153,52 @@ const MODELES = [
 ];
 
 // =====================================================================
-// Monstres
-// attaques : { nom, emoji, mult, poids, type ('mono'|'aoe'|'soin'), valeur?, effet? }
+// Progression (niveau 1 à 20)
 // =====================================================================
-const MONSTRES = {
-  gobelin: {
-    nom: 'Gobelin', emoji: '👺', hp: 26, atk: 6, agi: 4, xp: 12,
-    attaques: [
-      { nom: 'Coup de gourdin', emoji: '🏏', mult: 1.0, poids: 3, type: 'mono' },
-      { nom: 'Morsure sournoise', emoji: '🦷', mult: 1.3, poids: 1, type: 'mono' },
-    ],
-  },
-  loup: {
-    nom: 'Loup', emoji: '🐺', hp: 30, atk: 8, agi: 7, xp: 14,
-    attaques: [
-      { nom: 'Coup de crocs', emoji: '🦷', mult: 1.0, poids: 3, type: 'mono' },
-      { nom: 'Bond sauvage', emoji: '💨', mult: 1.25, poids: 1, type: 'mono' },
-    ],
-  },
-  loupAlpha: {
-    nom: 'Loup alpha', emoji: '🐺', hp: 48, atk: 11, agi: 8, xp: 25,
-    attaques: [
-      { nom: 'Morsure féroce', emoji: '🦷', mult: 1.2, poids: 2, type: 'mono' },
-      { nom: 'Frénésie', emoji: '🌪️', mult: 1.5, poids: 1, type: 'mono' },
-    ],
-  },
-  squelette: {
-    nom: 'Squelette', emoji: '💀', hp: 28, atk: 8, agi: 4, xp: 15,
-    attaques: [
-      { nom: 'Coup d’épée rouillée', emoji: '🗡️', mult: 1.0, poids: 3, type: 'mono' },
-      { nom: 'Griffure d’os', emoji: '🦴', mult: 1.2, poids: 1, type: 'mono' },
-    ],
-  },
-  archerSquelette: {
-    nom: 'Archer squelette', emoji: '🏹', hp: 24, atk: 9, agi: 6, xp: 18,
-    attaques: [
-      { nom: 'Tir d’os', emoji: '🏹', mult: 1.1, poids: 3, type: 'mono' },
-      { nom: 'Volée d’os', emoji: '🎯', mult: 0.6, poids: 1, type: 'aoe' },
-    ],
-  },
-  pretreDechu: {
-    nom: 'Prêtre déchu', emoji: '🧟', hp: 30, atk: 7, agi: 4, xp: 20,
-    attaques: [
-      { nom: 'Châtiment', emoji: '☠️', mult: 1.1, poids: 2, type: 'mono' },
-      { nom: 'Prière noire', emoji: '🩸', poids: 2, type: 'soin', valeur: 14 },
-    ],
-  },
-  orc: {
-    nom: 'Orc', emoji: '👹', hp: 44, atk: 10, agi: 3, xp: 22,
-    attaques: [
-      { nom: 'Coup de hache', emoji: '🪓', mult: 1.0, poids: 3, type: 'mono' },
-      { nom: 'Charge brutale', emoji: '💢', mult: 1.35, poids: 1, type: 'mono' },
-    ],
-  },
-  chamanGobelin: {
-    nom: 'Chaman gobelin', emoji: '🧙', hp: 28, atk: 7, agi: 5, xp: 20,
-    attaques: [
-      { nom: 'Malédiction', emoji: '🕷️', mult: 0.9, poids: 2, type: 'mono', effet: { type: 'poison', degats: 3, duree: 2 } },
-      { nom: 'Totem de soin', emoji: '🪅', poids: 2, type: 'soin', valeur: 12 },
-    ],
-  },
-  golem: {
-    nom: 'Golem ancien', emoji: '🗿', hp: 60, hpParJoueur: 30, atk: 13, agi: 2, xp: 60,
-    attaques: [
-      { nom: 'Coup de poing', emoji: '👊', mult: 1.0, poids: 2, type: 'mono' },
-      { nom: 'Écrasement', emoji: '💥', mult: 1.25, poids: 2, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
-      { nom: 'Tremblement', emoji: '🌋', mult: 0.7, poids: 1, type: 'aoe' },
-    ],
-  },
-};
-
-// =====================================================================
-// Rencontres du donjon (composition selon le nombre de joueurs n)
-// =====================================================================
-const RENCONTRES = [
-  {
-    nom: 'L’embuscade gobeline',
-    intro: 'Des ricanements résonnent dans l’entrée du donjon…',
-    composition: (n) => Array(n + 1).fill('gobelin'),
-  },
-  {
-    nom: 'La meute affamée',
-    intro: 'Des yeux jaunes brillent dans l’obscurité.',
-    composition: (n) => [...Array(n).fill('loup'), 'loupAlpha'],
-  },
-  {
-    nom: 'La crypte oubliée',
-    intro: 'Les os des anciens gardiens se relèvent…',
-    composition: (n) => [...Array(n).fill('squelette'), 'archerSquelette', 'pretreDechu'],
-  },
-  {
-    nom: 'La salle des gardes',
-    intro: 'Les orcs de garde saisissent leurs haches.',
-    composition: (n) => [...Array(Math.max(2, n)).fill('orc'), 'chamanGobelin'],
-  },
-  {
-    nom: 'Le gardien des Profondeurs',
-    intro: 'Le sol tremble. Le gardien s’éveille.',
-    composition: (n) => ['golem', 'gobelin', 'gobelin', ...(n >= 4 ? ['orc'] : [])],
-  },
-];
-
-// =====================================================================
-// Progression
-// =====================================================================
-const SEUILS_XP = [0, 40, 100, 180, 280]; // XP cumulée requise pour les niveaux 1 à 5
-const NIVEAU_MAX = SEUILS_XP.length;
+const NIVEAU_MAX = 20;
 const POINTS_PAR_NIVEAU = 2;
-const NIVEAUX_NOUVELLE_COMPETENCE = [3, 5];
+const NIVEAUX_NOUVELLE_COMPETENCE = [4, 8, 12, 16, 20];
+
+// XP cumulée requise pour atteindre le niveau n.
+function seuilXp(n) {
+  return 14 * (n - 1) * (n - 1) + 30 * (n - 1);
+}
 
 function niveauPour(xp) {
-  let niveau = 1;
-  for (let i = 0; i < SEUILS_XP.length; i++) {
-    if (xp >= SEUILS_XP[i]) niveau = i + 1;
-  }
-  return Math.min(niveau, NIVEAU_MAX);
+  let n = 1;
+  while (n < NIVEAU_MAX && xp >= seuilXp(n + 1)) n++;
+  return n;
 }
 
-function maxHpPour(stats, niveau) {
-  return 25 + stats.vit * 7 + (niveau - 1) * 5;
+// =====================================================================
+// Stats effectives : base + bonus d'équipement
+// Champs possibles d'un bonus : for, int, agi, vit, pvMax, pmMax, crit (%)
+// =====================================================================
+function statsEffectives(p) {
+  const s = { for: p.stats.for, int: p.stats.int, agi: p.stats.agi, vit: p.stats.vit, pvMax: 0, pmMax: 0, crit: 0 };
+  Object.values(p.equipement || {}).forEach((idObjet) => {
+    if (!idObjet) return;
+    const objet = OBJETS[idObjet];
+    if (!objet || !objet.bonus) return;
+    Object.entries(objet.bonus).forEach(([cle, valeur]) => {
+      s[cle] = (s[cle] || 0) + valeur;
+    });
+  });
+  return s;
 }
 
-function maxMpPour(stats, niveau) {
-  return 8 + stats.int * 3 + (niveau - 1) * 2;
+function maxHpDe(p) {
+  const s = statsEffectives(p);
+  return 25 + s.vit * 7 + (p.niveau - 1) * 6 + s.pvMax;
+}
+
+function maxMpDe(p) {
+  const s = statsEffectives(p);
+  return 8 + s.int * 3 + (p.niveau - 1) * 2 + s.pmMax;
+}
+
+// Borne les PV/PM courants après un changement d'équipement ou de niveau.
+function bornerVie(p) {
+  p.hp = Math.max(0, Math.min(maxHpDe(p), p.hp));
+  p.mp = Math.max(0, Math.min(maxMpDe(p), p.mp));
 }

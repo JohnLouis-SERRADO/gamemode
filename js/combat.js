@@ -1,8 +1,9 @@
 'use strict';
 
 // =====================================================================
-// Moteur de combat tour par tour : initiative, tours des joueurs et
-// des monstres, dégâts, soins, effets de statut, victoire et défaite.
+// Moteur de combat tour par tour : initiative, tours des joueurs et des
+// monstres, dégâts, soins, effets de statut, objets, fuite.
+// Genres de combat : exploration, embuscade, boss (de zone), bossMonde.
 // =====================================================================
 
 const EMOJI_STATUT = {
@@ -20,7 +21,8 @@ function estMort(c) {
 }
 
 function statDe(source, cle) {
-  return source.type === 'joueur' ? source.stats[cle] : 0;
+  if (source.type === 'joueur') return statsEffectives(source)[cle] || 0;
+  return 0;
 }
 
 function tirageAuPoids(liste) {
@@ -36,29 +38,38 @@ function tirageAuPoids(liste) {
 // =====================================================================
 // Lancement d'un combat
 // =====================================================================
-function demarrerCombat(index) {
-  const rencontre = RENCONTRES[index];
-  const n = etat.nbJoueurs;
-  const cles = rencontre.composition(n);
+function demarrerCombat(options) {
+  const equipe = options.equipe && options.equipe.length ? options.equipe : membresEquipe();
+  equipe.forEach((j) => {
+    bornerVie(j);
+    j.statuts = [];
+    j.cooldowns = {};
+    j.defense = false;
+    j.ko = false;
+    if (j.hp <= 0) j.hp = 1;
+  });
 
   const compteurs = {};
-  cles.forEach((c) => { compteurs[c] = (compteurs[c] || 0) + 1; });
+  options.monstresDef.forEach((def) => { compteurs[def.nom] = (compteurs[def.nom] || 0) + 1; });
   const vus = {};
-  const monstres = cles.map((cle, i) => {
-    const base = MONSTRES[cle];
-    vus[cle] = (vus[cle] || 0) + 1;
-    const maxHp = base.hp + (base.hpParJoueur || 0) * n;
+  const monstres = options.monstresDef.map((def, i) => {
+    vus[def.nom] = (vus[def.nom] || 0) + 1;
     return {
       type: 'monstre',
       id: `m${i}`,
-      nom: compteurs[cle] > 1 ? `${base.nom} ${vus[cle]}` : base.nom,
-      emoji: base.emoji,
-      atk: base.atk,
-      agi: base.agi,
-      xp: base.xp,
-      attaques: base.attaques,
-      maxHp,
-      hp: maxHp,
+      cle: def.cle || null,
+      nom: compteurs[def.nom] > 1 ? `${def.nom} ${vus[def.nom]}` : def.nom,
+      emoji: def.emoji,
+      niveau: def.niveau,
+      atk: def.atk,
+      agi: def.agi,
+      xp: def.xp,
+      po: def.po,
+      drops: def.drops,
+      attaques: def.attaques,
+      boss: !!def.boss,
+      maxHp: def.hp,
+      hp: def.hp,
       statuts: [],
       defense: false,
       mort: false,
@@ -66,22 +77,40 @@ function demarrerCombat(index) {
   });
 
   etat.combat = {
-    index,
-    rencontre,
+    genre: options.genre,
+    zone: options.zone || null,
+    equipe,
     monstres,
+    lootRecolte: options.lootRecolte || null,
+    manchesMax: options.manchesMax || null,
     manche: 0,
     file: [],
     actif: null,
     termine: false,
     cibleEnAttente: null,
     finTour: null,
+    modeActions: null,
     journalLignes: [],
+    degatsBossMonde: 0,
   };
 
-  el('combat-titre').textContent = `Combat ${index + 1}/${RENCONTRES.length} — ${rencontre.nom}`;
+  const titres = {
+    exploration: () => `${options.zone.emoji} ${options.zone.nom}`,
+    embuscade: () => `⚠️ Embuscade — ${options.zone.nom}`,
+    boss: () => `👑 ${monstres[0].nom} — ${options.zone.nom}`,
+    bossMonde: () => `🌍 ${monstres[0].nom} — assaut du monde`,
+  };
+  el('combat-titre').textContent = titres[options.genre] ? titres[options.genre]() : 'Combat';
   el('combat-manche').textContent = '';
   el('zone-actions').innerHTML = '';
-  journal(`⚔️ ${rencontre.nom} — ${rencontre.intro}`);
+
+  const intros = {
+    exploration: 'Des créatures hostiles surgissent !',
+    embuscade: 'On vous tombe dessus en pleine récolte !',
+    boss: 'Le maître des lieux se dresse devant vous…',
+    bossMonde: `Vous avez ${options.manchesMax || 6} manches pour infliger un maximum de dégâts !`,
+  };
+  journal(`⚔️ ${intros[options.genre] || 'Le combat commence !'}`);
   montrerEcran('ecran-combat');
   rendreCombat();
   boucleTour();
@@ -95,11 +124,20 @@ async function boucleTour() {
   while (!cb.termine) {
     if (cb.file.length === 0) {
       cb.manche++;
-      cb.file = [...etat.joueurs.filter((j) => !j.ko), ...cb.monstres.filter((m) => !m.mort)]
-        .map((c) => ({ c, init: (c.type === 'joueur' ? c.stats.agi : c.agi) * 2 + alea(1, 10) }))
+      if (cb.manchesMax && cb.manche > cb.manchesMax) {
+        cb.termine = true;
+        cb.actif = null;
+        journal(`⏳ ${cb.monstres[0].nom} se lasse du combat et s'éloigne dans un fracas !`);
+        rendreCombat();
+        setTimeout(() => apresBossMonde(cb), 1300);
+        break;
+      }
+      cb.file = [...cb.equipe.filter((j) => !j.ko), ...cb.monstres.filter((m) => !m.mort)]
+        .map((c) => ({ c, init: (c.type === 'joueur' ? statsEffectives(c).agi : c.agi) * 2 + alea(1, 10) }))
         .sort((a, b) => b.init - a.init)
         .map((x) => x.c);
-      el('combat-manche').textContent = `Manche ${cb.manche}`;
+      el('combat-manche').textContent = cb.manchesMax
+        ? `Manche ${cb.manche}/${cb.manchesMax}` : `Manche ${cb.manche}`;
       journal(`— Manche ${cb.manche} —`);
     }
 
@@ -120,6 +158,7 @@ async function boucleTour() {
     }
 
     if (c.type === 'joueur') {
+      cb.modeActions = null;
       rendreActions(c);
       await new Promise((res) => { cb.finTour = res; });
       cb.finTour = null;
@@ -139,6 +178,7 @@ async function boucleTour() {
 
 // Effets appliqués au début du tour d'un combattant.
 function debutTour(c) {
+  const cb = etat.combat;
   c.defense = false;
 
   if (c.type === 'joueur') {
@@ -149,6 +189,7 @@ function debutTour(c) {
   const poison = c.statuts.find((s) => s.type === 'poison');
   if (poison) {
     c.hp -= poison.valeur;
+    if (c.type === 'monstre' && cb.genre === 'bossMonde') cb.degatsBossMonde += poison.valeur;
     journal(`🧪 ${c.nom} souffre du poison : ${poison.valeur} dégâts.`);
     gererMort(c);
   }
@@ -176,22 +217,18 @@ function verifierFin() {
   if (cb.monstres.every((m) => m.mort)) {
     cb.termine = true;
     cb.actif = null;
-    const xp = cb.monstres.reduce((s, m) => s + m.xp, 0);
     journal('🏆 Victoire ! Tous les ennemis sont vaincus.');
     rendreCombat();
-    setTimeout(() => {
-      if (cb.index >= RENCONTRES.length - 1) ecranVictoireFinale(xp);
-      else allerAuCamp(xp);
-    }, 1400);
+    setTimeout(() => apresVictoire(cb), 1300);
     return true;
   }
 
-  if (etat.joueurs.every((j) => j.ko)) {
+  if (cb.equipe.every((j) => j.ko)) {
     cb.termine = true;
     cb.actif = null;
-    journal('💀 Tout le groupe est à terre…');
+    journal('💫 Tout le groupe est à terre…');
     rendreCombat();
-    setTimeout(ecranDefaite, 1400);
+    setTimeout(() => apresDefaite(cb), 1300);
     return true;
   }
 
@@ -202,10 +239,15 @@ function verifierFin() {
 // Dégâts, soins et effets
 // =====================================================================
 function infligerDegats(source, cible, brut, options = {}) {
+  const cb = etat.combat;
   let d = varie(brut);
   if (source.statuts.some((s) => s.type === 'benediction')) d *= 1.3;
 
-  const chanceCrit = 0.05 + statDe(source, 'agi') * 0.01 + (options.critBonus || 0);
+  let chanceCrit = 0.05 + (options.critBonus || 0);
+  if (source.type === 'joueur') {
+    const s = statsEffectives(source);
+    chanceCrit += s.agi * 0.01 + (s.crit || 0) / 100;
+  }
   const crit = Math.random() < chanceCrit;
   if (crit) d *= 1.5;
   if (cible.defense) d *= 0.5;
@@ -219,9 +261,9 @@ function infligerDegats(source, cible, brut, options = {}) {
     d -= absorbe;
   }
 
-  // La mort est gérée par l'appelant (gererMort) après avoir écrit
-  // la ligne de dégâts dans le journal, pour garder les messages en ordre.
+  // La mort est gérée par l'appelant (gererMort) après la ligne de journal.
   cible.hp -= d;
+  if (cible.type === 'monstre' && cb && cb.genre === 'bossMonde') cb.degatsBossMonde += d;
   return { degats: d, crit, absorbe };
 }
 
@@ -315,6 +357,13 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
 // =====================================================================
 // Actions des joueurs
 // =====================================================================
+function consommablesDe(j) {
+  return j.inventaire.filter((entree) => {
+    const objet = OBJETS[entree.id];
+    return objet && objet.type === 'consommable' && entree.qte > 0;
+  });
+}
+
 function rendreActions(j) {
   const cb = etat.combat;
   const zone = el('zone-actions');
@@ -323,14 +372,14 @@ function rendreActions(j) {
   const entete = document.createElement('div');
   entete.className = 'actions-entete';
   entete.innerHTML = `<span class="avatar-grand">${j.avatar}</span>
-    <div>Au tour de <strong>${echapper(j.nom)}</strong> — passe-lui l'écran !<br>
+    <div>Au tour de <strong>${echapper(j.nom)}</strong>${cb.equipe.length > 1 ? ' — passe-lui l’écran !' : ''}<br>
     <span class="actions-vie">❤️ ${j.hp}/${j.maxHp} PV · 💧 ${j.mp}/${j.maxMp} PM</span></div>`;
   zone.appendChild(entete);
 
   if (cb.cibleEnAttente) {
     const bandeau = document.createElement('div');
     bandeau.className = 'bandeau-cible';
-    bandeau.textContent = '🎯 Clique sur une cible en surbrillance…';
+    bandeau.textContent = '🎯 Touche une cible en surbrillance…';
     zone.appendChild(bandeau);
     const annuler = document.createElement('button');
     annuler.className = 'btn-choix';
@@ -347,6 +396,24 @@ function rendreActions(j) {
   const barre = document.createElement('div');
   barre.className = 'barre-actions';
 
+  if (cb.modeActions === 'objet') {
+    consommablesDe(j).forEach((entree) => {
+      const objet = OBJETS[entree.id];
+      const btn = document.createElement('button');
+      btn.className = 'btn-action';
+      btn.innerHTML = `${objet.emoji} <strong>${objet.nom}</strong><span class="action-detail">×${entree.qte} · ${objet.desc}</span>`;
+      btn.addEventListener('click', () => surActionChoisie(j, { genre: 'objet', idObjet: entree.id }));
+      barre.appendChild(btn);
+    });
+    const retour = document.createElement('button');
+    retour.className = 'btn-action';
+    retour.innerHTML = '↩️ <strong>Retour</strong><span class="action-detail">Choisir une autre action</span>';
+    retour.addEventListener('click', () => { cb.modeActions = null; rendreActions(j); });
+    barre.appendChild(retour);
+    zone.appendChild(barre);
+    return;
+  }
+
   const btnAttaque = document.createElement('button');
   btnAttaque.className = 'btn-action';
   btnAttaque.innerHTML = '⚔️ <strong>Attaque</strong><span class="action-detail">Gratuite · dégâts légers</span>';
@@ -361,6 +428,7 @@ function rendreActions(j) {
 
   j.competences.forEach((compId) => {
     const comp = COMPETENCES[compId];
+    if (!comp) return;
     const btn = document.createElement('button');
     btn.className = 'btn-action competence';
     const cd = j.cooldowns[compId] || 0;
@@ -374,15 +442,36 @@ function rendreActions(j) {
     barre.appendChild(btn);
   });
 
+  const consommables = consommablesDe(j);
+  const btnObjet = document.createElement('button');
+  btnObjet.className = 'btn-action';
+  btnObjet.disabled = consommables.length === 0;
+  btnObjet.innerHTML = `🎒 <strong>Objet</strong><span class="action-detail">${consommables.length ? 'Boire une potion' : 'Aucune potion dans le sac'}</span>`;
+  btnObjet.addEventListener('click', () => { cb.modeActions = 'objet'; rendreActions(j); });
+  barre.appendChild(btnObjet);
+
+  if (cb.genre === 'exploration' || cb.genre === 'embuscade') {
+    const btnFuite = document.createElement('button');
+    btnFuite.className = 'btn-action';
+    btnFuite.innerHTML = '💨 <strong>Fuir</strong><span class="action-detail">65 % de réussite</span>';
+    btnFuite.addEventListener('click', () => surActionChoisie(j, { genre: 'fuite' }));
+    barre.appendChild(btnFuite);
+  } else if (cb.genre === 'bossMonde') {
+    const btnRetraite = document.createElement('button');
+    btnRetraite.className = 'btn-action';
+    btnRetraite.innerHTML = '🏳️ <strong>Battre en retraite</strong><span class="action-detail">Vos dégâts comptent quand même</span>';
+    btnRetraite.addEventListener('click', () => surActionChoisie(j, { genre: 'fuite' }));
+    barre.appendChild(btnRetraite);
+  }
+
   zone.appendChild(barre);
-  zone.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
 function surActionChoisie(j, action) {
   const cb = etat.combat;
   if (cb.termine || cb.actif !== j || !cb.finTour) return;
 
-  if (action.genre === 'defense') {
+  if (action.genre === 'defense' || action.genre === 'objet' || action.genre === 'fuite') {
     executerAction(j, action, null);
     return;
   }
@@ -401,7 +490,7 @@ function surActionChoisie(j, action) {
 
   const possibles = cibleType === 'ennemi'
     ? cb.monstres.filter((m) => !m.mort)
-    : etat.joueurs.filter((x) => !x.ko);
+    : cb.equipe.filter((x) => !x.ko);
   if (possibles.length === 1) {
     executerAction(j, action, possibles[0]);
   } else {
@@ -417,8 +506,10 @@ function executerAction(j, action, cible) {
   if (!cb.finTour || cb.termine) return;
   const finir = cb.finTour;
   cb.finTour = null;
+
   if (action.genre === 'attaque') {
-    const brut = 3 + Math.max(j.stats.for, j.stats.agi);
+    const s = statsEffectives(j);
+    const brut = 3 + Math.max(s.for, s.agi);
     const r = infligerDegats(j, cible, brut);
     journal(`⚔️ ${j.nom} attaque ${cible.nom} : ${texteDegats(r)}`);
     gererMort(cible);
@@ -426,6 +517,40 @@ function executerAction(j, action, cible) {
     j.defense = true;
     j.mp = Math.min(j.maxMp, j.mp + 3);
     journal(`🛡️ ${j.nom} se met en garde (+3 PM, dégâts subis réduits de moitié).`);
+  } else if (action.genre === 'objet') {
+    const objet = OBJETS[action.idObjet];
+    if (objet && retirerObjet(j, action.idObjet, 1)) {
+      if (objet.effet.type === 'pv') {
+        const soin = Math.min(objet.effet.valeur, j.maxHp - j.hp);
+        j.hp += soin;
+        journal(`${objet.emoji} ${j.nom} boit ${objet.nom} : +${soin} PV.`);
+      } else {
+        const gain = Math.min(objet.effet.valeur, j.maxMp - j.mp);
+        j.mp += gain;
+        journal(`${objet.emoji} ${j.nom} boit ${objet.nom} : +${gain} PM.`);
+      }
+      sauvegarderLocal();
+    }
+  } else if (action.genre === 'fuite') {
+    if (cb.genre === 'bossMonde') {
+      journal(`🏳️ ${j.nom} bat en retraite : le combat s'arrête ici.`);
+      cb.termine = true;
+      cb.actif = null;
+      rendreCombat();
+      finir();
+      setTimeout(() => apresBossMonde(cb), 800);
+      return;
+    }
+    if (Math.random() < 0.65) {
+      journal('💨 Le groupe parvient à s’échapper !');
+      cb.termine = true;
+      cb.actif = null;
+      rendreCombat();
+      finir();
+      setTimeout(() => apresFuite(cb), 800);
+      return;
+    }
+    journal(`💨 ${j.nom} tente de fuir… sans succès !`);
   } else {
     lancerCompetence(j, action.compId, cible);
   }
@@ -436,6 +561,7 @@ function executerAction(j, action, cible) {
 function lancerCompetence(j, compId, cible) {
   const cb = etat.combat;
   const comp = COMPETENCES[compId];
+  const s = statsEffectives(j);
   j.mp -= comp.coutMp;
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
 
@@ -443,16 +569,16 @@ function lancerCompetence(j, compId, cible) {
     const cibles = comp.cible === 'ennemis' ? cb.monstres.filter((m) => !m.mort) : [cible];
     journal(`${comp.emoji} ${j.nom} utilise ${comp.nom} !`);
     cibles.forEach((c) => {
-      const brut = comp.puissance + j.stats[comp.stat] * comp.ratio;
+      const brut = comp.puissance + s[comp.stat] * comp.ratio;
       const r = infligerDegats(j, c, brut, { critBonus: comp.critBonus || 0 });
       journal(`→ ${c.nom} subit ${texteDegats(r)}`);
       gererMort(c);
       if (comp.effet && !estMort(c)) appliquerEffet(j, c, comp.effet, r);
     });
   } else if (comp.type === 'soin') {
-    const cibles = comp.cible === 'allies' ? etat.joueurs.filter((x) => !x.ko) : [cible];
+    const cibles = comp.cible === 'allies' ? cb.equipe.filter((x) => !x.ko) : [cible];
     cibles.forEach((c) => {
-      const soin = soigner(c, comp.puissance + j.stats[comp.stat] * comp.ratio);
+      const soin = soigner(c, comp.puissance + s[comp.stat] * comp.ratio);
       journal(`${comp.emoji} ${j.nom} rend ${soin} PV à ${c === j ? 'lui-même' : c.nom}.`);
     });
   } else {
@@ -472,7 +598,7 @@ function choisirCibleJoueur(joueursVivants) {
 
 function tourMonstre(m) {
   const cb = etat.combat;
-  const joueursVivants = etat.joueurs.filter((x) => !x.ko);
+  const joueursVivants = cb.equipe.filter((x) => !x.ko);
   if (joueursVivants.length === 0) return;
 
   const monstresVivants = cb.monstres.filter((x) => !x.mort);
@@ -532,7 +658,7 @@ function rendreCombat() {
   cb.monstres.forEach((m) => zoneE.appendChild(carteCombattant(m)));
   const zoneJ = el('zone-joueurs');
   zoneJ.innerHTML = '';
-  etat.joueurs.forEach((j) => zoneJ.appendChild(carteCombattant(j)));
+  cb.equipe.forEach((j) => zoneJ.appendChild(carteCombattant(j)));
   rendreJournal();
 }
 
@@ -553,6 +679,7 @@ function carteCombattant(c) {
   const mort = estMort(c);
   carte.className = 'carte-combattant'
     + (c.type === 'monstre' ? ' ennemi' : ' allie')
+    + (c.boss ? ' carte-boss' : '')
     + (cb.actif === c && !cb.termine ? ' tour-actif' : '')
     + (mort ? ' mort' : '');
 
@@ -574,7 +701,7 @@ function carteCombattant(c) {
 
   carte.innerHTML = `
     <div class="combattant-avatar">${c.type === 'joueur' ? c.avatar : c.emoji}</div>
-    <div class="combattant-nom">${echapper(c.nom)}${c.type === 'joueur' ? ` <span class="niveau">niv. ${c.niveau}</span>` : ''}</div>
+    <div class="combattant-nom">${echapper(c.nom)} <span class="niveau">niv. ${c.niveau}</span></div>
     ${barres}
     <div class="combattant-statuts">${statuts}${defense}${mort ? (c.type === 'joueur' ? '😵 KO' : '☠️') : ''}</div>`;
 

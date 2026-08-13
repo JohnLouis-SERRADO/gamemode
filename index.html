@@ -3,30 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GameMode — Les Profondeurs</title>
+  <title>GameMode — Les Royaumes de Valciel</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <header id="topbar" class="cache">
+    <div id="topbar-perso"></div>
+    <nav id="topbar-nav">
+      <button data-nav="carte" title="Carte du monde">🗺️<span class="nav-libelle">Carte</span></button>
+      <button data-nav="ville" title="Bourg de Valciel">🏘️<span class="nav-libelle">Ville</span></button>
+      <button data-nav="heros" title="Fiche du héros">🎒<span class="nav-libelle">Héros</span><span id="badge-heros" class="pastille cache">!</span></button>
+      <button data-nav="taverne" title="Taverne (multijoueur)">🍻<span class="nav-libelle">Taverne</span><span id="point-en-ligne" class="point-reseau"></span></button>
+      <button data-nav="titre" title="Changer de personnage">⇄<span class="nav-libelle">Profils</span></button>
+    </nav>
+  </header>
+
   <main id="app">
 
-    <!-- ===== Écran d'accueil ===== -->
-    <section id="ecran-accueil" class="ecran actif">
+    <!-- ===== Écran titre : profils ===== -->
+    <section id="ecran-titre" class="ecran actif">
       <h1>⚔️ GameMode</h1>
-      <p class="sous-titre">Les Profondeurs — aventure tour par tour à jouer entre amis, sur un même écran</p>
+      <p class="sous-titre">Les Royaumes de Valciel — un monde persistant à explorer, seul ou entre amis</p>
+      <p id="titre-reseau" class="etat-reseau">🔌 Connexion au monde…</p>
       <div class="panneau">
-        <h2>Combien de héros partent à l'aventure ?</h2>
-        <div id="choix-nb-joueurs" class="rangee-boutons"></div>
+        <h2>Vos héros</h2>
+        <div id="liste-profils" class="rangee-cartes gauche"></div>
+        <div class="rangee-boutons">
+          <button id="btn-nouveau-perso" class="btn-principal en-ligne-bouton">✨ Nouveau héros</button>
+          <button id="btn-importer" class="btn-choix">📥 Reprendre un héros (code)</button>
+        </div>
+        <div id="zone-import" class="cache bloc-import">
+          <p class="aide">Colle ici le code de sauvegarde affiché sur ton autre appareil (fiche du héros → « Code de sauvegarde »).</p>
+          <input id="champ-code-import" placeholder="xxxxxxxx-xxxx…" autocomplete="off">
+          <button id="btn-valider-import" class="btn-choix">Importer</button>
+          <p id="message-import" class="aide"></p>
+        </div>
         <p class="aide">
-          Chaque joueur crée son personnage : il répartit ses points de caractéristiques et choisit
-          librement ses 4 compétences. Ensuite, votre groupe affronte les 5 combats du donjon.
-          À chaque tour, on passe l'écran au joueur dont c'est le tour !
+          Chaque héros est sauvegardé sur cet appareil, et aussi en ligne quand le monde est joignable :
+          vous jouez quand vous voulez, seul ou en groupe sur le même écran, et vous retrouvez les autres
+          joueurs à la taverne — chat, classement et boss du monde en commun.
         </p>
       </div>
     </section>
 
-    <!-- ===== Écran de création de personnage ===== -->
+    <!-- ===== Création de personnage ===== -->
     <section id="ecran-creation" class="ecran">
-      <h2 id="creation-titre">Création du héros</h2>
+      <h2 id="creation-titre">Crée ton héros</h2>
       <div class="panneau">
         <div class="ligne-creation ligne-identite">
           <label class="champ-nom">Nom du héros
@@ -37,71 +59,118 @@
             <div id="creation-avatars" class="grille-avatars"></div>
           </div>
         </div>
-
         <div class="ligne-creation">
           <h3>Modèles rapides <span class="aide-inline">(pré-remplit tout, modifiable ensuite)</span></h3>
           <div id="creation-modeles" class="rangee-boutons"></div>
         </div>
-
         <div class="ligne-creation">
           <h3>Caractéristiques <span id="creation-points" class="badge"></span></h3>
           <div id="creation-stats" class="liste-stats"></div>
         </div>
-
         <div class="ligne-creation">
           <h3>Compétences <span id="creation-nb-comp" class="badge"></span></h3>
           <div id="creation-competences"></div>
         </div>
-
-        <button id="creation-valider" class="btn-principal">Valider ce héros</button>
+        <div class="rangee-boutons">
+          <button id="creation-valider" class="btn-principal">Valider ce héros</button>
+          <button id="creation-annuler" class="btn-choix">Annuler</button>
+        </div>
       </div>
     </section>
 
-    <!-- ===== Écran récapitulatif du groupe ===== -->
-    <section id="ecran-groupe" class="ecran">
-      <h2>🏕️ Votre groupe d'aventuriers</h2>
-      <div id="groupe-cartes" class="rangee-cartes"></div>
-      <div class="centre">
-        <button id="groupe-commencer" class="btn-principal">⚔️ Entrer dans les Profondeurs</button>
+    <!-- ===== Carte du monde ===== -->
+    <section id="ecran-carte" class="ecran">
+      <h2>🗺️ Carte des Royaumes</h2>
+      <div id="carte-equipe" class="bandeau-equipe"></div>
+      <div id="carte-zones" class="grille-zones"></div>
+    </section>
+
+    <!-- ===== Choix de l'équipe (écran partagé) ===== -->
+    <section id="ecran-equipe" class="ecran">
+      <h2>👥 Qui part à l'aventure ?</h2>
+      <p class="sous-titre">Jouez en solo, ou jusqu'à 3 héros de cet appareil sur le même écran (on se passe la main à chaque tour).</p>
+      <div id="equipe-choix" class="rangee-cartes gauche"></div>
+      <div class="rangee-boutons">
+        <button id="equipe-valider" class="btn-principal">Valider l'équipe</button>
       </div>
     </section>
 
-    <!-- ===== Écran de combat ===== -->
+    <!-- ===== Zone d'exploration ===== -->
+    <section id="ecran-zone" class="ecran">
+      <div id="zone-entete"></div>
+      <div id="zone-actions-liste" class="grille-actions-zone"></div>
+      <div id="zone-infos"></div>
+    </section>
+
+    <!-- ===== Combat ===== -->
     <section id="ecran-combat" class="ecran">
       <div id="combat-entete">
         <h2 id="combat-titre"></h2>
         <span id="combat-manche" class="badge"></span>
       </div>
-      <div id="zone-ennemis" class="rangee-cartes"></div>
+      <div id="zone-ennemis" class="rangee-cartes combat-rangee"></div>
       <div id="combat-log"></div>
-      <div id="zone-joueurs" class="rangee-cartes"></div>
+      <div id="zone-joueurs" class="rangee-cartes combat-rangee"></div>
       <div id="zone-actions"></div>
     </section>
 
-    <!-- ===== Écran de camp (entre les combats) ===== -->
-    <section id="ecran-camp" class="ecran">
-      <h2>🔥 Le campement</h2>
-      <p id="camp-message" class="sous-titre"></p>
-      <div id="camp-cartes" class="rangee-cartes colonne-camp"></div>
+    <!-- ===== Butin ===== -->
+    <section id="ecran-butin" class="ecran">
+      <h2 id="butin-titre"></h2>
+      <p id="butin-texte" class="sous-titre"></p>
+      <div id="butin-details" class="panneau"></div>
       <div class="centre">
-        <button id="camp-continuer" class="btn-principal">Combat suivant ➜</button>
+        <button id="butin-continuer" class="btn-principal">Continuer ➜</button>
       </div>
     </section>
 
-    <!-- ===== Écran de fin ===== -->
-    <section id="ecran-fin" class="ecran">
-      <h2 id="fin-titre"></h2>
-      <p id="fin-message" class="sous-titre"></p>
-      <div id="fin-cartes" class="rangee-cartes"></div>
-      <div class="centre">
-        <button id="fin-rejouer" class="btn-principal">↺ Rejouer</button>
+    <!-- ===== Ville ===== -->
+    <section id="ecran-ville" class="ecran">
+      <h2>🏘️ Bourg de Valciel</h2>
+      <p class="sous-titre">Le refuge des aventuriers : on s'y équipe, on y fabrique, on s'y repose.</p>
+      <div id="ville-lieux" class="grille-zones"></div>
+    </section>
+
+    <!-- ===== Boutique ===== -->
+    <section id="ecran-boutique" class="ecran">
+      <div class="entete-lieu">
+        <h2>🛒 Boutique « À la Bonne Lame »</h2>
+        <span id="boutique-po" class="badge badge-po"></span>
       </div>
+      <div id="boutique-onglets" class="onglets"></div>
+      <div id="boutique-contenu"></div>
+    </section>
+
+    <!-- ===== Atelier de craft ===== -->
+    <section id="ecran-atelier" class="ecran">
+      <div class="entete-lieu">
+        <h2>⚒️ Atelier des artisans</h2>
+        <span id="atelier-po" class="badge badge-po"></span>
+      </div>
+      <p class="sous-titre">Transformez vos matériaux en potions et en équipements — dont des pièces légendaires introuvables en boutique.</p>
+      <div id="atelier-recettes" class="grille-recettes"></div>
+    </section>
+
+    <!-- ===== Fiche du héros ===== -->
+    <section id="ecran-heros" class="ecran">
+      <div id="heros-contenu"></div>
+    </section>
+
+    <!-- ===== Taverne (multijoueur) ===== -->
+    <section id="ecran-taverne" class="ecran">
+      <h2>🍻 Taverne du Monde</h2>
+      <div id="taverne-contenu"></div>
     </section>
 
   </main>
 
   <script src="js/data.js"></script>
+  <script src="js/objets.js"></script>
+  <script src="js/zones.js"></script>
+  <script src="js/reseau.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/monde.js"></script>
+  <script src="js/ville.js"></script>
   <script src="js/combat.js"></script>
 </body>
 </html>
