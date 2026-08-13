@@ -163,11 +163,13 @@ async function boucleTour() {
       await new Promise((res) => { cb.finTour = res; });
       cb.finTour = null;
       el('zone-actions').innerHTML = '';
+      finDeTourStatuts(c);
       rendreCombat();
     } else {
       el('zone-actions').innerHTML = '';
       await attendre(900);
       tourMonstre(c);
+      finDeTourStatuts(c);
       rendreCombat();
     }
 
@@ -188,8 +190,11 @@ function debutTour(c) {
 
   const poison = c.statuts.find((s) => s.type === 'poison');
   if (poison) {
+    // La contribution au boss du monde est bornée aux PV restants (pas d'overkill).
+    if (c.type === 'monstre' && cb.genre === 'bossMonde') {
+      cb.degatsBossMonde += Math.min(poison.valeur, Math.max(0, c.hp));
+    }
     c.hp -= poison.valeur;
-    if (c.type === 'monstre' && cb.genre === 'bossMonde') cb.degatsBossMonde += poison.valeur;
     journal(`🧪 ${c.nom} souffre du poison : ${poison.valeur} dégâts.`);
     gererMort(c);
   }
@@ -204,10 +209,22 @@ function debutTour(c) {
 
   const skip = c.statuts.some((s) => s.type === 'etourdi');
 
-  c.statuts.forEach((s) => s.duree--);
+  // La bénédiction (+30 % de dégâts) se consomme en AGISSANT : elle est
+  // décomptée en fin de tour (finDeTourStatuts), pas ici, pour offrir
+  // ses 3 tours d'attaque annoncés.
+  c.statuts.forEach((s) => { if (s.type !== 'benediction') s.duree--; });
   c.statuts = c.statuts.filter((s) => s.duree > 0 && !(s.type === 'bouclier' && s.valeur <= 0));
 
   return { skip };
+}
+
+// Statuts consommés par l'action du combattant (décomptés après qu'il a agi).
+function finDeTourStatuts(c) {
+  const benediction = c.statuts.find((s) => s.type === 'benediction');
+  if (benediction) {
+    benediction.duree--;
+    if (benediction.duree <= 0) c.statuts = c.statuts.filter((s) => s !== benediction);
+  }
 }
 
 function verifierFin() {
@@ -262,8 +279,11 @@ function infligerDegats(source, cible, brut, options = {}) {
   }
 
   // La mort est gérée par l'appelant (gererMort) après la ligne de journal.
+  // La contribution au boss du monde est bornée aux PV restants (pas d'overkill).
+  if (cible.type === 'monstre' && cb && cb.genre === 'bossMonde') {
+    cb.degatsBossMonde += Math.min(d, Math.max(0, cible.hp));
+  }
   cible.hp -= d;
-  if (cible.type === 'monstre' && cb && cb.genre === 'bossMonde') cb.degatsBossMonde += d;
   return { degats: d, crit, absorbe };
 }
 
@@ -399,9 +419,12 @@ function rendreActions(j) {
   if (cb.modeActions === 'objet') {
     consommablesDe(j).forEach((entree) => {
       const objet = OBJETS[entree.id];
+      const inutile = (objet.effet.type === 'pv' && j.hp >= j.maxHp)
+        || (objet.effet.type === 'pm' && j.mp >= j.maxMp);
       const btn = document.createElement('button');
       btn.className = 'btn-action';
-      btn.innerHTML = `${objet.emoji} <strong>${objet.nom}</strong><span class="action-detail">×${entree.qte} · ${objet.desc}</span>`;
+      btn.disabled = inutile;
+      btn.innerHTML = `${objet.emoji} <strong>${objet.nom}</strong><span class="action-detail">×${entree.qte} · ${inutile ? 'déjà au maximum' : objet.desc}</span>`;
       btn.addEventListener('click', () => surActionChoisie(j, { genre: 'objet', idObjet: entree.id }));
       barre.appendChild(btn);
     });
@@ -465,11 +488,20 @@ function rendreActions(j) {
   }
 
   zone.appendChild(barre);
+  // Sur petit écran, amener le panneau d'actions en vue au début du tour.
+  if (zone.scrollIntoView) zone.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function surActionChoisie(j, action) {
   const cb = etat.combat;
   if (cb.termine || cb.actif !== j || !cb.finTour) return;
+
+  if (action.genre === 'objet') {
+    // Garde-fou : ne pas gaspiller potion et tour à PV/PM déjà pleins.
+    const objet = OBJETS[action.idObjet];
+    if (objet.effet.type === 'pv' && j.hp >= j.maxHp) { afficherToast('PV déjà au maximum.'); return; }
+    if (objet.effet.type === 'pm' && j.mp >= j.maxMp) { afficherToast('PM déjà au maximum.'); return; }
+  }
 
   if (action.genre === 'defense' || action.genre === 'objet' || action.genre === 'fuite') {
     executerAction(j, action, null);
@@ -573,7 +605,11 @@ function lancerCompetence(j, compId, cible) {
       const r = infligerDegats(j, c, brut, { critBonus: comp.critBonus || 0 });
       journal(`→ ${c.nom} subit ${texteDegats(r)}`);
       gererMort(c);
-      if (comp.effet && !estMort(c)) appliquerEffet(j, c, comp.effet, r);
+      // Le drain soigne le lanceur même si le coup achève la cible ;
+      // les autres effets (poison, étourdissement…) ne s'appliquent qu'aux vivants.
+      if (comp.effet && (comp.effet.type === 'drain' || !estMort(c))) {
+        appliquerEffet(j, c, comp.effet, r);
+      }
     });
   } else if (comp.type === 'soin') {
     const cibles = comp.cible === 'allies' ? cb.equipe.filter((x) => !x.ko) : [cible];
@@ -653,13 +689,25 @@ function rendreJournal() {
 function rendreCombat() {
   const cb = etat.combat;
   if (!cb) return;
+  // Le défilement horizontal des rangées (mobile) survit au re-rendu.
   const zoneE = el('zone-ennemis');
+  const defilE = zoneE.scrollLeft;
   zoneE.innerHTML = '';
   cb.monstres.forEach((m) => zoneE.appendChild(carteCombattant(m)));
+  zoneE.scrollLeft = defilE;
   const zoneJ = el('zone-joueurs');
+  const defilJ = zoneJ.scrollLeft;
   zoneJ.innerHTML = '';
   cb.equipe.forEach((j) => zoneJ.appendChild(carteCombattant(j)));
+  zoneJ.scrollLeft = defilJ;
   rendreJournal();
+  // En mode ciblage, amener la première cible en vue.
+  if (cb.cibleEnAttente) {
+    const premiere = document.querySelector('.carte-combattant.ciblable');
+    if (premiere && premiere.scrollIntoView) {
+      premiere.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+  }
 }
 
 function cibleValide(c) {
@@ -707,7 +755,8 @@ function carteCombattant(c) {
 
   if (!mort && cibleValide(c)) {
     carte.classList.add('ciblable');
-    carte.addEventListener('click', () => {
+    rendreCliquable(carte, () => {
+      if (!cb.cibleEnAttente) return;
       const { joueur, action } = cb.cibleEnAttente;
       cb.cibleEnAttente = null;
       executerAction(joueur, action, c);

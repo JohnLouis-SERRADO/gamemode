@@ -45,19 +45,19 @@ function rendreCarte() {
   zone.innerHTML = '';
 
   const ville = document.createElement('div');
-  ville.className = 'carte-zone ville cliquable';
+  ville.className = 'carte-zone ville';
   ville.innerHTML = `
     <div class="zone-emoji">🏘️</div>
     <div class="zone-nom">Bourg de Valciel</div>
     <div class="zone-plage">refuge</div>
     <div class="zone-desc">Boutique, atelier, auberge et taverne. Aucun danger — promis.</div>`;
-  ville.addEventListener('click', () => naviguer('ville'));
+  rendreCliquable(ville, () => naviguer('ville'));
   zone.appendChild(ville);
 
   ZONES.forEach((z) => {
     const verrouillee = p.niveau < z.niveauMin;
     const carte = document.createElement('div');
-    carte.className = 'carte-zone' + (verrouillee ? ' verrouillee' : ' cliquable');
+    carte.className = 'carte-zone' + (verrouillee ? ' verrouillee' : '');
     const bossVaincu = p.bossVaincus.includes(z.id);
     carte.innerHTML = `
       <div class="zone-emoji">${z.emoji}</div>
@@ -65,7 +65,7 @@ function rendreCarte() {
       <div class="zone-plage">${z.plage}</div>
       <div class="zone-desc">${verrouillee ? `🔒 Atteignez le niveau ${z.niveauMin} pour entrer.` : z.desc}</div>`;
     if (!verrouillee) {
-      carte.addEventListener('click', () => {
+      rendreCliquable(carte, () => {
         etat.zoneCourante = z;
         rendreZone(z);
         montrerEcran('ecran-zone');
@@ -147,6 +147,24 @@ function tailleDuPack(taille) {
   return Math.max(1, Math.min(4, nb));
 }
 
+// Compose un pack en limitant à un seul soigneur : deux soigneurs qui se
+// relaient rendraient le combat ingagnable à l'usure.
+function composerPack(z, nb) {
+  const estSoigneur = (cle) => MONSTRES[cle].attaques.some((a) => a.type === 'soin');
+  const sansSoin = z.monstres.filter((cle) => !estSoigneur(cle));
+  const cles = [];
+  let soigneurs = 0;
+  for (let i = 0; i < nb; i++) {
+    let cle = z.monstres[alea(0, z.monstres.length - 1)];
+    if (estSoigneur(cle)) {
+      if (soigneurs >= 1 && sansSoin.length > 0) cle = sansSoin[alea(0, sansSoin.length - 1)];
+      else soigneurs++;
+    }
+    cles.push(cle);
+  }
+  return cles;
+}
+
 function explorer(z) {
   const p = persoActif();
   p.explorations[z.id] = (p.explorations[z.id] || 0) + 1;
@@ -154,8 +172,7 @@ function explorer(z) {
 
   const tirage = Math.random();
   if (tirage < 0.72) {
-    const nb = tailleDuPack(membresEquipe().length);
-    const cles = Array.from({ length: nb }, () => z.monstres[alea(0, z.monstres.length - 1)]);
+    const cles = composerPack(z, tailleDuPack(membresEquipe().length));
     demarrerCombatZone(z, 'exploration', cles);
   } else if (tirage < 0.9) {
     // Trouvaille
@@ -200,8 +217,7 @@ function recolter(z) {
   if (Object.keys(objets).length === 0) objets[z.recolte[0].id] = 1;
 
   if (Math.random() < 0.25) {
-    const nb = Math.max(1, Math.min(4, membresEquipe().length));
-    const cles = Array.from({ length: nb }, () => z.monstres[alea(0, z.monstres.length - 1)]);
+    const cles = composerPack(z, Math.max(1, Math.min(4, membresEquipe().length)));
     afficherToast('⚠️ Une embuscade pendant la récolte !');
     demarrerCombatZone(z, 'embuscade', cles, { lootRecolte: objets });
   } else {
@@ -299,21 +315,36 @@ function apresVictoire(cb) {
   const membres = cb.equipe;
   const lignes = [];
 
+  // Les packs grossissent avec l'équipe : le butin se partage donc entre
+  // les membres (avec un léger bonus de groupe), sinon jouer à plusieurs
+  // ferait progresser ~2,5× plus vite qu'en solo.
+  const partage = membres.length;
+  const bonusGroupe = partage > 1 ? 1.15 : 1;
+  const xpParHeros = Math.max(1, Math.round((butin.xp / partage) * bonusGroupe));
+  const poParHeros = Math.max(0, Math.round(butin.po / partage));
+
   if (cb.genre === 'boss') {
     lignes.push(`👑 ${MONSTRES[cb.zone.boss].nom} est vaincu ! Les environs respirent… pour l'instant.`);
   }
-  lignes.push(`⭐ +${butin.xp} XP pour chaque héros`);
-  lignes.push(`💰 +${butin.po} pièces d'or pour chaque héros`);
+  lignes.push(`⭐ +${xpParHeros} XP par héros`);
+  lignes.push(`💰 +${poParHeros} pièces d'or par héros`);
+
+  // Les objets sont répartis aléatoirement entre les membres.
+  const partsObjets = membres.map(() => ({}));
   Object.entries(butin.objets).forEach(([id, qte]) => {
-    lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}`);
+    lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}${partage > 1 ? ' (réparti dans les sacs)' : ''}`);
+    for (let i = 0; i < qte; i++) {
+      const part = partsObjets[alea(0, partage - 1)];
+      part[id] = (part[id] || 0) + 1;
+    }
   });
 
-  membres.forEach((m) => {
+  membres.forEach((m, i) => {
     if (m.hp <= 0) m.hp = 1; // les héros KO se relèvent après la victoire
-    m.po += butin.po;
-    Object.entries(butin.objets).forEach(([id, qte]) => ajouterObjet(m, id, qte));
+    m.po += poParHeros;
+    Object.entries(partsObjets[i]).forEach(([id, qte]) => ajouterObjet(m, id, qte));
     if (cb.genre === 'boss' && !m.bossVaincus.includes(cb.zone.id)) m.bossVaincus.push(cb.zone.id);
-    const niveaux = gagnerXp(m, butin.xp);
+    const niveaux = gagnerXp(m, xpParHeros);
     nettoyerApresCombat(m);
     if (niveaux > 0) lignes.push(`🎉 ${m.avatar} ${m.nom} passe niveau ${m.niveau} ! PV et PM restaurés.`);
     sauvegarder(m);
@@ -327,18 +358,29 @@ function apresVictoire(cb) {
   });
 }
 
+// Récompense matérielle du boss du monde, adaptée au niveau du héros :
+// c'est notamment la source anticipée des matériaux légendaires.
+function recompenseBossMonde(niveau) {
+  if (niveau >= 16) return 'ecaille-draconique';
+  if (niveau >= 12) return 'cristal-givre';
+  if (niveau >= 8) return 'os-ancien';
+  if (niveau >= 4) return 'minerai-fer';
+  return 'seve-ambree';
+}
+
 async function apresBossMonde(cb) {
   const p = cb.equipe[0];
   const contribution = Math.max(0, Math.round(cb.degatsBossMonde || 0));
-  const poGagne = Math.round(contribution / 8);
+  const poGagne = Math.round(contribution / 5);
   const lignes = [
     `⚔️ Dégâts infligés au boss du monde : ${formatNombre(contribution)}`,
     `💰 +${poGagne} pièces d'or`,
   ];
   p.po += poGagne;
-  if (contribution >= 400) {
-    ajouterObjet(p, 'cristal-givre', 1);
-    lignes.push('❄️ Cristal de givre ×1 — récompense de bravoure');
+  if (contribution >= 250) {
+    const idRecompense = recompenseBossMonde(p.niveau);
+    ajouterObjet(p, idRecompense, 1);
+    lignes.push(`${OBJETS[idRecompense].emoji} ${OBJETS[idRecompense].nom} ×1 — récompense de bravoure`);
   }
   if (p.hp <= 0) p.hp = 1;
   nettoyerApresCombat(p);

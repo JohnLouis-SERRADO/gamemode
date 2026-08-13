@@ -37,22 +37,22 @@ function rendreVille() {
 
   lieux.forEach((lieu) => {
     const carte = document.createElement('div');
-    carte.className = 'carte-zone cliquable';
+    carte.className = 'carte-zone';
     carte.innerHTML = `
       <div class="zone-emoji">${lieu.emoji}</div>
       <div class="zone-nom">${lieu.nom}</div>
       <div class="zone-desc">${lieu.detail}</div>`;
-    carte.addEventListener('click', lieu.action);
+    rendreCliquable(carte, lieu.action);
     zone.appendChild(carte);
   });
 
   const retour = document.createElement('div');
-  retour.className = 'carte-zone cliquable retour';
+  retour.className = 'carte-zone retour';
   retour.innerHTML = `
     <div class="zone-emoji">🗺️</div>
     <div class="zone-nom">Repartir à l'aventure</div>
     <div class="zone-desc">Retour à la carte des Royaumes</div>`;
-  retour.addEventListener('click', () => naviguer('carte'));
+  rendreCliquable(retour, () => naviguer('carte'));
   zone.appendChild(retour);
 }
 

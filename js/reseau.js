@@ -108,8 +108,13 @@ async function sauvegarderCloud(p) {
   } catch (e) { /* la sauvegarde locale reste la référence */ }
 }
 
+// Verrou de réentrance : sans lui, un double-clic ou une sauvegarde
+// planifiée pendant la création créerait des personnages cloud en double.
+const creationsCloudEnCours = new Set();
+
 async function creerPersonnageCloud(p) {
-  if (!etat.enLigne || p.cloud) return;
+  if (!etat.enLigne || p.cloud || creationsCloudEnCours.has(p.id)) return;
+  creationsCloudEnCours.add(p.id);
   try {
     const resultat = await apiRequete('/rest/v1/rpc/creer_personnage', {
       methode: 'POST',
@@ -126,7 +131,11 @@ async function creerPersonnageCloud(p) {
         },
       });
     }
-  } catch (e) { /* on réessaiera plus tard */ }
+  } catch (e) {
+    /* on réessaiera plus tard */
+  } finally {
+    creationsCloudEnCours.delete(p.id);
+  }
 }
 
 async function recupererPersonnageCloud(id, token) {
@@ -206,8 +215,11 @@ async function chargerDonneesTaverne() {
     }
     return true;
   } catch (e) {
+    // Échec transitoire possible : re-tester tout de suite et, si le monde
+    // est vraiment injoignable, armer la reconnexion automatique (60 s).
     etat.enLigne = false;
     majUiReseau();
+    demarrerReseau();
     return false;
   }
 }

@@ -163,7 +163,10 @@ h4 { margin-bottom: 6px; }
   align-items: center;
   gap: 8px;
   min-width: 0;
+  overflow: hidden;
 }
+
+.topbar-infos { overflow: hidden; }
 
 .topbar-avatar { font-size: 1.7rem; }
 
@@ -212,7 +215,7 @@ h4 { margin-bottom: 6px; }
 
 #topbar-nav button:hover { border-color: var(--bordure); background: var(--panneau-clair); }
 
-.nav-libelle { font-size: 0.62rem; color: var(--texte-doux); }
+.nav-libelle { font-size: 0.72rem; color: var(--texte-doux); }
 
 .point-reseau {
   position: absolute;
@@ -237,7 +240,9 @@ button {
 
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 
-button:focus-visible {
+button:focus-visible,
+.cliquable:focus-visible,
+.ciblable:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -277,12 +282,12 @@ button:focus-visible {
 
 .btn-danger:not(:disabled):hover { border-color: var(--danger); }
 
-.btn-compact { min-height: 38px; padding: 8px 14px; font-size: 0.9rem; }
+.btn-compact { padding: 8px 14px; font-size: 0.9rem; }
 
 .btn-mini {
-  width: 38px;
-  height: 38px;
-  font-size: 1.1rem;
+  width: 44px;
+  height: 44px;
+  font-size: 1.15rem;
   background: var(--panneau-clair);
   border: 1px solid var(--bordure);
   border-radius: 8px;
@@ -746,6 +751,11 @@ button:focus-visible {
 
 .btn-action:not(:disabled):hover { border-color: var(--accent); background: #2a3348; }
 
+/* Les compétences se distinguent des actions de base */
+.btn-action.competence { border-left: 3px solid var(--accent); }
+
+.btn-achat:not(:disabled) { border-color: var(--accent); }
+
 .btn-action .action-detail {
   display: block;
   font-size: 0.76rem;
@@ -785,7 +795,7 @@ button:focus-visible {
   font-size: 0.92rem;
   white-space: nowrap;
   flex-shrink: 0;
-  min-height: 42px;
+  min-height: 44px;
 }
 
 .onglet.actif {
@@ -894,7 +904,9 @@ button:focus-visible {
   align-items: center;
 }
 
-.ligne-code input { flex: 1; min-width: 200px; margin-top: 0; font-size: 0.82rem; }
+/* 16px minimum : évite le zoom automatique d'iOS Safari au focus */
+.ligne-code input { flex: 1; min-width: 200px; margin-top: 0; font-size: 1rem; }
+.ligne-code input:focus { outline: none; border-color: var(--accent); }
 
 .bloc-apprentissage { border-color: var(--accent); }
 
@@ -985,8 +997,10 @@ button:focus-visible {
   .combat-rangee {
     flex-wrap: nowrap;
     overflow-x: auto;
+    overflow-y: visible;
     justify-content: flex-start;
-    padding-bottom: 6px;
+    /* espace pour le halo doré et l'élévation de la carte active */
+    padding: 10px 4px 8px;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -999,7 +1013,8 @@ button:focus-visible {
   .barre-actions { grid-template-columns: 1fr 1fr; }
   .btn-action { min-height: 56px; }
 
-  .stat-desc { display: none; }
+  /* les descriptions passent sous la ligne, mais restent lisibles */
+  .stat-desc { flex-basis: 100%; min-width: 0; font-size: 0.78rem; }
   .stat-nom { width: auto; flex: 1; }
 
   .grille-zones { grid-template-columns: 1fr 1fr; }
@@ -1018,4 +1033,12 @@ button:focus-visible {
   .barre-actions { grid-template-columns: 1fr; }
   .grille-competences { grid-template-columns: 1fr; }
   .grille-equipement { grid-template-columns: 1fr; }
+
+  /* topbar très étroite : tout doit tenir sans chevauchement */
+  #topbar { padding: 6px 6px; gap: 4px; }
+  #topbar-nav { gap: 0; }
+  #topbar-nav button { min-width: 40px; padding: 8px 5px; font-size: 1.15rem; }
+  .topbar-avatar { font-size: 1.4rem; }
+  .topbar-nom { max-width: 80px; }
+  .barre.mini { width: 34px; }
 }

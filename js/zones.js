@@ -91,12 +91,12 @@ const MONSTRES = {
     drops: [{ id: 'herbe-lunaire', chance: 0.5 }, { id: 'minerai-cuivre', chance: 0.3 }],
     attaques: [
       { nom: 'Malédiction', emoji: '🕷️', mult: 0.9, poids: 2, type: 'mono', effet: { type: 'poison', degats: 5, duree: 2 } },
-      { nom: 'Totem de soin', emoji: '🪅', poids: 2, type: 'soin', valeur: 30 },
+      { nom: 'Totem de soin', emoji: '🪅', poids: 2, type: 'soin', valeur: 22 },
     ],
   },
   golemMineur: {
     nom: 'Golem mineur', emoji: '🪨', niveau: 8, hp: 130, atk: 17, agi: 3, xp: 88, po: [20, 34],
-    drops: [{ id: 'minerai-cuivre', chance: 0.5 }, { id: 'minerai-fer', chance: 0.35 }],
+    drops: [{ id: 'minerai-cuivre', chance: 0.5 }, { id: 'minerai-fer', chance: 0.35 }, { id: 'noyau-golem', chance: 0.12 }],
     attaques: [
       { nom: 'Poing de pierre', emoji: '👊', mult: 1.0, poids: 3, type: 'mono' },
       { nom: 'Éboulement', emoji: '🪨', mult: 0.65, poids: 1, type: 'aoe' },
@@ -134,7 +134,7 @@ const MONSTRES = {
     drops: [{ id: 'poussiere-spectre', chance: 0.35 }, { id: 'os-ancien', chance: 0.3 }],
     attaques: [
       { nom: 'Châtiment', emoji: '☠️', mult: 1.1, poids: 2, type: 'mono' },
-      { nom: 'Prière noire', emoji: '🩸', poids: 2, type: 'soin', valeur: 55 },
+      { nom: 'Prière noire', emoji: '🩸', poids: 2, type: 'soin', valeur: 38 },
     ],
   },
   spectre: {
@@ -146,7 +146,7 @@ const MONSTRES = {
     ],
   },
   roiDechu: {
-    nom: 'Roi déchu', emoji: '🫅', niveau: 14, boss: true, hp: 520, atk: 30, agi: 8, xp: 560, po: [160, 240],
+    nom: 'Roi déchu', emoji: '🫅', niveau: 14, boss: true, hp: 520, atk: 30, agi: 8, xp: 480, po: [160, 240],
     drops: [{ id: 'os-ancien', chance: 1 }, { id: 'poussiere-spectre', chance: 1 }, { id: 'poussiere-spectre', chance: 0.6 }],
     attaques: [
       { nom: 'Lame maudite', emoji: '⚔️', mult: 1.2, poids: 2, type: 'mono' },
@@ -182,7 +182,7 @@ const MONSTRES = {
     ],
   },
   elementaireAncien: {
-    nom: 'Élémentaire ancien', emoji: '🌨️', niveau: 18, boss: true, hp: 800, atk: 40, agi: 10, xp: 800, po: [260, 380],
+    nom: 'Élémentaire ancien', emoji: '🌨️', niveau: 18, boss: true, hp: 800, atk: 40, agi: 10, xp: 650, po: [260, 380],
     drops: [{ id: 'cristal-givre', chance: 1 }, { id: 'cristal-givre', chance: 1 }, { id: 'noyau-golem', chance: 0.6 }],
     attaques: [
       { nom: 'Tempête de givre', emoji: '🌨️', mult: 0.75, poids: 2, type: 'aoe' },
@@ -218,7 +218,7 @@ const MONSTRES = {
     ],
   },
   gardienEternel: {
-    nom: 'Gardien éternel', emoji: '⚱️', niveau: 20, boss: true, hp: 1200, atk: 50, agi: 9, xp: 1500, po: [500, 700],
+    nom: 'Gardien éternel', emoji: '⚱️', niveau: 20, boss: true, hp: 1200, atk: 50, agi: 9, xp: 900, po: [350, 500],
     drops: [
       { id: 'ecaille-draconique', chance: 1 }, { id: 'ecaille-draconique', chance: 0.5 },
       { id: 'noyau-golem', chance: 1 }, { id: 'cristal-givre', chance: 0.8 },

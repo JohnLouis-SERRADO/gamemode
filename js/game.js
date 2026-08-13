@@ -74,6 +74,21 @@ function afficherToast(texte) {
   }, 2600);
 }
 
+// Rend un élément non-bouton activable au clic, au clavier (Entrée/Espace)
+// et repérable par les lecteurs d'écran.
+function rendreCliquable(element, action) {
+  element.classList.add('cliquable');
+  element.setAttribute('role', 'button');
+  element.setAttribute('tabindex', '0');
+  element.addEventListener('click', action);
+  element.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      action();
+    }
+  });
+}
+
 // Bouton à confirmation en deux temps (évite window.confirm, bloqué en iframe)
 function boutonConfirmation(libelle, libelleConfirme, action) {
   const btn = document.createElement('button');
@@ -150,13 +165,17 @@ function naviguer(destination) {
 // =====================================================================
 function chargerProfils() {
   try {
-    etat.profils = JSON.parse(localStorage.getItem(CLE_STOCKAGE_PROFILS) || '[]');
+    const brut = JSON.parse(localStorage.getItem(CLE_STOCKAGE_PROFILS) || '[]');
+    // Un stockage corrompu (mauvais type, entrées incomplètes) ne doit
+    // jamais empêcher le jeu de démarrer.
+    etat.profils = (Array.isArray(brut) ? brut : [])
+      .filter((p) => p && p.stats && p.equipement && Array.isArray(p.inventaire) && Array.isArray(p.competences));
     etat.actifId = localStorage.getItem(CLE_STOCKAGE_ACTIF) || null;
+    etat.profils.forEach((p) => bornerVie(p));
   } catch (e) {
     etat.profils = [];
     etat.actifId = null;
   }
-  etat.profils.forEach((p) => bornerVie(p));
 }
 
 function sauvegarderLocal() {
@@ -396,7 +415,7 @@ function carteCompetence(id, comp, options = {}) {
     <div class="comp-entete">${comp.emoji} <strong>${comp.nom}</strong></div>
     <div class="comp-desc">${comp.desc}</div>
     <div class="comp-infos">🎯 ${cibleTexte} · 💧 ${comp.coutMp} PM${comp.cooldown ? ` · ⏳ ${comp.cooldown} tours` : ''}</div>`;
-  if (options.cliquable && options.surClic) carte.addEventListener('click', options.surClic);
+  if (options.cliquable && options.surClic) rendreCliquable(carte, options.surClic);
   return carte;
 }
 
@@ -704,8 +723,7 @@ function rendreEquipe() {
         <span class="niveau">Niveau ${p.niveau} · ❤️ ${p.hp}/${p.maxHp}</span></div>
       </div>`;
     if (!estActif) {
-      carte.classList.add('cliquable');
-      carte.addEventListener('click', () => {
+      rendreCliquable(carte, () => {
         if (coche) {
           etat.equipe = etat.equipe.filter((id) => id !== p.id);
         } else if (etat.equipe.length < 3) {
