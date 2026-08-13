@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GameMode — Les Profondeurs</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main id="app">
+
+    <!-- ===== Écran d'accueil ===== -->
+    <section id="ecran-accueil" class="ecran actif">
+      <h1>⚔️ GameMode</h1>
+      <p class="sous-titre">Les Profondeurs — aventure tour par tour à jouer entre amis, sur un même écran</p>
+      <div class="panneau">
+        <h2>Combien de héros partent à l'aventure ?</h2>
+        <div id="choix-nb-joueurs" class="rangee-boutons"></div>
+        <p class="aide">
+          Chaque joueur crée son personnage : il répartit ses points de caractéristiques et choisit
+          librement ses 4 compétences. Ensuite, votre groupe affronte les 5 combats du donjon.
+          À chaque tour, on passe l'écran au joueur dont c'est le tour !
+        </p>
+      </div>
+    </section>
+
+    <!-- ===== Écran de création de personnage ===== -->
+    <section id="ecran-creation" class="ecran">
+      <h2 id="creation-titre">Création du héros</h2>
+      <div class="panneau">
+        <div class="ligne-creation ligne-identite">
+          <label class="champ-nom">Nom du héros
+            <input id="creation-nom" maxlength="16" placeholder="Ex. : Kaela" autocomplete="off">
+          </label>
+          <div>
+            <h3>Avatar</h3>
+            <div id="creation-avatars" class="grille-avatars"></div>
+          </div>
+        </div>
+
+        <div class="ligne-creation">
+          <h3>Modèles rapides <span class="aide-inline">(pré-remplit tout, modifiable ensuite)</span></h3>
+          <div id="creation-modeles" class="rangee-boutons"></div>
+        </div>
+
+        <div class="ligne-creation">
+          <h3>Caractéristiques <span id="creation-points" class="badge"></span></h3>
+          <div id="creation-stats" class="liste-stats"></div>
+        </div>
+
+        <div class="ligne-creation">
+          <h3>Compétences <span id="creation-nb-comp" class="badge"></span></h3>
+          <div id="creation-competences"></div>
+        </div>
+
+        <button id="creation-valider" class="btn-principal">Valider ce héros</button>
+      </div>
+    </section>
+
+    <!-- ===== Écran récapitulatif du groupe ===== -->
+    <section id="ecran-groupe" class="ecran">
+      <h2>🏕️ Votre groupe d'aventuriers</h2>
+      <div id="groupe-cartes" class="rangee-cartes"></div>
+      <div class="centre">
+        <button id="groupe-commencer" class="btn-principal">⚔️ Entrer dans les Profondeurs</button>
+      </div>
+    </section>
+
+    <!-- ===== Écran de combat ===== -->
+    <section id="ecran-combat" class="ecran">
+      <div id="combat-entete">
+        <h2 id="combat-titre"></h2>
+        <span id="combat-manche" class="badge"></span>
+      </div>
+      <div id="zone-ennemis" class="rangee-cartes"></div>
+      <div id="combat-log"></div>
+      <div id="zone-joueurs" class="rangee-cartes"></div>
+      <div id="zone-actions"></div>
+    </section>
+
+    <!-- ===== Écran de camp (entre les combats) ===== -->
+    <section id="ecran-camp" class="ecran">
+      <h2>🔥 Le campement</h2>
+      <p id="camp-message" class="sous-titre"></p>
+      <div id="camp-cartes" class="rangee-cartes colonne-camp"></div>
+      <div class="centre">
+        <button id="camp-continuer" class="btn-principal">Combat suivant ➜</button>
+      </div>
+    </section>
+
+    <!-- ===== Écran de fin ===== -->
+    <section id="ecran-fin" class="ecran">
+      <h2 id="fin-titre"></h2>
+      <p id="fin-message" class="sous-titre"></p>
+      <div id="fin-cartes" class="rangee-cartes"></div>
+      <div class="centre">
+        <button id="fin-rejouer" class="btn-principal">↺ Rejouer</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="js/data.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/combat.js"></script>
+</body>
+</html>
