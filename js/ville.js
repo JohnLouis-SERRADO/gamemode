@@ -72,8 +72,56 @@ const ONGLETS_BOUTIQUE = [
   { id: 'armures', nom: '🛡️ Armures', filtre: (o) => o.type === 'equipement' && ['tete', 'torse', 'jambes'].includes(o.slot) },
   { id: 'accessoires', nom: '💍 Accessoires', filtre: (o) => o.type === 'equipement' && o.slot === 'accessoire' },
   { id: 'potions', nom: '🧪 Potions', filtre: (o) => o.type === 'consommable' },
+  { id: 'grimoires', nom: '📖 Grimoires' },
   { id: 'vendre', nom: '💰 Vendre' },
 ];
+
+// Prix d'un grimoire de compétence : selon son coût en mana et sa recharge.
+function prixGrimoire(comp) {
+  return 90 + (comp.coutMp || 0) * 25 + (comp.cooldown || 0) * 15;
+}
+
+// L'échoppe aux grimoires : apprendre des compétences contre de l'or.
+function rendreGrimoires(contenu, p) {
+  const aide = document.createElement('p');
+  aide.className = 'aide';
+  aide.textContent = 'Chaque grimoire enseigne une compétence, ajoutée à votre grimoire personnel (et équipée s’il reste une place parmi vos 8 actives). Les compétences déjà connues n’apparaissent plus.';
+  contenu.appendChild(aide);
+
+  const stats = statsEffectives(p);
+  const inconnues = Object.entries(COMPETENCES)
+    .filter(([id]) => !p.grimoire.includes(id))
+    .sort((a, b) => prixGrimoire(a[1]) - prixGrimoire(b[1]));
+  if (inconnues.length === 0) {
+    const fini = document.createElement('p');
+    fini.className = 'aide';
+    fini.textContent = '📚 Vous connaissez les 68 compétences des Royaumes. Le libraire s’incline.';
+    contenu.appendChild(fini);
+    return;
+  }
+  const grille = document.createElement('div');
+  grille.className = 'grille-competences';
+  inconnues.forEach(([id, comp]) => {
+    const carte = carteCompetence(id, comp, { stats });
+    const prix = prixGrimoire(comp);
+    const acheter = document.createElement('button');
+    acheter.className = 'btn-choix btn-compact btn-achat';
+    acheter.textContent = `📖 Étudier — ${prix} po`;
+    acheter.disabled = p.po < prix;
+    acheter.addEventListener('click', () => {
+      if (p.po < prix || p.grimoire.includes(id)) return;
+      p.po -= prix;
+      apprendreCompetence(p, id);
+      sauvegarder(p);
+      afficherToast(`${comp.emoji} ${comp.nom} apprise ! ${p.competences.includes(id) ? 'Elle est équipée.' : 'Elle attend dans votre grimoire.'}`);
+      rendreBoutique();
+      rendreTopbar();
+    });
+    carte.appendChild(acheter);
+    grille.appendChild(carte);
+  });
+  contenu.appendChild(grille);
+}
 
 let ongletBoutique = 'armes';
 
@@ -96,6 +144,10 @@ function rendreBoutique() {
 
   if (ongletBoutique === 'vendre') {
     rendreVente(contenu, p);
+    return;
+  }
+  if (ongletBoutique === 'grimoires') {
+    rendreGrimoires(contenu, p);
     return;
   }
 
@@ -133,6 +185,7 @@ function carteArticleBoutique(p, id, objet, apresAchat) {
     <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)}${possede > 0 ? ` <span class="objet-qte">×${possede} possédé${possede > 1 ? 's' : ''}</span>` : ''}</div>
     <div class="objet-desc">${objet.desc || ''}</div>
     ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
+    ${texteSet(objet)}
     ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}`;
   const acheter = document.createElement('button');
   acheter.className = 'btn-choix btn-compact btn-achat';
@@ -278,8 +331,7 @@ function reclamerQuete(p, quete) {
   if (quete.reclamee || quete.fait < quete.requis) return;
   quete.reclamee = true;
   p.compteurs.quetes++;
-  const compagnon = familierActif(p);
-  const poGagne = Math.round(quete.recompense.po * (1 + ((compagnon && compagnon.bonus.poBonus) || 0)));
+  const poGagne = Math.round(quete.recompense.po * multiplicateurOr(p));
   p.po += poGagne;
   p.compteurs.orTotal += poGagne;
   const lignes = [`💰 +${poGagne} po`, `⭐ +${quete.recompense.xp} XP`];

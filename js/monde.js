@@ -518,8 +518,7 @@ function apresVictoireTour(cb) {
 
   membres.forEach((m) => {
     if (m.hp <= 0) m.hp = 1;
-    const compagnon = familierActif(m);
-    const poGagne = Math.round(poParHeros * (1 + ((compagnon && compagnon.bonus.poBonus) || 0)));
+    const poGagne = Math.round(poParHeros * multiplicateurOr(m));
     m.po += poGagne;
     m.compteurs.orTotal += poGagne;
     m.compteurs.monstres += cb.monstres.length;
@@ -638,8 +637,7 @@ function apresVictoire(cb) {
 
   membres.forEach((m, i) => {
     if (m.hp <= 0) m.hp = 1; // les héros KO se relèvent après la victoire
-    const compagnon = familierActif(m);
-    const poGagne = Math.round(poParHeros * (1 + ((compagnon && compagnon.bonus.poBonus) || 0)));
+    const poGagne = Math.round(poParHeros * multiplicateurOr(m));
     m.po += poGagne;
     Object.entries(partsObjets[i]).forEach(([id, qte]) => ajouterObjet(m, id, qte));
     if (familiersGagnes[i] && !m.familiers.includes(familiersGagnes[i])) m.familiers.push(familiersGagnes[i]);

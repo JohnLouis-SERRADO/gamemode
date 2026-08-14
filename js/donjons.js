@@ -1158,8 +1158,7 @@ function apresVictoireDonjon(cb) {
 
   membres.forEach((m) => {
     if (m.hp <= 0) m.hp = 1;
-    const compagnon = familierActif(m);
-    const poGagne = Math.round(poParHeros * (1 + ((compagnon && compagnon.bonus.poBonus) || 0)));
+    const poGagne = Math.round(poParHeros * multiplicateurOr(m));
     m.po += poGagne;
     m.compteurs.orTotal += poGagne;
     m.compteurs.monstres += cb.monstres.length;

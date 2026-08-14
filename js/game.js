@@ -196,6 +196,13 @@ function normaliserPerso(p) {
   if (p.titre === undefined) p.titre = null;
   if (p.tourMax == null) p.tourMax = 0;
   if (!p.donjons || typeof p.donjons !== 'object') p.donjons = {};
+  // v7 : le grimoire recense toutes les compétences connues ; seules
+  // MAX_COMPETENCES_ACTIVES d'entre elles sont équipées en même temps.
+  if (!Array.isArray(p.grimoire)) p.grimoire = [];
+  p.competences.forEach((id) => { if (!p.grimoire.includes(id)) p.grimoire.push(id); });
+  if (p.competences.length > MAX_COMPETENCES_ACTIVES) {
+    p.competences = p.competences.slice(0, MAX_COMPETENCES_ACTIVES);
+  }
   if (!p.quetes || p.quetes.date !== new Date().toISOString().slice(0, 10)) {
     p.quetes = genererQuetesDuJour(p);
   }
@@ -219,7 +226,7 @@ function donneesCloud(p) {
   return {
     nom: p.nom, avatar: p.avatar, race: p.race, stats: p.stats, niveau: p.niveau, xp: p.xp,
     pointsEnAttente: p.pointsEnAttente, competencesEnAttente: p.competencesEnAttente,
-    competences: p.competences, po: p.po, inventaire: p.inventaire,
+    competences: p.competences, grimoire: p.grimoire, po: p.po, inventaire: p.inventaire,
     equipement: p.equipement, hp: p.hp, mp: p.mp,
     explorations: p.explorations, bossVaincus: p.bossVaincus,
     compteurs: p.compteurs, familiers: p.familiers, familier: p.familier,
@@ -293,12 +300,23 @@ function bornerVie(p) {
   p.mp = Math.max(0, Math.min(p.maxMp, Math.round(p.mp)));
 }
 
+// Apprend une compétence : elle entre au grimoire, et devient active
+// immédiatement s'il reste une place parmi les 8.
+function apprendreCompetence(p, id) {
+  if (!p.grimoire.includes(id)) p.grimoire.push(id);
+  if (!p.competences.includes(id) && p.competences.length < MAX_COMPETENCES_ACTIVES) {
+    p.competences.push(id);
+  }
+}
+
 // Gagne de l'XP ; une montée de niveau soigne entièrement (le fameux « ding »).
 function gagnerXp(p, xp) {
   const avant = p.niveau;
   if (p.race === 'humain') xp = Math.round(xp * 1.1); // Ambition
   const familier = familierActif(p);
   if (familier && familier.bonus.xpBonus) xp = Math.round(xp * (1 + familier.bonus.xpBonus));
+  const sets = bonusSetActifs(p);
+  if (sets.xpBonus) xp = Math.round(xp * (1 + sets.xpBonus));
   p.xp += xp;
   const apres = niveauPour(p.xp);
   if (apres > avant) {
@@ -566,21 +584,22 @@ function rendreHeros() {
   });
   zone.appendChild(blocStats);
 
-  // --- Nouvelle compétence à apprendre ---
+  // --- Nouvelle compétence à apprendre (montée de niveau) ---
   if (p.competencesEnAttente > 0) {
     const bloc = document.createElement('div');
     bloc.className = 'panneau bloc-apprentissage';
-    bloc.innerHTML = `<h3>📖 Nouvelle compétence à apprendre (${p.competencesEnAttente})</h3>`;
+    bloc.innerHTML = `<h3>📖 Nouvelle compétence à apprendre (${p.competencesEnAttente})</h3>
+      <p class="aide">La compétence choisie rejoint votre grimoire — et vos actives s'il reste une place.</p>`;
     const grille = document.createElement('div');
     grille.className = 'grille-competences';
     Object.entries(COMPETENCES)
-      .filter(([id]) => !p.competences.includes(id))
+      .filter(([id]) => !p.grimoire.includes(id))
       .forEach(([id, comp]) => {
         grille.appendChild(carteCompetence(id, comp, {
           stats: s,
           cliquable: true,
           surClic: () => {
-            p.competences.push(id);
+            apprendreCompetence(p, id);
             p.competencesEnAttente--;
             sauvegarder(p);
             afficherToast(`${comp.emoji} ${p.nom} apprend ${comp.nom} !`);
@@ -593,19 +612,83 @@ function rendreHeros() {
     zone.appendChild(bloc);
   }
 
-  // --- Compétences connues (avec détails chiffrés) ---
+  // --- Compétences actives (max 8) et grimoire ---
   const blocComp = document.createElement('div');
   blocComp.className = 'panneau';
-  blocComp.innerHTML = '<h3>Compétences connues</h3>';
+  blocComp.innerHTML = `<h3>⚡ Compétences actives (${p.competences.length}/${MAX_COMPETENCES_ACTIVES})</h3>
+    <p class="aide">Ce sont elles que vous lancez en combat. Retirez-en, équipez-en d'autres depuis le grimoire — autant de fois que vous voulez, hors combat.</p>`;
   const grilleComp = document.createElement('div');
   grilleComp.className = 'grille-competences';
   p.competences.forEach((id) => {
     const comp = COMPETENCES[id];
     if (!comp) return;
-    grilleComp.appendChild(carteCompetence(id, comp, { stats: s }));
+    const carte = carteCompetence(id, comp, { stats: s });
+    const retirer = document.createElement('button');
+    retirer.className = 'btn-choix btn-compact';
+    retirer.textContent = '⬇️ Ranger au grimoire';
+    retirer.disabled = p.competences.length <= 1; // toujours au moins une compétence
+    retirer.addEventListener('click', () => {
+      p.competences = p.competences.filter((x) => x !== id);
+      sauvegarder(p);
+      rendreHeros();
+    });
+    carte.appendChild(retirer);
+    grilleComp.appendChild(carte);
   });
   blocComp.appendChild(grilleComp);
+
+  const enReserve = p.grimoire.filter((id) => !p.competences.includes(id) && COMPETENCES[id]);
+  const titreGrimoire = document.createElement('h3');
+  titreGrimoire.className = 'titre-grimoire';
+  titreGrimoire.textContent = `📚 Grimoire (${p.grimoire.length} connue${p.grimoire.length > 1 ? 's' : ''})`;
+  blocComp.appendChild(titreGrimoire);
+  if (enReserve.length === 0) {
+    const aide = document.createElement('p');
+    aide.className = 'aide';
+    aide.textContent = 'Toutes vos compétences connues sont actives. Débloquez-en d’autres en montant de niveau — ou achetez des grimoires à la boutique !';
+    blocComp.appendChild(aide);
+  } else {
+    const grilleGrimoire = document.createElement('div');
+    grilleGrimoire.className = 'grille-competences';
+    enReserve.forEach((id) => {
+      const comp = COMPETENCES[id];
+      const carte = carteCompetence(id, comp, { stats: s });
+      const equiperBtn = document.createElement('button');
+      equiperBtn.className = 'btn-choix btn-compact';
+      const complet = p.competences.length >= MAX_COMPETENCES_ACTIVES;
+      equiperBtn.textContent = complet ? `⚡ Actives au complet (${MAX_COMPETENCES_ACTIVES})` : '⚡ Équiper';
+      equiperBtn.disabled = complet;
+      equiperBtn.addEventListener('click', () => {
+        if (p.competences.length >= MAX_COMPETENCES_ACTIVES) return;
+        p.competences.push(id);
+        sauvegarder(p);
+        afficherToast(`${comp.emoji} ${comp.nom} rejoint vos compétences actives.`);
+        rendreHeros();
+      });
+      carte.appendChild(equiperBtn);
+      grilleGrimoire.appendChild(carte);
+    });
+    blocComp.appendChild(grilleGrimoire);
+  }
   zone.appendChild(blocComp);
+
+  // --- Panoplies actives ---
+  const sets = bonusSetActifs(p);
+  if (sets.actifs.length > 0) {
+    const blocSets = document.createElement('div');
+    blocSets.className = 'panneau';
+    blocSets.innerHTML = '<h3>⚙️ Panoplies actives</h3>';
+    sets.actifs.forEach((actif) => {
+      const paliers = BONUS_SET_PAR_RARETE[actif.rarete];
+      const ligne = document.createElement('div');
+      ligne.className = `carte-objet bord-rar-${actif.rarete} ligne-panoplie`;
+      const detail = actif.atteints.map((seuil) => `<div class="objet-bonus">✔ ${seuil} pièces : ${textePalierSet(paliers[seuil])}</div>`).join('');
+      const prochain = actif.pieces < 4 ? `<div class="objet-desc">Prochain palier à 4 pièces : ${textePalierSet(paliers[4])}</div>` : '';
+      ligne.innerHTML = `<div class="objet-entete">⚙️ <strong>${actif.nom}</strong> <span class="objet-qte">${actif.pieces} pièce${actif.pieces > 1 ? 's' : ''} équipée${actif.pieces > 1 ? 's' : ''}</span></div>${detail}${prochain}`;
+      blocSets.appendChild(ligne);
+    });
+    zone.appendChild(blocSets);
+  }
 
   // --- Familiers ---
   if (p.familiers.length > 0) {
@@ -727,6 +810,7 @@ function rendreHeros() {
         <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)} <span class="objet-qte">×${entree.qte}</span></div>
         <div class="objet-desc">${objet.desc || ''}</div>
         ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
+        ${texteSet(objet)}
         ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}`;
       if (objet.type === 'equipement') {
         const equiperBtn = document.createElement('button');
@@ -903,6 +987,9 @@ async function importerHeros() {
     stats: d.stats || { for: 4, int: 4, agi: 4, vit: 4 },
     competences: d.competences || [],
   });
+  if (Array.isArray(d.grimoire)) {
+    d.grimoire.forEach((id) => { if (!p.grimoire.includes(id)) p.grimoire.push(id); });
+  }
   p.niveau = donnees.niveau || 1;
   p.xp = donnees.xp || 0;
   p.pointsEnAttente = d.pointsEnAttente || 0;

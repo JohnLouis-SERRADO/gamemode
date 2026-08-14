@@ -212,6 +212,76 @@ const SETS_CRAFT = [
 
 const MULT_RARETE_CRAFT = { commun: 1, inhabituel: 1.12, rare: 1.25, epique: 1.4, legendaire: 1.6 };
 
+// =====================================================================
+// Panoplies : équiper plusieurs pièces d'une même collection active des
+// bonus supplémentaires (2 pièces, puis 4 pièces). Les paliers dépendent
+// de la rareté de la panoplie ; certains donnent des passifs % XP ou or.
+// =====================================================================
+const SETS = {}; // idSet -> { nom, rarete }
+
+const BONUS_SET_PAR_RARETE = {
+  commun:     { 2: { pvMax: 8 },                   4: { vit: 2, xpBonus: 0.02 } },
+  inhabituel: { 2: { pvMax: 12, pmMax: 5 },        4: { crit: 2, xpBonus: 0.03 } },
+  rare:       { 2: { crit: 2, pvMax: 16 },         4: { xpBonus: 0.05, poBonus: 0.05 } },
+  epique:     { 2: { crit: 3, pvMax: 25, cha: 1 }, 4: { xpBonus: 0.07, poBonus: 0.07, cha: 2 } },
+  legendaire: { 2: { crit: 4, pvMax: 35, cha: 2 }, 4: { xpBonus: 0.1, poBonus: 0.1, for: 2, int: 2, agi: 2, vit: 2 } },
+  mythique:   { 2: { crit: 5, pvMax: 50, cha: 2 }, 4: { xpBonus: 0.12, poBonus: 0.12, for: 3, int: 3, agi: 3, vit: 3 } },
+  divin:      { 2: { crit: 6, pvMax: 70, cha: 3 }, 4: { xpBonus: 0.15, poBonus: 0.15, for: 4, int: 4, agi: 4, vit: 4 } },
+};
+
+// Texte d'un palier de bonus de panoplie (réutilise texteBonus, en
+// traduisant les passifs % qui n'y figurent pas).
+function textePalierSet(palier) {
+  return Object.entries(palier).map(([cle, valeur]) => {
+    if (cle === 'xpBonus') return `+${Math.round(valeur * 100)} % XP`;
+    if (cle === 'poBonus') return `+${Math.round(valeur * 100)} % or`;
+    return texteBonus({ [cle]: valeur });
+  }).join(' · ');
+}
+
+// Bonus de panoplies actives d'un héros : compte les pièces équipées de
+// chaque collection et cumule les paliers atteints.
+function bonusSetActifs(p) {
+  const parSet = {};
+  Object.values(p.equipement || {}).forEach((idObjet) => {
+    if (!idObjet) return;
+    const objet = OBJETS[idObjet];
+    if (objet && objet.set) parSet[objet.set] = (parSet[objet.set] || 0) + 1;
+  });
+  const cumul = { stats: {}, xpBonus: 0, poBonus: 0, actifs: [] };
+  Object.entries(parSet).forEach(([idSet, pieces]) => {
+    const set = SETS[idSet];
+    if (!set || pieces < 2) return;
+    const paliers = BONUS_SET_PAR_RARETE[set.rarete];
+    const atteints = [];
+    [2, 4].forEach((seuil) => {
+      if (pieces < seuil) return;
+      atteints.push(seuil);
+      Object.entries(paliers[seuil]).forEach(([cle, valeur]) => {
+        if (cle === 'xpBonus') cumul.xpBonus += valeur;
+        else if (cle === 'poBonus') cumul.poBonus += valeur;
+        else cumul.stats[cle] = (cumul.stats[cle] || 0) + valeur;
+      });
+    });
+    cumul.actifs.push({ idSet, nom: set.nom, rarete: set.rarete, pieces, atteints });
+  });
+  return cumul;
+}
+
+// Multiplicateur d'or gagné : familier + panoplies.
+function multiplicateurOr(p) {
+  const familier = familierActif(p);
+  return 1 + ((familier && familier.bonus.poBonus) || 0) + bonusSetActifs(p).poBonus;
+}
+
+// Ligne d'affichage de la panoplie d'un objet (cartes d'inventaire/boutique).
+function texteSet(objet) {
+  if (!objet || !objet.set || !SETS[objet.set]) return '';
+  const set = SETS[objet.set];
+  const paliers = BONUS_SET_PAR_RARETE[set.rarete];
+  return `<div class="objet-set" title="2 pièces : ${textePalierSet(paliers[2])} — 4 pièces : ${textePalierSet(paliers[4])}">⚙️ ${set.nom} <span class="set-paliers">(2 p. : ${textePalierSet(paliers[2])} · 4 p. : ${textePalierSet(paliers[4])})</span></div>`;
+}
+
 SETS_CRAFT.forEach((serie) => {
   const mult = MULT_RARETE_CRAFT[serie.rarete];
   const principal = Math.max(2, Math.round(serie.niveau * 0.8 * mult));
@@ -229,6 +299,7 @@ SETS_CRAFT.forEach((serie) => {
     { cle: 'talisman',  nom: `Talisman ${serie.suffixe}`,  emoji: '🧿', slot: 'accessoire', bonus: { cha: 1 + Math.floor(serie.niveau / 5), vit: secondaire, crit: secondaire } },
     { cle: 'grimoire',  nom: `Grimoire ${serie.suffixe}`,  emoji: '📖', slot: 'accessoire', bonus: { int: secondaire + 1, pmMax: secondaire * 2, cha: Math.max(1, Math.floor(serie.niveau / 7)) } },
   ];
+  SETS[`craft-${idBase}`] = { nom: `Série ${serie.suffixe}`, rarete: serie.rarete };
   pieces.forEach((piece) => {
     const id = `${piece.cle}-${idBase}`;
     OBJETS[id] = {
@@ -236,6 +307,7 @@ SETS_CRAFT.forEach((serie) => {
       niveau: serie.niveau, rarete: serie.rarete,
       prixVente: Math.round(serie.po * 0.6),
       bonus: piece.bonus,
+      set: `craft-${idBase}`,
       desc: `Série ${serie.suffixe} — se forge à l’atelier.`,
     };
     RECETTES.push({ resultat: id, niveau: serie.niveau, po: serie.po, materiaux: serie.materiaux });
@@ -288,15 +360,70 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
         if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = Math.round(niveau * 2 * mult);
         if (archetype.principal === 'int') bonus.pmMax = Math.round(niveau * 1.5 * mult);
         if (rarete === 'mythique' || rarete === 'divin') bonus.crit = Math.round(2 + niveau * 0.25);
+        // Les objets partageant un même qualificatif forment une panoplie.
+        const indexQualificatif = (niveau + variante * 2) % 3;
+        const idSet = `butin-${rarete}-${indexQualificatif}`;
+        if (!SETS[idSet]) SETS[idSet] = { nom: `Panoplie ${qualificatif}`, rarete };
         OBJETS[`butin-${archetype.cle}-${rarete}-${niveau}-${variante}`] = {
           nom: `${nomBase} ${qualificatif}`,
           emoji: archetype.emoji, type: 'equipement', slot: archetype.slot,
           niveau, rarete,
           prixVente: Math.max(5, Math.round(niveau * 6 * mult)),
           bonus,
+          set: idSet,
           desc: 'Butin d’aventure : coffres de boss, Tour Sans Fin et contrats de guilde.',
         };
       }
+    });
+  }
+});
+
+// =====================================================================
+// Catalogue du marchand : ~376 équipements générés, niveaux 1 à 20.
+// Cinq raretés maximum (commun → légendaire) : le mythique et le divin
+// restent introuvables en boutique. Chaque rareté n'est proposée que
+// dans sa fenêtre de niveaux, et chaque qualificatif forme une panoplie.
+// =====================================================================
+const QUALIFICATIFS_BOUTIQUE = {
+  commun:     ['de l’échoppe', 'du colporteur', 'de série'],
+  inhabituel: ['de l’artisan', 'du bourg', 'de bonne facture'],
+  rare:       ['de maître', 'du comptoir doré', 'd’exception'],
+  epique:     ['de la Grande Foire', 'du maître-marchand', 'de prestige'],
+  legendaire: ['de la Vitrine Secrète', 'du fond du coffre', 'de collection'],
+};
+
+// Fenêtre de niveaux où le marchand propose chaque rareté.
+const FENETRES_BOUTIQUE = {
+  commun: [1, 8], inhabituel: [3, 12], rare: [6, 16], epique: [10, 20], legendaire: [14, 20],
+};
+const MULT_STAT_BOUTIQUE = { commun: 0.7, inhabituel: 0.85, rare: 1.0, epique: 1.15, legendaire: 1.4 };
+const MULT_PRIX_BOUTIQUE = { commun: 1, inhabituel: 1.6, rare: 2.6, epique: 4.2, legendaire: 7 };
+
+ARCHETYPES_BUTIN.forEach((archetype) => {
+  for (let niveau = 1; niveau <= 20; niveau++) {
+    Object.entries(FENETRES_BOUTIQUE).forEach(([rarete, [debut, fin]]) => {
+      if (niveau < debut || niveau > fin) return;
+      const indexQualificatif = niveau % 3;
+      const qualificatif = QUALIFICATIFS_BOUTIQUE[rarete][indexQualificatif];
+      const nomBase = archetype.noms[niveau % archetype.noms.length];
+      const mult = MULT_STAT_BOUTIQUE[rarete];
+      const principal = Math.max(1, Math.round((2 + niveau * 0.85) * mult));
+      const bonus = { [archetype.principal]: principal };
+      if (niveau >= 4) bonus[archetype.secondaire] = Math.max(1, Math.round(principal * 0.35));
+      if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = Math.round(niveau * 2 * mult);
+      if (archetype.principal === 'int') bonus.pmMax = Math.round(niveau * 1.5 * mult);
+      if (rarete === 'legendaire') bonus.crit = Math.round(1 + niveau * 0.2);
+      const idSet = `marchand-${rarete}-${indexQualificatif}`;
+      if (!SETS[idSet]) SETS[idSet] = { nom: `Panoplie ${qualificatif}`, rarete };
+      OBJETS[`marchand-${archetype.cle}-${rarete}-${niveau}`] = {
+        nom: `${nomBase} ${qualificatif}`,
+        emoji: archetype.emoji, type: 'equipement', slot: archetype.slot,
+        niveau, rarete,
+        prix: Math.max(8, Math.round((10 + niveau * 8) * MULT_PRIX_BOUTIQUE[rarete])),
+        bonus,
+        set: idSet,
+        desc: `Collection du marchand — pièce de la panoplie ${qualificatif}.`,
+      };
     });
   }
 });

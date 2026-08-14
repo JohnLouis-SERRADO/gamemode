@@ -1139,6 +1139,26 @@ button:focus-visible,
 
 .champ-code-groupe:focus { outline: none; border-color: var(--accent); }
 
+/* ----- Panoplies et grimoire ----- */
+.objet-set {
+  font-size: 0.8rem;
+  color: #b39ddb;
+  margin-top: 4px;
+}
+
+.objet-set .set-paliers {
+  color: var(--texte-doux);
+  font-size: 0.74rem;
+}
+
+.ligne-panoplie { margin-bottom: 8px; }
+
+.titre-grimoire {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--bordure);
+}
+
 /* ----- Donjons d'histoire ----- */
 .separateur-donjons {
   grid-column: 1 / -1;

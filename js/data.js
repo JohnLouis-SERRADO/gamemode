@@ -18,7 +18,8 @@ const CARACS = {
 const POINTS_CREATION = 10;   // points à répartir à la création
 const STAT_BASE = 2;          // valeur de départ de chaque caractéristique
 const STAT_MAX_CREATION = 8;  // maximum par caractéristique à la création
-const NB_COMPETENCES = 4;     // compétences choisies à la création
+const NB_COMPETENCES = 4;          // compétences choisies à la création
+const MAX_COMPETENCES_ACTIVES = 8; // compétences équipables en même temps
 
 // =====================================================================
 // Races : un passif unique chacune
@@ -841,6 +842,10 @@ function statsEffectives(p) {
       if (cle in s) s[cle] += valeur;
     });
   }
+  // Bonus des panoplies : équiper 2 ou 4 pièces d'une même collection.
+  Object.entries(bonusSetActifs(p).stats).forEach(([cle, valeur]) => {
+    s[cle] = (s[cle] || 0) + valeur;
+  });
   return s;
 }
 
