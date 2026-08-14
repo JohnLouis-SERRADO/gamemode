@@ -234,6 +234,7 @@ function detailsCompetence(comp, s, rang = 0) {
     const modele = INVOCATIONS[comp.invocation];
     parts.push(`🐾 invoque ${modele.emoji} ${modele.nom} (jusqu'à sa mort ou la fin du combat)`);
     parts.push('🤖 agit seul · stats ≤ les vôtres · 50 % de votre mana');
+    parts.push('☝️ 1 invocation à la fois — 2 pour l’Invocateur 🐉');
   }
   if (rang > 0) parts.push(`🏅 rang ${rang} (+${Math.round(rang * 15)} %)`);
   if (comp.critBonus) parts.push(`💥 +${Math.round(comp.critBonus * 100)} % crit.`);
@@ -780,7 +781,8 @@ MODELES.forEach((m) => {
 });
 
 // Les sorts d'invocation : un par créature, une seule invocation vivante
-// par héros, un seul appel par combat (long rituel).
+// par héros — sauf l'Invocateur 🐉, qui en entretient deux à la fois —,
+// un seul appel par combat (long rituel).
 Object.assign(COMPETENCES, {
   'invoquer-loup-spectral': {
     nom: 'Invoquer le Loup spectral', emoji: '🐺', categorie: 'invocation', type: 'invocation',

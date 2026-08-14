@@ -859,9 +859,14 @@ function lancerInvocation(j, compId) {
     journal('🐾 Les invocations refusent de traverser les liaisons des expéditions en ligne.');
     return;
   }
-  const deja = cb.equipe.find((x) => x.type === 'invocation' && x.maitre === j.bid && !estMort(x));
-  if (deja) {
-    journal(`🐾 ${j.nom} a déjà ${deja.nom} au combat — une seule invocation par héros !`);
+  // v15.2 : l'Invocateur, maître des liens, entretient DEUX créatures à
+  // la fois — tout autre héros n'en contrôle qu'une.
+  const limite = j.classe === 'invocateur' ? 2 : 1;
+  const vivantes = cb.equipe.filter((x) => x.type === 'invocation' && x.maitre === j.bid && !estMort(x));
+  if (vivantes.length >= limite) {
+    journal(limite > 1
+      ? `🐾 ${j.nom} tient déjà ${vivantes.map((x) => x.nom).join(' et ')} — même un Invocateur s'arrête à deux !`
+      : `🐾 ${j.nom} a déjà ${vivantes[0].nom} au combat — une seule invocation par héros !`);
     return;
   }
   j.mp -= comp.coutMp;
