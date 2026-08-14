@@ -204,11 +204,10 @@ function normaliserPerso(p) {
   if (p.competences.length > MAX_COMPETENCES_ACTIVES) {
     p.competences = p.competences.slice(0, MAX_COMPETENCES_ACTIVES);
   }
-  // v8 : classe, compétence signature exclusive et points de maîtrise.
+  // v8 : classe, compétences de classe exclusives et points de maîtrise.
   if (!p.classe || !CLASSES[p.classe]) p.classe = infererClasse(p);
   if (!p.rangs || typeof p.rangs !== 'object') p.rangs = {};
-  const signature = CLASSES[p.classe].signature;
-  if (signature && !p.grimoire.includes(signature)) apprendreCompetence(p, signature);
+  debloquerCompetencesClasse(p, false);
   if (p.maitrise == null) {
     const depenses = Object.values(p.rangs).reduce((somme, r) => somme + r, 0);
     p.maitrise = Math.max(0, pointsMaitrisePourNiveau(p.niveau) - depenses);
@@ -333,9 +332,22 @@ function apprendreCompetence(p, id) {
   }
 }
 
+// Débloque les compétences de classe atteintes (signature au niveau 1,
+// puis une aux niveaux 5, 10 et 15 — 4 par classe au total).
+function debloquerCompetencesClasse(p, annoncer) {
+  Object.entries(COMPETENCES).forEach(([id, comp]) => {
+    if (comp.classe !== p.classe || p.grimoire.includes(id)) return;
+    if ((comp.niveauRequis || 1) > p.niveau) return;
+    apprendreCompetence(p, id);
+    if (annoncer) afficherToast(`🏅 Compétence de classe débloquée : ${comp.emoji} ${comp.nom} !`);
+  });
+}
+
 // Gagne de l'XP ; une montée de niveau soigne entièrement (le fameux « ding »).
 function gagnerXp(p, xp) {
   const avant = p.niveau;
+  // Rythme global de progression : ralenti de 35 % (réglage v9).
+  xp = Math.max(1, Math.round(xp * 0.65));
   if (p.race === 'humain') xp = Math.round(xp * 1.1); // Ambition
   const familier = familierActif(p);
   if (familier && familier.bonus.xpBonus) xp = Math.round(xp * (1 + familier.bonus.xpBonus));
@@ -351,6 +363,8 @@ function gagnerXp(p, xp) {
     // Points de maîtrise de la signature (niveaux 3, 6, 9, 12, 15, 18)
     p.maitrise = (p.maitrise || 0) + pointsMaitrisePourNiveau(apres) - pointsMaitrisePourNiveau(avant);
     p.niveau = apres;
+    // Nouvelles compétences de classe atteintes (niveaux 5, 10, 15)
+    debloquerCompetencesClasse(p, true);
     bornerVie(p);
     p.hp = p.maxHp;
     p.mp = p.maxMp;
@@ -392,6 +406,8 @@ function rendreTitre() {
     });
     boutons.appendChild(jouer);
     boutons.appendChild(boutonConfirmation('🗑 Supprimer', 'Vraiment supprimer ?', () => {
+      // Le héros disparaît aussi du monde en ligne (taverne, classement).
+      if (typeof supprimerPersonnageCloud === 'function') supprimerPersonnageCloud(p);
       etat.profils = etat.profils.filter((x) => x.id !== p.id);
       if (etat.actifId === p.id) etat.actifId = null;
       sauvegarderLocal();
@@ -471,12 +487,19 @@ function rendreCreation() {
   const signature = COMPETENCES[CLASSES[b.classe].signature];
   const ancienEncart = el('creation-signature');
   if (ancienEncart) ancienEncart.remove();
-  const encartSignature = document.createElement('p');
+  const encartSignature = document.createElement('div');
   encartSignature.id = 'creation-signature';
   encartSignature.className = 'aide encart-signature';
+  const arbre = Object.values(COMPETENCES)
+    .filter((comp) => comp.classe === b.classe && !comp.signature)
+    .sort((a, c) => a.niveauRequis - c.niveauRequis)
+    .map((comp) => `${comp.emoji} ${comp.nom} (niv. ${comp.niveauRequis})`)
+    .join(' · ');
   encartSignature.innerHTML = `🏅 Signature de ${b.classe === 'aventurier' ? 'l’Aventurier (aucune classe choisie)' : `la classe <strong>${CLASSES[b.classe].nom}</strong>`} :
     ${signature.emoji} <strong>${signature.nom}</strong> — ${signature.desc}
-    <br>Exclusive à cette classe, offerte à la création, améliorable avec les points de maîtrise (niv. 3, 6, 9, 12, 15, 18).`;
+    <br><span class="encart-chiffres">${detailsCompetence(signature, b.stats).join(' · ')}</span>
+    <br>Puis, en montant de niveau : ${arbre}.
+    <br>4 compétences exclusives par classe, améliorables avec les points de maîtrise (niv. 3, 6, 9, 12, 15, 18 — +15 % par rang).`;
   zoneModeles.parentElement.appendChild(encartSignature);
 
   const restants = pointsRestants();
@@ -542,9 +565,12 @@ function carteCompetence(id, comp, options = {}) {
     + (options.cliquable ? ' cliquable' : '');
   // Détails chiffrés calculés avec les stats fournies (héros ou brouillon).
   const infos = detailsCompetence(comp, options.stats || {}, options.rang || 0);
-  const badge = comp.signature
-    ? ` <span class="badge-signature">🏅 Signature${options.rang ? ` · rang ${options.rang}/${RANG_SIGNATURE_MAX}` : ''}</span>`
-    : '';
+  let badge = '';
+  if (comp.signature) {
+    badge = ` <span class="badge-signature">🏅 Signature${options.rang ? ` · rang ${options.rang}/${RANG_SIGNATURE_MAX}` : ''}</span>`;
+  } else if (comp.classe) {
+    badge = ` <span class="badge-signature">🏅 Classe · niv. ${comp.niveauRequis}${options.rang ? ` · rang ${options.rang}/${RANG_SIGNATURE_MAX}` : ''}</span>`;
+  }
   carte.innerHTML = `
     <div class="comp-entete">${comp.emoji} <strong>${comp.nom}</strong>${badge}</div>
     <div class="comp-desc">${comp.desc}</div>
@@ -553,9 +579,9 @@ function carteCompetence(id, comp, options = {}) {
   return carte;
 }
 
-// Bouton d'investissement d'un point de maîtrise sur la signature de classe.
+// Bouton d'investissement d'un point de maîtrise sur une compétence de classe.
 function ajouterBlocSignature(p, id, comp, carte) {
-  if (!comp.signature) return;
+  if (!comp.classe) return;
   const rang = rangDe(p, id);
   if (rang >= RANG_SIGNATURE_MAX) return;
   const monter = document.createElement('button');
@@ -614,13 +640,37 @@ function rendreHeros() {
   entete.innerHTML = `
     <span class="avatar-titan">${p.avatar}${familier ? `<span class="familier-avatar" title="${familier.nom}">${familier.emoji}</span>` : ''}</span>
     <div class="heros-identite">
-      <h2>${echapper(p.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''} <span class="niveau">${classe.emoji} ${classe.nom} · niveau ${p.niveau}</span></h2>
+      <h2>${echapper(p.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''} <span class="niveau">${classe.emoji} ${classe.nom} · niveau ${p.niveau}</span>
+        <button id="btn-renommer" class="btn-mini" title="Renommer ce héros">✏️</button></h2>
+      <div id="zone-renommage" class="cache ligne-renommage">
+        <input id="champ-renommage" maxlength="16" placeholder="Nouveau nom">
+        <button id="btn-valider-renommage" class="btn-choix btn-compact">Valider</button>
+      </div>
       <div class="heros-race">${race.emoji} ${race.nom} — <em>${race.passif}</em> : ${race.desc}</div>
       <div class="barre xp"><div class="remplissage" style="width:${pctXp}%"></div>
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
       <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${p.po} po · 💥 ${Math.round(5 + s.agi + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin</div>
     </div>`;
   zone.appendChild(entete);
+
+  // Renommage du héros (mis à jour aussi dans le monde en ligne)
+  entete.querySelector('#btn-renommer').addEventListener('click', () => {
+    const zoneRenommage = entete.querySelector('#zone-renommage');
+    zoneRenommage.classList.toggle('cache');
+    const champ = entete.querySelector('#champ-renommage');
+    champ.value = p.nom;
+    champ.focus();
+  });
+  entete.querySelector('#btn-valider-renommage').addEventListener('click', () => {
+    const nouveau = entete.querySelector('#champ-renommage').value.trim().slice(0, 16);
+    if (!nouveau || nouveau === p.nom) { entete.querySelector('#zone-renommage').classList.add('cache'); return; }
+    p.nom = nouveau;
+    sauvegarder(p);
+    if (typeof renommerPersonnageCloud === 'function') renommerPersonnageCloud(p);
+    afficherToast(`✏️ Ce héros s'appelle désormais ${p.nom} !`);
+    rendreHeros();
+    rendreTopbar();
+  });
 
   // --- Caractéristiques ---
   const blocStats = document.createElement('div');

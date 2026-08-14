@@ -1139,6 +1139,53 @@ button:focus-visible,
 
 .champ-code-groupe:focus { outline: none; border-color: var(--accent); }
 
+/* ----- Ordre d'initiative en combat ----- */
+#combat-ordre {
+  font-size: 0.82rem;
+  color: var(--texte-doux);
+  margin: 2px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ordre-combattant {
+  font-size: 1.1rem;
+  opacity: 0.75;
+}
+
+.ordre-combattant.ordre-joueur {
+  background: rgba(124, 92, 191, 0.25);
+  border-radius: 6px;
+  padding: 0 3px;
+}
+
+.ordre-combattant.ordre-actif {
+  opacity: 1;
+  font-size: 1.35rem;
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+
+.ordre-fleche { opacity: 0.5; }
+
+/* ----- Renommage du héros ----- */
+.ligne-renommage {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.ligne-renommage input {
+  background: var(--fond);
+  color: var(--texte);
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.encart-chiffres { color: var(--accent); }
+
 /* ----- Sous-filtres des échoppes ----- */
 .rangee-sous-filtres {
   margin: 8px 0 14px;

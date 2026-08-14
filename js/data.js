@@ -109,12 +109,12 @@ function texteEffetCompetence(effet, s) {
       return `🧪 poison ≈${valeur}/tour (${effet.duree} t.)`;
     }
     case 'etourdi':
-      return `💫 étourdit${effet.chance != null && effet.chance < 1 ? ` (${Math.round(effet.chance * 100)} %)` : ''}`;
+      return `💫 étourdit ${effet.duree || 1} t.${effet.chance != null && effet.chance < 1 ? ` (${Math.round(effet.chance * 100)} %)` : ''}`;
     case 'affaibli': return `⬇️ −30 % dégâts (${effet.duree} t.)`;
-    case 'bouclier': return `🛡️ bouclier ≈${Math.round(8 + (s.int || 0) * 1.5)} (${effet.duree} t.)`;
+    case 'bouclier': return `🛡️ bouclier ≈${Math.round(8 + (s[effet.stat || 'int'] || 0) * 1.5)} (${effet.duree} t.)`;
     case 'benediction': return `🙏 +30 % dégâts (${effet.duree} t.)`;
     case 'provocation': return `😤 attire les coups + bouclier ≈${Math.round(4 + (s.for || 0))}`;
-    case 'regen': return `💧 régén. ≈${Math.round(3 + (s.int || 0) * 0.8)}/tour (${effet.duree} t.)`;
+    case 'regen': return `💧 régén. ≈${Math.round(3 + (s[effet.stat || 'int'] || 0) * 0.8)}/tour (${effet.duree} t.)`;
     case 'mana': return `🧘 +${effet.valeur} PM`;
     case 'drain': return `🧛 rend ${Math.round(effet.part * 100)} % des dégâts en PV`;
     case 'pacte': return `🩸 −${Math.round(effet.partPv * 100)} % PV max → +${effet.mana} PM`;
@@ -702,6 +702,99 @@ const COMPETENCES_SIGNATURE = {
   'signature-ballet-mortel':      { nom: 'Ballet mortel', emoji: '🌸', classe: 'danselame', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'agi', puissance: 6, ratio: 0.9, coups: 2, coutMp: 12, cooldown: 6, desc: 'Deux passages de danse, et les pétales retombent sur un champ de bataille.' },
 };
 Object.assign(COMPETENCES, COMPETENCES_SIGNATURE);
+
+// ---------------------------------------------------------------------
+// Arbre de classe : 3 compétences supplémentaires par classe, débloquées
+// automatiquement aux niveaux 5, 10 et 15 (4 par classe avec la
+// signature de création). Les points de maîtrise s'y investissent aussi.
+// ---------------------------------------------------------------------
+const COMPETENCES_CLASSE = {
+  // Guerrier
+  'guerrier-garde-de-fer':    { classe: 'guerrier', niveauRequis: 5, nom: 'Garde de fer', emoji: '🛡️', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'bouclier', duree: 3, stat: 'for' }, coutMp: 6, cooldown: 4, desc: 'Un bouclier forgé dans la pure discipline martiale.' },
+  'guerrier-brise-garde':     { classe: 'guerrier', niveauRequis: 10, nom: 'Brise-garde', emoji: '💢', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 9, ratio: 1.3, effet: { type: 'affaibli', duree: 2 }, coutMp: 8, cooldown: 4, desc: 'Fracasse la défense : l’ennemi frappe −30 % pendant 2 tours.' },
+  'guerrier-assaut-final':    { classe: 'guerrier', niveauRequis: 15, nom: 'Assaut final', emoji: '⚡', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 14, ratio: 1.9, critBonus: 0.15, coutMp: 12, cooldown: 5, desc: 'Le coup qu’on n’apprend qu’aux maîtres d’armes.' },
+  // Mage
+  'mage-flux-arcanique':      { classe: 'mage', niveauRequis: 5, nom: 'Flux arcanique', emoji: '🌀', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'mana', valeur: 12 }, coutMp: 0, cooldown: 4, desc: 'Aspire le mana ambiant : +12 PM.' },
+  'mage-orbe-fracassant':     { classe: 'mage', niveauRequis: 10, nom: 'Orbe fracassant', emoji: '🔮', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 11, ratio: 1.5, coutMp: 9, cooldown: 4, desc: 'Un orbe dense comme une étoile naine.' },
+  'mage-tempete-de-mana':     { classe: 'mage', niveauRequis: 15, nom: 'Tempête de mana', emoji: '🌌', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 9, ratio: 1.15, coutMp: 13, cooldown: 5, desc: 'Le mana brut balaie tout le champ de bataille.' },
+  // Archer
+  'archer-fleche-entravante': { classe: 'archer', niveauRequis: 5, nom: 'Flèche entravante', emoji: '🪢', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 6, ratio: 1.0, effet: { type: 'etourdi', duree: 1, chance: 0.35 }, coutMp: 6, cooldown: 4, desc: 'Une flèche câblée qui entrave la cible.' },
+  'archer-double-tir':        { classe: 'archer', niveauRequis: 10, nom: 'Double tir', emoji: '🏹', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 5, ratio: 0.9, coups: 2, coutMp: 8, cooldown: 4, desc: 'Deux flèches encochées d’un seul geste.' },
+  'archer-deluge':            { classe: 'archer', niveauRequis: 15, nom: 'Déluge de traits', emoji: '🌧️', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'agi', puissance: 8, ratio: 1.1, coutMp: 12, cooldown: 5, desc: 'Le ciel disparaît sous les flèches.' },
+  // Clerc
+  'clerc-priere-fervente':    { classe: 'clerc', niveauRequis: 5, nom: 'Prière fervente', emoji: '🙏', categorie: 'signature', type: 'soin', cible: 'allie', stat: 'int', puissance: 8, ratio: 1.1, coutMp: 7, cooldown: 3, desc: 'Un soin rapide porté par la foi.' },
+  'clerc-chatiment-lumineux': { classe: 'clerc', niveauRequis: 10, nom: 'Châtiment lumineux', emoji: '🌟', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 10, ratio: 1.3, coutMp: 8, cooldown: 4, desc: 'La lumière aussi sait frapper.' },
+  'clerc-sanctuaire':         { classe: 'clerc', niveauRequis: 15, nom: 'Sanctuaire', emoji: '⛪', categorie: 'signature', type: 'utilitaire', cible: 'allies', effet: { type: 'regen', duree: 3 }, coutMp: 13, cooldown: 6, desc: 'Un havre béni : toute l’équipe régénère 3 tours.' },
+  // Paladin
+  'paladin-serment':          { classe: 'paladin', niveauRequis: 5, nom: 'Serment de bataille', emoji: '📜', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'benediction', duree: 2 }, coutMp: 7, cooldown: 5, desc: 'Un serment qui affûte la lame : +30 % de dégâts.' },
+  'paladin-lame-consacree':   { classe: 'paladin', niveauRequis: 10, nom: 'Lame consacrée', emoji: '🗡️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 10, ratio: 1.4, effet: { type: 'drain', part: 0.3 }, coutMp: 9, cooldown: 4, desc: 'Frappe sacrée qui rend un tiers des dégâts en vie.' },
+  'paladin-egide':            { classe: 'paladin', niveauRequis: 15, nom: 'Égide du juste', emoji: '🛡️', categorie: 'signature', type: 'utilitaire', cible: 'allies', effet: { type: 'bouclier', duree: 3, stat: 'for' }, coutMp: 13, cooldown: 6, desc: 'Un rempart de foi couvre toute l’équipe.' },
+  // Nécromancien
+  'necromancien-toucher-glacial': { classe: 'necromancien', niveauRequis: 5, nom: 'Toucher glacial', emoji: '🥶', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 8, ratio: 1.2, effet: { type: 'affaibli', duree: 2 }, coutMp: 7, cooldown: 3, desc: 'Le froid de la tombe engourdit les bras.' },
+  'necromancien-siphon':      { classe: 'necromancien', niveauRequis: 10, nom: 'Siphon d’âme', emoji: '🌪️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 9, ratio: 1.3, effet: { type: 'drain', part: 0.6 }, coutMp: 9, cooldown: 4, desc: 'Aspire la vie — 60 % des dégâts vous reviennent.' },
+  'necromancien-hiver-des-ames': { classe: 'necromancien', niveauRequis: 15, nom: 'Hiver des âmes', emoji: '☠️', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 8, ratio: 1.1, effet: { type: 'poison', stat: 'int', duree: 2 }, coutMp: 13, cooldown: 5, desc: 'Un froid qui ronge tous les ennemis, tour après tour.' },
+  // Moine
+  'moine-souffle-interieur':  { classe: 'moine', niveauRequis: 5, nom: 'Souffle intérieur', emoji: '🧘', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'regen', duree: 3, stat: 'agi' }, coutMp: 6, cooldown: 4, desc: 'Le souffle circule : régénération pendant 3 tours.' },
+  'moine-paume-sismique':     { classe: 'moine', niveauRequis: 10, nom: 'Paume sismique', emoji: '💥', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 8, ratio: 1.2, effet: { type: 'etourdi', duree: 1, chance: 0.45 }, coutMp: 8, cooldown: 4, desc: 'Une paume qui fait trembler la terre — et la cible.' },
+  'moine-mille-mains':        { classe: 'moine', niveauRequis: 15, nom: 'Mille mains', emoji: '👐', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 4, ratio: 0.8, coups: 3, coutMp: 11, cooldown: 5, desc: 'Trois frappes — l’œil n’en voit qu’une.' },
+  // Barde
+  'barde-berceuse-brutale':   { classe: 'barde', niveauRequis: 5, nom: 'Berceuse brutale', emoji: '🎶', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 4, ratio: 0.7, effet: { type: 'etourdi', duree: 1, chance: 0.55 }, coutMp: 7, cooldown: 4, desc: 'Une berceuse si efficace qu’elle assomme.' },
+  'barde-refrain-vivifiant':  { classe: 'barde', niveauRequis: 10, nom: 'Refrain vivifiant', emoji: '💞', categorie: 'signature', type: 'soin', cible: 'allies', stat: 'int', puissance: 6, ratio: 0.9, coutMp: 10, cooldown: 5, desc: 'Un refrain qui recoud les plaies de toute l’équipe.' },
+  'barde-solo-epique':        { classe: 'barde', niveauRequis: 15, nom: 'Solo épique', emoji: '🎸', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 12, ratio: 1.5, critBonus: 0.2, coutMp: 11, cooldown: 5, desc: 'Le riff que les chroniques retiendront.' },
+  // Rôdeur
+  'rodeur-piege-a-machoires': { classe: 'rodeur', niveauRequis: 5, nom: 'Piège à mâchoires', emoji: '🪤', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 6, ratio: 1.0, effet: { type: 'etourdi', duree: 1, chance: 0.4 }, coutMp: 6, cooldown: 4, desc: 'Clac. La proie n’ira nulle part.' },
+  'rodeur-fleches-barbelees': { classe: 'rodeur', niveauRequis: 10, nom: 'Flèches barbelées', emoji: '🏹', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 7, ratio: 1.1, effet: { type: 'poison', stat: 'agi', duree: 2 }, coutMp: 8, cooldown: 4, desc: 'Des pointes qui restent — et qui travaillent.' },
+  'rodeur-appel-de-la-meute': { classe: 'rodeur', niveauRequis: 15, nom: 'Appel de la meute', emoji: '🐺', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'agi', puissance: 8, ratio: 1.15, coutMp: 12, cooldown: 5, desc: 'La forêt répond : crocs pour tout le monde.' },
+  // Assassin
+  'assassin-preparation':     { classe: 'assassin', niveauRequis: 5, nom: 'Préparation mortelle', emoji: '🧪', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'benediction', duree: 2 }, coutMp: 6, cooldown: 5, desc: 'Lames huilées, souffle calé : +30 % de dégâts.' },
+  'assassin-jugulaire':       { classe: 'assassin', niveauRequis: 10, nom: 'Jugulaire', emoji: '🩸', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 9, ratio: 1.35, critBonus: 0.25, coutMp: 9, cooldown: 4, desc: 'Viser là où tout s’arrête.' },
+  'assassin-execution':       { classe: 'assassin', niveauRequis: 15, nom: 'Exécution silencieuse', emoji: '🌑', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 13, ratio: 1.7, coutMp: 12, cooldown: 6, desc: 'Personne n’a rien vu. Surtout pas la cible.' },
+  // Berserker
+  'berserker-hurlement':      { classe: 'berserker', niveauRequis: 5, nom: 'Hurlement barbare', emoji: '🗣️', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'benediction', duree: 2 }, coutMp: 5, cooldown: 4, desc: 'Un cri qui fait bouillir le sang : +30 % de dégâts.' },
+  'berserker-fracas':         { classe: 'berserker', niveauRequis: 10, nom: 'Fracas tellurique', emoji: '🪓', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 11, ratio: 1.5, coutMp: 9, cooldown: 4, desc: 'La hache d’abord, les questions jamais.' },
+  'berserker-seisme':         { classe: 'berserker', niveauRequis: 15, nom: 'Séisme de rage', emoji: '🌋', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'for', puissance: 9, ratio: 1.2, coutMp: 13, cooldown: 6, desc: 'Quand la rage frappe le sol, le sol se venge sur les autres.' },
+  // Templier
+  'templier-foi':             { classe: 'templier', niveauRequis: 5, nom: 'Foi inébranlable', emoji: '✝️', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'bouclier', duree: 3, stat: 'for' }, coutMp: 6, cooldown: 4, desc: 'La foi, plus dure que l’acier.' },
+  'templier-marteau-saint':   { classe: 'templier', niveauRequis: 10, nom: 'Marteau saint', emoji: '🔨', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 9, ratio: 1.3, effet: { type: 'etourdi', duree: 1, chance: 0.4 }, coutMp: 9, cooldown: 4, desc: 'Le jugement pèse trois quintaux.' },
+  'templier-croisade':        { classe: 'templier', niveauRequis: 15, nom: 'Croisade', emoji: '⚔️', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'for', puissance: 8, ratio: 1.1, coutMp: 13, cooldown: 6, desc: 'Un seul templier, tous les fronts.' },
+  // Élémentaliste
+  'elementaliste-brume':      { classe: 'elementaliste', niveauRequis: 5, nom: 'Bouclier de brume', emoji: '🌫️', categorie: 'signature', type: 'utilitaire', cible: 'allies', effet: { type: 'bouclier', duree: 2 }, coutMp: 9, cooldown: 5, desc: 'La brume amortit les coups de toute l’équipe.' },
+  'elementaliste-lames-de-vent': { classe: 'elementaliste', niveauRequis: 10, nom: 'Lames de vent', emoji: '🌬️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 6, ratio: 0.95, coups: 2, coutMp: 9, cooldown: 4, desc: 'L’air tranche deux fois, sans prévenir.' },
+  'elementaliste-fureur':     { classe: 'elementaliste', niveauRequis: 15, nom: 'Fureur des éléments', emoji: '🌪️', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 10, ratio: 1.25, coutMp: 14, cooldown: 6, desc: 'Feu, glace, foudre et pierre — d’un seul geste.' },
+  // Druide
+  'druide-peau-d-ecorce':     { classe: 'druide', niveauRequis: 5, nom: 'Peau d’écorce', emoji: '🌳', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'bouclier', duree: 3 }, coutMp: 6, cooldown: 4, desc: 'L’écorce pousse plus vite que les plaies.' },
+  'druide-lianes':            { classe: 'druide', niveauRequis: 10, nom: 'Lianes constrictrices', emoji: '🌿', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 8, ratio: 1.2, effet: { type: 'etourdi', duree: 1, chance: 0.4 }, coutMp: 8, cooldown: 4, desc: 'La forêt attrape, serre, et ne s’excuse pas.' },
+  'druide-tempete-de-ronces': { classe: 'druide', niveauRequis: 15, nom: 'Tempête de ronces', emoji: '🥀', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 8, ratio: 1.1, effet: { type: 'poison', stat: 'int', duree: 2 }, coutMp: 13, cooldown: 6, desc: 'Des ronces partout. Vraiment partout.' },
+  // Invocateur
+  'invocateur-serviteur':     { classe: 'invocateur', niveauRequis: 5, nom: 'Serviteur d’éther', emoji: '👻', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 7, ratio: 1.05, coutMp: 6, cooldown: 2, desc: 'Un petit serviteur zélé, à recharge courte.' },
+  'invocateur-nuee':          { classe: 'invocateur', niveauRequis: 10, nom: 'Nuée d’esprits', emoji: '🦇', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 7, ratio: 1.0, coutMp: 10, cooldown: 4, desc: 'Le ciel se remplit de choses qui mordent.' },
+  'invocateur-leviathan':     { classe: 'invocateur', niveauRequis: 15, nom: 'Léviathan éphémère', emoji: '🐋', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 14, ratio: 1.7, coutMp: 13, cooldown: 6, desc: 'Trois secondes d’existence. Une seule suffit.' },
+  // Pyromancien
+  'pyromancien-etincelle':    { classe: 'pyromancien', niveauRequis: 5, nom: 'Étincelle vive', emoji: '✨', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 6, ratio: 1.0, coutMp: 4, cooldown: 2, desc: 'Petite flamme, grande habitude.' },
+  'pyromancien-lance-ardente': { classe: 'pyromancien', niveauRequis: 10, nom: 'Lance ardente', emoji: '🔥', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 10, ratio: 1.4, coutMp: 9, cooldown: 4, desc: 'Une lance de feu blanc, droit au cœur.' },
+  'pyromancien-meteores':     { classe: 'pyromancien', niveauRequis: 15, nom: 'Pluie de météores', emoji: '☄️', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 11, ratio: 1.25, coutMp: 15, cooldown: 6, desc: 'Le ciel tombe. En morceaux. Enflammés.' },
+  // Givremage
+  'givremage-morsure':        { classe: 'givremage', niveauRequis: 5, nom: 'Morsure du froid', emoji: '❄️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 7, ratio: 1.05, effet: { type: 'affaibli', duree: 2 }, coutMp: 6, cooldown: 3, desc: 'Le froid engourdit les muscles ennemis.' },
+  'givremage-prison':         { classe: 'givremage', niveauRequis: 10, nom: 'Prison de glace', emoji: '🧊', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 6, ratio: 0.9, effet: { type: 'etourdi', duree: 1, chance: 0.6 }, coutMp: 9, cooldown: 5, desc: 'Un cercueil translucide, livré à domicile.' },
+  'givremage-ere-glaciaire':  { classe: 'givremage', niveauRequis: 15, nom: 'Ère glaciaire', emoji: '🏔️', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 9, ratio: 1.15, effet: { type: 'affaibli', duree: 2 }, coutMp: 14, cooldown: 6, desc: 'Dix mille ans d’hiver, condensés en un instant.' },
+  // Chaman
+  'chaman-benediction':       { classe: 'chaman', niveauRequis: 5, nom: 'Bénédiction des esprits', emoji: '🪶', categorie: 'signature', type: 'utilitaire', cible: 'allies', effet: { type: 'regen', duree: 2 }, coutMp: 9, cooldown: 5, desc: 'Les ancêtres veillent : régénération pour l’équipe.' },
+  'chaman-foudre-ancestrale': { classe: 'chaman', niveauRequis: 10, nom: 'Foudre ancestrale', emoji: '⚡', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 10, ratio: 1.35, coutMp: 9, cooldown: 4, desc: 'Un éclair vieux de mille ans, toujours vaillant.' },
+  'chaman-grand-esprit':      { classe: 'chaman', niveauRequis: 15, nom: 'Grand Esprit', emoji: '🦬', categorie: 'signature', type: 'soin', cible: 'allies', stat: 'int', puissance: 9, ratio: 1.1, coutMp: 14, cooldown: 6, desc: 'Le Grand Esprit se penche sur l’équipe entière.' },
+  // Voleur
+  'voleur-poche-percee':      { classe: 'voleur', niveauRequis: 5, nom: 'Poche percée', emoji: '🪙', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 6, ratio: 1.0, effet: { type: 'vol-or' }, coutMp: 5, cooldown: 3, desc: 'Frapper ET encaisser — littéralement.' },
+  'voleur-sournoise':         { classe: 'voleur', niveauRequis: 10, nom: 'Attaque sournoise', emoji: '🗡️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 8, ratio: 1.25, critBonus: 0.2, coutMp: 8, cooldown: 4, desc: 'Par derrière, c’est plus poli — personne ne voit venir.' },
+  'voleur-mille-bourses':     { classe: 'voleur', niveauRequis: 15, nom: 'Mille bourses', emoji: '💰', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'agi', puissance: 7, ratio: 1.0, effet: { type: 'vol-or' }, coutMp: 12, cooldown: 5, desc: 'Tout le monde paie. C’est la tournée du voleur.' },
+  // Danselame
+  'danselame-pas-de-cote':    { classe: 'danselame', niveauRequis: 5, nom: 'Pas de côté', emoji: '🩰', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'bouclier', duree: 2, stat: 'agi' }, coutMp: 5, cooldown: 4, desc: 'Esquiver, c’est danser plus vite que la lame.' },
+  'danselame-petales':        { classe: 'danselame', niveauRequis: 10, nom: 'Tourbillon de pétales', emoji: '🌸', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'agi', puissance: 6, ratio: 0.9, coutMp: 9, cooldown: 4, desc: 'Joli de loin. De près, tranchant.' },
+  'danselame-derniere-valse': { classe: 'danselame', niveauRequis: 15, nom: 'Dernière valse', emoji: '💃', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 7, ratio: 1.0, coups: 3, coutMp: 12, cooldown: 6, desc: 'Trois temps, trois lames, un salut final.' },
+  // Aventurier
+  'aventurier-systeme-d':     { classe: 'aventurier', niveauRequis: 5, nom: 'Système D', emoji: '🧰', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'mana', valeur: 10 }, coutMp: 0, cooldown: 4, desc: 'On fait avec ce qu’on a — et ça marche.' },
+  'aventurier-opportuniste':  { classe: 'aventurier', niveauRequis: 10, nom: 'Coup opportuniste', emoji: '🎯', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 8, ratio: 1.2, critBonus: 0.15, coutMp: 7, cooldown: 3, desc: 'Frapper exactement quand il ne faut pas — pour l’autre.' },
+  'aventurier-grand-numero':  { classe: 'aventurier', niveauRequis: 15, nom: 'Le Grand Numéro', emoji: '🎪', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'for', puissance: 8, ratio: 1.1, coutMp: 12, cooldown: 5, desc: 'Un peu de tout, beaucoup de panache, dégâts pour tous.' },
+};
+Object.assign(COMPETENCES, COMPETENCES_CLASSE);
 
 const CLASSES = {
   aventurier: { nom: 'Aventurier', emoji: '🎒', signature: 'signature-panache' },

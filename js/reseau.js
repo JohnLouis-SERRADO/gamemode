@@ -226,6 +226,28 @@ async function envoyerMessageMonde(texte) {
   }
 }
 
+// Renomme le personnage aussi dans le monde en ligne (taverne, classement).
+async function renommerPersonnageCloud(p) {
+  if (!etat.enLigne || !p.cloud) return;
+  try {
+    await apiRequete('/rest/v1/rpc/renommer_personnage', {
+      methode: 'POST',
+      corps: { p_id: p.cloud.id, p_token: p.cloud.token, p_nom: p.nom },
+    });
+  } catch (e) { /* le nom local reste la référence */ }
+}
+
+// Efface le personnage du monde en ligne (appelé à la suppression locale).
+async function supprimerPersonnageCloud(p) {
+  if (!p.cloud) return;
+  try {
+    await apiRequete('/rest/v1/rpc/supprimer_personnage', {
+      methode: 'POST',
+      corps: { p_id: p.cloud.id, p_token: p.cloud.token },
+    });
+  } catch (e) { /* au pire, la ligne s'éteindra d'elle-même (inactivité) */ }
+}
+
 // =====================================================================
 // Taverne : chat, joueurs, boss du monde, classement
 // =====================================================================

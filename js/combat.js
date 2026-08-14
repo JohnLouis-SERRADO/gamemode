@@ -241,7 +241,8 @@ async function boucleTour() {
     if (estMort(c)) continue; // mort au poison pendant son propre tour
 
     if (debut.skip) {
-      journal(`💫 ${c.nom} est étourdi et passe son tour !`);
+      const etourdi = c.statuts.find((s) => s.type === 'etourdi');
+      journal(`💫 ${c.nom} est étourdi${etourdi && etourdi.source ? ` par ${etourdi.source}` : ''} et passe son tour ! (le poison, lui, ne fait jamais perdre de tour)`);
       rendreCombat();
       if (cb.groupe && cb.groupe.hote) await publierEtatGroupe(cb);
       await attendre(900);
@@ -458,15 +459,16 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
     }
     case 'etourdi': {
       if (Math.random() < (effet.chance != null ? effet.chance : 1)) {
-        poserStatut(cible, { type: 'etourdi', duree: effet.duree });
-        journal(`💫 ${cible.nom} est étourdi !`);
+        // La source est mémorisée pour que le « passe son tour » dise QUI a étourdi.
+        poserStatut(cible, { type: 'etourdi', duree: effet.duree, source: source.nom });
+        journal(`💫 ${cible.nom} est étourdi par ${source.nom} !`);
       } else {
         journal(`${cible.nom} résiste à l'étourdissement.`);
       }
       break;
     }
     case 'bouclier': {
-      const valeur = Math.round(8 + statDe(source, 'int') * 1.5);
+      const valeur = Math.round(8 + statDe(source, effet.stat || 'int') * 1.5);
       poserStatut(cible, { type: 'bouclier', duree: effet.duree, valeur });
       journal(`🛡️ ${cible.nom} est protégé par un bouclier (${valeur} points).`);
       break;
@@ -484,7 +486,7 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
       break;
     }
     case 'regen': {
-      const valeur = Math.round(3 + statDe(source, 'int') * 0.8);
+      const valeur = Math.round(3 + statDe(source, effet.stat || 'int') * 0.8);
       poserStatut(cible, { type: 'regen', duree: effet.duree, valeur });
       journal(`💧 ${cible.nom} régénérera ${valeur} PV par tour pendant ${effet.duree} tours.`);
       break;
@@ -925,9 +927,23 @@ function rendreJournal() {
   zone.scrollTop = zone.scrollHeight;
 }
 
+// La file d'initiative de la manche, toujours visible : chacun voit
+// quand son tour arrive (et que personne ne le lui vole).
+function rendreOrdreInitiative(cb) {
+  const zone = el('combat-ordre');
+  if (!zone) return;
+  const aVenir = [cb.actif, ...(cb.file || [])].filter((c) => c && !estMort(c));
+  if (cb.termine || aVenir.length === 0) { zone.innerHTML = ''; return; }
+  zone.innerHTML = '⏱️ Ordre de la manche : ' + aVenir
+    .map((c, i) => `<span class="ordre-combattant${i === 0 ? ' ordre-actif' : ''}${c.type === 'joueur' ? ' ordre-joueur' : ''}"
+      title="${echapper(c.nom)}">${c.type === 'joueur' ? c.avatar : c.emoji}</span>`)
+    .join('<span class="ordre-fleche">→</span>');
+}
+
 function rendreCombat() {
   const cb = etat.combat;
   if (!cb) return;
+  rendreOrdreInitiative(cb);
   // Le défilement horizontal des rangées (mobile) survit au re-rendu.
   const zoneE = el('zone-ennemis');
   const defilE = zoneE.scrollLeft;
