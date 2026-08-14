@@ -307,7 +307,7 @@ function normaliserPerso(p) {
 // =====================================================================
 // v14 — LA MORT. Quand une expédition tombe, chaque héros paie le prix :
 // l'équipement porté est perdu à jamais, le familier qui l'accompagnait
-// meurt, la moitié de la bourse s'évapore, et dix niveaux s'effacent —
+// meurt, la moitié de la bourse s'évapore, et un niveau s'efface —
 // avec les points de caractéristiques qui allaient avec. Puis la ville,
 // le repos… et la compréhension : mourir renvoie dans le passé, là où
 // le destin peut encore s'écrire autrement.
@@ -338,8 +338,8 @@ function appliquerMortHeros(m) {
   bilan.po = Math.floor(m.po / 2);
   m.po -= bilan.po;
 
-  // Dix niveaux s'effacent — et leurs points de caractéristiques.
-  const apres = Math.max(1, m.niveau - 10);
+  // Un niveau s'efface — et ses points de caractéristiques.
+  const apres = Math.max(1, m.niveau - 1);
   const niveauxPerdus = m.niveau - apres;
   if (niveauxPerdus > 0) {
     let aRetirer = POINTS_PAR_NIVEAU * niveauxPerdus;
@@ -428,7 +428,7 @@ function afficherRenaissance(bilans) {
     <p>${echapper(nom)} retourne en ville et se repose — un sommeil noir, sans rêves, long comme une saison.</p>
     <p>Au réveil, la bourse est plus légère, le sac aussi… et pourtant les rues semblent plus jeunes, les visages moins marqués,
     les affiches de la Guilde annoncent des contrats d'il y a longtemps. Alors ${echapper(nom)} ${accord} :
-    <strong>mourir n'est pas une fin — c'est un retour dans le passé</strong>, dix niveaux en arrière,
+    <strong>mourir n'est pas une fin — c'est un retour dans le passé</strong>, un niveau en arrière,
     au temps où le destin pouvait encore s'écrire autrement.</p>
     <p>Les souvenirs, eux, ont fait le voyage : chaque compétence apprise, chaque métier maîtrisé, chaque leçon durement payée.
     Cette fois, l'histoire ne se répétera pas. Cette fois, elle sera mieux écrite.</p>`;
@@ -877,12 +877,26 @@ function ajouterBlocSignature(p, id, comp, carte) {
   if (rang >= RANG_SIGNATURE_MAX) return;
   const monter = document.createElement('button');
   monter.className = p.maitrise > 0 ? 'btn-principal btn-compact' : 'btn-choix btn-compact';
-  monter.textContent = p.maitrise > 0
+  const texteInitial = p.maitrise > 0
     ? `🏅 Passer au rang ${rang + 1} (+15 % de puissance)`
     : `🏅 Rang ${rang}/${RANG_SIGNATURE_MAX} — point de maîtrise au niveau ${SEUILS_MAITRISE.find((seuil) => seuil > p.niveau) || 18}`;
+  monter.textContent = texteInitial;
   monter.disabled = p.maitrise <= 0;
+  // v15.1 : deux clics — le premier demande confirmation, le second investit.
+  let enConfirmation = false;
   monter.addEventListener('click', () => {
     if (p.maitrise <= 0 || rangDe(p, id) >= RANG_SIGNATURE_MAX) return;
+    if (!enConfirmation) {
+      enConfirmation = true;
+      monter.textContent = `❓ Confirmer : rang ${rangDe(p, id) + 1} contre 1 point de maîtrise`;
+      setTimeout(() => {
+        if (enConfirmation && monter.isConnected) {
+          enConfirmation = false;
+          monter.textContent = texteInitial;
+        }
+      }, 5000);
+      return;
+    }
     p.maitrise--;
     p.rangs[id] = rangDe(p, id) + 1;
     sauvegarder(p);
@@ -1074,6 +1088,11 @@ function rendreConsoleAdmin(zone, p) {
 // =====================================================================
 // Fiche du héros : stats, compétences, équipement, inventaire, code
 // =====================================================================
+// v15.1 : brouillons de la fiche — la répartition de caractéristiques et
+// le choix d'une nouvelle compétence attendent une CONFIRMATION.
+let brouillonRepartition = null; // { persoId, points: { for: 1, ... } }
+let selectionApprentissage = null; // id de la compétence pré-choisie
+
 function rendreHeros() {
   const p = persoActif();
   if (!p) return;
@@ -1131,41 +1150,127 @@ function rendreHeros() {
   });
 
   // --- Caractéristiques ---
+  // v15.1 : la répartition passe par un BROUILLON — on ajuste avec + / −,
+  // rien n'est définitif tant qu'on n'a pas confirmé. Fini les points
+  // perdus sur un mauvais clic.
+  if (!brouillonRepartition || brouillonRepartition.persoId !== p.id) {
+    brouillonRepartition = { persoId: p.id, points: {} };
+  }
+  const brouillonPts = brouillonRepartition.points;
+  let enBrouillon = Object.values(brouillonPts).reduce((somme, n) => somme + n, 0);
+  if (enBrouillon > (p.pointsEnAttente || 0)) { // ex. : points perdus à la mort
+    brouillonRepartition = { persoId: p.id, points: {} };
+    enBrouillon = 0;
+  }
+  const ptsLibres = (p.pointsEnAttente || 0) - enBrouillon;
   const blocStats = document.createElement('div');
   blocStats.className = 'panneau';
-  blocStats.innerHTML = `<h3>Caractéristiques${p.pointsEnAttente > 0 ? ` <span class="badge badge-alerte">${p.pointsEnAttente} point${p.pointsEnAttente > 1 ? 's' : ''} à répartir !</span>` : ''}</h3>`;
+  blocStats.innerHTML = `<h3>Caractéristiques${p.pointsEnAttente > 0 ? ` <span class="badge badge-alerte">${ptsLibres} point${ptsLibres > 1 ? 's' : ''} à répartir</span>` : ''}</h3>`;
   Object.entries(CARACS).forEach(([cle, c]) => {
     const bonus = s[cle] - p.stats[cle];
+    const enCours = brouillonRepartition.points[cle] || 0;
     const ligne = document.createElement('div');
     ligne.className = 'ligne-stat';
     ligne.innerHTML = `
       <span class="stat-nom">${c.emoji} ${c.nom}</span>
-      <span class="stat-valeur">${p.stats[cle]}${bonus > 0 ? `<span class="bonus-equip"> +${bonus}</span>` : ''}</span>
+      <span class="stat-valeur">${p.stats[cle]}${enCours > 0 ? `<span class="bonus-equip"> +${enCours}</span>` : ''}${bonus > 0 ? `<span class="bonus-equip"> +${bonus}</span>` : ''}</span>
       <span class="stat-desc">${c.desc}</span>`;
     if (p.pointsEnAttente > 0) {
+      const moins = document.createElement('button');
+      moins.className = 'btn-mini';
+      moins.textContent = '−';
+      moins.disabled = enCours <= 0;
+      moins.addEventListener('click', () => {
+        brouillonRepartition.points[cle] = enCours - 1;
+        rendreHeros();
+      });
       const plus = document.createElement('button');
       plus.className = 'btn-mini';
       plus.textContent = '+';
+      plus.disabled = ptsLibres <= 0;
       plus.addEventListener('click', () => {
-        p.stats[cle]++;
-        p.pointsEnAttente--;
-        bornerVie(p);
-        sauvegarder(p);
+        brouillonRepartition.points[cle] = enCours + 1;
         rendreHeros();
-        rendreTopbar();
       });
-      ligne.insertBefore(plus, ligne.querySelector('.stat-desc'));
+      const desc = ligne.querySelector('.stat-desc');
+      ligne.insertBefore(moins, desc);
+      ligne.insertBefore(plus, desc);
     }
     blocStats.appendChild(ligne);
   });
+  if (enBrouillon > 0) {
+    const rangee = document.createElement('div');
+    rangee.className = 'rangee-boutons';
+    const confirmer = document.createElement('button');
+    confirmer.className = 'btn-principal btn-compact';
+    confirmer.id = 'stats-confirmer';
+    confirmer.textContent = `✔ Confirmer la répartition (${enBrouillon} point${enBrouillon > 1 ? 's' : ''})`;
+    confirmer.addEventListener('click', () => {
+      const total = Object.values(brouillonRepartition.points).reduce((somme, n) => somme + n, 0);
+      if (total <= 0 || total > (p.pointsEnAttente || 0)) { brouillonRepartition = null; rendreHeros(); return; }
+      Object.entries(brouillonRepartition.points).forEach(([cle, n]) => { p.stats[cle] += n; });
+      p.pointsEnAttente -= total;
+      brouillonRepartition = null;
+      bornerVie(p);
+      sauvegarder(p);
+      afficherToast(`💪 Répartition confirmée : ${total} point${total > 1 ? 's' : ''} investi${total > 1 ? 's' : ''} !`);
+      rendreHeros();
+      rendreTopbar();
+    });
+    const annuler = document.createElement('button');
+    annuler.className = 'btn-choix btn-compact';
+    annuler.id = 'stats-annuler';
+    annuler.textContent = '↺ Tout remettre';
+    annuler.addEventListener('click', () => { brouillonRepartition = null; rendreHeros(); });
+    rangee.appendChild(confirmer);
+    rangee.appendChild(annuler);
+    blocStats.appendChild(rangee);
+  } else if (p.pointsEnAttente > 0) {
+    const aide = document.createElement('p');
+    aide.className = 'aide';
+    aide.textContent = 'Ajustez librement avec + et −, puis confirmez : rien n’est définitif avant la confirmation.';
+    blocStats.appendChild(aide);
+  }
   zone.appendChild(blocStats);
 
   // --- Nouvelle compétence à apprendre (montée de niveau) ---
+  // v15.1 : on SÉLECTIONNE d'abord, on confirme ensuite — un mauvais clic
+  // ne grave plus rien dans le marbre.
   if (p.competencesEnAttente > 0) {
+    if (selectionApprentissage && (!COMPETENCES[selectionApprentissage] || p.grimoire.includes(selectionApprentissage))) {
+      selectionApprentissage = null;
+    }
     const bloc = document.createElement('div');
     bloc.className = 'panneau bloc-apprentissage';
     bloc.innerHTML = `<h3>📖 Nouvelle compétence à apprendre (${p.competencesEnAttente})</h3>
-      <p class="aide">La compétence choisie rejoint votre grimoire — et vos actives s'il reste une place.</p>`;
+      <p class="aide">Cliquez une compétence pour la choisir, puis confirmez — rien n'est appris avant la confirmation. La compétence rejoint votre grimoire, et vos actives s'il reste une place.</p>`;
+    if (selectionApprentissage) {
+      const compChoisie = COMPETENCES[selectionApprentissage];
+      const idChoisi = selectionApprentissage;
+      const rangee = document.createElement('div');
+      rangee.className = 'rangee-boutons';
+      const confirmer = document.createElement('button');
+      confirmer.className = 'btn-principal btn-compact';
+      confirmer.id = 'apprentissage-confirmer';
+      confirmer.textContent = `✔ Apprendre ${compChoisie.emoji} ${compChoisie.nom}`;
+      confirmer.addEventListener('click', () => {
+        apprendreCompetence(p, idChoisi);
+        p.competencesEnAttente--;
+        selectionApprentissage = null;
+        sauvegarder(p);
+        afficherToast(`${compChoisie.emoji} ${p.nom} apprend ${compChoisie.nom} !`);
+        rendreHeros();
+        rendreTopbar();
+      });
+      const annuler = document.createElement('button');
+      annuler.className = 'btn-choix btn-compact';
+      annuler.id = 'apprentissage-annuler';
+      annuler.textContent = '✖ Changer d’avis';
+      annuler.addEventListener('click', () => { selectionApprentissage = null; rendreHeros(); });
+      rangee.appendChild(confirmer);
+      rangee.appendChild(annuler);
+      bloc.appendChild(rangee);
+    }
     const grille = document.createElement('div');
     grille.className = 'grille-competences';
     Object.entries(COMPETENCES)
@@ -1174,18 +1279,17 @@ function rendreHeros() {
         grille.appendChild(carteCompetence(id, comp, {
           stats: s,
           cliquable: true,
+          selectionnee: selectionApprentissage === id,
           surClic: () => {
-            apprendreCompetence(p, id);
-            p.competencesEnAttente--;
-            sauvegarder(p);
-            afficherToast(`${comp.emoji} ${p.nom} apprend ${comp.nom} !`);
+            selectionApprentissage = selectionApprentissage === id ? null : id;
             rendreHeros();
-            rendreTopbar();
           },
         }));
       });
     bloc.appendChild(grille);
     zone.appendChild(bloc);
+  } else if (selectionApprentissage) {
+    selectionApprentissage = null;
   }
 
   // --- Compétences actives (max 8) et grimoire ---
