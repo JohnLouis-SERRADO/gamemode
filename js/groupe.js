@@ -74,54 +74,20 @@ function creerJoueurDistant(m) {
 }
 
 // =====================================================================
-// v16 : ce que le GROUPE a débloqué — toujours calé sur le moins avancé,
-// pour que l'expédition reste cohérente pour tout le monde.
+// v16.3 : la progression du CHEF ouvre les expéditions — aucune limite
+// imposée par les autres membres, aucun bridage de puissance. Le chef
+// choisit, tout le monde grimpe, et le record de CHACUN progresse.
 // =====================================================================
-function etageTourGroupe(membres) {
-  return Math.min(...membres.map((m) => m.tourMax || 0)) + 1;
-}
-
-function difficultesTourBossGroupe(membres) {
+function etagesTourBossDuChef(p) {
   const dispo = ['normal'];
-  if (membres.every((m) => ((m.tourBoss || {}).normal || 0) >= 3)) dispo.push('heroique');
-  if (membres.every((m) => ((m.tourBoss || {}).heroique || 0) >= 3)) dispo.push('cauchemar');
+  const records = p.tourBoss || { normal: 0, heroique: 0, cauchemar: 0 };
+  if (records.normal >= 3) dispo.push('heroique');
+  if (records.heroique >= 3) dispo.push('cauchemar');
   return dispo;
 }
 
-function etageTourBossGroupe(membres, difficulte) {
-  return Math.min(...membres.map((m) => ((m.tourBoss || {})[difficulte]) || 0)) + 1;
-}
-
-function donjonsCommunsGroupe(membres) {
-  if (!membres.length) return [];
-  return membres.reduce(
-    (communs, m) => communs.filter((id) => (m.donjonsDebloques || []).includes(id)),
-    [...(membres[0].donjonsDebloques || [])],
-  );
-}
-
-// v16.2 : les épopées que TOUTE l'équipe a terminées — la porte de
-// l'Ascension éternelle en groupe.
-function epopeesCommunesGroupe(membres) {
-  if (!membres.length) return [];
-  return membres.reduce(
-    (communes, m) => communes.filter((id) => (m.epopeesFinies || []).includes(id)),
-    [...(membres[0].epopeesFinies || [])],
-  );
-}
-
-function etageAscensionGroupe(membres, idDonjon) {
-  return Math.min(...membres.map((m) => ((m.ascensions || {})[idDonjon]) || 0)) + 1;
-}
-
-// Le nivelage : chacun est bridé au niveau du moins aguerri du groupe.
-function nivelageGroupe(membres) {
-  const niveauBas = Math.min(...membres.map((m) => m.niveau || 1));
-  const facteurs = {};
-  membres.forEach((m) => {
-    if ((m.niveau || 1) > niveauBas) facteurs[m.id] = niveauBas / m.niveau;
-  });
-  return { niveauBas, facteurs: Object.keys(facteurs).length ? facteurs : null };
+function epopeesFiniesDuChef(p) {
+  return DONJONS.filter((d) => !d.chronique && progresDonjon(p, d.id).fini > 0).map((d) => d.id);
 }
 
 // =====================================================================
@@ -257,12 +223,12 @@ function rendreLobbyGroupe(ligne) {
     const ligneChoix = document.createElement('div');
     ligneChoix.className = 'rangee-boutons';
 
-    // v16 : cinq genres d'expédition — zones, tours et donjons débloqués.
-    const membres = ligne.membres;
+    // v16 : six genres d'expédition — zones, tours et donjons, ouverts par
+    // la progression du CHEF (v16.3 : plus aucune limite des membres).
     const selectGenre = document.createElement('select');
     selectGenre.className = 'select-groupe';
     [['exploration', '🗡️ Explorer une zone'], ['boss', '👑 Boss de zone'],
-      ['tour', `🗼 Tour Sans Fin — étage ${etageTourGroupe(membres)}`],
+      ['tour', `🗼 Tour Sans Fin — étage ${(p.tourMax || 0) + 1}`],
       ['tourBoss', `🏯 Tour des Boss`],
       ['assautDonjon', '🏰 Assaut de donjon (boss final)'],
       ['ascension', '⛰️ Ascension éternelle (épopées, étages infinis)']].forEach(([valeur, libelle]) => {
@@ -286,7 +252,7 @@ function rendreLobbyGroupe(ligne) {
 
     const selectDifficulte = document.createElement('select');
     selectDifficulte.className = 'select-groupe';
-    const difficultesBoss = difficultesTourBossGroupe(membres);
+    const difficultesBoss = etagesTourBossDuChef(p);
     Object.entries(DIFFICULTES).forEach(([cle, d]) => {
       const option = document.createElement('option');
       option.value = cle;
@@ -296,13 +262,13 @@ function rendreLobbyGroupe(ligne) {
     });
     selectDifficulte.addEventListener('change', () => { groupe.difficulteChoisie = selectDifficulte.value; });
 
-    // Les donjons dont TOUTE l'équipe a ouvert les portes.
-    const communs = donjonsCommunsGroupe(membres);
+    // Les donjons dont le CHEF a ouvert les portes.
+    const communs = typeof donjonsDebloquesPour === 'function' ? donjonsDebloquesPour(p) : [];
     const selectDonjon = document.createElement('select');
     selectDonjon.className = 'select-groupe';
     if (communs.length === 0) {
       const option = document.createElement('option');
-      option.textContent = '🔒 Aucun donjon débloqué par toute l’équipe';
+      option.textContent = '🔒 Aucun donjon débloqué par le chef';
       option.disabled = true;
       option.selected = true;
       selectDonjon.appendChild(option);
@@ -319,14 +285,14 @@ function rendreLobbyGroupe(ligne) {
     }
     selectDonjon.addEventListener('change', () => { groupe.donjonChoisi = selectDonjon.value; });
 
-    // v16.2 : les épopées dont TOUTE l'équipe a écrit la fin — l'Ascension
-    // éternelle s'ouvre à elles, avec l'étage du moins avancé.
-    const epopeesCommunes = epopeesCommunesGroupe(membres);
+    // v16.2 : les épopées dont le CHEF a écrit la fin — l'Ascension
+    // éternelle s'ouvre à elles, à l'étage de SON record.
+    const epopeesCommunes = epopeesFiniesDuChef(p);
     const selectEpopee = document.createElement('select');
     selectEpopee.className = 'select-groupe';
     if (epopeesCommunes.length === 0) {
       const option = document.createElement('option');
-      option.textContent = '🔒 Aucune épopée terminée par toute l’équipe';
+      option.textContent = '🔒 Aucune épopée terminée par le chef';
       option.disabled = true;
       option.selected = true;
       selectEpopee.appendChild(option);
@@ -336,7 +302,7 @@ function rendreLobbyGroupe(ligne) {
         if (!d) return;
         const option = document.createElement('option');
         option.value = id;
-        option.textContent = `${d.emoji} ${d.nom} — étage ${etageAscensionGroupe(membres, id)}`;
+        option.textContent = `${d.emoji} ${d.nom} — étage ${recordAscension(p, id) + 1}`;
         if (groupe.epopeeChoisie === id) option.selected = true;
         selectEpopee.appendChild(option);
       });
@@ -351,19 +317,19 @@ function rendreLobbyGroupe(ligne) {
       selectDonjon.classList.toggle('cache', genre !== 'assautDonjon');
       selectEpopee.classList.toggle('cache', genre !== 'ascension');
       if (genre === 'tour') {
-        aideGenre.textContent = `🗼 L'équipe grimpe ensemble : l'étage ${etageTourGroupe(membres)} (celui du moins avancé). Victoire = le record de chacun progresse.`;
+        aideGenre.textContent = `🗼 L'équipe grimpe l'étage ${(p.tourMax || 0) + 1} — la Tour telle que le chef l'a gravée, chacun à pleine puissance. Victoire = le record de chacun progresse.`;
       } else if (genre === 'tourBoss') {
-        aideGenre.textContent = `🏯 Étage ${etageTourBossGroupe(membres, groupe.difficulteChoisie)} — difficultés ouvertes à toute l'équipe : ${difficultesBoss.map((d) => DIFFICULTES[d].nom).join(', ')}. Niveau 10 requis pour chacun.`;
+        aideGenre.textContent = `🏯 Étage ${((p.tourBoss || {})[groupe.difficulteChoisie] || 0) + 1} — difficultés ouvertes par le chef : ${difficultesBoss.map((d) => DIFFICULTES[d].nom).join(', ')}.`;
       } else if (genre === 'assautDonjon') {
         aideGenre.textContent = communs.length
-          ? '🏰 Affrontez ensemble le boss final d’un donjon que TOUTE l’équipe a débloqué (l’histoire, elle, se vit en solo).'
-          : '🏰 Personne ne partage encore de donjon débloqué — progressez chacun dans vos histoires !';
+          ? '🏰 Affrontez ensemble le boss final d’un donjon débloqué par le chef (l’histoire, elle, se vit en solo).'
+          : '🏰 Le chef n’a encore débloqué aucun donjon — à lui de progresser dans ses histoires !';
       } else if (genre === 'ascension') {
         aideGenre.textContent = epopeesCommunes.length
           ? '⛰️ Des étages SANS FIN, enchaînés sans soin ni retour au salon : écho du boss tous les 5 étages, épreuve au d20 tous les 3 — le meilleur de l\'équipe s\'y colle. On grimpe jusqu\'à la MORT ou l\'abandon, et le record de chacun progresse à chaque étage.'
-          : '⛰️ L\'Ascension éternelle exige une épopée TERMINÉE par toute l\'équipe — finissez vos histoires !';
+          : '⛰️ L\'Ascension éternelle s\'ouvre dès que le chef a TERMINÉ une épopée.';
       } else {
-        aideGenre.textContent = '⚖️ En groupe, les plus aguerris sont bridés au niveau du moins avancé — et la défaite est MORTELLE (vraie mort, comme en solo).';
+        aideGenre.textContent = '⚔️ Chacun combat à PLEINE puissance — mais attention : la défaite d\'une expédition de groupe est MORTELLE (vraie mort, comme en solo).';
       }
     };
     selectGenre.addEventListener('change', () => { groupe.genreChoisi = selectGenre.value; majVisibilite(); });
@@ -433,7 +399,7 @@ async function lancerExpeditionGroupe(ligne) {
     }));
     genreCombat = genre === 'boss' ? 'boss' : 'exploration';
   } else if (genre === 'tour') {
-    const etage = etageTourGroupe(membres);
+    const etage = (p.tourMax || 0) + 1;
     const z = zonePourEtage(etage);
     const multTour = 1 + etage * 0.06;
     const cles = etage % 5 === 0 ? [z.boss] : composerPack(z, tailleDuPack(membres));
@@ -446,16 +412,16 @@ async function lancerExpeditionGroupe(ligne) {
     zoneCombat = z;
     difficulte = 'normal';
     titre = `🗼 Tour Sans Fin — Étage ${etage} (groupe)`;
-    intro = `L'équipe grimpe ensemble : l'étage ${etage}, celui du moins avancé. Victoire = le record de chacun progresse !`;
+    intro = `L'équipe grimpe l'étage ${etage} — la Tour telle que le chef l'a gravée. Victoire = le record de chacun progresse !`;
     groupeExtra = { tourEtage: etage };
   } else if (genre === 'tourBoss') {
-    if (membres.some((m) => (m.niveau || 1) < 10)) {
-      afficherToast('🏯 La Tour des Boss exige le niveau 10 — pour CHAQUE membre du groupe.');
+    if (p.niveau < 10) {
+      afficherToast('🏯 La Tour des Boss s’ouvre au niveau 10 (le chef).');
       return;
     }
-    const dispo = difficultesTourBossGroupe(membres);
+    const dispo = etagesTourBossDuChef(p);
     if (!dispo.includes(difficulte)) difficulte = dispo[dispo.length - 1];
-    const etage = etageTourBossGroupe(membres, difficulte);
+    const etage = ((p.tourBoss || {})[difficulte] || 0) + 1;
     const diff = DIFFICULTES[difficulte];
     const cle = CYCLE_TOUR_BOSS[(etage - 1) % CYCLE_TOUR_BOSS.length];
     const cycle = Math.floor((etage - 1) / CYCLE_TOUR_BOSS.length);
@@ -469,14 +435,14 @@ async function lancerExpeditionGroupe(ligne) {
     genreCombat = 'boss';
     zoneCombat = null;
     titre = `🏯 Tour des Boss — Étage ${etage} (groupe)`;
-    intro = `${defs[0].nom} garde l'étage ${etage}. L'équipe grimpe depuis le record du moins avancé.`;
+    intro = `${defs[0].nom} garde l'étage ${etage}. L'équipe grimpe depuis le record du chef.`;
     groupeExtra = { tourBoss: { etage, difficulte } };
   } else if (genre === 'assautDonjon') {
-    const communs = donjonsCommunsGroupe(membres);
+    const communs = typeof donjonsDebloquesPour === 'function' ? donjonsDebloquesPour(p) : [];
     const idDonjon = communs.includes(groupe.donjonChoisi) ? groupe.donjonChoisi : communs[0];
     const donjon = idDonjon ? DONJONS_PAR_ID[idDonjon] : null;
     if (!donjon) {
-      afficherToast('🏰 Aucun donjon n’est débloqué par TOUTE l’équipe.');
+      afficherToast('🏰 Le chef n’a encore débloqué aucun donjon.');
       return;
     }
     const boss = bossDeDonjon(donjon);
@@ -496,13 +462,13 @@ async function lancerExpeditionGroupe(ligne) {
   } else if (genre === 'ascension') {
     // v16.2 : l'Ascension éternelle en groupe — délégué à la fonction
     // d'étage, qui sait aussi enchaîner sans repasser par le salon.
-    const communes = epopeesCommunesGroupe(membres);
+    const communes = epopeesFiniesDuChef(p);
     const idEpopee = communes.includes(groupe.epopeeChoisie) ? groupe.epopeeChoisie : communes[0];
     if (!idEpopee || !DONJONS_PAR_ID[idEpopee]) {
-      afficherToast('⛰️ L’Ascension exige une épopée TERMINÉE par toute l’équipe.');
+      afficherToast('⛰️ L’Ascension s’ouvre dès que le chef a terminé une épopée.');
       return;
     }
-    lancerEtageAscensionGroupe(idEpopee, etageAscensionGroupe(membres, idEpopee), null);
+    lancerEtageAscensionGroupe(idEpopee, recordAscension(p, idEpopee) + 1, null);
     return;
   }
 
@@ -523,8 +489,7 @@ async function lancerExpeditionGroupe(ligne) {
     if (m.id === p.cloud.id) { p.bid = p.cloud.id; return p; }
     return creerJoueurDistant(m);
   });
-  // v16 : le nivelage — chacun est bridé au niveau du moins aguerri.
-  const nivelage = nivelageGroupe(membresFrais);
+  // v16.3 : chacun combat à pleine puissance — aucun bridage de groupe.
   demarrerCombat({
     genre: genreCombat,
     zone: zoneCombat,
@@ -535,12 +500,7 @@ async function lancerExpeditionGroupe(ligne) {
     equipe,
     groupe: { id: groupe.id, hote: true, seqTraite: 0 },
     groupeExtra,
-    nivelage: nivelage.facteurs,
   });
-  if (nivelage.facteurs) {
-    journal(`⚖️ L'équipe se cale sur le niveau ${nivelage.niveauBas} : les plus aguerris brident leur puissance.`);
-    rendreCombat();
-  }
 }
 
 // =====================================================================
@@ -613,7 +573,6 @@ async function lancerEtageAscensionGroupe(idDonjon, etage, equipePrecedente) {
     intro = `⛰️ Étage ${etage} — le donjon rebat ses cartes et vous oppose une salle nouvelle.`;
   }
 
-  const nivelage = nivelageGroupe(membresFrais);
   demarrerCombat({
     genre: 'boss', // pas de fuite : on grimpe jusqu'à la mort ou l'abandon
     zone: null,
@@ -624,11 +583,7 @@ async function lancerEtageAscensionGroupe(idDonjon, etage, equipePrecedente) {
     equipe,
     groupe: { id: groupe.id, hote: true, seqTraite: 0 },
     groupeExtra: { ascension: { id: donjon.id, etage } },
-    nivelage: nivelage.facteurs,
   });
-  if (nivelage.facteurs) {
-    journal(`⚖️ L'équipe se cale sur le niveau ${nivelage.niveauBas} : les plus aguerris brident leur puissance.`);
-  }
 
   // Tous les 3 étages (hors paliers de boss), le donjon éprouve l'équipe
   // AVANT le combat : le plus doué s'y colle, le sort de tous en dépend.
@@ -681,7 +636,7 @@ function serialiserCombat(cb) {
       nom: j.nom, avatar: j.avatar, emoji: j.emoji || null,
       race: j.race, niveau: j.niveau, ligne: j.ligne || null,
       hp: j.hp, maxHp: j.maxHp, mp: j.mp, maxMp: j.maxMp,
-      statsEff: j.type === 'invocation' ? j.stats : statsCombat(j),
+      statsEff: j.type === 'invocation' ? j.stats : statsEffectives(j),
       statuts: j.statuts, ko: j.ko, mort: j.mort || false, defense: j.defense,
       cooldowns: j.cooldowns, competences: j.competences,
       potions: (j.inventaire || [])

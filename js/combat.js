@@ -23,27 +23,10 @@ function estMort(c) {
   return c.type === 'joueur' ? c.ko : c.mort;
 }
 
-// v16 : nivelage de groupe — en expédition en ligne, les plus aguerris
-// se calent sur le niveau du moins avancé (facteur < 1 sur leurs stats).
-function facteurNivelage(c) {
-  const cb = etat.combat;
-  if (!cb || !cb.nivelage || !c.bid) return 1;
-  return cb.nivelage[c.bid] || 1;
-}
-
-// Les stats de COMBAT d'un héros : statsEffectives, éventuellement
-// bridées par le nivelage. Toute la résolution passe par ici.
-function statsCombat(j) {
-  const s = statsEffectives(j);
-  const f = facteurNivelage(j);
-  if (f >= 1) return s;
-  const bride = { ...s };
-  Object.keys(CARACS).forEach((cle) => { bride[cle] = Math.max(1, Math.round((s[cle] || 0) * f)); });
-  return bride;
-}
-
+// v16.3 : chacun combat à PLEINE puissance, en solo comme en groupe —
+// le nivelage de la v16 est retiré, sur demande générale.
 function statDe(source, cle) {
-  if (source.type === 'joueur') return statsCombat(source)[cle] || 0;
+  if (source.type === 'joueur') return statsEffectives(source)[cle] || 0;
   if (source.type === 'invocation') return source.stats[cle] || 0;
   return 0;
 }
@@ -202,7 +185,6 @@ function demarrerCombat(options) {
     degatsBossMonde: 0,
     groupe: options.groupe || null,
     groupeExtra: options.groupeExtra || null,
-    nivelage: options.nivelage || null,
     donjon: options.donjon || null,
     ascension: options.ascension || false,
     enAttenteDe: null,
@@ -789,7 +771,7 @@ function surActionChoisie(j, action) {
 function executerActionCoeur(j, action, cible) {
   const cb = etat.combat;
   if (action.genre === 'attaque') {
-    const s = statsCombat(j);
+    const s = statsEffectives(j);
     const brut = 3 + Math.max(s.for, s.agi);
     const r = infligerDegats(j, cible, brut);
     journal(`⚔️ ${j.nom} attaque ${cible.nom} : ${texteDegats(r)}`);
@@ -853,7 +835,7 @@ function lancerCompetence(j, compId, cible) {
   const cb = etat.combat;
   const comp = COMPETENCES[compId];
   if (comp.type === 'invocation') { lancerInvocation(j, compId); return; }
-  const s = statsCombat(j);
+  const s = statsEffectives(j);
   j.mp -= comp.coutMp;
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
 
@@ -918,7 +900,7 @@ function lancerInvocation(j, compId) {
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
 
   const modele = INVOCATIONS[comp.invocation];
-  const sm = statsCombat(j); // stats nivelées en groupe : la créature suit
+  const sm = statsEffectives(j);
   // Les stats de la créature sont des fractions de celles du maître —
   // et ne peuvent JAMAIS les dépasser.
   const stats = {};
