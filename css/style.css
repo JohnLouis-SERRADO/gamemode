@@ -1139,6 +1139,70 @@ button:focus-visible,
 
 .champ-code-groupe:focus { outline: none; border-color: var(--accent); }
 
+/* ----- Donjons d'histoire ----- */
+.separateur-donjons {
+  grid-column: 1 / -1;
+  margin-top: 10px;
+  padding: 8px 4px 0;
+  color: var(--texte-doux);
+  border-top: 1px dashed var(--bordure);
+}
+
+.carte-zone.donjon-histoire { border-color: #7c5cbf; }
+.carte-zone.donjon-histoire:not(.verrouillee):hover { box-shadow: 0 0 14px rgba(124, 92, 191, 0.35); }
+.carte-zone.donjon-histoire .zone-plage { color: #b39ddb; }
+.carte-zone.donjon-histoire .zone-desc em { color: var(--accent); font-style: normal; }
+
+#donjon-scene { max-width: 760px; margin: 0 auto; }
+
+.scene-donjon {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--panneau);
+  border: 1px solid var(--bordure);
+  border-left: 4px solid #7c5cbf;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  animation: apparition-scene 0.45s ease;
+}
+
+.scene-donjon.epilogue { border-left-color: var(--accent); }
+
+@keyframes apparition-scene {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.scene-portrait {
+  font-size: 2.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+}
+
+.scene-nom {
+  font-weight: 700;
+  color: #b39ddb;
+  margin-bottom: 4px;
+}
+
+.scene-texte { line-height: 1.55; }
+
+.choix-donjon {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.choix-donjon .choix-option { width: 100%; text-align: left; }
+
+.gains-donjon { margin: 12px 0; }
+
+.scene-boutons { justify-content: center; margin: 14px 0 30px; }
+
 /* ----- Comptoir d'échange ----- */
 .formulaire-comptoir { margin: 10px 0; }
 

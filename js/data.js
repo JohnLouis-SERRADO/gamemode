@@ -681,6 +681,7 @@ const FAMILIERS = {
   'golem-de-poche':   { nom: 'Golem de poche', emoji: '🗿', bonus: { pvMax: 25 }, desc: '+25 PV max', source: 'tour-10' },
   'chaton-celeste':   { nom: 'Chaton céleste', emoji: '🐱', bonus: { cha: 2, crit: 2 }, desc: '+2 Chance, +2 % critique', source: 'tour-15' },
   'phenix-miniature': { nom: 'Phénix miniature', emoji: '🐦‍🔥', bonus: { xpBonus: 0.05, poBonus: 0.05 }, desc: '+5 % XP et or', source: 'tour-20' },
+  'salamandre-de-forge': { nom: 'Salamandre de forge', emoji: '🦎', bonus: { for: 2, cha: 2 }, desc: '+2 Force, +2 Chance', source: 'donjon-volcan' },
 };
 
 // Familier obtenu par palier de la Tour Sans Fin (première ascension).
@@ -714,7 +715,16 @@ const HAUTS_FAITS = [
   { id: 'tour-10',     nom: 'Conquérant des hauteurs', emoji: '🪜', titre: 'des Hauteurs', desc: 'Atteindre l’étage 10 de la Tour', cond: (p) => p.tourMax >= 10 },
   { id: 'tour-20',     nom: 'Sommet du monde', emoji: '🏔️', titre: 'du Sommet', desc: 'Atteindre l’étage 20 de la Tour', cond: (p) => p.tourMax >= 20 },
   { id: 'familiers-3', nom: 'Meneur de meute', emoji: '🐾', titre: 'le Dresseur', desc: 'Adopter 3 familiers', cond: (p) => p.familiers.length >= 3 },
+  { id: 'donjon-crypte',      nom: 'Paix au Roi Oublié', emoji: '🏛️', titre: 'le Libérateur', desc: 'Terminer « La Crypte du Roi Oublié »', cond: (p) => donjonFini(p, 'crypte') },
+  { id: 'donjon-laboratoire', nom: 'Fin de l’expérience', emoji: '🧪', titre: 'l’Alchimiste', desc: 'Terminer « Le Laboratoire de Frivole »', cond: (p) => donjonFini(p, 'laboratoire') },
+  { id: 'donjon-brise-brume', nom: 'Brumes dissipées', emoji: '⛵', titre: 'des Brumes', desc: 'Terminer « Le Brise-Brume »', cond: (p) => donjonFini(p, 'brise-brume') },
+  { id: 'donjon-volcan',      nom: 'Cœur du Volcan', emoji: '🌋', titre: 'Forgé au Feu', desc: 'Terminer « Le Cœur du Volcan »', cond: (p) => donjonFini(p, 'volcan') },
+  { id: 'donjons-tous',       nom: 'Toutes les histoires', emoji: '📖', titre: 'le Chroniqueur', desc: 'Terminer les 4 donjons d’histoire', cond: (p) => ['crypte', 'laboratoire', 'brise-brume', 'volcan'].every((id) => donjonFini(p, id)) },
 ];
+
+function donjonFini(p, idDonjon) {
+  return !!(p.donjons && p.donjons[idDonjon] && p.donjons[idDonjon].fini > 0);
+}
 
 // =====================================================================
 // Contrats de guilde : 3 quêtes journalières tirées par date
@@ -725,7 +735,8 @@ const MODELES_QUETES = [
   { type: 'boss',        emoji: '👑', min: 1, max: 1,  texte: () => 'Vaincre un boss de zone' },
   { type: 'craft',       emoji: '⚒️', min: 2, max: 3,  texte: (n) => `Fabriquer ${n} objets à l’atelier` },
   { type: 'exploration', emoji: '🗺️', min: 4, max: 8,  texte: (n) => `Explorer ${n} fois` },
-  { type: 'tour',        emoji: '🗼', min: 2, max: 4,  texte: (n) => `Gravir ${n} étages de la Tour` },
+  { type: 'tour',        emoji: '🗼', min: 2, max: 4,  texte: (n) => `Gravir ${n} étages de la Tour`, niveauMin: 3 },
+  { type: 'donjon',      emoji: '📖', min: 1, max: 1,  texte: () => 'Terminer un donjon d’histoire', niveauMin: 4 },
 ];
 
 // Générateur pseudo-aléatoire déterministe (même jour → mêmes contrats).
@@ -741,15 +752,17 @@ function grainePseudoAleatoire(graine) {
 function genererQuetesDuJour(p) {
   const date = new Date().toISOString().slice(0, 10);
   const alea2 = grainePseudoAleatoire(date + '|' + p.id);
+  // Pas de contrat inaccessible : la Tour et les donjons demandent un niveau.
+  const disponibles = MODELES_QUETES.filter((m) => !m.niveauMin || p.niveau >= m.niveauMin);
   const indices = [];
   while (indices.length < 3) {
-    const i = Math.floor(alea2() * MODELES_QUETES.length);
+    const i = Math.floor(alea2() * disponibles.length);
     if (!indices.includes(i)) indices.push(i);
   }
   return {
     date,
     liste: indices.map((i, position) => {
-      const modele = MODELES_QUETES[i];
+      const modele = disponibles[i];
       const requis = modele.min + Math.floor(alea2() * (modele.max - modele.min + 1));
       return {
         type: modele.type, emoji: modele.emoji,

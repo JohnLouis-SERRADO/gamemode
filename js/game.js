@@ -115,7 +115,7 @@ function boutonConfirmation(libelle, libelleConfirme, action) {
 // =====================================================================
 const ECRANS_AVEC_TOPBAR = ['ecran-carte', 'ecran-equipe', 'ecran-zone', 'ecran-ville',
   'ecran-boutique', 'ecran-antiquaire', 'ecran-guilde', 'ecran-atelier', 'ecran-heros',
-  'ecran-taverne', 'ecran-groupe-ligne'];
+  'ecran-taverne', 'ecran-groupe-ligne', 'ecran-donjon'];
 
 function montrerEcran(id) {
   document.querySelectorAll('.ecran').forEach((e) => e.classList.remove('actif'));
@@ -195,6 +195,7 @@ function normaliserPerso(p) {
   if (!Array.isArray(p.hautsFaits)) p.hautsFaits = [];
   if (p.titre === undefined) p.titre = null;
   if (p.tourMax == null) p.tourMax = 0;
+  if (!p.donjons || typeof p.donjons !== 'object') p.donjons = {};
   if (!p.quetes || p.quetes.date !== new Date().toISOString().slice(0, 10)) {
     p.quetes = genererQuetesDuJour(p);
   }
@@ -223,6 +224,7 @@ function donneesCloud(p) {
     explorations: p.explorations, bossVaincus: p.bossVaincus,
     compteurs: p.compteurs, familiers: p.familiers, familier: p.familier,
     hautsFaits: p.hautsFaits, titre: p.titre, tourMax: p.tourMax, quetes: p.quetes,
+    donjons: p.donjons,
   };
 }
 

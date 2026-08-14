@@ -36,6 +36,93 @@ function tirageAuPoids(liste) {
   return liste[liste.length - 1];
 }
 
+function creerMonstreCombat(def, id, nom) {
+  return {
+    type: 'monstre',
+    id,
+    cle: def.cle || null,
+    nom: nom || def.nom,
+    emoji: def.emoji,
+    niveau: def.niveau,
+    atk: def.atk,
+    agi: def.agi,
+    xp: def.xp,
+    po: def.po,
+    drops: def.drops,
+    attaques: def.attaques,
+    boss: !!def.boss,
+    mecaniques: def.mecaniques || null,
+    phaseIndex: 0,
+    enrageActif: false,
+    invoque: !!def.invoque,
+    maxHp: def.hp,
+    hp: def.hp,
+    statuts: [],
+    defense: false,
+    mort: false,
+  };
+}
+
+// =====================================================================
+// Mécaniques de boss : phases, invocations d'alliés, enrage
+// =====================================================================
+function invoquerMonstresCombat(cb, cles) {
+  const noms = {};
+  cb.monstres.forEach((m) => { noms[m.nom] = true; });
+  cles.forEach((cle) => {
+    const source = (typeof MONSTRES_DONJONS !== 'undefined' && MONSTRES_DONJONS[cle]) || MONSTRES[cle];
+    if (!source) return;
+    let nom = source.nom;
+    for (let n = 2; noms[nom]; n++) nom = `${source.nom} ${n}`;
+    noms[nom] = true;
+    const monstre = creerMonstreCombat({ ...source, cle, invoque: true }, `m${cb.monstres.length}`, nom);
+    cb.monstres.push(monstre);
+    journal(`⚔️ ${monstre.emoji} ${monstre.nom} rejoint le combat !`);
+  });
+}
+
+// Transitions de phase : dès qu'un boss passe sous un seuil de PV.
+// Appelée après chaque action (via verifierFin), le point de passage
+// obligé de toutes les mutations de PV.
+function traiterPhasesBoss(cb) {
+  cb.monstres.filter((m) => !m.mort && m.mecaniques && m.mecaniques.phases).forEach((m) => {
+    let phase = m.mecaniques.phases[m.phaseIndex];
+    while (phase && m.hp <= m.maxHp * phase.seuil) {
+      m.phaseIndex++;
+      journal(phase.annonce);
+      if (phase.atkMult) m.atk = Math.round(m.atk * phase.atkMult);
+      if (phase.attaques) m.attaques = phase.attaques;
+      if (phase.bouclier) {
+        poserStatut(m, { type: 'bouclier', duree: 4, valeur: phase.bouclier });
+        journal(`🛡️ ${m.nom} se couvre d'une carapace (${phase.bouclier} points) !`);
+      }
+      if (phase.invoque) invoquerMonstresCombat(cb, phase.invoque);
+      phase = m.mecaniques.phases[m.phaseIndex];
+    }
+  });
+}
+
+// Effets de début de manche : enrage et invocations périodiques.
+function traiterMecaniquesManche(cb) {
+  cb.monstres.filter((m) => !m.mort && m.mecaniques).forEach((m) => {
+    const mec = m.mecaniques;
+    if (mec.enrage && !m.enrageActif && cb.manche >= mec.enrage.manche) {
+      m.enrageActif = true;
+      m.atk = Math.round(m.atk * mec.enrage.atkMult);
+      journal(mec.enrage.annonce);
+    }
+    if (mec.invocations && cb.manche > 1 && (cb.manche - 1) % mec.invocations.toutesLes === 0) {
+      const vivants = cb.monstres.filter((x) => x.invoque && !x.mort).length;
+      const places = Math.max(0, (mec.invocations.max || 99) - vivants);
+      const cles = mec.invocations.monstres.slice(0, places);
+      if (cles.length > 0) {
+        journal(mec.invocations.annonce);
+        invoquerMonstresCombat(cb, cles);
+      }
+    }
+  });
+}
+
 // =====================================================================
 // Lancement d'un combat
 // =====================================================================
@@ -55,26 +142,8 @@ function demarrerCombat(options) {
   const vus = {};
   const monstres = options.monstresDef.map((def, i) => {
     vus[def.nom] = (vus[def.nom] || 0) + 1;
-    return {
-      type: 'monstre',
-      id: `m${i}`,
-      cle: def.cle || null,
-      nom: compteurs[def.nom] > 1 ? `${def.nom} ${vus[def.nom]}` : def.nom,
-      emoji: def.emoji,
-      niveau: def.niveau,
-      atk: def.atk,
-      agi: def.agi,
-      xp: def.xp,
-      po: def.po,
-      drops: def.drops,
-      attaques: def.attaques,
-      boss: !!def.boss,
-      maxHp: def.hp,
-      hp: def.hp,
-      statuts: [],
-      defense: false,
-      mort: false,
-    };
+    return creerMonstreCombat(def, `m${i}`,
+      compteurs[def.nom] > 1 ? `${def.nom} ${vus[def.nom]}` : def.nom);
   });
 
   // Identifiant de combat stable pour chaque héros (id cloud en groupe en ligne)
@@ -102,6 +171,7 @@ function demarrerCombat(options) {
     journalLignes: [],
     degatsBossMonde: 0,
     groupe: options.groupe || null,
+    donjon: options.donjon || null,
     enAttenteDe: null,
     consosDistantes: options.groupe ? {} : null,
   };
@@ -115,7 +185,8 @@ function demarrerCombat(options) {
   };
   const difficulte = DIFFICULTES[etat.combat.difficulte];
   const suffixe = difficulte && etat.combat.difficulte !== 'normal' ? ` · ${difficulte.emoji} ${difficulte.nom}` : '';
-  el('combat-titre').textContent = (titres[options.genre] ? titres[options.genre]() : 'Combat') + suffixe;
+  el('combat-titre').textContent = (options.titre
+    || (titres[options.genre] ? titres[options.genre]() : 'Combat')) + suffixe;
   el('combat-manche').textContent = '';
   el('zone-actions').innerHTML = '';
 
@@ -125,7 +196,7 @@ function demarrerCombat(options) {
     boss: 'Le maître des lieux se dresse devant vous…',
     bossMonde: `Vous avez ${options.manchesMax || 6} manches pour infliger un maximum de dégâts !`,
   };
-  journal(`⚔️ ${intros[options.genre] || 'Le combat commence !'}`);
+  journal(`⚔️ ${options.intro || intros[options.genre] || 'Le combat commence !'}`);
   montrerEcran('ecran-combat');
   rendreCombat();
   if (etat.combat.groupe && etat.combat.groupe.hote) publierEtatGroupe(etat.combat);
@@ -155,6 +226,7 @@ async function boucleTour() {
       el('combat-manche').textContent = cb.manchesMax
         ? `Manche ${cb.manche}/${cb.manchesMax}` : `Manche ${cb.manche}`;
       journal(`— Manche ${cb.manche} —`);
+      traiterMecaniquesManche(cb);
     }
 
     const c = cb.file.shift();
@@ -260,6 +332,7 @@ function finDeTourStatuts(c) {
 function verifierFin() {
   const cb = etat.combat;
   if (cb.termine) return true;
+  traiterPhasesBoss(cb);
 
   if (cb.monstres.every((m) => m.mort)) {
     cb.termine = true;

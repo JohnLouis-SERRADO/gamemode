@@ -87,6 +87,9 @@ function rendreCarte() {
     : 'Des étages infinis, aucun repos entre les combats, un butin qui grimpe à chaque palier. Jusqu’où monterez-vous ?'}</div>`;
   if (!tourVerrouillee) rendreCliquable(tour, () => demarrerTour());
   zone.appendChild(tour);
+
+  // Donjons d'histoire : aventures scénarisées à choix.
+  rendreCartesDonjons(zone, p);
 }
 
 // =====================================================================
@@ -589,6 +592,7 @@ function apresVictoire(cb) {
   if (cb.groupe && cb.groupe.hote) { apresCombatGroupeHote(cb, 'victoire'); return; }
   if (cb.genre === 'bossMonde') { apresBossMonde(cb); return; }
   if (cb.genre === 'tour') { apresVictoireTour(cb); return; }
+  if (cb.genre === 'donjon') { apresVictoireDonjon(cb); return; }
   const butin = tirerButinCombat(cb);
   const membres = cb.equipe;
   const lignes = [];
@@ -716,6 +720,7 @@ function apresDefaite(cb) {
     apresBossMonde(cb);
     return;
   }
+  if (cb.genre === 'donjon') { apresDefaiteDonjon(cb); return; }
   if (cb.genre === 'tour' && etat.tour) {
     afficherToast(`🗼 La Tour vous recrache à l'étage ${cb.tourEtage}… Record : ${persoActif().tourMax}.`);
     etat.tour = null;
