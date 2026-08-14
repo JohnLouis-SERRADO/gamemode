@@ -67,6 +67,14 @@ function rendreVille() {
       })),
     },
     {
+      titre: '🧺 La halle aux matières',
+      note: 'Trois fournisseurs au service des artisans — à 4× le prix de rachat : récolter reste la voie du malin.',
+      lieux: Object.entries(FOURNISSEURS).map(([id, f]) => ({
+        emoji: f.emoji, nom: f.nom, detail: f.detail,
+        action: () => ouvrirFournisseur(id),
+      })),
+    },
+    {
       titre: '🏛️ La grand-place',
       note: 'Contrats, repos et rumeurs : le cœur battant du bourg.',
       lieux: [
@@ -373,6 +381,175 @@ function rendreAntiquaire() {
     grille.appendChild(carteArticleBoutique(p, id, objet, () => rendreAntiquaire()));
   });
   zone.appendChild(grille);
+}
+
+// =====================================================================
+// v16.1 : la halle aux matières — trois fournisseurs de matériaux de
+// craft, un par filière de récolte. Les prix piquent (4× la valeur de
+// rachat) : récolter reste la voie du malin, acheter celle du pressé.
+// Les matériaux SIGNATURES ne s'y vendent jamais — c'est la fierté des
+// spécialistes (récolte… ou comptoir des joueurs).
+// =====================================================================
+const FOURNISSEURS = {
+  mine: {
+    emoji: '⛏️', nom: 'La Minière', titre: '⛏️ Comptoir minier « La Minière »',
+    detail: 'Pierres, minerais et cristaux au détail — la montagne mise en rayon',
+    accueil: '« La montagne donne à qui paie comptant. » — Grive la Prospectrice',
+    famille: 'mine',
+  },
+  peau: {
+    emoji: '🐾', nom: 'Le Séchoir', titre: '🐾 Négoce de dépouilles « Le Séchoir »',
+    detail: 'Peaux, os et plumes pendus aux poutres — la chasse vendue au poids',
+    accueil: '« Tout ce qui court, rampe ou vole finit ici un jour. » — le Vieux Marloux',
+    famille: 'peau',
+  },
+  plante: {
+    emoji: '🌿', nom: 'L’Herboristerie', titre: '🌿 « L’Herboristerie des Brumes »',
+    detail: 'Plantes, fibres et étoffes rares — cueillies, séchées, étiquetées',
+    accueil: '« Chaque feuille a son usage, et chaque usage a son prix. » — Mélisse',
+    famille: 'plante',
+  },
+};
+
+let fournisseurCourant = 'mine';
+let NIVEAU_MATERIAU = null;
+
+// À quel niveau de héros un matériau devient-il « de votre monde » ?
+// On prend la zone la plus accessible qui le donne (récolte ou butin).
+function niveauMateriau(id) {
+  if (!NIVEAU_MATERIAU) {
+    NIVEAU_MATERIAU = {};
+    const noter = (idMat, niveau) => {
+      if (NIVEAU_MATERIAU[idMat] == null || niveau < NIVEAU_MATERIAU[idMat]) NIVEAU_MATERIAU[idMat] = niveau;
+    };
+    ZONES.forEach((z) => {
+      (z.recolte || []).forEach((e) => noter(e.id, z.niveauMin));
+      [...(z.monstres || []), z.boss].forEach((cle) => {
+        ((MONSTRES[cle] || {}).drops || []).forEach((d) => noter(d.id, z.niveauMin));
+      });
+    });
+  }
+  return NIVEAU_MATERIAU[id] || 1;
+}
+
+function prixAchatMateriau(id) {
+  return Math.max(4, prixVenteDe(id) * 4);
+}
+
+function ouvrirFournisseur(idFournisseur) {
+  fournisseurCourant = idFournisseur;
+  rendreFournisseur();
+  montrerEcran('ecran-fournisseur');
+}
+
+function rendreFournisseur() {
+  const p = persoActif();
+  const f = FOURNISSEURS[fournisseurCourant];
+  el('fournisseur-titre').textContent = f.titre;
+  el('fournisseur-po').textContent = `💰 ${formatNombre(p.po)} po`;
+  const zone = el('fournisseur-contenu');
+  zone.innerHTML = `<p class="sous-titre gauche">${f.accueil}</p>
+    <p class="aide">Prix fournisseur : <strong>4× la valeur de rachat</strong> — la récolte reste la voie du malin. Le comptoir reprend aussi vos surplus de la filière, au prix plein.</p>`;
+
+  const grille = document.createElement('div');
+  grille.className = 'grille-inventaire';
+  const signature = SIGNATURE_FILIERE[f.famille];
+  Object.entries(OBJETS)
+    .filter(([id, o]) => o.type === 'materiau' && FAMILLE_MATERIAU[id] === f.famille && id !== signature)
+    .sort((a, b) => niveauMateriau(a[0]) - niveauMateriau(b[0]) || prixVenteDe(a[0]) - prixVenteDe(b[0]))
+    .forEach(([id, objet]) => {
+      const niveau = niveauMateriau(id);
+      const verrouille = niveau > p.niveau;
+      const prix = prixAchatMateriau(id);
+      const possede = compterObjet(p, id);
+      const carte = document.createElement('div');
+      carte.className = 'carte-objet' + (verrouille ? ' article-verrouille' : '');
+      carte.innerHTML = `
+        <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong>${texteRarete(objet)}</div>
+        <div class="objet-desc">${objet.desc || ''}</div>
+        <div class="objet-niveau${verrouille ? ' niveau-insuffisant' : ''}">niv. ${niveau}${verrouille ? ` — revenez au niveau ${niveau}` : ''} · en sac : ${possede}</div>`;
+      if (!verrouille) {
+        const rangee = document.createElement('div');
+        rangee.className = 'rangee-boutons';
+        [[1, `Acheter — ${formatNombre(prix)} po`], [5, `×5 — ${formatNombre(prix * 5)} po`]].forEach(([qte, libelle]) => {
+          const btn = document.createElement('button');
+          btn.className = 'btn-choix btn-compact' + (qte === 1 ? ' btn-achat' : '');
+          btn.textContent = libelle;
+          btn.disabled = p.po < prix * qte;
+          btn.addEventListener('click', () => {
+            if (p.po < prix * qte) return;
+            p.po -= prix * qte;
+            ajouterObjet(p, id, qte);
+            sauvegarder(p);
+            afficherToast(`${objet.emoji} ${objet.nom} ×${qte} pour ${formatNombre(prix * qte)} po.`);
+            rendreFournisseur();
+            rendreTopbar();
+          });
+          rangee.appendChild(btn);
+        });
+        carte.appendChild(rangee);
+      }
+      grille.appendChild(carte);
+    });
+
+  // La pièce que l'or n'achète pas : le matériau signature de la filière.
+  const objSignature = OBJETS[signature];
+  if (objSignature) {
+    const carte = document.createElement('div');
+    carte.className = 'carte-objet article-verrouille';
+    carte.innerHTML = `
+      <div class="objet-entete">${objSignature.emoji} <strong>${objSignature.nom}</strong>${texteRarete(objSignature)}</div>
+      <div class="objet-desc">${objSignature.desc || ''}</div>
+      <div class="objet-note">🚫 Ne se vend pas ici — c'est la fierté des spécialistes. Récoltez-le… ou négociez au comptoir des joueurs.</div>`;
+    grille.appendChild(carte);
+  }
+  zone.appendChild(grille);
+
+  // Rachat : le fournisseur reprend les matériaux de SA filière.
+  const aRacheter = p.inventaire
+    .filter((e) => e.qte > 0 && OBJETS[e.id] && OBJETS[e.id].type === 'materiau' && FAMILLE_MATERIAU[e.id] === f.famille);
+  const titreVente = document.createElement('h3');
+  titreVente.className = 'titre-grimoire';
+  titreVente.textContent = `💰 ${f.nom} rachète vos matériaux`;
+  zone.appendChild(titreVente);
+  if (aRacheter.length === 0) {
+    zone.insertAdjacentHTML('beforeend', '<p class="aide">Rien de la filière dans votre sac pour le moment — la récolte vous tend les bras.</p>');
+    return;
+  }
+  const grilleVente = document.createElement('div');
+  grilleVente.className = 'grille-inventaire';
+  aRacheter.forEach((entree) => {
+    const objet = OBJETS[entree.id];
+    const prixUnite = prixVenteDe(entree.id);
+    const carte = document.createElement('div');
+    carte.className = 'carte-objet';
+    carte.innerHTML = `
+      <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> <span class="objet-qte">×${entree.qte}</span></div>
+      <div class="objet-niveau">${formatNombre(prixUnite)} po pièce</div>`;
+    const rangee = document.createElement('div');
+    rangee.className = 'rangee-boutons';
+    [[1, `Vendre ×1 — ${formatNombre(prixUnite)} po`], [entree.qte, `Tout — ${formatNombre(prixUnite * entree.qte)} po`]].forEach(([qte, libelle], index) => {
+      if (index === 1 && entree.qte < 2) return;
+      const btn = document.createElement('button');
+      btn.className = 'btn-choix btn-compact';
+      btn.textContent = libelle;
+      btn.addEventListener('click', () => {
+        const vendu = Math.min(qte, compterObjet(p, entree.id));
+        if (vendu <= 0) return;
+        retirerObjet(p, entree.id, vendu);
+        p.po += prixUnite * vendu;
+        p.compteurs.orTotal += prixUnite * vendu;
+        sauvegarder(p);
+        afficherToast(`💰 ${objet.emoji} ${objet.nom} ×${vendu} — +${formatNombre(prixUnite * vendu)} po.`);
+        rendreFournisseur();
+        rendreTopbar();
+      });
+      rangee.appendChild(btn);
+    });
+    carte.appendChild(rangee);
+    grilleVente.appendChild(carte);
+  });
+  zone.appendChild(grilleVente);
 }
 
 // =====================================================================
