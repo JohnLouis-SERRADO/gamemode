@@ -30,6 +30,7 @@ function snapshotPourGroupe(p) {
     id: p.cloud.id,
     nom: p.nom,
     avatar: p.avatar,
+    race: p.race || 'humain',
     niveau: p.niveau,
     statsEff: statsEffectives(p),
     maxHp: p.maxHp,
@@ -37,6 +38,7 @@ function snapshotPourGroupe(p) {
     hp: p.hp,
     mp: p.mp,
     competences: p.competences,
+    bossVaincus: p.bossVaincus,
     potions: p.inventaire.filter((e) => OBJETS[e.id] && OBJETS[e.id].type === 'consommable')
       .map((e) => ({ id: e.id, qte: e.qte })),
   };
@@ -47,14 +49,14 @@ function creerJoueurDistant(m) {
   return {
     type: 'joueur', distant: true,
     id: 'distant-' + m.id, bid: m.id,
-    nom: m.nom, avatar: m.avatar, niveau: m.niveau,
-    stats: { for: m.statsEff.for, int: m.statsEff.int, agi: m.statsEff.agi, vit: m.statsEff.vit },
+    nom: m.nom, avatar: m.avatar, race: m.race || 'humain', niveau: m.niveau,
+    stats: { for: m.statsEff.for, int: m.statsEff.int, agi: m.statsEff.agi, vit: m.statsEff.vit, cha: m.statsEff.cha || 0 },
     statsEff: m.statsEff,
     maxHp: m.maxHp, maxMp: m.maxMp, hp: m.hp, mp: m.mp,
     competences: m.competences || [],
     inventaire: (m.potions || []).map((e) => ({ ...e })),
     equipement: {}, statuts: [], cooldowns: {}, defense: false, ko: false,
-    explorations: {}, bossVaincus: [], pointsEnAttente: 0, competencesEnAttente: 0, po: 0, xp: 0,
+    explorations: {}, bossVaincus: m.bossVaincus || [], pointsEnAttente: 0, competencesEnAttente: 0, po: 0, xp: 0,
   };
 }
 
@@ -310,8 +312,9 @@ function serialiserCombat(cb) {
       hp: m.hp, maxHp: m.maxHp, statuts: m.statuts, mort: m.mort, boss: !!m.boss,
     })),
     equipe: cb.equipe.map((j) => ({
-      bid: j.bid, nom: j.nom, avatar: j.avatar, niveau: j.niveau,
+      bid: j.bid, nom: j.nom, avatar: j.avatar, race: j.race, niveau: j.niveau,
       hp: j.hp, maxHp: j.maxHp, mp: j.mp, maxMp: j.maxMp,
+      statsEff: statsEffectives(j),
       statuts: j.statuts, ko: j.ko, defense: j.defense,
       cooldowns: j.cooldowns, competences: j.competences,
       potions: (j.inventaire || [])
@@ -439,6 +442,15 @@ function apresCombatGroupeHote(cb, type) {
         potionsConsommees: (cb.consosDistantes && cb.consosDistantes[j.bid]) || {},
         hpFinal: Math.max(1, j.hp), mpFinal: j.mp,
       };
+      // Un boss de zone abattu en groupe : coffre pour chacun.
+      if (cb.genre === 'boss' && cb.zone) {
+        const coffre = ouvrirCoffreBoss(j, cb.zone, cb.difficulte);
+        Object.entries(coffre.objets).forEach(([id, qte]) => {
+          recompenses[j.bid].objets[id] = (recompenses[j.bid].objets[id] || 0) + qte;
+        });
+        recompenses[j.bid].lignesCoffre = coffre.lignes;
+        recompenses[j.bid].bossVaincu = cb.zone.id;
+      }
     });
   } else if (type === 'defaite') {
     lignes.push('💫 Le groupe est vaincu… Chacun se réveille à l’auberge (−10 % de ses po).');
@@ -464,17 +476,21 @@ function apresCombatGroupeHote(cb, type) {
   cb.resultatGroupe = { type, titre: titres[type], lignes, recompenses };
   publierEtatGroupe(cb, 'lobby');
 
-  appliquerRecompenseGroupe(p, recompenses[p.cloud.id]);
+  const maRecompense = recompenses[p.cloud.id];
+  appliquerRecompenseGroupe(p, maRecompense);
   afficherButin({
     titre: titres[type],
     texte: partage > 1 ? 'Chaque écran reçoit sa part.' : '',
-    lignes,
+    lignes: lignes.concat(maRecompense && maRecompense.lignesCoffre ? maRecompense.lignesCoffre : []),
     retour: 'groupe-ligne',
   });
 }
 
 function appliquerRecompenseGroupe(p, recompense) {
   if (!recompense) return;
+  if (recompense.bossVaincu && !p.bossVaincus.includes(recompense.bossVaincu)) {
+    p.bossVaincus.push(recompense.bossVaincu);
+  }
   p.po += recompense.po || 0;
   if (recompense.defaite) p.po = Math.max(0, p.po - Math.round(p.po * 0.1));
   Object.entries(recompense.objets || {}).forEach(([id, qte]) => ajouterObjet(p, id, qte));
@@ -518,11 +534,12 @@ function demarrerSuiviCombatDistant() {
       etat.combat = null;
       if (resultat) {
         const p = persoActif();
-        appliquerRecompenseGroupe(p, resultat.recompenses[p.cloud.id]);
+        const maRecompense = resultat.recompenses[p.cloud.id];
+        appliquerRecompenseGroupe(p, maRecompense);
         afficherButin({
           titre: resultat.titre,
           texte: 'Votre part de l’expédition partagée.',
-          lignes: resultat.lignes,
+          lignes: resultat.lignes.concat(maRecompense && maRecompense.lignesCoffre ? maRecompense.lignesCoffre : []),
           retour: 'groupe-ligne',
         });
       } else {

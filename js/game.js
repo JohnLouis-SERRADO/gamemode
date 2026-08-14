@@ -175,7 +175,12 @@ function chargerProfils() {
     etat.profils = (Array.isArray(brut) ? brut : [])
       .filter((p) => p && p.stats && p.equipement && Array.isArray(p.inventaire) && Array.isArray(p.competences));
     etat.actifId = localStorage.getItem(CLE_STOCKAGE_ACTIF) || null;
-    etat.profils.forEach((p) => bornerVie(p));
+    etat.profils.forEach((p) => {
+      // Migration des sauvegardes d'avant les races et la chance.
+      if (!p.race) p.race = 'humain';
+      if (p.stats.cha == null) p.stats.cha = 2;
+      bornerVie(p);
+    });
   } catch (e) {
     etat.profils = [];
     etat.actifId = null;
@@ -196,7 +201,7 @@ function sauvegarder(p) {
 
 function donneesCloud(p) {
   return {
-    nom: p.nom, avatar: p.avatar, stats: p.stats, niveau: p.niveau, xp: p.xp,
+    nom: p.nom, avatar: p.avatar, race: p.race, stats: p.stats, niveau: p.niveau, xp: p.xp,
     pointsEnAttente: p.pointsEnAttente, competencesEnAttente: p.competencesEnAttente,
     competences: p.competences, po: p.po, inventaire: p.inventaire,
     equipement: p.equipement, hp: p.hp, mp: p.mp,
@@ -211,6 +216,7 @@ function nouveauPersonnage(base) {
     id: uid(),
     nom: base.nom,
     avatar: base.avatar,
+    race: base.race || 'humain',
     stats: { ...base.stats },
     niveau: 1,
     xp: 0,
@@ -246,6 +252,7 @@ function bornerVie(p) {
 // Gagne de l'XP ; une montée de niveau soigne entièrement (le fameux « ding »).
 function gagnerXp(p, xp) {
   const avant = p.niveau;
+  if (p.race === 'humain') xp = Math.round(xp * 1.1); // Ambition
   p.xp += xp;
   const apres = niveauPour(p.xp);
   if (apres > avant) {
@@ -309,10 +316,13 @@ function rendreTitre() {
 // Création de personnage
 // =====================================================================
 function demarrerCreation() {
+  const stats = {};
+  Object.keys(CARACS).forEach((cle) => { stats[cle] = STAT_BASE; });
   etat.brouillon = {
     nom: '',
     avatar: AVATARS[etat.profils.length % AVATARS.length],
-    stats: { for: STAT_BASE, int: STAT_BASE, agi: STAT_BASE, vit: STAT_BASE },
+    race: 'humain',
+    stats,
     competences: new Set(),
   };
   el('creation-nom').value = '';
@@ -323,7 +333,8 @@ function demarrerCreation() {
 
 function pointsRestants() {
   const b = etat.brouillon;
-  const utilises = b.stats.for + b.stats.int + b.stats.agi + b.stats.vit - 4 * STAT_BASE;
+  const cles = Object.keys(CARACS);
+  const utilises = cles.reduce((somme, cle) => somme + b.stats[cle], 0) - cles.length * STAT_BASE;
   return POINTS_CREATION - utilises;
 }
 
@@ -338,6 +349,16 @@ function rendreCreation() {
     btn.textContent = a;
     btn.addEventListener('click', () => { b.avatar = a; rendreCreation(); });
     zoneAvatars.appendChild(btn);
+  });
+
+  const zoneRaces = el('creation-races');
+  zoneRaces.innerHTML = '';
+  Object.entries(RACES).forEach(([cle, race]) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-choix btn-race' + (b.race === cle ? ' selectionne' : '');
+    btn.innerHTML = `${race.emoji} <strong>${race.nom}</strong><span class="race-passif">${race.passif} — ${race.desc}</span>`;
+    btn.addEventListener('click', () => { b.race = cle; rendreCreation(); });
+    zoneRaces.appendChild(btn);
   });
 
   const zoneModeles = el('creation-modeles');
@@ -389,6 +410,7 @@ function rendreCreation() {
       .forEach(([id, comp]) => {
         grille.appendChild(carteCompetence(id, comp, {
           selectionnee: b.competences.has(id),
+          stats: b.stats,
           cliquable: true,
           surClic: () => {
             if (b.competences.has(id)) b.competences.delete(id);
@@ -413,14 +435,12 @@ function carteCompetence(id, comp, options = {}) {
   carte.className = 'carte-competence'
     + (options.selectionnee ? ' selectionnee' : '')
     + (options.cliquable ? ' cliquable' : '');
-  const cibleTexte = {
-    ennemi: 'un ennemi', ennemis: 'tous les ennemis',
-    allie: 'un allié', allies: 'tout le groupe', soi: 'soi-même',
-  }[comp.cible];
+  // Détails chiffrés calculés avec les stats fournies (héros ou brouillon).
+  const infos = detailsCompetence(comp, options.stats || {});
   carte.innerHTML = `
     <div class="comp-entete">${comp.emoji} <strong>${comp.nom}</strong></div>
     <div class="comp-desc">${comp.desc}</div>
-    <div class="comp-infos">🎯 ${cibleTexte} · 💧 ${comp.coutMp} PM${comp.cooldown ? ` · ⏳ ${comp.cooldown} tours` : ''}</div>`;
+    <div class="comp-infos">${infos.join(' · ')}</div>`;
   if (options.cliquable && options.surClic) rendreCliquable(carte, options.surClic);
   return carte;
 }
@@ -428,7 +448,7 @@ function carteCompetence(id, comp, options = {}) {
 function validerCreation() {
   const b = etat.brouillon;
   const nom = el('creation-nom').value.trim() || `Héros ${etat.profils.length + 1}`;
-  const p = nouveauPersonnage({ nom, avatar: b.avatar, stats: b.stats, competences: [...b.competences] });
+  const p = nouveauPersonnage({ nom, avatar: b.avatar, race: b.race, stats: b.stats, competences: [...b.competences] });
   etat.profils.push(p);
   etat.actifId = p.id;
   etat.equipe = [p.id];
@@ -456,13 +476,15 @@ function rendreHeros() {
   const pctXp = suivant ? Math.min(100, Math.round(((p.xp - base) / (suivant - base)) * 100)) : 100;
   const entete = document.createElement('div');
   entete.className = 'panneau heros-entete';
+  const race = raceDe(p);
   entete.innerHTML = `
     <span class="avatar-titan">${p.avatar}</span>
     <div class="heros-identite">
       <h2>${echapper(p.nom)} <span class="niveau">niveau ${p.niveau}</span></h2>
+      <div class="heros-race">${race.emoji} ${race.nom} — <em>${race.passif}</em> : ${race.desc}</div>
       <div class="barre xp"><div class="remplissage" style="width:${pctXp}%"></div>
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
-      <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${p.po} po · 💥 ${Math.round(5 + s.agi + s.crit)} % crit.</div>
+      <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${p.po} po · 💥 ${Math.round(5 + s.agi + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin</div>
     </div>`;
   zone.appendChild(entete);
 
@@ -507,6 +529,7 @@ function rendreHeros() {
       .filter(([id]) => !p.competences.includes(id))
       .forEach(([id, comp]) => {
         grille.appendChild(carteCompetence(id, comp, {
+          stats: s,
           cliquable: true,
           surClic: () => {
             p.competences.push(id);
@@ -522,21 +545,18 @@ function rendreHeros() {
     zone.appendChild(bloc);
   }
 
-  // --- Compétences connues ---
+  // --- Compétences connues (avec détails chiffrés) ---
   const blocComp = document.createElement('div');
   blocComp.className = 'panneau';
   blocComp.innerHTML = '<h3>Compétences connues</h3>';
-  const chips = document.createElement('div');
-  chips.className = 'rangee-chips';
+  const grilleComp = document.createElement('div');
+  grilleComp.className = 'grille-competences';
   p.competences.forEach((id) => {
     const comp = COMPETENCES[id];
-    const chip = document.createElement('span');
-    chip.className = 'chip';
-    chip.title = comp.desc;
-    chip.textContent = `${comp.emoji} ${comp.nom}`;
-    chips.appendChild(chip);
+    if (!comp) return;
+    grilleComp.appendChild(carteCompetence(id, comp, { stats: s }));
   });
-  blocComp.appendChild(chips);
+  blocComp.appendChild(grilleComp);
   zone.appendChild(blocComp);
 
   // --- Équipement ---
@@ -593,9 +613,9 @@ function rendreHeros() {
       const objet = OBJETS[entree.id];
       if (!objet) return;
       const carte = document.createElement('div');
-      carte.className = 'carte-objet';
+      carte.className = `carte-objet bord-rar-${rareteDe(objet)}`;
       carte.innerHTML = `
-        <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> <span class="objet-qte">×${entree.qte}</span></div>
+        <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)} <span class="objet-qte">×${entree.qte}</span></div>
         <div class="objet-desc">${objet.desc || ''}</div>
         ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
         ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}`;

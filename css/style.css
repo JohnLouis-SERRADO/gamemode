@@ -230,6 +230,61 @@ h4 { margin-bottom: 6px; }
 
 .point-reseau.actif-reseau { background: var(--ok); opacity: 1; }
 
+/* ----- Raretés des objets ----- */
+.rarete {
+  font-size: 0.72rem;
+  padding: 1px 7px;
+  border-radius: 10px;
+  border: 1px solid currentColor;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.rar-commun     { color: #9aa5b1; }
+.rar-inhabituel { color: #4ade80; }
+.rar-rare       { color: #60a5fa; }
+.rar-epique     { color: #c084fc; }
+.rar-legendaire { color: #f59e0b; }
+
+.bord-rar-inhabituel { border-left: 3px solid #4ade80; }
+.bord-rar-rare       { border-left: 3px solid #60a5fa; }
+.bord-rar-epique     { border-left: 3px solid #c084fc; }
+.bord-rar-legendaire { border-left: 3px solid #f59e0b; }
+
+.article-verrouille { opacity: 0.55; }
+
+/* ----- Races (création) ----- */
+.grille-races {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+
+.btn-race {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: left;
+}
+
+.btn-race .race-passif {
+  font-size: 0.78rem;
+  color: var(--texte-doux);
+  font-weight: normal;
+}
+
+.btn-race.selectionne {
+  border-color: var(--accent);
+  background: #33301c;
+}
+
+.heros-race {
+  font-size: 0.85rem;
+  color: var(--texte-doux);
+  margin: 2px 0 6px;
+}
+
 /* ----- Bandeau d'événement mondial ----- */
 #bandeau-evenement {
   background: linear-gradient(90deg, #2e2a1a, #33301c, #2e2a1a);

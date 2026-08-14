@@ -78,7 +78,10 @@ function demarrerCombat(options) {
   });
 
   // Identifiant de combat stable pour chaque héros (id cloud en groupe en ligne)
-  equipe.forEach((j) => { j.bid = j.bid || (j.cloud && j.cloud.id) || j.id; });
+  equipe.forEach((j) => {
+    j.bid = j.bid || (j.cloud && j.cloud.id) || j.id;
+    j.neufViesUtilisees = false; // le passif félin se recharge à chaque combat
+  });
 
   etat.combat = {
     genre: options.genre,
@@ -225,6 +228,13 @@ function debutTour(c) {
     journal(`💧 ${c.nom} régénère ${soin} PV.`);
   }
 
+  // Sève vitale (sylvain) : régénère 2 % des PV max à chaque tour.
+  if (c.race === 'sylvain' && c.hp < c.maxHp) {
+    const seve = Math.max(1, Math.round(c.maxHp * 0.02));
+    c.hp = Math.min(c.maxHp, c.hp + seve);
+    journal(`🌳 La sève vitale rend ${seve} PV à ${c.nom}.`);
+  }
+
   const skip = c.statuts.some((s) => s.type === 'etourdi');
 
   // La bénédiction (+30 % de dégâts) se consomme en AGISSANT : elle est
@@ -278,15 +288,19 @@ function infligerDegats(source, cible, brut, options = {}) {
   let d = varie(brut);
   if (source.statuts.some((s) => s.type === 'benediction')) d *= 1.3;
   if (source.statuts.some((s) => s.type === 'affaibli')) d *= 0.7;
+  // Sang de guerre (orc) : +15 % de dégâts sous 40 % de PV.
+  if (source.race === 'orc' && source.hp < source.maxHp * 0.4) d *= 1.15;
 
   let chanceCrit = 0.05 + (options.critBonus || 0);
   if (source.type === 'joueur') {
     const s = statsEffectives(source);
     chanceCrit += s.agi * 0.01 + (s.crit || 0) / 100;
+    if (source.race === 'elfe') chanceCrit += 0.05; // Précision millénaire
   }
   const crit = Math.random() < chanceCrit;
   if (crit) d *= 1.5;
   if (cible.defense) d *= 0.5;
+  if (cible.race === 'nain') d *= 0.9; // Peau de pierre
   d = Math.max(1, Math.round(d));
 
   let absorbe = 0;
@@ -303,6 +317,12 @@ function infligerDegats(source, cible, brut, options = {}) {
     cb.degatsBossMonde += Math.min(d, Math.max(0, cible.hp));
   }
   cible.hp -= d;
+  // Neuf vies (félin) : survit une fois par combat à un coup fatal.
+  if (cible.type === 'joueur' && cible.race === 'felin' && cible.hp <= 0 && !cible.neufViesUtilisees) {
+    cible.neufViesUtilisees = true;
+    cible.hp = 1;
+    journal(`🐱 ${cible.nom} retombe sur ses pattes : Neuf vies le laisse à 1 PV !`);
+  }
   return { degats: d, crit, absorbe };
 }
 
@@ -404,6 +424,13 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
       }
       break;
     }
+    case 'vol-or': {
+      const cb2 = etat.combat;
+      const butin = Math.max(1, Math.round(varie(4 + statDe(source, 'agi') * 1.2)));
+      cb2.orVole = (cb2.orVole || 0) + butin;
+      journal(`💰 ${source.nom} fait les poches de ${cible.nom} : +${butin} po au butin !`);
+      break;
+    }
   }
 }
 
@@ -483,13 +510,15 @@ function rendreActions(j) {
   btnDefense.addEventListener('click', () => surActionChoisie(j, { genre: 'defense' }));
   barre.appendChild(btnDefense);
 
+  const statsJoueur = statsEffectives(j);
   j.competences.forEach((compId) => {
     const comp = COMPETENCES[compId];
     if (!comp) return;
     const btn = document.createElement('button');
     btn.className = 'btn-action competence';
     const cd = j.cooldowns[compId] || 0;
-    let detail = `${comp.coutMp} PM`;
+    // Détails chiffrés : dégâts/soins estimés, effets, coût, recharge.
+    let detail = detailsCompetence(comp, statsJoueur).join(' · ');
     if (cd > 0) detail = `⏳ Encore ${cd} tour${cd > 1 ? 's' : ''}`;
     else if (j.mp < comp.coutMp) detail = `${comp.coutMp} PM — pas assez de mana`;
     btn.innerHTML = `${comp.emoji} <strong>${comp.nom}</strong><span class="action-detail">${detail}</span>`;

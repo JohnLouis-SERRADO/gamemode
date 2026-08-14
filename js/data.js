@@ -12,6 +12,7 @@ const CARACS = {
   int: { nom: 'Intelligence', emoji: '🧠', desc: 'Augmente les dégâts magiques, les soins et le mana' },
   agi: { nom: 'Agilité',      emoji: '🏃', desc: 'Augmente l’initiative et les chances de critique' },
   vit: { nom: 'Vitalité',     emoji: '❤️', desc: 'Augmente les points de vie' },
+  cha: { nom: 'Chance',       emoji: '🍀', desc: 'Augmente les trouvailles et la rareté du butin' },
 };
 
 const POINTS_CREATION = 10;   // points à répartir à la création
@@ -19,11 +20,126 @@ const STAT_BASE = 2;          // valeur de départ de chaque caractéristique
 const STAT_MAX_CREATION = 8;  // maximum par caractéristique à la création
 const NB_COMPETENCES = 4;     // compétences choisies à la création
 
+// =====================================================================
+// Races : un passif unique chacune
+// =====================================================================
+const RACES = {
+  humain:  { nom: 'Humain',  emoji: '🧑', passif: 'Ambition',             desc: '+10 % d’expérience gagnée.' },
+  elfe:    { nom: 'Elfe',    emoji: '🧝', passif: 'Précision millénaire', desc: '+5 % de chances de coup critique.' },
+  nain:    { nom: 'Nain',    emoji: '⛏️', passif: 'Peau de pierre',       desc: 'Dégâts subis réduits de 10 %.' },
+  orc:     { nom: 'Orc',     emoji: '👹', passif: 'Sang de guerre',       desc: '+15 % de dégâts sous 40 % de PV.' },
+  felin:   { nom: 'Félin',   emoji: '🐱', passif: 'Neuf vies',            desc: 'Une fois par combat, survit à un coup fatal avec 1 PV.' },
+  sylvain: { nom: 'Sylvain', emoji: '🌳', passif: 'Sève vitale',          desc: 'Régénère 2 % de ses PV max au début de chaque tour.' },
+};
+
+function raceDe(p) {
+  return RACES[p.race] || RACES.humain;
+}
+
+// =====================================================================
+// Raretés des objets
+// =====================================================================
+const RARETES = {
+  commun:     { nom: 'Commun',     poids: 100 },
+  inhabituel: { nom: 'Inhabituel', poids: 45 },
+  rare:       { nom: 'Rare',       poids: 16 },
+  epique:     { nom: 'Épique',     poids: 5 },
+  legendaire: { nom: 'Légendaire', poids: 1.2 },
+};
+
+function rareteDe(objet) {
+  return objet && objet.rarete ? objet.rarete : 'commun';
+}
+
+function etiquetteRarete(objet) {
+  const cle = rareteDe(objet);
+  return `<span class="rarete rar-${cle}">${RARETES[cle].nom}</span>`;
+}
+
+// Version texte brut (journal de butin) : rien pour le commun.
+function texteRarete(objet) {
+  const cle = rareteDe(objet);
+  return cle === 'commun' ? '' : ` 〔${RARETES[cle].nom}〕`;
+}
+
+// La chance améliore la probabilité de butin…
+function multChanceDrop(cha) {
+  return Math.min(2, 1 + (cha || 0) * 0.02);
+}
+
+// …et tire les coffres vers les hautes raretés.
+function tirerRarete(cha) {
+  const bonus = 1 + (cha || 0) * 0.06;
+  const entrees = Object.entries(RARETES).map(([cle, r]) => [
+    cle,
+    cle === 'commun' ? r.poids : r.poids * bonus,
+  ]);
+  let total = entrees.reduce((somme, [, poids]) => somme + poids, 0);
+  let tirage = Math.random() * total;
+  for (const [cle, poids] of entrees) {
+    tirage -= poids;
+    if (tirage <= 0) return cle;
+  }
+  return 'commun';
+}
+
 const CATEGORIES = {
   physique: '⚔️ Physique',
   magie: '🔮 Magie',
   soutien: '✨ Soutien',
 };
+
+// =====================================================================
+// Détails chiffrés d'une compétence pour un jeu de stats donné
+// =====================================================================
+const TEXTE_CIBLE = {
+  ennemi: 'un ennemi', ennemis: 'tous les ennemis',
+  allie: 'un allié', allies: 'tout le groupe', soi: 'soi-même',
+};
+
+function texteEffetCompetence(effet, s) {
+  switch (effet.type) {
+    case 'poison': {
+      const valeur = effet.degats != null
+        ? effet.degats
+        : Math.round(3 + (s[effet.stat || 'agi'] || 0) * (effet.stat === 'int' ? 0.5 : 0.6));
+      return `🧪 poison ≈${valeur}/tour (${effet.duree} t.)`;
+    }
+    case 'etourdi':
+      return `💫 étourdit${effet.chance != null && effet.chance < 1 ? ` (${Math.round(effet.chance * 100)} %)` : ''}`;
+    case 'affaibli': return `⬇️ −30 % dégâts (${effet.duree} t.)`;
+    case 'bouclier': return `🛡️ bouclier ≈${Math.round(8 + (s.int || 0) * 1.5)} (${effet.duree} t.)`;
+    case 'benediction': return `🙏 +30 % dégâts (${effet.duree} t.)`;
+    case 'provocation': return `😤 attire les coups + bouclier ≈${Math.round(4 + (s.for || 0))}`;
+    case 'regen': return `💧 régén. ≈${Math.round(3 + (s.int || 0) * 0.8)}/tour (${effet.duree} t.)`;
+    case 'mana': return `🧘 +${effet.valeur} PM`;
+    case 'drain': return `🧛 rend ${Math.round(effet.part * 100)} % des dégâts en PV`;
+    case 'pacte': return `🩸 −${Math.round(effet.partPv * 100)} % PV max → +${effet.mana} PM`;
+    case 'vol-or': return `💰 vole ≈${Math.round(4 + (s.agi || 0) * 1.2)} po`;
+    default: return '';
+  }
+}
+
+// Renvoie des lignes chiffrées (dégâts, soins, effets, coût) calculées
+// avec les stats effectives fournies.
+function detailsCompetence(comp, s) {
+  const parts = [];
+  if (comp.type === 'degats') {
+    const brut = Math.round(comp.puissance + (s[comp.stat] || 0) * comp.ratio);
+    parts.push(`⚔️ ≈${brut} dégâts${comp.coups ? ` ×${comp.coups} coups` : ''}`);
+  } else if (comp.type === 'soin') {
+    parts.push(`💚 ≈${Math.round(comp.puissance + (s[comp.stat] || 0) * comp.ratio)} PV`);
+  }
+  if (comp.critBonus) parts.push(`💥 +${Math.round(comp.critBonus * 100)} % crit.`);
+  if (comp.effet) {
+    const texte = texteEffetCompetence(comp.effet, s);
+    if (texte) parts.push(texte);
+  }
+  parts.push(`🎯 ${TEXTE_CIBLE[comp.cible]}`);
+  parts.push(comp.coutMp > 0 ? `💧 ${comp.coutMp} PM` : '💧 gratuit');
+  if (comp.cooldown) parts.push(`⏳ ${comp.cooldown} t.`);
+  return parts;
+}
 
 // cible : 'ennemi' | 'ennemis' | 'allie' | 'allies' | 'soi'
 // type  : 'degats' | 'soin' | 'utilitaire'
@@ -220,49 +336,330 @@ const COMPETENCES = {
     effet: { type: 'affaibli', duree: 2 },
     desc: 'Un accord dissonant blesse tous les ennemis et les affaiblit (−30 % dégâts).',
   },
+
+  // ----- Voie du Rôdeur -----
+  'morsure-du-loup': {
+    nom: 'Morsure du loup', emoji: '🐺', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'agi', puissance: 4, ratio: 0.8, coups: 2, coutMp: 5, cooldown: 2,
+    desc: 'Votre compagnon loup mord deux fois la cible.',
+  },
+  'ronces-etrangleuses': {
+    nom: 'Ronces étrangleuses', emoji: '🌿', categorie: 'physique', type: 'degats', cible: 'ennemis',
+    stat: 'agi', puissance: 3, ratio: 0.6, coutMp: 9, cooldown: 4,
+    effet: { type: 'poison', duree: 2 },
+    desc: 'Des ronces lacèrent et empoisonnent tous les ennemis.',
+  },
+  'instinct-sauvage': {
+    nom: 'Instinct sauvage', emoji: '👁️', categorie: 'soutien', type: 'utilitaire', cible: 'soi',
+    stat: 'agi', coutMp: 6, cooldown: 5,
+    effet: { type: 'benediction', duree: 3 },
+    desc: 'Vos sens s’aiguisent : +30 % de dégâts pendant 3 tours.',
+  },
+
+  // ----- Voie de l'Assassin -----
+  'lame-dans-l-ombre': {
+    nom: 'Lame dans l’ombre', emoji: '🌑', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'agi', puissance: 8, ratio: 1.3, coutMp: 5, cooldown: 2, critBonus: 0.35,
+    desc: 'Une attaque surgie de nulle part, presque toujours critique.',
+  },
+  'voile-de-fumee': {
+    nom: 'Voile de fumée', emoji: '💨', categorie: 'soutien', type: 'utilitaire', cible: 'soi',
+    stat: 'int', coutMp: 6, cooldown: 4,
+    effet: { type: 'bouclier', duree: 2 },
+    desc: 'Un nuage de fumée brouille les coups ennemis (bouclier).',
+  },
+  'mise-a-mort': {
+    nom: 'Mise à mort', emoji: '☠️', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'agi', puissance: 12, ratio: 2.1, coutMp: 10, cooldown: 5, critBonus: 0.15,
+    desc: 'Le coup de grâce de l’assassin. Dévastateur.',
+  },
+
+  // ----- Voie du Berserker -----
+  'dechainement': {
+    nom: 'Déchaînement', emoji: '🪓', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'for', puissance: 9, ratio: 1.7, coutMp: 6, cooldown: 3,
+    desc: 'Un coup de hache d’une violence inouïe.',
+  },
+  'cri-de-guerre': {
+    nom: 'Cri de guerre', emoji: '📢', categorie: 'soutien', type: 'utilitaire', cible: 'soi',
+    stat: 'for', coutMp: 5, cooldown: 5,
+    effet: { type: 'benediction', duree: 2 },
+    desc: 'Un rugissement qui décuple votre rage : +30 % de dégâts.',
+  },
+  'fureur-sanglante': {
+    nom: 'Fureur sanglante', emoji: '🩸', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'for', puissance: 6, ratio: 1.2, coutMp: 7, cooldown: 3,
+    effet: { type: 'drain', part: 0.25 },
+    desc: 'Frappe et récupère 25 % des dégâts en PV. Le sang appelle le sang.',
+  },
+
+  // ----- Voie du Templier -----
+  'verdict-de-fer': {
+    nom: 'Verdict de fer', emoji: '⚙️', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'for', puissance: 5, ratio: 1.0, coutMp: 7, cooldown: 4,
+    effet: { type: 'etourdi', duree: 1, chance: 0.5 },
+    desc: 'Le marteau du jugement : 50 % de chances d’étourdir.',
+  },
+
+  // ----- Voie de l'Élémentaliste -----
+  'orage-elementaire': {
+    nom: 'Orage élémentaire', emoji: '🌩️', categorie: 'magie', type: 'degats', cible: 'ennemis',
+    stat: 'int', puissance: 5, ratio: 0.95, coutMp: 10, cooldown: 3,
+    desc: 'Feu, glace et foudre s’abattent sur tous les ennemis.',
+  },
+  'lance-de-glace': {
+    nom: 'Lance de glace', emoji: '🧊', categorie: 'magie', type: 'degats', cible: 'ennemi',
+    stat: 'int', puissance: 7, ratio: 1.25, coutMp: 6, cooldown: 3,
+    effet: { type: 'etourdi', duree: 1, chance: 0.3 },
+    desc: 'Un pieu de glace qui peut figer la cible (30 %).',
+  },
+  'bouclier-de-lave': {
+    nom: 'Bouclier de lave', emoji: '🌋', categorie: 'magie', type: 'utilitaire', cible: 'soi',
+    stat: 'int', coutMp: 7, cooldown: 4,
+    effet: { type: 'bouclier', duree: 3 },
+    desc: 'Une carapace de magma en fusion vous protège.',
+  },
+
+  // ----- Voie du Druide -----
+  'griffes-d-ours': {
+    nom: 'Griffes d’ours', emoji: '🐻', categorie: 'magie', type: 'degats', cible: 'ennemi',
+    stat: 'int', puissance: 8, ratio: 1.35, coutMp: 5, cooldown: 2,
+    desc: 'L’esprit de l’ours frappe à travers vous.',
+  },
+  'essaim-piqueur': {
+    nom: 'Essaim piqueur', emoji: '🐝', categorie: 'magie', type: 'degats', cible: 'ennemis',
+    stat: 'int', puissance: 2, ratio: 0.55, coutMp: 9, cooldown: 4,
+    effet: { type: 'poison', duree: 2, stat: 'int' },
+    desc: 'Un nuage d’insectes pique et empoisonne tous les ennemis.',
+  },
+  'seve-regeneratrice': {
+    nom: 'Sève régénératrice', emoji: '🌱', categorie: 'soutien', type: 'utilitaire', cible: 'allies',
+    stat: 'int', coutMp: 9, cooldown: 5,
+    effet: { type: 'regen', duree: 3 },
+    desc: 'La sève de la forêt régénère tout le groupe pendant 3 tours.',
+  },
+
+  // ----- Voie de l'Invocateur -----
+  'familier-flamboyant': {
+    nom: 'Familier flamboyant', emoji: '🐦‍🔥', categorie: 'magie', type: 'degats', cible: 'ennemi',
+    stat: 'int', puissance: 3, ratio: 0.75, coups: 2, coutMp: 6, cooldown: 2,
+    desc: 'Votre phénix fond deux fois sur la cible.',
+  },
+  'horde-spectrale': {
+    nom: 'Horde spectrale', emoji: '👻', categorie: 'magie', type: 'degats', cible: 'ennemis',
+    stat: 'int', puissance: 4, ratio: 0.85, coutMp: 10, cooldown: 3,
+    desc: 'Une meute d’esprits déferle sur tous les ennemis.',
+  },
+  'pacte-du-golem': {
+    nom: 'Pacte du golem', emoji: '🗿', categorie: 'magie', type: 'utilitaire', cible: 'soi',
+    stat: 'int', coutMp: 8, cooldown: 5,
+    effet: { type: 'bouclier', duree: 3 },
+    desc: 'Un golem de pierre s’interpose entre vous et le danger.',
+  },
+
+  // ----- Voie du Pyromancien -----
+  'deflagration': {
+    nom: 'Déflagration', emoji: '💥', categorie: 'magie', type: 'degats', cible: 'ennemi',
+    stat: 'int', puissance: 12, ratio: 1.8, coutMp: 9, cooldown: 4,
+    desc: 'Une explosion concentrée d’une chaleur insoutenable.',
+  },
+  'mur-de-flammes': {
+    nom: 'Mur de flammes', emoji: '🔥', categorie: 'magie', type: 'degats', cible: 'ennemis',
+    stat: 'int', puissance: 3, ratio: 0.65, coutMp: 10, cooldown: 4,
+    effet: { type: 'poison', duree: 2, stat: 'int' },
+    desc: 'Les flammes lèchent tous les ennemis et les brûlent sur la durée.',
+  },
+  'combustion': {
+    nom: 'Combustion', emoji: '🎇', categorie: 'magie', type: 'degats', cible: 'ennemi',
+    stat: 'int', puissance: 6, ratio: 1.1, coutMp: 7, cooldown: 3,
+    effet: { type: 'affaibli', duree: 2 },
+    desc: 'Enflamme la cible : ses coups perdent 30 % de puissance.',
+  },
+
+  // ----- Voie du Givremage -----
+  'fleche-de-givre': {
+    nom: 'Flèche de givre', emoji: '❄️', categorie: 'magie', type: 'degats', cible: 'ennemi',
+    stat: 'int', puissance: 6, ratio: 1.15, coutMp: 5, cooldown: 2,
+    effet: { type: 'etourdi', duree: 1, chance: 0.35 },
+    desc: 'Un trait glacial qui peut figer la cible (35 %).',
+  },
+  'blizzard': {
+    nom: 'Blizzard', emoji: '🌨️', categorie: 'magie', type: 'degats', cible: 'ennemis',
+    stat: 'int', puissance: 3, ratio: 0.7, coutMp: 11, cooldown: 4,
+    effet: { type: 'affaibli', duree: 2 },
+    desc: 'Une tempête de neige qui blesse et engourdit tous les ennemis.',
+  },
+  'armure-de-glace': {
+    nom: 'Armure de glace', emoji: '🛡️', categorie: 'magie', type: 'utilitaire', cible: 'soi',
+    stat: 'int', coutMp: 6, cooldown: 4,
+    effet: { type: 'bouclier', duree: 3 },
+    desc: 'Une carapace de glace absorbe les prochains coups.',
+  },
+
+  // ----- Voie du Chaman -----
+  'totem-tonnerre': {
+    nom: 'Totem tonnerre', emoji: '🗿', categorie: 'magie', type: 'degats', cible: 'ennemis',
+    stat: 'int', puissance: 4, ratio: 0.8, coutMp: 9, cooldown: 3,
+    desc: 'Un totem foudroie tous les ennemis.',
+  },
+  'chaine-d-eclairs': {
+    nom: 'Chaîne d’éclairs', emoji: '⚡', categorie: 'magie', type: 'degats', cible: 'ennemi',
+    stat: 'int', puissance: 3, ratio: 0.7, coups: 2, coutMp: 6, cooldown: 2,
+    desc: 'La foudre frappe, rebondit, et frappe encore.',
+  },
+  'totem-gardien': {
+    nom: 'Totem gardien', emoji: '🪵', categorie: 'soutien', type: 'utilitaire', cible: 'allies',
+    stat: 'int', coutMp: 9, cooldown: 5,
+    effet: { type: 'bouclier', duree: 2 },
+    desc: 'Un totem protecteur couvre tout le groupe d’un bouclier.',
+  },
+  'esprits-ancetres': {
+    nom: 'Esprits des ancêtres', emoji: '🌀', categorie: 'soutien', type: 'utilitaire', cible: 'allies',
+    stat: 'int', coutMp: 8, cooldown: 5,
+    effet: { type: 'regen', duree: 3 },
+    desc: 'Les ancêtres veillent : tout le groupe régénère des PV.',
+  },
+
+  // ----- Voie du Voleur -----
+  'vol-a-la-tire': {
+    nom: 'Vol à la tire', emoji: '💰', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'agi', puissance: 4, ratio: 0.9, coutMp: 4, cooldown: 2,
+    effet: { type: 'vol-or' },
+    desc: 'Frappe la cible et lui fait les poches : de l’or en plus au butin !',
+  },
+  'coup-bas': {
+    nom: 'Coup bas', emoji: '🦵', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'agi', puissance: 5, ratio: 1.0, coutMp: 6, cooldown: 4,
+    effet: { type: 'etourdi', duree: 1, chance: 0.4 },
+    desc: 'Un coup peu glorieux mais efficace : 40 % de chances d’étourdir.',
+  },
+  'poussiere-aveuglante': {
+    nom: 'Poussière aveuglante', emoji: '🌫️', categorie: 'physique', type: 'degats', cible: 'ennemis',
+    stat: 'agi', puissance: 1, ratio: 0.4, coutMp: 7, cooldown: 4,
+    effet: { type: 'affaibli', duree: 2 },
+    desc: 'Une poignée de sable dans les yeux : tous les ennemis frappent moins fort.',
+  },
+
+  // ----- Voie du Danselame -----
+  'valse-des-lames': {
+    nom: 'Valse des lames', emoji: '🌸', categorie: 'physique', type: 'degats', cible: 'ennemis',
+    stat: 'agi', puissance: 3, ratio: 0.75, coutMp: 8, cooldown: 3,
+    desc: 'Une danse mortelle qui effleure tous les ennemis.',
+  },
+  'estocade-gracieuse': {
+    nom: 'Estocade gracieuse', emoji: '🤺', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'agi', puissance: 7, ratio: 1.35, coutMp: 5, cooldown: 2, critBonus: 0.25,
+    desc: 'Un assaut élégant et précis, souvent critique.',
+  },
+  'danse-du-vent': {
+    nom: 'Danse du vent', emoji: '🍃', categorie: 'soutien', type: 'soin', cible: 'soi',
+    stat: 'agi', puissance: 4, ratio: 0.7, coutMp: 0, cooldown: 4,
+    effet: { type: 'mana', valeur: 5 },
+    desc: 'Un pas de côté pour souffler : récupère des PV et 5 PM.',
+  },
 };
 
 // Modèles rapides : pré-remplissent stats + compétences (modifiables ensuite).
 const MODELES = [
   {
     nom: 'Guerrier', emoji: '⚔️',
-    stats: { for: 7, int: 2, agi: 3, vit: 6 },
+    stats: { for: 7, int: 2, agi: 3, vit: 6, cha: 2 },
     competences: ['frappe-heroique', 'coup-etourdissant', 'provocation', 'second-souffle'],
   },
   {
     nom: 'Mage', emoji: '🔮',
-    stats: { for: 2, int: 8, agi: 4, vit: 4 },
+    stats: { for: 2, int: 8, agi: 4, vit: 4, cha: 2 },
     competences: ['boule-de-feu', 'eclair', 'nova-de-givre', 'bouclier-magique'],
   },
   {
     nom: 'Archer', emoji: '🏹',
-    stats: { for: 4, int: 2, agi: 8, vit: 4 },
+    stats: { for: 4, int: 2, agi: 8, vit: 4, cha: 2 },
     competences: ['tir-precis', 'pluie-de-fleches', 'lame-empoisonnee', 'concentration'],
   },
   {
     nom: 'Clerc', emoji: '🌿',
-    stats: { for: 3, int: 6, agi: 3, vit: 6 },
+    stats: { for: 3, int: 6, agi: 3, vit: 6, cha: 2 },
     competences: ['soin', 'cercle-de-soin', 'benediction', 'regeneration'],
   },
   {
     nom: 'Paladin', emoji: '⚖️',
-    stats: { for: 5, int: 4, agi: 2, vit: 7 },
+    stats: { for: 5, int: 4, agi: 2, vit: 7, cha: 2 },
     competences: ['chatiment-sacre', 'jugement', 'aura-protection', 'imposition-mains'],
   },
   {
     nom: 'Nécromancien', emoji: '💀',
-    stats: { for: 2, int: 8, agi: 3, vit: 5 },
+    stats: { for: 2, int: 8, agi: 3, vit: 5, cha: 2 },
     competences: ['faux-spectrale', 'peste', 'pacte-sombre', 'drain-de-vie'],
   },
   {
     nom: 'Moine', emoji: '🥋',
-    stats: { for: 4, int: 2, agi: 7, vit: 5 },
+    stats: { for: 4, int: 2, agi: 7, vit: 5, cha: 2 },
     competences: ['rafale-de-coups', 'paume-zephyr', 'meditation-profonde', 'second-souffle'],
   },
   {
     nom: 'Barde', emoji: '🎵',
-    stats: { for: 3, int: 6, agi: 5, vit: 4 },
+    stats: { for: 3, int: 6, agi: 5, vit: 4, cha: 2 },
     competences: ['chant-heroique', 'melodie-apaisante', 'fausse-note', 'soin'],
+  },
+  {
+    nom: 'Rôdeur', emoji: '🐺',
+    stats: { for: 4, int: 2, agi: 7, vit: 4, cha: 3 },
+    competences: ['morsure-du-loup', 'tir-precis', 'ronces-etrangleuses', 'instinct-sauvage'],
+  },
+  {
+    nom: 'Assassin', emoji: '🗡️',
+    stats: { for: 3, int: 2, agi: 8, vit: 3, cha: 4 },
+    competences: ['lame-dans-l-ombre', 'lame-empoisonnee', 'voile-de-fumee', 'mise-a-mort'],
+  },
+  {
+    nom: 'Berserker', emoji: '🪓',
+    stats: { for: 8, int: 1, agi: 4, vit: 5, cha: 2 },
+    competences: ['dechainement', 'cri-de-guerre', 'tourbillon', 'fureur-sanglante'],
+  },
+  {
+    nom: 'Templier', emoji: '🛡️',
+    stats: { for: 6, int: 3, agi: 1, vit: 8, cha: 2 },
+    competences: ['frappe-heroique', 'provocation', 'bouclier-magique', 'verdict-de-fer'],
+  },
+  {
+    nom: 'Élémentaliste', emoji: '🌪️',
+    stats: { for: 1, int: 8, agi: 3, vit: 4, cha: 4 },
+    competences: ['orage-elementaire', 'boule-de-feu', 'lance-de-glace', 'bouclier-de-lave'],
+  },
+  {
+    nom: 'Druide', emoji: '🐻',
+    stats: { for: 3, int: 6, agi: 2, vit: 6, cha: 3 },
+    competences: ['griffes-d-ours', 'essaim-piqueur', 'seve-regeneratrice', 'soin'],
+  },
+  {
+    nom: 'Invocateur', emoji: '🐉',
+    stats: { for: 2, int: 7, agi: 3, vit: 4, cha: 4 },
+    competences: ['familier-flamboyant', 'horde-spectrale', 'pacte-du-golem', 'drain-de-vie'],
+  },
+  {
+    nom: 'Pyromancien', emoji: '🔥',
+    stats: { for: 2, int: 8, agi: 2, vit: 4, cha: 4 },
+    competences: ['deflagration', 'mur-de-flammes', 'boule-de-feu', 'combustion'],
+  },
+  {
+    nom: 'Givremage', emoji: '❄️',
+    stats: { for: 1, int: 8, agi: 3, vit: 5, cha: 3 },
+    competences: ['fleche-de-givre', 'nova-de-givre', 'blizzard', 'armure-de-glace'],
+  },
+  {
+    nom: 'Chaman', emoji: '🌩️',
+    stats: { for: 3, int: 6, agi: 2, vit: 5, cha: 4 },
+    competences: ['totem-tonnerre', 'chaine-d-eclairs', 'totem-gardien', 'esprits-ancetres'],
+  },
+  {
+    nom: 'Voleur', emoji: '💰',
+    stats: { for: 3, int: 2, agi: 7, vit: 3, cha: 5 },
+    competences: ['vol-a-la-tire', 'coup-bas', 'poussiere-aveuglante', 'lame-empoisonnee'],
+  },
+  {
+    nom: 'Danselame', emoji: '🌸',
+    stats: { for: 4, int: 2, agi: 7, vit: 4, cha: 3 },
+    competences: ['valse-des-lames', 'estocade-gracieuse', 'danse-du-vent', 'rafale-de-coups'],
   },
 ];
 
@@ -309,7 +706,12 @@ function statsEffectives(p) {
   // Les héros distants (expéditions multi-écrans) arrivent avec leurs
   // stats effectives déjà calculées sur leur propre appareil.
   if (p.statsEff) return { ...p.statsEff };
-  const s = { for: p.stats.for, int: p.stats.int, agi: p.stats.agi, vit: p.stats.vit, pvMax: 0, pmMax: 0, crit: 0 };
+  // Combattant reconstruit sans stats (état réseau incomplet) : zéros sûrs.
+  if (!p.stats) return { for: 0, int: 0, agi: 0, vit: 0, cha: 0, pvMax: 0, pmMax: 0, crit: 0 };
+  const s = {
+    for: p.stats.for, int: p.stats.int, agi: p.stats.agi, vit: p.stats.vit,
+    cha: p.stats.cha || 0, pvMax: 0, pmMax: 0, crit: 0,
+  };
   Object.values(p.equipement || {}).forEach((idObjet) => {
     if (!idObjet) return;
     const objet = OBJETS[idObjet];

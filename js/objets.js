@@ -78,6 +78,10 @@ const OBJETS = {
   'anneau-sanguin':    { nom: 'Anneau sanguin', emoji: '🩸', type: 'equipement', slot: 'accessoire', niveau: 11, prix: 300, vendeur: 'antiquaire', bonus: { for: 3, pvMax: 15 }, desc: 'Bat au rythme de votre cœur.' },
   'orbe-des-dunes':    { nom: 'Orbe des dunes', emoji: '🔮', type: 'equipement', slot: 'accessoire', niveau: 13, prixVente: 130, bonus: { int: 3, agi: 2, crit: 2 }, desc: 'Se façonne à l’atelier avec des perles des sables.' },
 
+  'potion-supreme-soin': { nom: 'Potion suprême de soin', emoji: '🍷', type: 'consommable', rarete: 'rare', prixVente: 60, effet: { type: 'pv', valeur: 120 }, desc: 'Rend 120 PV. Se distille à l’atelier.' },
+  'potion-supreme-mana': { nom: 'Potion suprême de mana', emoji: '🍾', type: 'consommable', rarete: 'rare', prixVente: 70, effet: { type: 'pm', valeur: 60 }, desc: 'Rend 60 PM. Se distille à l’atelier.' },
+  'bombe-ardente':       { nom: 'Bombe ardente', emoji: '🧨', type: 'consommable', rarete: 'rare', prixVente: 55, effet: { type: 'bombe', valeur: 50, chanceEtourdi: 0.15 }, desc: '~50 dégâts de feu à tous les ennemis (en combat).' },
+
   'antidote':          { nom: 'Antidote', emoji: '🧴', type: 'consommable', prix: 12, vendeur: 'antiquaire', effet: { type: 'antidote' }, desc: 'Dissipe le poison (en combat).' },
   'bombe-de-givre':    { nom: 'Bombe de givre', emoji: '💣', type: 'consommable', prix: 45, vendeur: 'antiquaire', effet: { type: 'bombe', valeur: 30, chanceEtourdi: 0.25 }, desc: 'Souffle glacial : ~30 dégâts à tous les ennemis, 25 % de chances de les étourdir.' },
   'elixir-heroique':   { nom: 'Élixir héroïque', emoji: '🏺', type: 'consommable', prix: 55, vendeur: 'antiquaire', effet: { type: 'elixir-benediction', duree: 3 }, desc: '+30 % de dégâts pendant 3 tours (en combat).' },
@@ -106,7 +110,44 @@ const OBJETS = {
   'ecaille-draconique': { nom: 'Écaille draconique', emoji: '🐲', type: 'materiau', prixVente: 80, desc: 'Le matériau le plus précieux du royaume.' },
   'lotus-noir':         { nom: 'Lotus noir', emoji: '🪷', type: 'materiau', prixVente: 28, desc: 'Ne fleurit que dans la brume des marais.' },
   'perle-des-sables':   { nom: 'Perle des sables', emoji: '💠', type: 'materiau', prixVente: 55, desc: 'Le désert la polit pendant un siècle.' },
+
+  // ----- Trophées uniques des boss (trouvés dans leurs coffres) -----
+  'croc-de-l-alpha':      { nom: 'Croc de l’Alpha', emoji: '🐺', type: 'equipement', slot: 'accessoire', niveau: 4,  rarete: 'epique',     prixVente: 120, bonus: { for: 3, agi: 2 }, desc: 'Trophée du Loup Alpha des Plaines.' },
+  'couronne-de-soie':     { nom: 'Couronne de soie', emoji: '🕷️', type: 'equipement', slot: 'tete',       niveau: 7,  rarete: 'epique',     prixVente: 160, bonus: { agi: 3, int: 2, pmMax: 8 }, desc: 'Trophée de la Matriarche des Murmures.' },
+  'pagne-du-chef-orc':    { nom: 'Pagne du chef orc', emoji: '👹', type: 'equipement', slot: 'jambes',     niveau: 9,  rarete: 'epique',     prixVente: 190, bonus: { for: 3, vit: 3, pvMax: 15 }, desc: 'Trophée du Chef de guerre des Collines.' },
+  'coeur-de-l-hydre':     { nom: 'Cœur de l’Hydre', emoji: '🐉', type: 'equipement', slot: 'accessoire', niveau: 11, rarete: 'epique',     prixVente: 240, bonus: { int: 4, vit: 2, pmMax: 12 }, desc: 'Trophée de l’Hydre des brumes. Il bat encore.' },
+  'sceau-du-roi-dechu':   { nom: 'Sceau du Roi déchu', emoji: '💍', type: 'equipement', slot: 'accessoire', niveau: 13, rarete: 'legendaire', prixVente: 320, bonus: { int: 5, cha: 2, crit: 3 }, desc: 'Trophée du maître des Cryptes Oubliées.' },
+  'dent-du-ver':          { nom: 'Dent du Ver colossal', emoji: '🪱', type: 'equipement', slot: 'arme',       niveau: 16, rarete: 'legendaire', prixVente: 400, bonus: { for: 12, cha: 3, crit: 4 }, desc: 'Trophée du Ver des sables. Encore acérée.' },
+  'noyau-de-l-ancien':    { nom: 'Noyau de l’Ancien', emoji: '🌋', type: 'equipement', slot: 'accessoire', niveau: 17, rarete: 'legendaire', prixVente: 450, bonus: { vit: 5, pvMax: 30, cha: 2 }, desc: 'Trophée de l’Élémentaire ancien des Pics.' },
+  'larme-du-gardien':     { nom: 'Larme du Gardien', emoji: '💧', type: 'equipement', slot: 'accessoire', niveau: 19, rarete: 'legendaire', prixVente: 600, bonus: { for: 4, int: 4, agi: 4, cha: 3 }, desc: 'Trophée du Gardien éternel des Profondeurs.' },
 };
+
+// Objet unique offert par le coffre de chaque boss de zone.
+const COFFRES_BOSS = {
+  loupAlpha: 'croc-de-l-alpha',
+  araigneeMatriarche: 'couronne-de-soie',
+  chefOrc: 'pagne-du-chef-orc',
+  hydreBrumes: 'coeur-de-l-hydre',
+  roiDechu: 'sceau-du-roi-dechu',
+  verDesSables: 'dent-du-ver',
+  elementaireAncien: 'noyau-de-l-ancien',
+  gardienEternel: 'larme-du-gardien',
+};
+
+// Raretés des objets historiques (tout le reste est « commun »).
+const RARETES_EXISTANTES = {
+  inhabituel: ['lame-de-fer', 'baton-sorcier', 'arc-chasse', 'casque-fer', 'diademe-mage',
+    'cotte-mailles', 'robe-enchantee', 'grande-potion-soin', 'grande-potion-mana', 'antidote',
+    'bombe-de-givre', 'pendentif-lunaire'],
+  rare: ['epee-chevalier', 'sceptre-runique', 'arc-elfique', 'heaume-chevalier', 'plastron-fer',
+    'broche-scarabee', 'anneau-sanguin', 'elixir-heroique'],
+  epique: ['croc-de-guerre', 'baton-tempetes', 'arc-precision', 'couronne-mystique',
+    'orbe-des-dunes', 'armure-draconique', 'jambieres-zephyr', 'coeur-givre'],
+  legendaire: ['lame-crepuscule', 'sceptre-neant', 'arc-du-vent', 'oeil-dragon'],
+};
+Object.entries(RARETES_EXISTANTES).forEach(([rarete, ids]) => {
+  ids.forEach((id) => { if (OBJETS[id]) OBJETS[id].rarete = rarete; });
+});
 
 const PART_REVENTE = 0.4; // un équipement/consommable se revend 40 % de son prix
 
@@ -134,6 +175,9 @@ const RECETTES = [
   { resultat: 'antidote',           niveau: 8,  po: 5,   materiaux: { 'lotus-noir': 1, 'herbe-lunaire': 1 } },
   { resultat: 'arc-elfique',        niveau: 8,  po: 80,  materiaux: { 'bois-chene': 2, 'soie-araignee': 2 } },
   { resultat: 'elixir-heroique',    niveau: 9,  po: 25,  materiaux: { 'lotus-noir': 2, 'seve-ambree': 1 } },
+  { resultat: 'potion-supreme-soin', niveau: 10, po: 30, materiaux: { 'herbe-lunaire': 3, 'lotus-noir': 2 } },
+  { resultat: 'potion-supreme-mana', niveau: 11, po: 40, materiaux: { 'seve-ambree': 3, 'lotus-noir': 2 } },
+  { resultat: 'bombe-ardente',       niveau: 12, po: 45, materiaux: { 'poussiere-spectre': 1, 'minerai-fer': 1, 'seve-ambree': 1 } },
   { resultat: 'orbe-des-dunes',     niveau: 13, po: 150, materiaux: { 'perle-des-sables': 2, 'minerai-cuivre': 2 } },
   { resultat: 'couronne-mystique',  niveau: 14, po: 200, materiaux: { 'cristal-givre': 1, 'poussiere-spectre': 2, 'minerai-cuivre': 2 } },
   { resultat: 'jambieres-zephyr',   niveau: 14, po: 200, materiaux: { 'soie-araignee': 2, 'peau-de-loup': 2, 'cristal-givre': 1 } },
@@ -144,6 +188,60 @@ const RECETTES = [
   { resultat: 'sceptre-neant',      niveau: 16, po: 300, materiaux: { 'cristal-givre': 2, 'poussiere-spectre': 3, 'noyau-golem': 1 } },
   { resultat: 'arc-du-vent',        niveau: 16, po: 300, materiaux: { 'cristal-givre': 2, 'soie-araignee': 2, 'ecaille-draconique': 1 } },
 ];
+
+// =====================================================================
+// Séries d'artisanat : 14 séries × 5 pièces, générées ci-dessous.
+// Chaque série a son niveau, sa rareté, ses matériaux et son coût.
+// =====================================================================
+const SETS_CRAFT = [
+  { suffixe: 'du Loup',      niveau: 3,  rarete: 'commun',     po: 18,  materiaux: { 'peau-de-loup': 2, 'fibre-sauvage': 2 } },
+  { suffixe: 'du Sanglier',  niveau: 4,  rarete: 'commun',     po: 26,  materiaux: { 'defense-sanglier': 2, 'peau-de-loup': 1 } },
+  { suffixe: 'des Murmures', niveau: 6,  rarete: 'inhabituel', po: 50,  materiaux: { 'bois-chene': 2, 'seve-ambree': 2 } },
+  { suffixe: 'de la Veuve',  niveau: 7,  rarete: 'inhabituel', po: 65,  materiaux: { 'soie-araignee': 3, 'fibre-sauvage': 2 } },
+  { suffixe: 'du Cuivre',    niveau: 8,  rarete: 'inhabituel', po: 80,  materiaux: { 'minerai-cuivre': 3, 'defense-sanglier': 1 } },
+  { suffixe: 'du Marais',    niveau: 9,  rarete: 'rare',       po: 110, materiaux: { 'lotus-noir': 2, 'herbe-lunaire': 2, 'seve-ambree': 1 } },
+  { suffixe: 'de Fer',       niveau: 11, rarete: 'rare',       po: 150, materiaux: { 'minerai-fer': 3, 'minerai-cuivre': 2 } },
+  { suffixe: 'des Cryptes',  niveau: 12, rarete: 'rare',       po: 190, materiaux: { 'os-ancien': 2, 'poussiere-spectre': 2 } },
+  { suffixe: 'des Dunes',    niveau: 13, rarete: 'rare',       po: 230, materiaux: { 'perle-des-sables': 2, 'minerai-fer': 2 } },
+  { suffixe: 'du Spectre',   niveau: 14, rarete: 'epique',     po: 280, materiaux: { 'poussiere-spectre': 3, 'os-ancien': 2 } },
+  { suffixe: 'des Glaces',   niveau: 15, rarete: 'epique',     po: 330, materiaux: { 'cristal-givre': 2, 'minerai-fer': 2 } },
+  { suffixe: 'du Golem',     niveau: 16, rarete: 'epique',     po: 390, materiaux: { 'noyau-golem': 2, 'minerai-fer': 3 } },
+  { suffixe: 'du Dragon',    niveau: 17, rarete: 'legendaire', po: 500, materiaux: { 'ecaille-draconique': 2, 'noyau-golem': 1, 'minerai-fer': 2 } },
+  { suffixe: 'de l’Aube',    niveau: 19, rarete: 'legendaire', po: 650, materiaux: { 'ecaille-draconique': 2, 'cristal-givre': 2, 'perle-des-sables': 2 } },
+];
+
+const MULT_RARETE_CRAFT = { commun: 1, inhabituel: 1.12, rare: 1.25, epique: 1.4, legendaire: 1.6 };
+
+SETS_CRAFT.forEach((serie) => {
+  const mult = MULT_RARETE_CRAFT[serie.rarete];
+  const principal = Math.max(2, Math.round(serie.niveau * 0.8 * mult));
+  const secondaire = Math.max(1, Math.round(principal * 0.35));
+  const idBase = serie.suffixe.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const pieces = [
+    { cle: 'lame',      nom: `Lame ${serie.suffixe}`,      emoji: '⚔️', slot: 'arme',       bonus: { for: principal, vit: secondaire } },
+    { cle: 'focus',     nom: `Focus ${serie.suffixe}`,     emoji: '🔮', slot: 'arme',       bonus: { int: principal, pmMax: secondaire * 3 } },
+    { cle: 'arc',       nom: `Arc ${serie.suffixe}`,       emoji: '🏹', slot: 'arme',       bonus: { agi: principal, crit: secondaire } },
+    { cle: 'armure',    nom: `Armure ${serie.suffixe}`,    emoji: '🛡️', slot: 'torse',      bonus: { vit: Math.max(1, Math.round(principal * 0.7)), pvMax: serie.niveau * 3 } },
+    { cle: 'heaume',    nom: `Heaume ${serie.suffixe}`,    emoji: '🪖', slot: 'tete',       bonus: { vit: secondaire, pvMax: serie.niveau * 2 } },
+    { cle: 'jambieres', nom: `Jambières ${serie.suffixe}`, emoji: '👖', slot: 'jambes',     bonus: { agi: secondaire, vit: secondaire, pvMax: serie.niveau } },
+    { cle: 'talisman',  nom: `Talisman ${serie.suffixe}`,  emoji: '🧿', slot: 'accessoire', bonus: { cha: 1 + Math.floor(serie.niveau / 5), vit: secondaire, crit: secondaire } },
+    { cle: 'grimoire',  nom: `Grimoire ${serie.suffixe}`,  emoji: '📖', slot: 'accessoire', bonus: { int: secondaire + 1, pmMax: secondaire * 2, cha: Math.max(1, Math.floor(serie.niveau / 7)) } },
+  ];
+  pieces.forEach((piece) => {
+    const id = `${piece.cle}-${idBase}`;
+    OBJETS[id] = {
+      nom: piece.nom, emoji: piece.emoji, type: 'equipement', slot: piece.slot,
+      niveau: serie.niveau, rarete: serie.rarete,
+      prixVente: Math.round(serie.po * 0.6),
+      bonus: piece.bonus,
+      desc: `Série ${serie.suffixe} — se forge à l’atelier.`,
+    };
+    RECETTES.push({ resultat: id, niveau: serie.niveau, po: serie.po, materiaux: serie.materiaux });
+  });
+});
+RECETTES.sort((a, b) => a.niveau - b.niveau);
 
 // =====================================================================
 // Inventaire : liste de { id, qte }

@@ -348,6 +348,7 @@ function rendreTaverne() {
   blocBoss.innerHTML = '<h3>🌍 Boss du monde</h3><p class="aide">Chargement…</p>';
   zone.appendChild(blocBoss);
 
+
   const blocChat = document.createElement('div');
   blocChat.className = 'panneau';
   blocChat.innerHTML = '<h3>💬 Chat des Royaumes</h3>';

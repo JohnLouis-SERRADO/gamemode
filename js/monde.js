@@ -384,6 +384,11 @@ function demarrerCombatBossMonde(boss) {
 function tirerButinCombat(cb) {
   const difficulte = DIFFICULTES[cb.difficulte] || DIFFICULTES.normal;
   const evenement = multiplicateursEvenement();
+  // La chance moyenne de l'équipe améliore les probabilités de butin.
+  const chaMoyenne = cb.equipe.length
+    ? cb.equipe.reduce((somme, j) => somme + (statsEffectives(j).cha || 0), 0) / cb.equipe.length
+    : 0;
+  const chanceEquipe = multChanceDrop(chaMoyenne);
   let xp = 0;
   let po = 0;
   const objets = {};
@@ -391,17 +396,49 @@ function tirerButinCombat(cb) {
     xp += m.xp || 0;
     if (m.po) po += alea(m.po[0], m.po[1]);
     (m.drops || []).forEach((d) => {
-      if (Math.random() < Math.min(1, d.chance * difficulte.drop * evenement.drop)) {
+      if (Math.random() < Math.min(1, d.chance * difficulte.drop * evenement.drop * chanceEquipe)) {
         objets[d.id] = (objets[d.id] || 0) + 1;
       }
     });
   });
   xp = Math.round(xp * difficulte.xp * evenement.xp);
-  po = Math.round(po * difficulte.po * evenement.po);
+  po = Math.round(po * difficulte.po * evenement.po) + (cb.orVole || 0);
   if (cb.lootRecolte) {
     Object.entries(cb.lootRecolte).forEach(([id, qte]) => { objets[id] = (objets[id] || 0) + qte; });
   }
   return { xp, po, objets };
+}
+
+// =====================================================================
+// Coffre de boss : trophée unique + tirages pondérés par la chance
+// =====================================================================
+function ouvrirCoffreBoss(p, zone, difficulte) {
+  const s = statsEffectives(p);
+  const objets = {};
+  const lignes = [];
+  const dejaVaincu = (p.bossVaincus || []).includes(zone.id);
+  const unique = COFFRES_BOSS[zone.boss];
+  lignes.push(dejaVaincu ? '🎁 Le boss laisse un coffre…' : '🎁 Première victoire : le boss laisse son coffre scellé !');
+  // Le trophée unique du boss : garanti la première fois, 15 % ensuite.
+  if (unique && (!dejaVaincu || Math.random() < 0.15)) {
+    objets[unique] = (objets[unique] || 0) + 1;
+    const o = OBJETS[unique];
+    lignes.push(`✨ ${o.emoji} ${o.nom}${texteRarete(o)} — trophée unique !`);
+  }
+  let tirages = 2 + (Math.random() < 0.5 ? 1 : 0);
+  if (difficulte === 'heroique' && Math.random() < 0.5) tirages++;
+  if (difficulte === 'cauchemar') tirages++;
+  for (let i = 0; i < tirages; i++) {
+    const rarete = tirerRarete(s.cha);
+    const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
+      && (o.type === 'materiau' || o.type === 'consommable'
+        || (o.type === 'equipement' && o.niveau <= p.niveau + 3)));
+    if (!pool.length) continue;
+    const [id, o] = pool[alea(0, pool.length - 1)];
+    objets[id] = (objets[id] || 0) + 1;
+    lignes.push(`${o.emoji} ${o.nom}${texteRarete(o)}`);
+  }
+  return { objets, lignes };
 }
 
 function nettoyerApresCombat(m) {
@@ -436,12 +473,25 @@ function apresVictoire(cb) {
   // Les objets sont répartis aléatoirement entre les membres.
   const partsObjets = membres.map(() => ({}));
   Object.entries(butin.objets).forEach(([id, qte]) => {
-    lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}${partage > 1 ? ' (réparti dans les sacs)' : ''}`);
+    lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}${partage > 1 ? ' (réparti dans les sacs)' : ''}`);
     for (let i = 0; i < qte; i++) {
       const part = partsObjets[alea(0, partage - 1)];
       part[id] = (part[id] || 0) + 1;
     }
   });
+
+  // Un boss abattu laisse un coffre pour chaque héros présent.
+  if (cb.genre === 'boss') {
+    membres.forEach((m, i) => {
+      const coffre = ouvrirCoffreBoss(m, cb.zone, cb.difficulte);
+      Object.entries(coffre.objets).forEach(([id, qte]) => {
+        partsObjets[i][id] = (partsObjets[i][id] || 0) + qte;
+      });
+      coffre.lignes.forEach((ligne, idx) => {
+        lignes.push(partage > 1 && idx === 0 ? `${m.avatar} ${m.nom} — ${ligne}` : ligne);
+      });
+    });
+  }
 
   membres.forEach((m, i) => {
     if (m.hp <= 0) m.hp = 1; // les héros KO se relèvent après la victoire
