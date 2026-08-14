@@ -46,6 +46,9 @@ function snapshotPourGroupe(p) {
     tourMax: p.tourMax || 0,
     tourBoss: p.tourBoss || { normal: 0, heroique: 0, cauchemar: 0 },
     donjonsDebloques: typeof donjonsDebloquesPour === 'function' ? donjonsDebloquesPour(p) : [],
+    // v16.2 : l'Ascension éternelle en groupe — épopées terminées + records.
+    epopeesFinies: DONJONS.filter((d) => !d.chronique && progresDonjon(p, d.id).fini > 0).map((d) => d.id),
+    ascensions: p.ascensions || {},
     potions: p.inventaire.filter((e) => OBJETS[e.id] && OBJETS[e.id].type === 'consommable')
       .map((e) => ({ id: e.id, qte: e.qte })),
   };
@@ -95,6 +98,20 @@ function donjonsCommunsGroupe(membres) {
     (communs, m) => communs.filter((id) => (m.donjonsDebloques || []).includes(id)),
     [...(membres[0].donjonsDebloques || [])],
   );
+}
+
+// v16.2 : les épopées que TOUTE l'équipe a terminées — la porte de
+// l'Ascension éternelle en groupe.
+function epopeesCommunesGroupe(membres) {
+  if (!membres.length) return [];
+  return membres.reduce(
+    (communes, m) => communes.filter((id) => (m.epopeesFinies || []).includes(id)),
+    [...(membres[0].epopeesFinies || [])],
+  );
+}
+
+function etageAscensionGroupe(membres, idDonjon) {
+  return Math.min(...membres.map((m) => ((m.ascensions || {})[idDonjon]) || 0)) + 1;
 }
 
 // Le nivelage : chacun est bridé au niveau du moins aguerri du groupe.
@@ -247,7 +264,8 @@ function rendreLobbyGroupe(ligne) {
     [['exploration', '🗡️ Explorer une zone'], ['boss', '👑 Boss de zone'],
       ['tour', `🗼 Tour Sans Fin — étage ${etageTourGroupe(membres)}`],
       ['tourBoss', `🏯 Tour des Boss`],
-      ['assautDonjon', '🏰 Assaut de donjon (boss final)']].forEach(([valeur, libelle]) => {
+      ['assautDonjon', '🏰 Assaut de donjon (boss final)'],
+      ['ascension', '⛰️ Ascension éternelle (épopées, étages infinis)']].forEach(([valeur, libelle]) => {
       const option = document.createElement('option');
       option.value = valeur;
       option.textContent = libelle;
@@ -301,6 +319,29 @@ function rendreLobbyGroupe(ligne) {
     }
     selectDonjon.addEventListener('change', () => { groupe.donjonChoisi = selectDonjon.value; });
 
+    // v16.2 : les épopées dont TOUTE l'équipe a écrit la fin — l'Ascension
+    // éternelle s'ouvre à elles, avec l'étage du moins avancé.
+    const epopeesCommunes = epopeesCommunesGroupe(membres);
+    const selectEpopee = document.createElement('select');
+    selectEpopee.className = 'select-groupe';
+    if (epopeesCommunes.length === 0) {
+      const option = document.createElement('option');
+      option.textContent = '🔒 Aucune épopée terminée par toute l’équipe';
+      option.disabled = true;
+      option.selected = true;
+      selectEpopee.appendChild(option);
+    } else {
+      epopeesCommunes.forEach((id) => {
+        const d = DONJONS_PAR_ID[id];
+        if (!d) return;
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = `${d.emoji} ${d.nom} — étage ${etageAscensionGroupe(membres, id)}`;
+        if (groupe.epopeeChoisie === id) option.selected = true;
+        selectEpopee.appendChild(option);
+      });
+    }
+
     const aideGenre = document.createElement('p');
     aideGenre.className = 'aide';
     const majVisibilite = () => {
@@ -308,6 +349,7 @@ function rendreLobbyGroupe(ligne) {
       selectZone.classList.toggle('cache', genre !== 'exploration' && genre !== 'boss');
       selectDifficulte.classList.toggle('cache', genre !== 'exploration' && genre !== 'boss' && genre !== 'tourBoss');
       selectDonjon.classList.toggle('cache', genre !== 'assautDonjon');
+      selectEpopee.classList.toggle('cache', genre !== 'ascension');
       if (genre === 'tour') {
         aideGenre.textContent = `🗼 L'équipe grimpe ensemble : l'étage ${etageTourGroupe(membres)} (celui du moins avancé). Victoire = le record de chacun progresse.`;
       } else if (genre === 'tourBoss') {
@@ -316,18 +358,24 @@ function rendreLobbyGroupe(ligne) {
         aideGenre.textContent = communs.length
           ? '🏰 Affrontez ensemble le boss final d’un donjon que TOUTE l’équipe a débloqué (l’histoire, elle, se vit en solo).'
           : '🏰 Personne ne partage encore de donjon débloqué — progressez chacun dans vos histoires !';
+      } else if (genre === 'ascension') {
+        aideGenre.textContent = epopeesCommunes.length
+          ? '⛰️ Des étages SANS FIN, enchaînés sans soin ni retour au salon : écho du boss tous les 5 étages, épreuve au d20 tous les 3 — le meilleur de l\'équipe s\'y colle. On grimpe jusqu\'à la MORT ou l\'abandon, et le record de chacun progresse à chaque étage.'
+          : '⛰️ L\'Ascension éternelle exige une épopée TERMINÉE par toute l\'équipe — finissez vos histoires !';
       } else {
         aideGenre.textContent = '⚖️ En groupe, les plus aguerris sont bridés au niveau du moins avancé — et la défaite est MORTELLE (vraie mort, comme en solo).';
       }
     };
     selectGenre.addEventListener('change', () => { groupe.genreChoisi = selectGenre.value; majVisibilite(); });
     selectDifficulte.addEventListener('change', majVisibilite);
+    selectEpopee.addEventListener('change', () => { groupe.epopeeChoisie = selectEpopee.value; });
     majVisibilite();
 
     ligneChoix.appendChild(selectGenre);
     ligneChoix.appendChild(selectZone);
     ligneChoix.appendChild(selectDifficulte);
     ligneChoix.appendChild(selectDonjon);
+    ligneChoix.appendChild(selectEpopee);
     panneauLancement.appendChild(ligneChoix);
     panneauLancement.appendChild(aideGenre);
 
@@ -445,6 +493,17 @@ async function lancerExpeditionGroupe(ligne) {
     titre = `🏰 ${donjon.emoji} ${donjon.nom} — l'assaut du boss`;
     intro = boss.intro || 'Le maître du donjon vous attend de pied ferme.';
     groupeExtra = { assautDonjon: donjon.id };
+  } else if (genre === 'ascension') {
+    // v16.2 : l'Ascension éternelle en groupe — délégué à la fonction
+    // d'étage, qui sait aussi enchaîner sans repasser par le salon.
+    const communes = epopeesCommunesGroupe(membres);
+    const idEpopee = communes.includes(groupe.epopeeChoisie) ? groupe.epopeeChoisie : communes[0];
+    if (!idEpopee || !DONJONS_PAR_ID[idEpopee]) {
+      afficherToast('⛰️ L’Ascension exige une épopée TERMINÉE par toute l’équipe.');
+      return;
+    }
+    lancerEtageAscensionGroupe(idEpopee, etageAscensionGroupe(membres, idEpopee), null);
+    return;
   }
 
   const ok = await apiRequete('/rest/v1/rpc/groupe_lancer', {
@@ -482,6 +541,123 @@ async function lancerExpeditionGroupe(ligne) {
     journal(`⚖️ L'équipe se cale sur le niveau ${nivelage.niveauBas} : les plus aguerris brident leur puissance.`);
     rendreCombat();
   }
+}
+
+// =====================================================================
+// v16.2 : un étage d'Ascension éternelle en groupe. Sait démarrer depuis
+// le salon (équipe fraîche) ET enchaîner les étages (équipe conservée :
+// pas de soin entre les salles, c'est la règle de l'Ascension).
+// =====================================================================
+async function lancerEtageAscensionGroupe(idDonjon, etage, equipePrecedente) {
+  const groupe = etat.groupeLigne;
+  const p = persoActif();
+  const donjon = DONJONS_PAR_ID[idDonjon];
+  if (!groupe || !donjon) { afficherToast('⛰️ Le groupe s’est dissous.'); return; }
+
+  const ok = await apiRequete('/rest/v1/rpc/groupe_lancer', {
+    methode: 'POST',
+    corps: {
+      p_id: p.cloud.id, p_token: p.cloud.token, p_groupe: groupe.id,
+      p_zone: ZONES[0].id, p_difficulte: 'normal', p_genre: 'ascension',
+    },
+  }).catch(() => null);
+  if (!ok) { afficherToast('Lancement impossible.'); return; }
+  arreterSondagesGroupe();
+  groupe.seqTraite = 0;
+
+  const membresFrais = (await lireGroupe(groupe.id)).membres;
+  // L'équipe : conservée d'un étage à l'autre (PV compris), en écartant
+  // ceux qui ont quitté le groupe entre-temps.
+  let equipe = (equipePrecedente || [])
+    .filter((j) => j.type === 'joueur' && membresFrais.some((m) => m.id === j.bid));
+  if (equipe.length === 0) {
+    equipe = membresFrais.map((m) => {
+      if (m.id === p.cloud.id) { p.bid = p.cloud.id; return p; }
+      return creerJoueurDistant(m);
+    });
+  }
+  equipe.forEach((j) => { if (j.hp <= 0) j.hp = 1; });
+
+  const multEquipe = 1 + 0.35 * (equipe.length - 1);
+  const multAtkEquipe = 1 + 0.1 * (equipe.length - 1);
+  const croissanceHp = 1 + 0.15 * (etage - 1);
+  const croissanceAtk = 1 + 0.06 * (etage - 1);
+
+  let defs;
+  let intro;
+  if (etage % 5 === 0) {
+    const cleBoss = bossDeLEpopee(donjon);
+    const base = defMonstreDonjon(cleBoss);
+    defs = [{
+      ...base,
+      cle: cleBoss,
+      nom: `Écho de ${base.nom}`,
+      hp: Math.round(base.hp * croissanceHp * multEquipe),
+      atk: Math.round(base.atk * croissanceAtk * multAtkEquipe),
+      xp: Math.round(base.xp * (0.5 + etage * 0.05)),
+    }];
+    intro = `⛰️ Étage ${etage} — le donjon reforme l'écho de son maître, plus dense à chaque cycle.`;
+  } else {
+    const pool = monstresDeLEpopee(donjon);
+    const nb = Math.min(4, 2 + Math.floor(etage / 6));
+    defs = Array.from({ length: nb }, () => {
+      const cle = pool[alea(0, pool.length - 1)];
+      const base = defMonstreDonjon(cle);
+      return {
+        ...base,
+        cle,
+        hp: Math.round(base.hp * croissanceHp * multEquipe),
+        atk: Math.round(base.atk * croissanceAtk * multAtkEquipe),
+      };
+    });
+    intro = `⛰️ Étage ${etage} — le donjon rebat ses cartes et vous oppose une salle nouvelle.`;
+  }
+
+  const nivelage = nivelageGroupe(membresFrais);
+  demarrerCombat({
+    genre: 'boss', // pas de fuite : on grimpe jusqu'à la mort ou l'abandon
+    zone: null,
+    difficulte: 'normal',
+    titre: `⛰️ ${donjon.nom} — Ascension, étage ${etage} (groupe)`,
+    intro,
+    monstresDef: defs,
+    equipe,
+    groupe: { id: groupe.id, hote: true, seqTraite: 0 },
+    groupeExtra: { ascension: { id: donjon.id, etage } },
+    nivelage: nivelage.facteurs,
+  });
+  if (nivelage.facteurs) {
+    journal(`⚖️ L'équipe se cale sur le niveau ${nivelage.niveauBas} : les plus aguerris brident leur puissance.`);
+  }
+
+  // Tous les 3 étages (hors paliers de boss), le donjon éprouve l'équipe
+  // AVANT le combat : le plus doué s'y colle, le sort de tous en dépend.
+  if (etage % 5 !== 0 && etage % 3 === 0) {
+    const cb = etat.combat;
+    const statsPossibles = ['for', 'int', 'agi', 'vit', 'cha'];
+    const stat = statsPossibles[Math.floor(etage / 3) % statsPossibles.length];
+    const difficulteJet = 12 + Math.round(donjon.niveauMin * 0.6) + etage;
+    let champion = equipe[0];
+    equipe.forEach((j) => { if (statDe(j, stat) > statDe(champion, stat)) champion = j; });
+    const bonus = statDe(champion, stat);
+    const de = alea(1, 20);
+    const total = de + bonus;
+    const reussite = de === 20 || (de !== 1 && total >= difficulteJet);
+    const nomStat = CARACS[stat].nom;
+    journal(`🎲 Le donjon vous éprouve — épreuve ${/^[aeioué]/i.test(nomStat) ? `d’${nomStat}` : `de ${nomStat}`} (difficulté ${difficulteJet}) : ${champion.nom} s'y colle. ${de}${de === 20 ? ' 🌟 NATUREL' : de === 1 ? ' 💀 naturel' : ''} + ${bonus} = ${total} — ${reussite ? '✅ Réussite !' : '❌ Échec…'}`);
+    cb.equipe.forEach((j) => {
+      if (reussite) {
+        j.hp = Math.min(j.maxHp, j.hp + Math.round(j.maxHp * 0.12));
+        j.mp = Math.min(j.maxMp, j.mp + Math.round(j.maxMp * 0.15));
+      } else {
+        j.hp = Math.max(1, j.hp - Math.round(j.maxHp * 0.15));
+      }
+    });
+    journal(reussite
+      ? '✨ Une alcôve s\'ouvre dans la pierre : l\'équipe souffle (+12 % PV, +15 % PM) avant que la salle ne se referme en arène.'
+      : '💢 Le donjon vous secoue comme un sablier (−15 % PV) — et il n\'en a pas fini avec vous.');
+  }
+  rendreCombat();
 }
 
 // =====================================================================
@@ -617,11 +793,13 @@ function apresCombatGroupeHote(cb, type) {
   if (type === 'victoire') {
     const butin = tirerButinCombat(cb);
     const bonusGroupe = partage > 1 ? 1.15 : 1;
-    // Les tours paient leur prime d'étage, comme en solo.
+    // Les tours paient leur prime d'étage, comme en solo ; l'Ascension
+    // verse sa prime d'or (12 po par étage, la règle du solo).
     const multEtage = extra.tourEtage ? 1 + extra.tourEtage * 0.12
       : (extra.tourBoss ? 1 + extra.tourBoss.etage * 0.15 : 1);
+    const bonusPoAscension = extra.ascension ? extra.ascension.etage * 12 : 0;
     const xpParHeros = Math.max(1, Math.round((butin.xp * multEtage / partage) * bonusGroupe));
-    const poParHeros = Math.max(0, Math.round(butin.po * multEtage / partage));
+    const poParHeros = Math.max(0, Math.round((butin.po * multEtage + bonusPoAscension) / partage));
     lignes.push(`⭐ +${xpParHeros} XP par héros`);
     lignes.push(`💰 +${poParHeros} pièces d'or par héros`);
     const parts = {};
@@ -653,12 +831,14 @@ function apresCombatGroupeHote(cb, type) {
       // v16 : les tours gravées en groupe font progresser le record de CHACUN.
       if (extra.tourEtage) recompenses[j.bid].tourEtage = extra.tourEtage;
       if (extra.tourBoss) recompenses[j.bid].tourBoss = extra.tourBoss;
+      if (extra.ascension) recompenses[j.bid].ascension = extra.ascension;
     });
     if (extra.tourEtage) lignes.push(`🗼 Étage ${extra.tourEtage} gravé ensemble : le record de chacun progresse !`);
     if (extra.tourBoss) lignes.push(`🏯 Étage ${extra.tourBoss.etage} (${DIFFICULTES[extra.tourBoss.difficulte].nom}) vaincu ensemble : record pour chacun !`);
     if (extra.assautDonjon && DONJONS_PAR_ID[extra.assautDonjon]) {
       lignes.push(`🏰 Le boss de « ${DONJONS_PAR_ID[extra.assautDonjon].nom} » est tombé sous l'assaut du groupe !`);
     }
+    if (extra.ascension) lignes.push(`⛰️ Étage ${extra.ascension.etage} conquis ensemble — le donjon reconstruit déjà le suivant, un peu plus haut, un peu plus dur.`);
   } else if (type === 'defaite') {
     // v16 : la défaite en groupe est MORTELLE — la vraie mort, comme en
     // solo, appliquée par chaque écran sur son propre héros.
@@ -686,11 +866,22 @@ function apresCombatGroupeHote(cb, type) {
 
   const maRecompense = recompenses[p.cloud.id];
   appliquerRecompenseGroupe(p, maRecompense);
+  // v16.2 : en Ascension, le chef enchaîne les étages sans repasser par
+  // le salon — les autres écrans suivent automatiquement.
+  const equipeConservee = cb.equipe;
+  const boutons = (type === 'victoire' && extra.ascension)
+    ? [{
+      texte: `⬆️ Étage ${extra.ascension.etage + 1} (groupe) ➜`,
+      classe: 'btn-principal',
+      action: () => lancerEtageAscensionGroupe(extra.ascension.id, extra.ascension.etage + 1, equipeConservee),
+    }]
+    : undefined;
   afficherButin({
-    titre: titres[type],
+    titre: type === 'victoire' && extra.ascension ? `⛰️ Étage ${extra.ascension.etage} conquis !` : titres[type],
     texte: partage > 1 ? 'Chaque écran reçoit sa part.' : '',
     lignes: lignes.concat(maRecompense && maRecompense.lignesCoffre ? maRecompense.lignesCoffre : []),
     retour: 'groupe-ligne',
+    boutons,
   });
 }
 
@@ -726,6 +917,13 @@ function appliquerRecompenseGroupe(p, recompense) {
     const { etage, difficulte } = recompense.tourBoss;
     if ((p.tourBoss[difficulte] || 0) < etage) p.tourBoss[difficulte] = etage;
     progresserQuete(p, 'tourBoss', 1);
+  }
+  // v16.2 : chaque étage d'Ascension conquis en groupe grave le record.
+  if (recompense.ascension) {
+    if (!p.ascensions || typeof p.ascensions !== 'object') p.ascensions = {};
+    if (recompense.ascension.etage > (p.ascensions[recompense.ascension.id] || 0)) {
+      p.ascensions[recompense.ascension.id] = recompense.ascension.etage;
+    }
   }
   p.compteurs.orTotal += Math.max(0, recompense.po || 0);
   p.po += recompense.po || 0;
