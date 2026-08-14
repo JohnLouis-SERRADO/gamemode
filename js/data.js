@@ -125,14 +125,16 @@ function texteEffetCompetence(effet, s) {
 
 // Renvoie des lignes chiffrées (dégâts, soins, effets, coût) calculées
 // avec les stats effectives fournies.
-function detailsCompetence(comp, s) {
+function detailsCompetence(comp, s, rang = 0) {
   const parts = [];
+  const multRang = 1 + 0.15 * rang;
   if (comp.type === 'degats') {
-    const brut = Math.round(comp.puissance + (s[comp.stat] || 0) * comp.ratio);
+    const brut = Math.round((comp.puissance + (s[comp.stat] || 0) * comp.ratio) * multRang);
     parts.push(`⚔️ ≈${brut} dégâts${comp.coups ? ` ×${comp.coups} coups` : ''}`);
   } else if (comp.type === 'soin') {
-    parts.push(`💚 ≈${Math.round(comp.puissance + (s[comp.stat] || 0) * comp.ratio)} PV`);
+    parts.push(`💚 ≈${Math.round((comp.puissance + (s[comp.stat] || 0) * comp.ratio) * multRang)} PV`);
   }
+  if (rang > 0) parts.push(`🏅 rang ${rang} (+${Math.round(rang * 15)} %)`);
   if (comp.critBonus) parts.push(`💥 +${Math.round(comp.critBonus * 100)} % crit.`);
   if (comp.effet) {
     const texte = texteEffetCompetence(comp.effet, s);
@@ -665,6 +667,69 @@ const MODELES = [
     competences: ['valse-des-lames', 'estocade-gracieuse', 'danse-du-vent', 'rafale-de-coups'],
   },
 ];
+
+// =====================================================================
+// Classes : chaque modèle de création est une classe à part entière.
+// Les 68 compétences classiques sont communes à tous ; chaque classe a
+// en plus une SIGNATURE exclusive, améliorable avec des points de
+// maîtrise (gagnés aux niveaux 3, 6, 9, 12, 15 et 18 — rang 5 maximum).
+// =====================================================================
+MODELES.forEach((m) => {
+  m.id = m.nom.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-');
+});
+
+const COMPETENCES_SIGNATURE = {
+  'signature-panache':            { nom: 'Panache', emoji: '🎩', classe: 'aventurier', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 10, ratio: 1.5, critBonus: 0.1, coutMp: 8, cooldown: 4, desc: 'Le coup d’éclat de ceux qui n’ont pas choisi de voie — et les ont toutes un peu prises.' },
+  'signature-lame-du-champion':   { nom: 'Lame du champion', emoji: '🏆', classe: 'guerrier', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 12, ratio: 1.8, critBonus: 0.1, coutMp: 8, cooldown: 4, desc: 'La botte secrète des maîtres d’armes de Valciel.' },
+  'signature-comete-arcanique':   { nom: 'Comète arcanique', emoji: '☄️', classe: 'mage', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 14, ratio: 1.7, coutMp: 10, cooldown: 4, desc: 'Faire tomber le ciel sur une seule tête.' },
+  'signature-fleche-du-destin':   { nom: 'Flèche du destin', emoji: '🎯', classe: 'archer', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 10, ratio: 1.6, critBonus: 0.25, coutMp: 8, cooldown: 4, desc: 'Une seule flèche. Elle sait où aller.' },
+  'signature-lumiere-salvatrice': { nom: 'Lumière salvatrice', emoji: '🌅', classe: 'clerc', signature: true, categorie: 'signature', type: 'soin', cible: 'allies', stat: 'int', puissance: 10, ratio: 1.2, coutMp: 12, cooldown: 5, desc: 'Une aube en plein combat : soigne généreusement toute l’équipe.' },
+  'signature-verdict-celeste':    { nom: 'Verdict céleste', emoji: '⚡', classe: 'paladin', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 10, ratio: 1.4, effet: { type: 'etourdi', duree: 1, chance: 0.5 }, coutMp: 10, cooldown: 5, desc: 'Le jugement tombe du ciel — et il assomme, une fois sur deux.' },
+  'signature-moisson-d-ames':     { nom: 'Moisson d’âmes', emoji: '🌑', classe: 'necromancien', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 6, ratio: 1.0, effet: { type: 'drain', part: 0.5 }, coutMp: 12, cooldown: 5, desc: 'Faucher tous les ennemis et récolter la moitié en vie.' },
+  'signature-cent-poings':        { nom: 'Cent poings', emoji: '👊', classe: 'moine', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 3, ratio: 0.7, coups: 4, coutMp: 9, cooldown: 4, desc: 'Quatre frappes, un seul battement de cœur.' },
+  'signature-crescendo':          { nom: 'Crescendo', emoji: '🎼', classe: 'barde', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 8, ratio: 1.2, coutMp: 10, cooldown: 5, desc: 'Le dernier mouvement, fortissimo : la salle entière l’encaisse.' },
+  'signature-meute-fantome':      { nom: 'Meute fantôme', emoji: '🐺', classe: 'rodeur', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'agi', puissance: 7, ratio: 1.1, coutMp: 10, cooldown: 5, desc: 'Des loups d’esprit surgissent des fourrés sur tout ce qui bouge.' },
+  'signature-danse-macabre':      { nom: 'Danse macabre', emoji: '🩸', classe: 'assassin', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 8, ratio: 1.3, coups: 2, critBonus: 0.15, coutMp: 10, cooldown: 5, desc: 'Deux pas, deux lames, plus de partenaire.' },
+  'signature-colere-du-sang':     { nom: 'Colère du sang', emoji: '🌋', classe: 'berserker', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 16, ratio: 2.0, coutMp: 10, cooldown: 5, desc: 'Le coup que même le Berserker ne contrôle plus vraiment.' },
+  'signature-rempart-sacre':      { nom: 'Rempart sacré', emoji: '🏰', classe: 'templier', signature: true, categorie: 'signature', type: 'utilitaire', cible: 'allies', effet: { type: 'bouclier', duree: 3 }, coutMp: 12, cooldown: 6, desc: 'Un mur de foi se dresse devant toute l’équipe.' },
+  'signature-cataclysme':         { nom: 'Cataclysme', emoji: '🌪️', classe: 'elementaliste', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 9, ratio: 1.15, coutMp: 13, cooldown: 6, desc: 'Les quatre éléments, tous en colère, tous en même temps.' },
+  'signature-courroux-sylvestre': { nom: 'Courroux sylvestre', emoji: '🌿', classe: 'druide', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 10, ratio: 1.5, effet: { type: 'poison', duree: 3 }, coutMp: 10, cooldown: 5, desc: 'La forêt entière se souvient — et elle mord.' },
+  'signature-avatar-primordial':  { nom: 'Avatar primordial', emoji: '🐲', classe: 'invocateur', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 13, ratio: 1.6, coutMp: 11, cooldown: 5, desc: 'L’espace d’un instant, l’invocation dépasse l’invocateur.' },
+  'signature-supernova':          { nom: 'Supernova', emoji: '💥', classe: 'pyromancien', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 10, ratio: 1.2, coutMp: 14, cooldown: 6, desc: 'Tout brûle. Vraiment tout.' },
+  'signature-zero-absolu':        { nom: 'Zéro absolu', emoji: '🧊', classe: 'givremage', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 11, ratio: 1.5, effet: { type: 'etourdi', duree: 1, chance: 0.6 }, coutMp: 12, cooldown: 6, desc: 'Là où le froid s’arrête, l’ennemi aussi.' },
+  'signature-tempete-ancestrale': { nom: 'Tempête ancestrale', emoji: '🌩️', classe: 'chaman', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 8, ratio: 1.1, effet: { type: 'affaibli', duree: 2 }, coutMp: 13, cooldown: 6, desc: 'Tous les ancêtres grondent à la fois — les ennemis en ressortent diminués.' },
+  'signature-casse-du-siecle':    { nom: 'Casse du siècle', emoji: '💎', classe: 'voleur', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 9, ratio: 1.4, effet: { type: 'vol-or' }, coutMp: 9, cooldown: 5, desc: 'Frapper fort ET repartir avec la caisse.' },
+  'signature-ballet-mortel':      { nom: 'Ballet mortel', emoji: '🌸', classe: 'danselame', signature: true, categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'agi', puissance: 6, ratio: 0.9, coups: 2, coutMp: 12, cooldown: 6, desc: 'Deux passages de danse, et les pétales retombent sur un champ de bataille.' },
+};
+Object.assign(COMPETENCES, COMPETENCES_SIGNATURE);
+
+const CLASSES = {
+  aventurier: { nom: 'Aventurier', emoji: '🎒', signature: 'signature-panache' },
+};
+MODELES.forEach((m) => {
+  CLASSES[m.id] = {
+    nom: m.nom,
+    emoji: m.emoji,
+    signature: Object.keys(COMPETENCES_SIGNATURE).find((id) => COMPETENCES_SIGNATURE[id].classe === m.id),
+  };
+});
+
+function classeDe(p) {
+  return CLASSES[p.classe] || CLASSES.aventurier;
+}
+
+// Points de maîtrise : un par palier de niveau atteint, à investir dans
+// la compétence signature (chaque rang : +15 % de puissance, rang 5 max).
+const SEUILS_MAITRISE = [3, 6, 9, 12, 15, 18];
+const RANG_SIGNATURE_MAX = 5;
+
+function pointsMaitrisePourNiveau(niveau) {
+  return SEUILS_MAITRISE.filter((seuil) => niveau >= seuil).length;
+}
+
+function rangDe(p, compId) {
+  return (p.rangs && p.rangs[compId]) || 0;
+}
 
 // =====================================================================
 // Familiers : compagnons à bonus passif, gagnés sur les boss et la Tour

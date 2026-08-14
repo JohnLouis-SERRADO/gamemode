@@ -38,6 +38,7 @@ function snapshotPourGroupe(p) {
     hp: p.hp,
     mp: p.mp,
     competences: p.competences,
+    rangs: p.rangs || {},
     bossVaincus: p.bossVaincus,
     familiers: p.familiers,
     potions: p.inventaire.filter((e) => OBJETS[e.id] && OBJETS[e.id].type === 'consommable')
@@ -55,6 +56,7 @@ function creerJoueurDistant(m) {
     statsEff: m.statsEff,
     maxHp: m.maxHp, maxMp: m.maxMp, hp: m.hp, mp: m.mp,
     competences: m.competences || [],
+    rangs: m.rangs || {},
     inventaire: (m.potions || []).map((e) => ({ ...e })),
     equipement: {}, statuts: [], cooldowns: {}, defense: false, ko: false,
     explorations: {}, bossVaincus: m.bossVaincus || [], familiers: m.familiers || [],

@@ -1139,6 +1139,46 @@ button:focus-visible,
 
 .champ-code-groupe:focus { outline: none; border-color: var(--accent); }
 
+/* ----- Sous-filtres des échoppes ----- */
+.rangee-sous-filtres {
+  margin: 8px 0 14px;
+  align-items: center;
+}
+
+.chip-filtre { cursor: pointer; }
+.chip-filtre.active {
+  background: var(--accent);
+  color: #1a1208;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+
+.separateur-chips {
+  width: 1px;
+  align-self: stretch;
+  background: var(--bordure);
+  margin: 0 6px;
+}
+
+/* ----- Compétences signatures ----- */
+.carte-signature { border-color: var(--accent); }
+
+.badge-signature {
+  font-size: 0.68rem;
+  background: var(--accent);
+  color: #1a1208;
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.encart-signature {
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+  margin-top: 10px;
+}
+
 /* ----- Panoplies et grimoire ----- */
 .objet-set {
   font-size: 0.8rem;

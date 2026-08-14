@@ -9,12 +9,14 @@
 const EMOJI_STATUT = {
   poison: '🧪', etourdi: '💫', bouclier: '🛡️',
   benediction: '🙏', provocation: '😤', regen: '💧', affaibli: '⬇️',
+  fortune: '🍀',
 };
 
 const NOM_STATUT = {
   poison: 'Empoisonné', etourdi: 'Étourdi', bouclier: 'Bouclier',
   benediction: 'Bénédiction (+30 % dégâts)', provocation: 'Provocation',
   regen: 'Régénération', affaibli: 'Affaibli (−30 % dégâts)',
+  fortune: 'Fortune (+30 % de butin)',
 };
 
 function estMort(c) {
@@ -552,11 +554,16 @@ function rendreActions(j) {
   barre.className = 'barre-actions';
 
   if (cb.modeActions === 'objet') {
+    const genreFuyable = cb.genre === 'exploration' || cb.genre === 'embuscade';
     consommablesDe(j).forEach((entree) => {
       const objet = OBJETS[entree.id];
       const inutile = (objet.effet.type === 'pv' && j.hp >= j.maxHp)
         || (objet.effet.type === 'pm' && j.mp >= j.maxMp)
-        || (objet.effet.type === 'antidote' && !j.statuts.some((st) => st.type === 'poison'));
+        || (objet.effet.type === 'antidote' && !j.statuts.some((st) => st.type === 'poison'))
+        || (objet.effet.type === 'purge' && !j.statuts.some((st) => ['poison', 'affaibli', 'etourdi'].includes(st.type)))
+        || (objet.effet.type === 'fortune' && j.statuts.some((st) => st.type === 'fortune'))
+        || (objet.effet.type === 'soin-groupe' && cb.equipe.every((x) => x.ko || x.hp >= x.maxHp))
+        || (objet.effet.type === 'fuite' && !genreFuyable);
       const btn = document.createElement('button');
       btn.className = 'btn-action';
       btn.disabled = inutile;
@@ -593,7 +600,7 @@ function rendreActions(j) {
     btn.className = 'btn-action competence';
     const cd = j.cooldowns[compId] || 0;
     // Détails chiffrés : dégâts/soins estimés, effets, coût, recharge.
-    let detail = detailsCompetence(comp, statsJoueur).join(' · ');
+    let detail = detailsCompetence(comp, statsJoueur, rangDe(j, compId)).join(' · ');
     if (cd > 0) detail = `⏳ Encore ${cd} tour${cd > 1 ? 's' : ''}`;
     else if (j.mp < comp.coutMp) detail = `${comp.coutMp} PM — pas assez de mana`;
     btn.innerHTML = `${comp.emoji} <strong>${comp.nom}</strong><span class="action-detail">${detail}</span>`;
@@ -650,6 +657,10 @@ function surActionChoisie(j, action) {
       afficherToast('Vous n’êtes pas empoisonné.');
       return;
     }
+    if (objet.effet.type === 'fuite' && cb.genre !== 'exploration' && cb.genre !== 'embuscade') {
+      afficherToast('Impossible de fuir ce combat, même en poudre.');
+      return;
+    }
   }
 
   const lancer = (cible) => {
@@ -703,12 +714,13 @@ function executerActionCoeur(j, action, cible) {
   } else if (action.genre === 'objet') {
     const objet = OBJETS[action.idObjet];
     if (objet && retirerObjet(j, action.idObjet, 1)) {
-      utiliserObjetEnCombat(j, objet);
+      const issueObjet = utiliserObjetEnCombat(j, objet);
       if (j.distant && cb.consosDistantes) {
         const conso = cb.consosDistantes[j.bid] = cb.consosDistantes[j.bid] || {};
         conso[action.idObjet] = (conso[action.idObjet] || 0) + 1;
       }
       sauvegarderLocal();
+      if (issueObjet === 'fuite') return 'fuite';
     }
   } else if (action.genre === 'fuite') {
     if (cb.genre === 'bossMonde') {
@@ -753,14 +765,17 @@ function lancerCompetence(j, compId, cible) {
   j.mp -= comp.coutMp;
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
 
+  // Rang de maîtrise (compétences signatures) : +15 % par rang.
+  const multRang = 1 + 0.15 * rangDe(j, compId);
+
   if (comp.type === 'degats') {
     const cibles = comp.cible === 'ennemis' ? cb.monstres.filter((m) => !m.mort) : [cible];
-    journal(`${comp.emoji} ${j.nom} utilise ${comp.nom} !`);
+    journal(`${comp.emoji} ${j.nom} utilise ${comp.nom}${multRang > 1 ? ` (rang ${rangDe(j, compId)})` : ''} !`);
     cibles.forEach((c) => {
       // Certaines compétences frappent plusieurs fois (rafale de coups).
       for (let coup = 0; coup < (comp.coups || 1); coup++) {
         if (estMort(c)) break;
-        const brut = comp.puissance + s[comp.stat] * comp.ratio;
+        const brut = (comp.puissance + s[comp.stat] * comp.ratio) * multRang;
         const r = infligerDegats(j, c, brut, { critBonus: comp.critBonus || 0 });
         journal(`→ ${c.nom} subit ${texteDegats(r)}`);
         gererMort(c);
@@ -774,7 +789,7 @@ function lancerCompetence(j, compId, cible) {
   } else if (comp.type === 'soin') {
     const cibles = comp.cible === 'allies' ? cb.equipe.filter((x) => !x.ko) : [cible];
     cibles.forEach((c) => {
-      const soin = soigner(c, comp.puissance + s[comp.stat] * comp.ratio);
+      const soin = soigner(c, (comp.puissance + s[comp.stat] * comp.ratio) * multRang);
       journal(`${comp.emoji} ${j.nom} rend ${soin} PV à ${c === j ? 'lui-même' : c.nom}.`);
       if (comp.effet) appliquerEffet(j, c, comp.effet, null);
     });
@@ -804,6 +819,30 @@ function utiliserObjetEnCombat(j, objet) {
   } else if (effet.type === 'elixir-benediction') {
     poserStatut(j, { type: 'benediction', duree: effet.duree });
     journal(`${objet.emoji} ${j.nom} boit ${objet.nom} : +30 % de dégâts pendant ${effet.duree} tours !`);
+  } else if (effet.type === 'soin-groupe') {
+    journal(`${objet.emoji} ${j.nom} déploie ${objet.nom} !`);
+    cb.equipe.filter((x) => !x.ko).forEach((allie) => {
+      const soin = Math.min(effet.valeur, allie.maxHp - allie.hp);
+      if (soin > 0) {
+        allie.hp += soin;
+        journal(`→ ${allie.nom} récupère ${soin} PV.`);
+      }
+    });
+  } else if (effet.type === 'regen') {
+    poserStatut(j, { type: 'regen', duree: effet.duree, valeur: effet.valeur });
+    journal(`${objet.emoji} ${j.nom} boit ${objet.nom} : ${effet.valeur} PV régénérés par tour pendant ${effet.duree} tours.`);
+  } else if (effet.type === 'bouclier') {
+    poserStatut(j, { type: 'bouclier', duree: effet.duree, valeur: effet.valeur });
+    journal(`${objet.emoji} ${j.nom} boit ${objet.nom} : un bouclier de ${effet.valeur} points l'enveloppe.`);
+  } else if (effet.type === 'purge') {
+    j.statuts = j.statuts.filter((st) => !['poison', 'affaibli', 'etourdi'].includes(st.type));
+    journal(`${objet.emoji} ${j.nom} boit ${objet.nom} : les maux se dissipent.`);
+  } else if (effet.type === 'fuite') {
+    journal(`${objet.emoji} ${j.nom} jette la ${objet.nom} au sol : le groupe disparaît dans un nuage !`);
+    return 'fuite';
+  } else if (effet.type === 'fortune') {
+    poserStatut(j, { type: 'fortune', duree: 99 });
+    journal(`${objet.emoji} ${j.nom} frotte son ${objet.nom} : la chance sourit à l'équipe ! (+30 % de butin)`);
   } else if (effet.type === 'bombe') {
     journal(`${objet.emoji} ${j.nom} lance une ${objet.nom} sur les ennemis !`);
     cb.monstres.filter((m) => !m.mort).forEach((m) => {
@@ -812,7 +851,11 @@ function utiliserObjetEnCombat(j, objet) {
       gererMort(m);
       if (!estMort(m) && Math.random() < (effet.chanceEtourdi || 0)) {
         poserStatut(m, { type: 'etourdi', duree: 1 });
-        journal(`💫 ${m.nom} est étourdi par le givre !`);
+        journal(`💫 ${m.nom} est étourdi !`);
+      }
+      if (!estMort(m) && Math.random() < (effet.chanceAffaibli || 0)) {
+        poserStatut(m, { type: 'affaibli', duree: 2 });
+        journal(`⬇️ ${m.nom} est affaibli par l'acide !`);
       }
     });
   }

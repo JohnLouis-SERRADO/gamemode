@@ -18,8 +18,12 @@ function rendreVille() {
       action: () => { rendreAtelier(); montrerEcran('ecran-atelier'); },
     },
     {
-      emoji: '🏺', nom: 'Antiquaire', detail: 'Curiosités rares : accessoires anciens et objets de combat',
+      emoji: '🏺', nom: 'Antiquaire', detail: 'Curiosités rares : accessoires anciens et objets tactiques de combat',
       action: () => { rendreAntiquaire(); montrerEcran('ecran-antiquaire'); },
+    },
+    {
+      emoji: '🔮', nom: 'L’Arcanium', detail: 'La magie en échoppe : les 68 grimoires de compétences, chez Dame Sibylle',
+      action: () => { rendreArcanium(); montrerEcran('ecran-arcanium'); },
     },
     {
       emoji: '🏰', nom: 'Guilde des Aventuriers', detail: 'Trois contrats par jour : monstres, récolte, boss…',
@@ -72,55 +76,72 @@ const ONGLETS_BOUTIQUE = [
   { id: 'armures', nom: '🛡️ Armures', filtre: (o) => o.type === 'equipement' && ['tete', 'torse', 'jambes'].includes(o.slot) },
   { id: 'accessoires', nom: '💍 Accessoires', filtre: (o) => o.type === 'equipement' && o.slot === 'accessoire' },
   { id: 'potions', nom: '🧪 Potions', filtre: (o) => o.type === 'consommable' },
-  { id: 'grimoires', nom: '📖 Grimoires' },
   { id: 'vendre', nom: '💰 Vendre' },
 ];
 
-// Prix d'un grimoire de compétence : selon son coût en mana et sa recharge.
-function prixGrimoire(comp) {
-  return 90 + (comp.coutMp || 0) * 25 + (comp.cooldown || 0) * 15;
+// ---------------------------------------------------------------------
+// Sous-filtres des échoppes : rareté + type contextuel, en chips.
+// ---------------------------------------------------------------------
+const RARETES_FILTRABLES = ['commun', 'inhabituel', 'rare', 'epique', 'legendaire', 'mythique', 'divin'];
+
+// Sous-types proposés selon l'onglet actif.
+const SOUS_TYPES = {
+  armes: [
+    { id: 'force', nom: '💪 Force', filtre: (o) => o.bonus && o.bonus.for != null },
+    { id: 'magie', nom: '🧠 Magie', filtre: (o) => o.bonus && o.bonus.int != null },
+    { id: 'agilite', nom: '🏃 Agilité', filtre: (o) => o.bonus && o.bonus.agi != null && o.bonus.for == null && o.bonus.int == null },
+  ],
+  armures: [
+    { id: 'tete', nom: '🪖 Tête', filtre: (o) => o.slot === 'tete' },
+    { id: 'torse', nom: '🥋 Torse', filtre: (o) => o.slot === 'torse' },
+    { id: 'jambes', nom: '👖 Jambes', filtre: (o) => o.slot === 'jambes' },
+  ],
+  potions: [
+    { id: 'soins', nom: '❤️ Soins', filtre: (o) => ['pv', 'soin-groupe', 'regen'].includes(o.effet.type) },
+    { id: 'mana', nom: '💧 Mana', filtre: (o) => o.effet.type === 'pm' },
+    { id: 'combat', nom: '💥 Tactiques', filtre: (o) => !['pv', 'pm', 'soin-groupe', 'regen'].includes(o.effet.type) },
+  ],
+  antiquaire: [
+    { id: 'equipement', nom: '💍 Curiosités', filtre: (o) => o.type === 'equipement' },
+    { id: 'consommable', nom: '🧪 Objets de combat', filtre: (o) => o.type === 'consommable' },
+  ],
+};
+
+let sousFiltres = { rarete: 'tous', type: 'tous' };
+
+function rendreChipsFiltres(conteneur, contexte, surChangement) {
+  const rangee = document.createElement('div');
+  rangee.className = 'rangee-chips rangee-sous-filtres';
+  const types = SOUS_TYPES[contexte] || [];
+  if (types.length > 0) {
+    [{ id: 'tous', nom: 'Tout' }, ...types].forEach((t) => {
+      const chip = document.createElement('button');
+      chip.className = 'chip chip-filtre' + (sousFiltres.type === t.id ? ' active' : '');
+      chip.textContent = t.nom;
+      chip.addEventListener('click', () => { sousFiltres.type = t.id; surChangement(); });
+      rangee.appendChild(chip);
+    });
+    const separateur = document.createElement('span');
+    separateur.className = 'separateur-chips';
+    rangee.appendChild(separateur);
+  }
+  [['tous', '✨ Toutes raretés'], ...RARETES_FILTRABLES.map((r) => [r, RARETES[r].nom])].forEach(([id, nom]) => {
+    const chip = document.createElement('button');
+    chip.className = `chip chip-filtre chip-rar-${id}` + (sousFiltres.rarete === id ? ' active' : '');
+    chip.textContent = nom;
+    chip.addEventListener('click', () => { sousFiltres.rarete = id; surChangement(); });
+    rangee.appendChild(chip);
+  });
+  conteneur.appendChild(rangee);
 }
 
-// L'échoppe aux grimoires : apprendre des compétences contre de l'or.
-function rendreGrimoires(contenu, p) {
-  const aide = document.createElement('p');
-  aide.className = 'aide';
-  aide.textContent = 'Chaque grimoire enseigne une compétence, ajoutée à votre grimoire personnel (et équipée s’il reste une place parmi vos 8 actives). Les compétences déjà connues n’apparaissent plus.';
-  contenu.appendChild(aide);
-
-  const stats = statsEffectives(p);
-  const inconnues = Object.entries(COMPETENCES)
-    .filter(([id]) => !p.grimoire.includes(id))
-    .sort((a, b) => prixGrimoire(a[1]) - prixGrimoire(b[1]));
-  if (inconnues.length === 0) {
-    const fini = document.createElement('p');
-    fini.className = 'aide';
-    fini.textContent = '📚 Vous connaissez les 68 compétences des Royaumes. Le libraire s’incline.';
-    contenu.appendChild(fini);
-    return;
+function passeSousFiltres(objet, contexte) {
+  if (sousFiltres.rarete !== 'tous' && rareteDe(objet) !== sousFiltres.rarete) return false;
+  if (sousFiltres.type !== 'tous') {
+    const type = (SOUS_TYPES[contexte] || []).find((t) => t.id === sousFiltres.type);
+    if (type && !type.filtre(objet)) return false;
   }
-  const grille = document.createElement('div');
-  grille.className = 'grille-competences';
-  inconnues.forEach(([id, comp]) => {
-    const carte = carteCompetence(id, comp, { stats });
-    const prix = prixGrimoire(comp);
-    const acheter = document.createElement('button');
-    acheter.className = 'btn-choix btn-compact btn-achat';
-    acheter.textContent = `📖 Étudier — ${prix} po`;
-    acheter.disabled = p.po < prix;
-    acheter.addEventListener('click', () => {
-      if (p.po < prix || p.grimoire.includes(id)) return;
-      p.po -= prix;
-      apprendreCompetence(p, id);
-      sauvegarder(p);
-      afficherToast(`${comp.emoji} ${comp.nom} apprise ! ${p.competences.includes(id) ? 'Elle est équipée.' : 'Elle attend dans votre grimoire.'}`);
-      rendreBoutique();
-      rendreTopbar();
-    });
-    carte.appendChild(acheter);
-    grille.appendChild(carte);
-  });
-  contenu.appendChild(grille);
+  return true;
 }
 
 let ongletBoutique = 'armes';
@@ -135,7 +156,11 @@ function rendreBoutique() {
     const btn = document.createElement('button');
     btn.className = 'onglet' + (ongletBoutique === onglet.id ? ' actif' : '');
     btn.textContent = onglet.nom;
-    btn.addEventListener('click', () => { ongletBoutique = onglet.id; rendreBoutique(); });
+    btn.addEventListener('click', () => {
+      ongletBoutique = onglet.id;
+      sousFiltres = { rarete: 'tous', type: 'tous' }; // chaque onglet repart à neuf
+      rendreBoutique();
+    });
     zoneOnglets.appendChild(btn);
   });
 
@@ -146,23 +171,24 @@ function rendreBoutique() {
     rendreVente(contenu, p);
     return;
   }
-  if (ongletBoutique === 'grimoires') {
-    rendreGrimoires(contenu, p);
-    return;
-  }
 
   const onglet = ONGLETS_BOUTIQUE.find((o) => o.id === ongletBoutique);
+  rendreChipsFiltres(contenu, ongletBoutique, () => rendreBoutique());
   const grille = document.createElement('div');
   grille.className = 'grille-inventaire';
   // Le stock s'étoffe avec le niveau : articles jusqu'à niveau+2, aperçus
   // verrouillés jusqu'à niveau+8 pour donner envie de progresser.
-  Object.entries(OBJETS)
+  const visibles = Object.entries(OBJETS)
     .filter(([, o]) => o.prix != null && !o.vendeur && onglet.filtre(o))
     .filter(([, o]) => !o.niveau || o.niveau <= p.niveau + 8)
-    .sort((a, b) => (a[1].niveau || 0) - (b[1].niveau || 0) || a[1].prix - b[1].prix)
-    .forEach(([id, objet]) => {
-      grille.appendChild(carteArticleBoutique(p, id, objet, () => rendreBoutique()));
-    });
+    .filter(([, o]) => passeSousFiltres(o, ongletBoutique))
+    .sort((a, b) => (a[1].niveau || 0) - (b[1].niveau || 0) || a[1].prix - b[1].prix);
+  if (visibles.length === 0) {
+    contenu.insertAdjacentHTML('beforeend', '<p class="aide">Rien en rayon avec ces filtres — le marchand hausse les épaules.</p>');
+  }
+  visibles.forEach(([id, objet]) => {
+    grille.appendChild(carteArticleBoutique(p, id, objet, () => rendreBoutique()));
+  });
   contenu.appendChild(grille);
 }
 
@@ -273,15 +299,89 @@ function rendreAntiquaire() {
   el('antiquaire-po').textContent = `💰 ${p.po} po`;
   const zone = el('antiquaire-contenu');
   zone.innerHTML = '';
+  rendreChipsFiltres(zone, 'antiquaire', () => rendreAntiquaire());
   const grille = document.createElement('div');
   grille.className = 'grille-inventaire';
-  Object.entries(OBJETS)
+  const visibles = Object.entries(OBJETS)
     .filter(([, o]) => o.vendeur === 'antiquaire')
     .filter(([, o]) => !o.niveau || o.niveau <= p.niveau + 8)
-    .sort((a, b) => (a[1].niveau || 0) - (b[1].niveau || 0) || a[1].prix - b[1].prix)
-    .forEach(([id, objet]) => {
-      grille.appendChild(carteArticleBoutique(p, id, objet, () => rendreAntiquaire()));
+    .filter(([, o]) => passeSousFiltres(o, 'antiquaire'))
+    .sort((a, b) => (a[1].niveau || 0) - (b[1].niveau || 0) || a[1].prix - b[1].prix);
+  if (visibles.length === 0) {
+    zone.insertAdjacentHTML('beforeend', '<p class="aide">Rien dans cette vitrine-là. « Revenez fouiller une autre étagère », sourit l’antiquaire.</p>');
+  }
+  visibles.forEach(([id, objet]) => {
+    grille.appendChild(carteArticleBoutique(p, id, objet, () => rendreAntiquaire()));
+  });
+  zone.appendChild(grille);
+}
+
+// =====================================================================
+// L'Arcanium : la boutique de magie — tous les grimoires de compétences
+// =====================================================================
+let filtreArcanium = 'tous';
+
+// Prix d'un grimoire de compétence : selon son coût en mana et sa recharge.
+function prixGrimoire(comp) {
+  return 90 + (comp.coutMp || 0) * 25 + (comp.cooldown || 0) * 15;
+}
+
+function rendreArcanium() {
+  const p = persoActif();
+  el('arcanium-po').textContent = `💰 ${p.po} po`;
+  const zone = el('arcanium-contenu');
+  zone.innerHTML = '';
+
+  const aide = document.createElement('p');
+  aide.className = 'aide';
+  aide.textContent = 'Chaque grimoire enseigne une compétence, ajoutée à votre grimoire personnel (et équipée s’il reste une place parmi vos 8 actives). Les compétences signatures des classes ne s’achètent pas — elles se méritent à la création.';
+  zone.appendChild(aide);
+
+  // Sous-filtres par école de compétence
+  const rangee = document.createElement('div');
+  rangee.className = 'rangee-chips rangee-sous-filtres';
+  [['tous', '✨ Toutes'], ...Object.entries(CATEGORIES)].forEach(([id, nom]) => {
+    const chip = document.createElement('button');
+    chip.className = 'chip chip-filtre' + (filtreArcanium === id ? ' active' : '');
+    chip.textContent = nom;
+    chip.addEventListener('click', () => { filtreArcanium = id; rendreArcanium(); });
+    rangee.appendChild(chip);
+  });
+  zone.appendChild(rangee);
+
+  const stats = statsEffectives(p);
+  const inconnues = Object.entries(COMPETENCES)
+    .filter(([id, comp]) => !p.grimoire.includes(id) && !comp.classe)
+    .filter(([, comp]) => filtreArcanium === 'tous' || comp.categorie === filtreArcanium)
+    .sort((a, b) => prixGrimoire(a[1]) - prixGrimoire(b[1]));
+  if (inconnues.length === 0) {
+    const fini = document.createElement('p');
+    fini.className = 'aide';
+    fini.textContent = '📚 Plus rien à apprendre dans cette école : Dame Sibylle s’incline bien bas.';
+    zone.appendChild(fini);
+    return;
+  }
+  const grille = document.createElement('div');
+  grille.className = 'grille-competences';
+  inconnues.forEach(([id, comp]) => {
+    const carte = carteCompetence(id, comp, { stats });
+    const prix = prixGrimoire(comp);
+    const acheter = document.createElement('button');
+    acheter.className = 'btn-choix btn-compact btn-achat';
+    acheter.textContent = `📖 Étudier — ${prix} po`;
+    acheter.disabled = p.po < prix;
+    acheter.addEventListener('click', () => {
+      if (p.po < prix || p.grimoire.includes(id)) return;
+      p.po -= prix;
+      apprendreCompetence(p, id);
+      sauvegarder(p);
+      afficherToast(`${comp.emoji} ${comp.nom} apprise ! ${p.competences.includes(id) ? 'Elle est équipée.' : 'Elle attend dans votre grimoire.'}`);
+      rendreArcanium();
+      rendreTopbar();
     });
+    carte.appendChild(acheter);
+    grille.appendChild(carte);
+  });
   zone.appendChild(grille);
 }
 
@@ -364,16 +464,62 @@ function reclamerQuete(p, quete) {
 // =====================================================================
 // Atelier de craft
 // =====================================================================
+let filtresAtelier = { type: 'tous', realisables: false };
+
+// Catégorie d'une recette selon l'objet produit.
+function categorieRecette(recette) {
+  const objet = OBJETS[recette.resultat];
+  if (objet.type === 'consommable') return 'potions';
+  if (objet.slot === 'arme') return 'armes';
+  if (['tete', 'torse', 'jambes'].includes(objet.slot)) return 'armures';
+  return 'accessoires';
+}
+
+function recetteRealisable(p, recette) {
+  return p.niveau >= recette.niveau && p.po >= recette.po
+    && Object.entries(recette.materiaux).every(([id, qte]) => compterObjet(p, id) >= qte);
+}
+
 function rendreAtelier() {
   const p = persoActif();
   el('atelier-po').textContent = `💰 ${p.po} po`;
   const zone = el('atelier-recettes');
   zone.innerHTML = '';
 
+  // Sous-filtres : catégorie du résultat + « réalisables maintenant »
+  const rangee = document.createElement('div');
+  rangee.className = 'rangee-chips rangee-sous-filtres';
+  [['tous', 'Tout'], ['potions', '🧪 Potions'], ['armes', '⚔️ Armes'], ['armures', '🛡️ Armures'], ['accessoires', '💍 Accessoires']]
+    .forEach(([id, nom]) => {
+      const chip = document.createElement('button');
+      chip.className = 'chip chip-filtre' + (filtresAtelier.type === id ? ' active' : '');
+      chip.textContent = nom;
+      chip.addEventListener('click', () => { filtresAtelier.type = id; rendreAtelier(); });
+      rangee.appendChild(chip);
+    });
+  const separateur = document.createElement('span');
+  separateur.className = 'separateur-chips';
+  rangee.appendChild(separateur);
+  const chipRealisables = document.createElement('button');
+  chipRealisables.className = 'chip chip-filtre' + (filtresAtelier.realisables ? ' active' : '');
+  chipRealisables.textContent = '✅ Réalisables maintenant';
+  chipRealisables.addEventListener('click', () => {
+    filtresAtelier.realisables = !filtresAtelier.realisables;
+    rendreAtelier();
+  });
+  rangee.appendChild(chipRealisables);
+  zone.appendChild(rangee);
+
   // L'établi ne montre que les recettes proches du niveau du héros ;
   // le reste se débloque en progressant.
-  const visibles = RECETTES.filter((recette) => recette.niveau <= p.niveau + 2);
-  const cachees = RECETTES.length - visibles.length;
+  const proches = RECETTES.filter((recette) => recette.niveau <= p.niveau + 2);
+  const cachees = RECETTES.length - proches.length;
+  const visibles = proches
+    .filter((recette) => filtresAtelier.type === 'tous' || categorieRecette(recette) === filtresAtelier.type)
+    .filter((recette) => !filtresAtelier.realisables || recetteRealisable(p, recette));
+  if (visibles.length === 0) {
+    zone.insertAdjacentHTML('beforeend', '<p class="aide">Aucune recette ne correspond à ces filtres pour l’instant.</p>');
+  }
 
   visibles.forEach((recette) => {
     const objet = OBJETS[recette.resultat];

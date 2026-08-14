@@ -12,7 +12,8 @@
     <nav id="topbar-nav">
       <button data-nav="carte" title="Carte du monde">🗺️<span class="nav-libelle">Carte</span></button>
       <button data-nav="ville" title="Bourg de Valciel">🏘️<span class="nav-libelle">Ville</span></button>
-      <button data-nav="heros" title="Fiche du héros">🎒<span class="nav-libelle">Héros</span><span id="badge-heros" class="pastille cache">!</span></button>
+      <button data-nav="heros" title="Fiche du héros">🧙<span class="nav-libelle">Héros</span><span id="badge-heros" class="pastille cache">!</span></button>
+      <button data-nav="sac" title="Sac : équipement et inventaire">🎒<span class="nav-libelle">Sac</span></button>
       <button data-nav="taverne" title="Taverne (multijoueur)">🍻<span class="nav-libelle">Taverne</span><span id="point-en-ligne" class="point-reseau"></span></button>
       <button data-nav="titre" title="Changer de personnage">⇄<span class="nav-libelle">Profils</span></button>
     </nav>
@@ -176,6 +177,22 @@
     <!-- ===== Fiche du héros ===== -->
     <section id="ecran-heros" class="ecran">
       <div id="heros-contenu"></div>
+    </section>
+
+    <!-- ===== Sac : équipement + inventaire ===== -->
+    <section id="ecran-sac" class="ecran">
+      <h2>🎒 Sac d'aventure</h2>
+      <div id="sac-contenu"></div>
+    </section>
+
+    <!-- ===== Arcanium (boutique de magie) ===== -->
+    <section id="ecran-arcanium" class="ecran">
+      <div class="entete-lieu">
+        <h2>🔮 L'Arcanium</h2>
+        <span id="arcanium-po" class="badge badge-po"></span>
+      </div>
+      <p class="sous-titre">« Chaque grimoire enseigne une compétence, pour toujours. Choisissez avec gourmandise. » — Dame Sibylle</p>
+      <div id="arcanium-contenu"></div>
     </section>
 
     <!-- ===== Taverne (multijoueur) ===== -->

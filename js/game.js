@@ -114,8 +114,8 @@ function boutonConfirmation(libelle, libelleConfirme, action) {
 // Navigation
 // =====================================================================
 const ECRANS_AVEC_TOPBAR = ['ecran-carte', 'ecran-equipe', 'ecran-zone', 'ecran-ville',
-  'ecran-boutique', 'ecran-antiquaire', 'ecran-guilde', 'ecran-atelier', 'ecran-heros',
-  'ecran-taverne', 'ecran-groupe-ligne', 'ecran-donjon'];
+  'ecran-boutique', 'ecran-antiquaire', 'ecran-arcanium', 'ecran-guilde', 'ecran-atelier',
+  'ecran-heros', 'ecran-sac', 'ecran-taverne', 'ecran-groupe-ligne', 'ecran-donjon'];
 
 function montrerEcran(id) {
   document.querySelectorAll('.ecran').forEach((e) => e.classList.remove('actif'));
@@ -148,7 +148,7 @@ function rendreTopbar() {
     </div>
     <span class="topbar-po">💰 ${p.po}</span>`;
   const badge = el('badge-heros');
-  badge.classList.toggle('cache', !(p.pointsEnAttente > 0 || p.competencesEnAttente > 0));
+  badge.classList.toggle('cache', !(p.pointsEnAttente > 0 || p.competencesEnAttente > 0 || p.maitrise > 0));
   el('point-en-ligne').classList.toggle('actif-reseau', etat.enLigne);
 }
 
@@ -159,6 +159,7 @@ function naviguer(destination) {
     case 'carte': rendreCarte(); montrerEcran('ecran-carte'); break;
     case 'ville': rendreVille(); montrerEcran('ecran-ville'); break;
     case 'heros': rendreHeros(); montrerEcran('ecran-heros'); break;
+    case 'sac': rendreSac(); montrerEcran('ecran-sac'); break;
     case 'taverne': rendreTaverne(); montrerEcran('ecran-taverne'); break;
     case 'titre': rendreTitre(); montrerEcran('ecran-titre'); break;
   }
@@ -203,11 +204,33 @@ function normaliserPerso(p) {
   if (p.competences.length > MAX_COMPETENCES_ACTIVES) {
     p.competences = p.competences.slice(0, MAX_COMPETENCES_ACTIVES);
   }
+  // v8 : classe, compétence signature exclusive et points de maîtrise.
+  if (!p.classe || !CLASSES[p.classe]) p.classe = infererClasse(p);
+  if (!p.rangs || typeof p.rangs !== 'object') p.rangs = {};
+  const signature = CLASSES[p.classe].signature;
+  if (signature && !p.grimoire.includes(signature)) apprendreCompetence(p, signature);
+  if (p.maitrise == null) {
+    const depenses = Object.values(p.rangs).reduce((somme, r) => somme + r, 0);
+    p.maitrise = Math.max(0, pointsMaitrisePourNiveau(p.niveau) - depenses);
+  }
   if (!p.quetes || p.quetes.date !== new Date().toISOString().slice(0, 10)) {
     p.quetes = genererQuetesDuJour(p);
   }
   bornerVie(p);
   return p;
+}
+
+// Devine la classe d'un héros d'avant la v8 : le modèle dont il connaît
+// le plus de compétences (au moins 2), sinon Aventurier.
+function infererClasse(p) {
+  let meilleur = 'aventurier';
+  let score = 1;
+  const connues = p.grimoire && p.grimoire.length ? p.grimoire : (p.competences || []);
+  MODELES.forEach((m) => {
+    const n = m.competences.filter((id) => connues.includes(id)).length;
+    if (n > score) { score = n; meilleur = m.id; }
+  });
+  return meilleur;
 }
 
 function sauvegarderLocal() {
@@ -231,7 +254,7 @@ function donneesCloud(p) {
     explorations: p.explorations, bossVaincus: p.bossVaincus,
     compteurs: p.compteurs, familiers: p.familiers, familier: p.familier,
     hautsFaits: p.hautsFaits, titre: p.titre, tourMax: p.tourMax, quetes: p.quetes,
-    donjons: p.donjons,
+    donjons: p.donjons, classe: p.classe, maitrise: p.maitrise, rangs: p.rangs,
   };
 }
 
@@ -269,6 +292,7 @@ function nouveauPersonnage(base) {
     nom: base.nom,
     avatar: base.avatar,
     race: base.race || 'humain',
+    classe: base.classe || 'aventurier',
     stats: { ...base.stats },
     niveau: 1,
     xp: 0,
@@ -324,6 +348,8 @@ function gagnerXp(p, xp) {
     NIVEAUX_NOUVELLE_COMPETENCE.forEach((seuil) => {
       if (avant < seuil && apres >= seuil) p.competencesEnAttente++;
     });
+    // Points de maîtrise de la signature (niveaux 3, 6, 9, 12, 15, 18)
+    p.maitrise = (p.maitrise || 0) + pointsMaitrisePourNiveau(apres) - pointsMaitrisePourNiveau(avant);
     p.niveau = apres;
     bornerVie(p);
     p.hp = p.maxHp;
@@ -386,6 +412,7 @@ function demarrerCreation() {
     nom: '',
     avatar: AVATARS[etat.profils.length % AVATARS.length],
     race: 'humain',
+    classe: 'aventurier',
     stats,
     competences: new Set(),
   };
@@ -429,15 +456,28 @@ function rendreCreation() {
   zoneModeles.innerHTML = '';
   MODELES.forEach((m) => {
     const btn = document.createElement('button');
-    btn.className = 'btn-choix';
+    btn.className = 'btn-choix' + (b.classe === m.id ? ' selectionne' : '');
     btn.textContent = `${m.emoji} ${m.nom}`;
     btn.addEventListener('click', () => {
+      b.classe = m.id;
       b.stats = { ...m.stats };
       b.competences = new Set(m.competences);
       rendreCreation();
     });
     zoneModeles.appendChild(btn);
   });
+  // Chaque classe apporte sa compétence signature exclusive, améliorable
+  // ensuite avec les points de maîtrise.
+  const signature = COMPETENCES[CLASSES[b.classe].signature];
+  const ancienEncart = el('creation-signature');
+  if (ancienEncart) ancienEncart.remove();
+  const encartSignature = document.createElement('p');
+  encartSignature.id = 'creation-signature';
+  encartSignature.className = 'aide encart-signature';
+  encartSignature.innerHTML = `🏅 Signature de ${b.classe === 'aventurier' ? 'l’Aventurier (aucune classe choisie)' : `la classe <strong>${CLASSES[b.classe].nom}</strong>`} :
+    ${signature.emoji} <strong>${signature.nom}</strong> — ${signature.desc}
+    <br>Exclusive à cette classe, offerte à la création, améliorable avec les points de maîtrise (niv. 3, 6, 9, 12, 15, 18).`;
+  zoneModeles.parentElement.appendChild(encartSignature);
 
   const restants = pointsRestants();
   el('creation-points').textContent = `${restants} point${restants > 1 ? 's' : ''} à répartir`;
@@ -497,22 +537,49 @@ function rendreCreation() {
 function carteCompetence(id, comp, options = {}) {
   const carte = document.createElement('div');
   carte.className = 'carte-competence'
+    + (comp.signature ? ' carte-signature' : '')
     + (options.selectionnee ? ' selectionnee' : '')
     + (options.cliquable ? ' cliquable' : '');
   // Détails chiffrés calculés avec les stats fournies (héros ou brouillon).
-  const infos = detailsCompetence(comp, options.stats || {});
+  const infos = detailsCompetence(comp, options.stats || {}, options.rang || 0);
+  const badge = comp.signature
+    ? ` <span class="badge-signature">🏅 Signature${options.rang ? ` · rang ${options.rang}/${RANG_SIGNATURE_MAX}` : ''}</span>`
+    : '';
   carte.innerHTML = `
-    <div class="comp-entete">${comp.emoji} <strong>${comp.nom}</strong></div>
+    <div class="comp-entete">${comp.emoji} <strong>${comp.nom}</strong>${badge}</div>
     <div class="comp-desc">${comp.desc}</div>
     <div class="comp-infos">${infos.join(' · ')}</div>`;
   if (options.cliquable && options.surClic) rendreCliquable(carte, options.surClic);
   return carte;
 }
 
+// Bouton d'investissement d'un point de maîtrise sur la signature de classe.
+function ajouterBlocSignature(p, id, comp, carte) {
+  if (!comp.signature) return;
+  const rang = rangDe(p, id);
+  if (rang >= RANG_SIGNATURE_MAX) return;
+  const monter = document.createElement('button');
+  monter.className = p.maitrise > 0 ? 'btn-principal btn-compact' : 'btn-choix btn-compact';
+  monter.textContent = p.maitrise > 0
+    ? `🏅 Passer au rang ${rang + 1} (+15 % de puissance)`
+    : `🏅 Rang ${rang}/${RANG_SIGNATURE_MAX} — point de maîtrise au niveau ${SEUILS_MAITRISE.find((seuil) => seuil > p.niveau) || 18}`;
+  monter.disabled = p.maitrise <= 0;
+  monter.addEventListener('click', () => {
+    if (p.maitrise <= 0 || rangDe(p, id) >= RANG_SIGNATURE_MAX) return;
+    p.maitrise--;
+    p.rangs[id] = rangDe(p, id) + 1;
+    sauvegarder(p);
+    afficherToast(`🏅 ${comp.nom} passe au rang ${p.rangs[id]} : +${p.rangs[id] * 15} % de puissance !`);
+    rendreHeros();
+    rendreTopbar();
+  });
+  carte.appendChild(monter);
+}
+
 function validerCreation() {
   const b = etat.brouillon;
   const nom = el('creation-nom').value.trim() || `Héros ${etat.profils.length + 1}`;
-  const p = nouveauPersonnage({ nom, avatar: b.avatar, race: b.race, stats: b.stats, competences: [...b.competences] });
+  const p = nouveauPersonnage({ nom, avatar: b.avatar, race: b.race, classe: b.classe, stats: b.stats, competences: [...b.competences] });
   etat.profils.push(p);
   etat.actifId = p.id;
   etat.equipe = [p.id];
@@ -541,12 +608,13 @@ function rendreHeros() {
   const entete = document.createElement('div');
   entete.className = 'panneau heros-entete';
   const race = raceDe(p);
+  const classe = classeDe(p);
   const familier = familierActif(p);
   const titreActif = p.titre ? HAUTS_FAITS.find((h) => h.id === p.titre) : null;
   entete.innerHTML = `
     <span class="avatar-titan">${p.avatar}${familier ? `<span class="familier-avatar" title="${familier.nom}">${familier.emoji}</span>` : ''}</span>
     <div class="heros-identite">
-      <h2>${echapper(p.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''} <span class="niveau">niveau ${p.niveau}</span></h2>
+      <h2>${echapper(p.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''} <span class="niveau">${classe.emoji} ${classe.nom} · niveau ${p.niveau}</span></h2>
       <div class="heros-race">${race.emoji} ${race.nom} — <em>${race.passif}</em> : ${race.desc}</div>
       <div class="barre xp"><div class="remplissage" style="width:${pctXp}%"></div>
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
@@ -593,7 +661,7 @@ function rendreHeros() {
     const grille = document.createElement('div');
     grille.className = 'grille-competences';
     Object.entries(COMPETENCES)
-      .filter(([id]) => !p.grimoire.includes(id))
+      .filter(([id, comp]) => !p.grimoire.includes(id) && !comp.classe)
       .forEach(([id, comp]) => {
         grille.appendChild(carteCompetence(id, comp, {
           stats: s,
@@ -615,14 +683,17 @@ function rendreHeros() {
   // --- Compétences actives (max 8) et grimoire ---
   const blocComp = document.createElement('div');
   blocComp.className = 'panneau';
-  blocComp.innerHTML = `<h3>⚡ Compétences actives (${p.competences.length}/${MAX_COMPETENCES_ACTIVES})</h3>
-    <p class="aide">Ce sont elles que vous lancez en combat. Retirez-en, équipez-en d'autres depuis le grimoire — autant de fois que vous voulez, hors combat.</p>`;
+  blocComp.innerHTML = `<h3>⚡ Compétences actives (${p.competences.length}/${MAX_COMPETENCES_ACTIVES})
+    ${p.maitrise > 0 ? `<span class="badge badge-alerte">🏅 ${p.maitrise} point${p.maitrise > 1 ? 's' : ''} de maîtrise à investir !</span>` : ''}</h3>
+    <p class="aide">Ce sont elles que vous lancez en combat. Retirez-en, équipez-en d'autres depuis le grimoire — autant de fois que vous voulez, hors combat.
+    Votre signature de classe se renforce avec les points de maîtrise (niv. 3, 6, 9, 12, 15, 18).</p>`;
   const grilleComp = document.createElement('div');
   grilleComp.className = 'grille-competences';
   p.competences.forEach((id) => {
     const comp = COMPETENCES[id];
     if (!comp) return;
-    const carte = carteCompetence(id, comp, { stats: s });
+    const carte = carteCompetence(id, comp, { stats: s, rang: rangDe(p, id) });
+    ajouterBlocSignature(p, id, comp, carte);
     const retirer = document.createElement('button');
     retirer.className = 'btn-choix btn-compact';
     retirer.textContent = '⬇️ Ranger au grimoire';
@@ -652,7 +723,8 @@ function rendreHeros() {
     grilleGrimoire.className = 'grille-competences';
     enReserve.forEach((id) => {
       const comp = COMPETENCES[id];
-      const carte = carteCompetence(id, comp, { stats: s });
+      const carte = carteCompetence(id, comp, { stats: s, rang: rangDe(p, id) });
+      ajouterBlocSignature(p, id, comp, carte);
       const equiperBtn = document.createElement('button');
       equiperBtn.className = 'btn-choix btn-compact';
       const complet = p.competences.length >= MAX_COMPETENCES_ACTIVES;
@@ -751,100 +823,6 @@ function rendreHeros() {
   blocFaits.appendChild(grilleFaits);
   zone.appendChild(blocFaits);
 
-  // --- Équipement ---
-  const blocEquip = document.createElement('div');
-  blocEquip.className = 'panneau';
-  blocEquip.innerHTML = '<h3>Équipement</h3>';
-  const grilleEquip = document.createElement('div');
-  grilleEquip.className = 'grille-equipement';
-  Object.entries(SLOTS_EQUIPEMENT).forEach(([slot, meta]) => {
-    const idObjet = p.equipement[slot];
-    const caseSlot = document.createElement('div');
-    caseSlot.className = 'case-equipement' + (idObjet ? ' occupee' : '');
-    if (idObjet) {
-      const objet = OBJETS[idObjet];
-      caseSlot.innerHTML = `
-        <div class="case-slot-nom">${meta.nom}</div>
-        <div class="case-objet">${objet.emoji} <strong>${objet.nom}</strong></div>
-        <div class="case-bonus">${texteBonus(objet.bonus)}</div>`;
-      const retirer = document.createElement('button');
-      retirer.className = 'btn-choix btn-compact';
-      retirer.textContent = 'Retirer';
-      retirer.addEventListener('click', () => {
-        ajouterObjet(p, idObjet);
-        p.equipement[slot] = null;
-        bornerVie(p);
-        sauvegarder(p);
-        rendreHeros();
-        rendreTopbar();
-      });
-      caseSlot.appendChild(retirer);
-    } else {
-      caseSlot.innerHTML = `
-        <div class="case-slot-nom">${meta.nom}</div>
-        <div class="case-vide">${meta.emoji} vide</div>`;
-    }
-    grilleEquip.appendChild(caseSlot);
-  });
-  blocEquip.appendChild(grilleEquip);
-  zone.appendChild(blocEquip);
-
-  // --- Inventaire ---
-  const blocInv = document.createElement('div');
-  blocInv.className = 'panneau';
-  blocInv.innerHTML = '<h3>Inventaire</h3>';
-  if (p.inventaire.length === 0) {
-    const vide = document.createElement('p');
-    vide.className = 'aide';
-    vide.textContent = 'Votre sac est vide. Le monde regorge de trésors !';
-    blocInv.appendChild(vide);
-  } else {
-    const grille = document.createElement('div');
-    grille.className = 'grille-inventaire';
-    p.inventaire.forEach((entree) => {
-      const objet = OBJETS[entree.id];
-      if (!objet) return;
-      const carte = document.createElement('div');
-      carte.className = `carte-objet bord-rar-${rareteDe(objet)}`;
-      carte.innerHTML = `
-        <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)} <span class="objet-qte">×${entree.qte}</span></div>
-        <div class="objet-desc">${objet.desc || ''}</div>
-        ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
-        ${texteSet(objet)}
-        ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}`;
-      if (objet.type === 'equipement') {
-        const equiperBtn = document.createElement('button');
-        equiperBtn.className = 'btn-choix btn-compact';
-        equiperBtn.textContent = 'Équiper';
-        equiperBtn.disabled = p.niveau < objet.niveau;
-        equiperBtn.addEventListener('click', () => {
-          equiper(p, entree.id);
-          rendreHeros();
-          rendreTopbar();
-        });
-        carte.appendChild(equiperBtn);
-      } else if (objet.type === 'consommable') {
-        const utiliser = document.createElement('button');
-        utiliser.className = 'btn-choix btn-compact';
-        utiliser.textContent = 'Utiliser';
-        utiliser.addEventListener('click', () => {
-          utiliserConsommable(p, entree.id);
-          rendreHeros();
-          rendreTopbar();
-        });
-        carte.appendChild(utiliser);
-      } else {
-        const note = document.createElement('div');
-        note.className = 'objet-note';
-        note.textContent = 'Matériau d’artisanat';
-        carte.appendChild(note);
-      }
-      grille.appendChild(carte);
-    });
-    blocInv.appendChild(grille);
-  }
-  zone.appendChild(blocInv);
-
   // --- Code de sauvegarde (jouer sur un autre appareil) ---
   const blocCode = document.createElement('div');
   blocCode.className = 'panneau';
@@ -894,6 +872,136 @@ function rendreHeros() {
     }
   }
   zone.appendChild(blocCode);
+}
+
+// =====================================================================
+// Le Sac : équipement porté + inventaire (écran séparé de la fiche)
+// =====================================================================
+let sousFiltreSac = 'tous';
+
+function rendreSac() {
+  const p = persoActif();
+  if (!p) return;
+  bornerVie(p);
+  const zone = el('sac-contenu');
+  zone.innerHTML = '';
+
+  // --- Équipement porté ---
+  const blocEquip = document.createElement('div');
+  blocEquip.className = 'panneau';
+  blocEquip.innerHTML = '<h3>🛡️ Équipement porté</h3>';
+  const grilleEquip = document.createElement('div');
+  grilleEquip.className = 'grille-equipement';
+  Object.entries(SLOTS_EQUIPEMENT).forEach(([slot, meta]) => {
+    const idObjet = p.equipement[slot];
+    const caseSlot = document.createElement('div');
+    caseSlot.className = 'case-equipement' + (idObjet ? ' occupee' : '');
+    if (idObjet) {
+      const objet = OBJETS[idObjet];
+      caseSlot.innerHTML = `
+        <div class="case-slot-nom">${meta.nom}</div>
+        <div class="case-objet">${objet.emoji} <strong>${objet.nom}</strong></div>
+        <div class="case-bonus">${texteBonus(objet.bonus)}</div>
+        ${texteSet(objet)}`;
+      const retirer = document.createElement('button');
+      retirer.className = 'btn-choix btn-compact';
+      retirer.textContent = 'Retirer';
+      retirer.addEventListener('click', () => {
+        ajouterObjet(p, idObjet);
+        p.equipement[slot] = null;
+        bornerVie(p);
+        sauvegarder(p);
+        rendreSac();
+        rendreTopbar();
+      });
+      caseSlot.appendChild(retirer);
+    } else {
+      caseSlot.innerHTML = `
+        <div class="case-slot-nom">${meta.nom}</div>
+        <div class="case-vide">${meta.emoji} vide</div>`;
+    }
+    grilleEquip.appendChild(caseSlot);
+  });
+  blocEquip.appendChild(grilleEquip);
+  zone.appendChild(blocEquip);
+
+  // --- Inventaire filtrable ---
+  const blocInv = document.createElement('div');
+  blocInv.className = 'panneau';
+  blocInv.innerHTML = '<h3>🎒 Inventaire</h3>';
+  const filtres = [
+    { id: 'tous', nom: 'Tout' },
+    { id: 'equipement', nom: '⚔️ Équipements' },
+    { id: 'consommable', nom: '🧪 Consommables' },
+    { id: 'materiau', nom: '⛏️ Matériaux' },
+  ];
+  const rangeeFiltres = document.createElement('div');
+  rangeeFiltres.className = 'rangee-chips';
+  filtres.forEach((f) => {
+    const chip = document.createElement('button');
+    chip.className = 'chip chip-filtre' + (sousFiltreSac === f.id ? ' active' : '');
+    chip.textContent = f.nom;
+    chip.addEventListener('click', () => { sousFiltreSac = f.id; rendreSac(); });
+    rangeeFiltres.appendChild(chip);
+  });
+  blocInv.appendChild(rangeeFiltres);
+
+  const entrees = p.inventaire.filter((entree) => {
+    const objet = OBJETS[entree.id];
+    return objet && (sousFiltreSac === 'tous' || objet.type === sousFiltreSac);
+  });
+  if (entrees.length === 0) {
+    const vide = document.createElement('p');
+    vide.className = 'aide';
+    vide.textContent = p.inventaire.length === 0
+      ? 'Votre sac est vide. Le monde regorge de trésors !'
+      : 'Rien dans cette catégorie.';
+    blocInv.appendChild(vide);
+  } else {
+    const grille = document.createElement('div');
+    grille.className = 'grille-inventaire';
+    entrees.forEach((entree) => {
+      const objet = OBJETS[entree.id];
+      const carte = document.createElement('div');
+      carte.className = `carte-objet bord-rar-${rareteDe(objet)}`;
+      carte.innerHTML = `
+        <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)} <span class="objet-qte">×${entree.qte}</span></div>
+        <div class="objet-desc">${objet.desc || ''}</div>
+        ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
+        ${texteSet(objet)}
+        ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}`;
+      if (objet.type === 'equipement') {
+        const equiperBtn = document.createElement('button');
+        equiperBtn.className = 'btn-choix btn-compact';
+        equiperBtn.textContent = 'Équiper';
+        equiperBtn.disabled = p.niveau < objet.niveau;
+        equiperBtn.addEventListener('click', () => {
+          equiper(p, entree.id);
+          rendreSac();
+          rendreTopbar();
+        });
+        carte.appendChild(equiperBtn);
+      } else if (objet.type === 'consommable') {
+        const utiliser = document.createElement('button');
+        utiliser.className = 'btn-choix btn-compact';
+        utiliser.textContent = 'Utiliser';
+        utiliser.addEventListener('click', () => {
+          utiliserConsommable(p, entree.id);
+          rendreSac();
+          rendreTopbar();
+        });
+        carte.appendChild(utiliser);
+      } else {
+        const note = document.createElement('div');
+        note.className = 'objet-note';
+        note.textContent = 'Matériau d’artisanat';
+        carte.appendChild(note);
+      }
+      grille.appendChild(carte);
+    });
+    blocInv.appendChild(grille);
+  }
+  zone.appendChild(blocInv);
 }
 
 function equiper(p, idObjet) {
@@ -990,6 +1098,10 @@ async function importerHeros() {
   if (Array.isArray(d.grimoire)) {
     d.grimoire.forEach((id) => { if (!p.grimoire.includes(id)) p.grimoire.push(id); });
   }
+  if (d.classe && CLASSES[d.classe]) p.classe = d.classe;
+  if (d.rangs && typeof d.rangs === 'object') p.rangs = d.rangs;
+  if (d.maitrise != null) p.maitrise = d.maitrise;
+  normaliserPerso(p); // signature de classe, maîtrise et grimoire cohérents
   p.niveau = donnees.niveau || 1;
   p.xp = donnees.xp || 0;
   p.pointsEnAttente = d.pointsEnAttente || 0;

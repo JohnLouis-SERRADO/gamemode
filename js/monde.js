@@ -407,7 +407,11 @@ function tirerButinCombat(cb) {
   const chaMoyenne = cb.equipe.length
     ? cb.equipe.reduce((somme, j) => somme + (statsEffectives(j).cha || 0), 0) / cb.equipe.length
     : 0;
-  const chanceEquipe = multChanceDrop(chaMoyenne);
+  let chanceEquipe = multChanceDrop(chaMoyenne);
+  // Trèfles séchés : chaque héros sous statut fortune ajoute +30 % de butin.
+  cb.equipe.forEach((j) => {
+    if ((j.statuts || []).some((s) => s.type === 'fortune')) chanceEquipe *= 1.3;
+  });
   let xp = 0;
   let po = 0;
   const objets = {};
