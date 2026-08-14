@@ -295,6 +295,8 @@ function normaliserPerso(p) {
   if (p.metierPrincipal === undefined || (p.metierPrincipal && !METIERS[p.metierPrincipal])) {
     p.metierPrincipal = null;
   }
+  // v13 : records d'Ascension éternelle par épopée.
+  if (!p.ascensions || typeof p.ascensions !== 'object') p.ascensions = {};
   if (!p.quetes || p.quetes.date !== new Date().toISOString().slice(0, 10)) {
     p.quetes = genererQuetesDuJour(p);
   }
@@ -364,6 +366,7 @@ function donneesCloud(p) {
     hautsFaits: p.hautsFaits, titre: p.titre, tourMax: p.tourMax, quetes: p.quetes,
     donjons: p.donjons, classe: p.classe, maitrise: p.maitrise, rangs: p.rangs,
     tourBoss: p.tourBoss, metiers: p.metiers, metierPrincipal: p.metierPrincipal,
+    ascensions: p.ascensions,
   };
 }
 
@@ -1481,6 +1484,7 @@ async function importerHeros() {
   if (d.donjons && typeof d.donjons === 'object') p.donjons = d.donjons;
   if (d.metiers && typeof d.metiers === 'object') p.metiers = d.metiers;
   if (d.metierPrincipal !== undefined) p.metierPrincipal = d.metierPrincipal;
+  if (d.ascensions && typeof d.ascensions === 'object') p.ascensions = d.ascensions;
   if (d.quetes && d.quetes.date) p.quetes = d.quetes;
   p.cloud = { id: morceaux[0], token: morceaux[1] };
   bornerVie(p);

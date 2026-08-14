@@ -174,6 +174,7 @@ function demarrerCombat(options) {
     degatsBossMonde: 0,
     groupe: options.groupe || null,
     donjon: options.donjon || null,
+    ascension: options.ascension || false,
     enAttenteDe: null,
     consosDistantes: options.groupe ? {} : null,
   };

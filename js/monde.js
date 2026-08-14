@@ -982,6 +982,8 @@ function apresFuite(cb) {
     nettoyerApresCombat(m);
     sauvegarder(m);
   });
+  // Fuir un étage d'Ascension, c'est abandonner l'ascension (record gardé).
+  if (cb.ascension && etat.ascension) etat.ascension = null;
   afficherToast('💨 Vous prenez la fuite !');
   if (cb.genre === 'bossMonde') {
     naviguer('taverne');
