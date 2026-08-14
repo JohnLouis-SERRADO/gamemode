@@ -173,6 +173,9 @@ async function creerPersonnageCloud(p) {
           p_niveau: p.niveau, p_xp: p.xp, p_donnees: donneesCloud(p),
         },
       });
+      // v15 : le code de récupération choisi à la création s'attache dès
+      // que le héros existe en ligne.
+      if (p.recuperation) definirRecuperationCloud(p);
     }
   } catch (e) {
     /* on réessaiera plus tard */
@@ -235,6 +238,41 @@ async function renommerPersonnageCloud(p) {
       corps: { p_id: p.cloud.id, p_token: p.cloud.token, p_nom: p.nom },
     });
   } catch (e) { /* le nom local reste la référence */ }
+}
+
+// v15 — Code de récupération : un identifiant choisi par le joueur
+// (type email) qui permet de retrouver son héros sans le code technique.
+// Jamais lisible publiquement : il ne circule que par RPC.
+async function definirRecuperationCloud(p) {
+  if (!etat.enLigne || !p.cloud || !p.recuperation) return { ok: false };
+  try {
+    const res = await apiRequete('/rest/v1/rpc/definir_recuperation', {
+      methode: 'POST',
+      corps: { p_id: p.cloud.id, p_token: p.cloud.token, p_code: p.recuperation },
+    });
+    if (res && res.erreur) {
+      afficherToast(`🗝️ ${res.erreur}`);
+      p.recuperation = null;
+      sauvegarderLocal();
+      return { ok: false };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false };
+  }
+}
+
+async function recupererParCodeCloud(code) {
+  if (!etat.enLigne) return null;
+  try {
+    const res = await apiRequete('/rest/v1/rpc/recuperer_par_code', {
+      methode: 'POST',
+      corps: { p_code: code },
+    });
+    return res && res.id ? res : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 // Efface le personnage du monde en ligne (appelé à la suppression locale).

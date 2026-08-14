@@ -136,10 +136,57 @@ const FAMILLE_MATERIAU = {
   'essence-primordiale': 'plante', 'tissu-magique': 'plante',
 };
 
+// =====================================================================
+// Invocations (v15) : des créatures qu'on appelle en combat. Une seule
+// par héros à la fois ; elle a 4 compétences qu'elle paie en mana (ou en
+// PV quand le mana manque), agit seule et au hasard, reste jusqu'à sa
+// mort ou la fin du combat. Ses stats sont des fractions de celles de
+// son maître — jamais au-dessus — et elle naît avec 50 % de son mana.
+// =====================================================================
+const INVOCATIONS = {
+  'loup-spectral': {
+    nom: 'Loup spectral', emoji: '🐺', pvPct: 0.55,
+    stats: { for: 0.7, int: 0.2, agi: 0.9, vit: 0.6, cha: 0.3 },
+    competences: ['morsure-du-loup', 'lame-dans-l-ombre', 'rafale-de-coups', 'instinct-sauvage'],
+    desc: 'Un écho des meutes des Plaines : crocs rapides, loyauté d’outre-brume.',
+  },
+  'golem-de-basalte': {
+    nom: 'Golem de basalte', emoji: '🗿', pvPct: 0.9,
+    stats: { for: 0.8, int: 0.1, agi: 0.2, vit: 1.0, cha: 0.1 },
+    competences: ['provocation', 'frappe-heroique', 'verdict-de-fer', 'second-souffle'],
+    desc: 'Un fragment des Pics qui a accepté de marcher : il encaisse, il provoque, il tient.',
+  },
+  'feu-follet': {
+    nom: 'Feu follet', emoji: '🔥', pvPct: 0.35,
+    stats: { for: 0.1, int: 0.95, agi: 0.7, vit: 0.35, cha: 0.5 },
+    competences: ['boule-de-feu', 'eclair', 'combustion', 'mur-de-flammes'],
+    desc: 'Une étincelle échappée de la Forge première — fragile, furieuse, incendiaire.',
+  },
+  'ondine-des-marees': {
+    nom: 'Ondine des marées', emoji: '💧', pvPct: 0.5,
+    stats: { for: 0.2, int: 0.85, agi: 0.5, vit: 0.6, cha: 0.6 },
+    competences: ['soin', 'cercle-de-soin', 'regeneration', 'fleche-de-givre'],
+    desc: 'Une goutte du Sanctuaire des Marées : elle soigne les siens et gifle les autres.',
+  },
+  'corbeau-d-orage': {
+    nom: 'Corbeau d’orage', emoji: '🐦‍⬛', pvPct: 0.4,
+    stats: { for: 0.3, int: 0.75, agi: 0.95, vit: 0.4, cha: 0.6 },
+    competences: ['chaine-d-eclairs', 'eclair', 'totem-tonnerre', 'voile-de-fumee'],
+    desc: 'Un éclat des Falaises Hurlantes à plumes : vif, bruyant, électrique.',
+  },
+  'ombre-de-nihelm': {
+    nom: 'Ombre de Nihelm', emoji: '🕳️', pvPct: 0.45,
+    stats: { for: 0.4, int: 0.9, agi: 0.8, vit: 0.45, cha: 0.4 },
+    competences: ['faux-spectrale', 'drain-de-vie', 'horde-spectrale', 'terreur'],
+    desc: 'Un pan du gouffre qui a choisi un maître — pour l’instant.',
+  },
+};
+
 const CATEGORIES = {
   physique: '⚔️ Physique',
   magie: '🔮 Magie',
   soutien: '✨ Soutien',
+  invocation: '🐾 Invocations',
 };
 
 // =====================================================================
@@ -183,6 +230,10 @@ function detailsCompetence(comp, s, rang = 0) {
     parts.push(`⚔️ ≈${brut} dégâts${comp.coups ? ` ×${comp.coups} coups` : ''}`);
   } else if (comp.type === 'soin') {
     parts.push(`💚 ≈${Math.round((comp.puissance + (s[comp.stat] || 0) * comp.ratio) * multRang)} PV`);
+  } else if (comp.type === 'invocation') {
+    const modele = INVOCATIONS[comp.invocation];
+    parts.push(`🐾 invoque ${modele.emoji} ${modele.nom} (jusqu'à sa mort ou la fin du combat)`);
+    parts.push('🤖 agit seul · stats ≤ les vôtres · 50 % de votre mana');
   }
   if (rang > 0) parts.push(`🏅 rang ${rang} (+${Math.round(rang * 15)} %)`);
   if (comp.critBonus) parts.push(`💥 +${Math.round(comp.critBonus * 100)} % crit.`);
@@ -726,6 +777,41 @@ const MODELES = [
 // =====================================================================
 MODELES.forEach((m) => {
   m.id = m.nom.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-');
+});
+
+// Les sorts d'invocation : un par créature, une seule invocation vivante
+// par héros, un seul appel par combat (long rituel).
+Object.assign(COMPETENCES, {
+  'invoquer-loup-spectral': {
+    nom: 'Invoquer le Loup spectral', emoji: '🐺', categorie: 'invocation', type: 'invocation',
+    cible: 'soi', invocation: 'loup-spectral', coutMp: 10, cooldown: 99,
+    desc: 'Appelle un loup spectral qui combat à vos côtés : crocs rapides et frappes d’ombre.',
+  },
+  'invoquer-golem-de-basalte': {
+    nom: 'Invoquer le Golem de basalte', emoji: '🗿', categorie: 'invocation', type: 'invocation',
+    cible: 'soi', invocation: 'golem-de-basalte', coutMp: 12, cooldown: 99,
+    desc: 'Dresse un golem massif qui provoque les ennemis et encaisse à votre place.',
+  },
+  'invoquer-feu-follet': {
+    nom: 'Invoquer le Feu follet', emoji: '🔥', categorie: 'invocation', type: 'invocation',
+    cible: 'soi', invocation: 'feu-follet', coutMp: 12, cooldown: 99,
+    desc: 'Libère une étincelle vivante qui bombarde les ennemis de flammes.',
+  },
+  'invoquer-ondine': {
+    nom: 'Invoquer l’Ondine des marées', emoji: '💧', categorie: 'invocation', type: 'invocation',
+    cible: 'soi', invocation: 'ondine-des-marees', coutMp: 13, cooldown: 99,
+    desc: 'Fait jaillir une ondine qui soigne l’équipe et gifle de givre.',
+  },
+  'invoquer-corbeau-d-orage': {
+    nom: 'Invoquer le Corbeau d’orage', emoji: '🐦‍⬛', categorie: 'invocation', type: 'invocation',
+    cible: 'soi', invocation: 'corbeau-d-orage', coutMp: 13, cooldown: 99,
+    desc: 'Appelle un corbeau crépitant qui foudroie au hasard des courants.',
+  },
+  'invoquer-ombre-de-nihelm': {
+    nom: 'Invoquer l’Ombre de Nihelm', emoji: '🕳️', categorie: 'invocation', type: 'invocation',
+    cible: 'soi', invocation: 'ombre-de-nihelm', coutMp: 15, cooldown: 99,
+    desc: 'Arrache au gouffre une ombre faucheuse qui draine et terrifie.',
+  },
 });
 
 const COMPETENCES_SIGNATURE = {

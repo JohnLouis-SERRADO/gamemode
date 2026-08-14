@@ -25,6 +25,7 @@ function estMort(c) {
 
 function statDe(source, cle) {
   if (source.type === 'joueur') return statsEffectives(source)[cle] || 0;
+  if (source.type === 'invocation') return source.stats[cle] || 0;
   return 0;
 }
 
@@ -218,6 +219,7 @@ async function boucleTour() {
         cb.termine = true;
         cb.actif = null;
         journal(`⏳ ${cb.monstres[0].nom} se lasse du combat et s'éloigne dans un fracas !`);
+        dissiperInvocations(cb);
         rendreCombat();
         setTimeout(() => apresBossMonde(cb), 1300);
         break;
@@ -250,7 +252,14 @@ async function boucleTour() {
       continue;
     }
 
-    if (c.type === 'joueur') {
+    if (c.type === 'invocation') {
+      // L'invocation agit seule : pas de main à passer, pas de choix.
+      el('zone-actions').innerHTML = '';
+      await attendre(900);
+      tourInvocation(c);
+      finDeTourStatuts(c);
+      rendreCombat();
+    } else if (c.type === 'joueur') {
       if (c.distant && cb.groupe && cb.groupe.hote) {
         // Héros sur un autre écran : on publie l'état et on attend son action.
         await tourJoueurDistant(c);
@@ -282,7 +291,7 @@ function debutTour(c) {
   const cb = etat.combat;
   c.defense = false;
 
-  if (c.type === 'joueur') {
+  if (c.type === 'joueur' || c.type === 'invocation') {
     Object.keys(c.cooldowns).forEach((k) => { if (c.cooldowns[k] > 0) c.cooldowns[k]--; });
     c.mp = Math.min(c.maxMp, c.mp + 2);
   }
@@ -333,6 +342,15 @@ function finDeTourStatuts(c) {
   }
 }
 
+// v15 : les invocations ne survivent jamais au combat — elles se
+// dissipent à la victoire, à la défaite comme à la fuite.
+function dissiperInvocations(cb) {
+  cb.equipe
+    .filter((j) => j.type === 'invocation' && !estMort(j))
+    .forEach((inv) => journal(`🌫️ ${inv.nom} se dissipe : le combat s'achève.`));
+  cb.equipe = cb.equipe.filter((j) => j.type !== 'invocation');
+}
+
 function verifierFin() {
   const cb = etat.combat;
   if (cb.termine) return true;
@@ -342,15 +360,19 @@ function verifierFin() {
     cb.termine = true;
     cb.actif = null;
     journal('🏆 Victoire ! Tous les ennemis sont vaincus.');
+    dissiperInvocations(cb);
     rendreCombat();
     setTimeout(() => apresVictoire(cb), 1300);
     return true;
   }
 
-  if (cb.equipe.every((j) => j.ko)) {
+  // Les invocations ne comptent pas : si tous les VRAIS héros sont à
+  // terre, leurs créatures perdent leur ancrage et le combat est perdu.
+  if (cb.equipe.filter((j) => j.type !== 'invocation').every((j) => j.ko)) {
     cb.termine = true;
     cb.actif = null;
     journal('💫 Tout le groupe est à terre…');
+    dissiperInvocations(cb);
     rendreCombat();
     setTimeout(() => apresDefaite(cb), 1300);
     return true;
@@ -437,7 +459,11 @@ function gererMort(c) {
   if (c.hp > 0 || estMort(c)) return;
   c.hp = 0;
   c.statuts = [];
-  if (c.type === 'joueur') {
+  if (c.type === 'invocation') {
+    c.mort = true;
+    c.ko = true;
+    journal(`🌫️ ${c.nom} se dissipe — l'invocation est brisée.`);
+  } else if (c.type === 'joueur') {
     c.ko = true;
     journal(`😵 ${c.nom} s'effondre ! (KO)`);
   } else {
@@ -779,6 +805,7 @@ function executerAction(j, action, cible) {
 function lancerCompetence(j, compId, cible) {
   const cb = etat.combat;
   const comp = COMPETENCES[compId];
+  if (comp.type === 'invocation') { lancerInvocation(j, compId); return; }
   const s = statsEffectives(j);
   j.mp -= comp.coutMp;
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
@@ -816,6 +843,135 @@ function lancerCompetence(j, compId, cible) {
     const cibles = comp.cible === 'allies' ? cb.equipe.filter((x) => !x.ko) : [cible || j];
     if (comp.cible === 'allies') journal(`${comp.emoji} ${j.nom} utilise ${comp.nom} !`);
     cibles.forEach((c) => appliquerEffet(j, c, comp.effet, null));
+  }
+}
+
+// =====================================================================
+// v15 — Invocations : une créature appelée qui combat toute seule.
+// Une par héros, 4 compétences payées en mana (ou en PV quand le mana
+// manque), stats bridées à celles du maître, 50 % de son mana à
+// l'apparition — et elle reste jusqu'à sa mort ou la fin du combat.
+// =====================================================================
+function lancerInvocation(j, compId) {
+  const cb = etat.combat;
+  const comp = COMPETENCES[compId];
+  if (cb.groupe) {
+    journal('🐾 Les invocations refusent de traverser les liaisons des expéditions en ligne.');
+    return;
+  }
+  const deja = cb.equipe.find((x) => x.type === 'invocation' && x.maitre === j.bid && !estMort(x));
+  if (deja) {
+    journal(`🐾 ${j.nom} a déjà ${deja.nom} au combat — une seule invocation par héros !`);
+    return;
+  }
+  j.mp -= comp.coutMp;
+  if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
+
+  const modele = INVOCATIONS[comp.invocation];
+  const sm = statsEffectives(j);
+  // Les stats de la créature sont des fractions de celles du maître —
+  // et ne peuvent JAMAIS les dépasser.
+  const stats = {};
+  Object.keys(CARACS).forEach((cle) => {
+    const voulu = Math.round((sm[cle] || 0) * modele.stats[cle]);
+    stats[cle] = Math.max(1, Math.min(voulu, sm[cle] || 1));
+  });
+  const maxHp = Math.max(10, Math.round(j.maxHp * modele.pvPct));
+  const maxMp = Math.max(4, Math.round(j.maxMp * 0.5)); // 50 % du mana du maître, la règle
+
+  const inv = {
+    type: 'invocation',
+    invocation: true,
+    maitre: j.bid,
+    nom: `${modele.nom} de ${j.nom}`,
+    emoji: modele.emoji,
+    avatar: modele.emoji,
+    niveau: j.niveau,
+    stats,
+    agi: stats.agi,
+    hp: maxHp, maxHp,
+    mp: maxMp, maxMp,
+    competences: [...modele.competences],
+    cooldowns: {},
+    statuts: [],
+    defense: false,
+    ko: false,
+    mort: false,
+    race: null,
+  };
+  cb.equipe.push(inv);
+  cb.file.push(inv); // elle agit dès cette manche, en fin de file
+  journal(`${comp.emoji} ${j.nom} invoque ${modele.emoji} ${modele.nom} ! (stats bridées aux siennes, 50 % de son mana — elle combattra seule jusqu'à sa mort ou la fin du combat)`);
+}
+
+// Le tour d'une invocation : elle choisit toute seule, au hasard, parmi
+// ses compétences prêtes — et paie en PV quand son mana ne suffit plus.
+function tourInvocation(c) {
+  const cb = etat.combat;
+  const monstresVivants = cb.monstres.filter((m) => !m.mort);
+  if (monstresVivants.length === 0) return;
+  const s = c.stats;
+
+  const pretes = c.competences.filter((id) => (c.cooldowns[id] || 0) <= 0);
+  const utilisables = pretes.filter((id) => {
+    const comp = COMPETENCES[id];
+    // Ne soigne que si quelqu'un en a besoin.
+    if (comp.type === 'soin' && !cb.equipe.some((x) => !estMort(x) && x.hp < x.maxHp * 0.85)) return false;
+    return c.mp >= comp.coutMp || c.hp > comp.coutMp * 2;
+  });
+  const choix = utilisables.length ? utilisables[alea(0, utilisables.length - 1)] : null;
+
+  if (!choix) {
+    // À sec et sans rien de prêt : un coup de griffe basique.
+    const cible = monstresVivants[alea(0, monstresVivants.length - 1)];
+    const r = infligerDegats(c, cible, 4 + (s.for + s.agi) * 0.8);
+    journal(`🐾 ${c.nom} attaque ${cible.nom} : ${texteDegats(r)}`);
+    gererMort(cible);
+    return;
+  }
+
+  const comp = COMPETENCES[choix];
+  if (comp.cooldown) c.cooldowns[choix] = comp.cooldown;
+  if (c.mp >= comp.coutMp) {
+    c.mp -= comp.coutMp;
+  } else {
+    const sang = Math.max(1, comp.coutMp * 2);
+    c.hp = Math.max(1, c.hp - sang);
+    journal(`🩸 ${c.nom} n'a plus de mana : la créature paie ${sang} PV de sa propre essence.`);
+  }
+
+  if (comp.type === 'degats') {
+    const cibles = comp.cible === 'ennemis'
+      ? monstresVivants
+      : [monstresVivants[alea(0, monstresVivants.length - 1)]];
+    journal(`${comp.emoji} ${c.nom} utilise ${comp.nom} !`);
+    cibles.forEach((m) => {
+      for (let coup = 0; coup < (comp.coups || 1); coup++) {
+        if (estMort(m)) break;
+        const brut = comp.puissance + (s[comp.stat] || 0) * comp.ratio;
+        const r = infligerDegats(c, m, brut, { critBonus: comp.critBonus || 0 });
+        journal(`→ ${m.nom} subit ${texteDegats(r)}`);
+        gererMort(m);
+        if (comp.effet && (comp.effet.type === 'drain' || !estMort(m))) appliquerEffet(c, m, comp.effet, r);
+      }
+    });
+  } else if (comp.type === 'soin') {
+    const vivants = cb.equipe.filter((x) => !estMort(x));
+    const cibles = comp.cible === 'allies'
+      ? vivants
+      : (comp.cible === 'soi' ? [c] : [[...vivants].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0]]);
+    cibles.forEach((x) => {
+      const soin = soigner(x, comp.puissance + (s[comp.stat] || 0) * comp.ratio);
+      journal(`${comp.emoji} ${c.nom} rend ${soin} PV à ${x === c ? 'lui-même' : x.nom}.`);
+      if (comp.effet) appliquerEffet(c, x, comp.effet, null);
+    });
+  } else {
+    const vivants = cb.equipe.filter((x) => !estMort(x));
+    const cibles = comp.cible === 'allies'
+      ? vivants
+      : (comp.cible === 'allie' ? [vivants[alea(0, vivants.length - 1)]] : [c]);
+    journal(`${comp.emoji} ${c.nom} utilise ${comp.nom} !`);
+    cibles.forEach((x) => appliquerEffet(c, x, comp.effet, null));
   }
 }
 
@@ -988,7 +1144,7 @@ function cibleValide(c) {
   const comp = action.compId ? COMPETENCES[action.compId] : null;
   const cibleType = action.genre === 'attaque' ? 'ennemi' : comp.cible;
   if (cibleType === 'ennemi') return c.type === 'monstre' && !c.mort;
-  if (cibleType === 'allie') return c.type === 'joueur' && !c.ko;
+  if (cibleType === 'allie') return (c.type === 'joueur' || c.type === 'invocation') && !estMort(c);
   return false;
 }
 
@@ -1011,7 +1167,7 @@ function carteCombattant(c) {
   let barres = `
     <div class="barre pv"><div class="remplissage" style="width:${pctHp}%"></div>
       <span>${c.hp}/${c.maxHp}</span></div>`;
-  if (c.type === 'joueur') {
+  if (c.type === 'joueur' || c.type === 'invocation') {
     const pctMp = Math.max(0, Math.round((c.mp / c.maxMp) * 100));
     barres += `
     <div class="barre pm"><div class="remplissage" style="width:${pctMp}%"></div>

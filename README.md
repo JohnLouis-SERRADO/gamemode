@@ -8,22 +8,23 @@ Le tout en JavaScript pur, sans dépendance ni étape de build, jouable dans n'i
 
 ## 🎮 Ce qu'on y fait
 
-- **Créer son héros** : 6 races à passifs uniques, **21 classes** (compétence signature exclusive + arbre de classe débloqué aux niveaux 5/10/15), 5 caractéristiques (Force 💪, Intelligence 🧠, Agilité 🏃, Vitalité ❤️, Chance 🍀). Progression jusqu'au **niveau 50**, points de maîtrise pour monter ses compétences en rang.
+- **Créer son héros** en trois pages guidées — identité (nom, avatar et **code de récupération** optionnel type email), race & classe, puis compétences : 6 races à passifs uniques, **21 classes** (compétence signature exclusive + arbre de classe débloqué aux niveaux 5/10/15), 5 caractéristiques (Force 💪, Intelligence 🧠, Agilité 🏃, Vitalité ❤️, Chance 🍀). Une fenêtre confirme toujours le choix du code (avec ou sans) avant la naissance du héros. Progression jusqu'au **niveau 50**, points de maîtrise pour monter ses compétences en rang.
 - **Explorer 16 zones** (niveaux 1 à 48), chacune avec ses monstres, son boss, ses difficultés (Normal/Héroïque/Cauchemar) et ses matériaux propres. Les packs de monstres **s'adaptent à la puissance de l'équipe**.
 - **Vivre 25 donjons d'histoire** écrits comme des aventures de *Donjons & Dragons* : dialogues, intrigues, choix à conséquences, **votes d'équipe** sur chaque décision, **épreuves au d20** (la meilleure stat de l'équipe s'y colle, 20 naturel = triomphe), trésors, boss à phases uniques et épilogues à variantes. Ils se répartissent en deux registres :
   - 📜 **Les Chroniques des terres** — la petite histoire de chaque carte (16 récits, un par zone, avec son PNJ, son dilemme et son boss de zone renforcé). Accès exigeant : niveau minimum, caractéristique minimum, **objet-clé de la zone en poche** et **boss de la carte vaincu**. Récompense : une relique unique par chronique.
   - 📖 **Les Épopées de Valciel** — les grandes histoires (6 récits fondateurs + les **défis 50/60/70** enchaînés). Une épopée terminée ne meurt jamais : elle ouvre son **Ascension éternelle** — des étages sans fin de plus en plus durs (épreuve au d20 tous les 3 étages, écho du boss tous les 5), **sans soin entre les salles, jusqu'à la mort ou l'abandon**, avec un record par épopée.
 - **Combattre au tour par tour** : ordre d'initiative affiché, critiques, blocage/esquive, statuts, bombes et élixirs tactiques, boss à mécaniques (phases, invocations, boucliers, enrage). En solo ou en **équipe sur le même écran**, et en **expéditions en ligne** à plusieurs appareils.
+- **Invoquer des créatures** 🐾 : six sorts d'invocation à l'Arcanium (Loup spectral, Golem de basalte, Feu follet, Ondine des marées, Corbeau d'orage, Ombre de Nihelm). Une invocation par héros et par combat : la créature apparaît avec **50 % du mana de son maître**, des stats **bridées aux siennes**, ses 4 compétences propres qu'elle paie en mana — puis **en PV** quand il s'épuise — et elle combat **toute seule, au hasard**, jusqu'à sa mort ou la fin du combat.
 - **Pratiquer 3 métiers de récolte** : dans chaque zone, on choisit de **⛏️ miner**, **🔪 dépecer** ou **🌿 herboriser**. Chaque métier monte en niveau (meilleures quantités, matériaux signatures : pierre magique, cuir primal, tissu magique) — et **plus on a de Chance, plus la moisson est riche**. Au **niveau 5**, chaque héros choisit obligatoirement sa **spécialité** ⭐ (sous-classe de récolteur) via une fenêtre dédiée : le spécialiste récolte nettement plus dans son métier qu'un héros de passage et y progresse deux fois plus vite, avec un écart qui grandit encore avec la Chance. Et chaque sous-classe compte : le craft suit les filières — les pièces de forge exigent pierres et minerais, les cuirs de la Tannerie viennent des dépouilles, les accessoires du Tisserand se tissent de plantes et fibres, avec les matériaux signatures des spécialistes dès le niveau 20.
 - **Faire vivre le Bourg de Valciel**, découpé en quartiers :
-  - 🏪 **Le quartier marchand** — trois boutiques spécialisées (armes, armures, accessoires & potions), l'Antiquaire à curiosités, l'Arcanium aux 68 grimoires de compétences ;
+  - 🏪 **Le quartier marchand** — trois boutiques spécialisées (armes, armures, accessoires & potions), l'Antiquaire à curiosités, l'Arcanium aux 74 grimoires de compétences (dont les 6 sorts d'invocation) ;
   - ⚒️ **La cour des artisans** — la Forge (armes, armures lourdes, lingots), la Tannerie (gants, bottes, cuirs), le Tisserand (accessoires, étoffes) et l'Alchimiste (potions de PV/mana, bombes, philtres) ;
   - 🏛️ **La grand-place** — Guilde des Aventuriers (6 contrats journaliers, 3 récompenses/jour), Auberge, Taverne.
 - **Farmer et crafter** : ~4 500 objets en 7 raretés (jusqu'à Divin), panoplies à bonus de set (2/4 pièces), **craft en chaîne** (récolte brute → matériaux raffinés → grandes séries d'équipement, dont une série qui exige les trois métiers).
 - **Grimper les tours** : la Tour Sans Fin (étages infinis, sans soins) et la **Tour des Boss** (16 boss, difficultés Normal/Héroïque/Cauchemar).
 - **Se retrouver à la taverne** : 💬 chat, 🏆 classement (avec **fiche publique complète** de chaque héros), 🌍 boss du monde à barre de vie partagée, 🤝 comptoir d'échange entre joueurs.
 - **Craindre la mort** : une expédition qui tombe, c'est la mort — l'équipement porté est **perdu à jamais**, le familier qui accompagnait le héros **meurt avec lui**, la moitié de la bourse s'évapore et **10 niveaux s'effacent** (avec leurs points de caractéristiques). Puis la ville, le repos… et la révélation : mourir renvoie dans le passé, là où le destin peut encore s'écrire autrement — car les compétences, métiers et hauts faits, eux, survivent au voyage.
-- **36 hauts faits** à titres portables, familiers à bonus passifs, jouable sur plusieurs appareils via un code de sauvegarde.
+- **36 hauts faits** à titres portables, familiers à bonus passifs, jouable sur plusieurs appareils via le **code de récupération** choisi à la création (ou ajouté plus tard depuis la fiche) — le code de sauvegarde technique reste là en secours. Et si un héros est supprimé, la **purge est totale** : plus aucune trace de son nom nulle part (classement, chat, échanges, groupes).
 
 ## 🌍 Multijoueur : comment ça marche
 
@@ -50,7 +51,7 @@ css/style.css   — thème sombre fantasy, pensé mobile d'abord
 js/data.js      — caractéristiques, classes, compétences, métiers, hauts faits, progression (niveaux 1-50)
 js/objets.js    — ~4 500 objets (générateurs par niveau/rareté), panoplies, recettes, raffinage
 js/zones.js     — 16 zones, ~65 monstres avec butins
-js/donjons.js   — 9 donjons d'histoire : moteur narratif (dialogues, choix, votes, épreuves d20) + récits complets
+js/donjons.js   — 25 donjons d'histoire (16 Chroniques + 9 Épopées) : moteur narratif (dialogues, choix, votes, épreuves d20, Ascension éternelle) + récits complets
 js/reseau.js    — client REST Supabase (fetch pur), synchronisation, taverne, fiches publiques, échanges
 js/game.js      — profils persistants, création, fiche du héros, métiers, hauts faits, navigation
 js/monde.js     — carte, exploration, récolte par métier, boss, Tour des Boss, boss du monde

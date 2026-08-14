@@ -964,6 +964,7 @@ function apresDefaite(cb) {
 
 function apresFuite(cb) {
   if (cb.groupe && cb.groupe.hote) { apresCombatGroupeHote(cb, 'fuite'); return; }
+  if (typeof dissiperInvocations === 'function') dissiperInvocations(cb);
   cb.equipe.forEach((m) => {
     if (m.hp <= 0) m.hp = 1;
     nettoyerApresCombat(m);

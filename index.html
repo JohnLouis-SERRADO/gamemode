@@ -51,34 +51,52 @@
     <!-- ===== Création de personnage ===== -->
     <section id="ecran-creation" class="ecran">
       <h2 id="creation-titre">Crée ton héros</h2>
+      <div id="creation-etapes" class="etapes-creation"></div>
       <div class="panneau">
-        <div class="ligne-creation ligne-identite">
-          <label class="champ-nom">Nom du héros
-            <input id="creation-nom" maxlength="16" placeholder="Ex. : Kaela" autocomplete="off">
-          </label>
-          <div>
+        <!-- Page 1 : identité — nom, code de récupération, avatar -->
+        <div class="page-creation" data-page="1">
+          <div class="ligne-creation ligne-identite">
+            <label class="champ-nom">Nom du héros
+              <input id="creation-nom" maxlength="16" placeholder="Ex. : Kaela" autocomplete="off">
+            </label>
+            <label class="champ-nom">🗝️ Code de récupération <span class="aide-inline">(facultatif)</span>
+              <input id="creation-recuperation" maxlength="60" placeholder="Ex. : kaela@mail.com" autocomplete="off">
+            </label>
+          </div>
+          <p class="aide">Le code de récupération n'est <strong>pas obligatoire</strong> — mais c'est le moyen le plus simple
+            de retrouver votre héros si vous changez d'appareil : il suffira de le taper dans « Reprendre un héros ».
+            Sans lui, seul le code de sauvegarde (visible sur la fiche du héros) fera foi.</p>
+          <div class="ligne-creation">
             <h3>Avatar</h3>
             <div id="creation-avatars" class="grille-avatars"></div>
           </div>
         </div>
-        <div class="ligne-creation">
-          <h3>Race <span class="aide-inline">(chaque race a un pouvoir passif unique)</span></h3>
-          <div id="creation-races" class="grille-races"></div>
+        <!-- Page 2 : race, classe et caractéristiques -->
+        <div class="page-creation cache" data-page="2">
+          <div class="ligne-creation">
+            <h3>Race <span class="aide-inline">(chaque race a un pouvoir passif unique)</span></h3>
+            <div id="creation-races" class="grille-races"></div>
+          </div>
+          <div class="ligne-creation">
+            <h3>Classes <span class="aide-inline">(compétences uniques incluses, pré-remplit tout)</span></h3>
+            <div id="creation-modeles" class="rangee-boutons"></div>
+          </div>
+          <div class="ligne-creation">
+            <h3>Caractéristiques <span id="creation-points" class="badge"></span></h3>
+            <div id="creation-stats" class="liste-stats"></div>
+          </div>
         </div>
-        <div class="ligne-creation">
-          <h3>Classes <span class="aide-inline">(pré-remplit tout, modifiable ensuite)</span></h3>
-          <div id="creation-modeles" class="rangee-boutons"></div>
-        </div>
-        <div class="ligne-creation">
-          <h3>Caractéristiques <span id="creation-points" class="badge"></span></h3>
-          <div id="creation-stats" class="liste-stats"></div>
-        </div>
-        <div class="ligne-creation">
-          <h3>Compétences <span id="creation-nb-comp" class="badge"></span></h3>
-          <div id="creation-competences"></div>
+        <!-- Page 3 : le choix des compétences, avec leurs descriptions -->
+        <div class="page-creation cache" data-page="3">
+          <div class="ligne-creation">
+            <h3>Compétences <span id="creation-nb-comp" class="badge"></span></h3>
+            <div id="creation-competences"></div>
+          </div>
         </div>
         <div class="rangee-boutons">
-          <button id="creation-valider" class="btn-principal">Valider ce héros</button>
+          <button id="creation-retour" class="btn-choix cache">← Retour</button>
+          <button id="creation-suivant" class="btn-principal">Suivant →</button>
+          <button id="creation-valider" class="btn-principal cache">Valider ce héros</button>
           <button id="creation-annuler" class="btn-choix">Annuler</button>
         </div>
       </div>

@@ -682,11 +682,32 @@ function demarrerCreation() {
     classe: 'aventurier',
     stats,
     competences: new Set(),
+    page: 1,
   };
   el('creation-nom').value = '';
+  el('creation-recuperation').value = '';
   el('creation-titre').textContent = 'Crée ton héros';
   rendreCreation();
   montrerEcran('ecran-creation');
+}
+
+// v15 : la création se déroule en trois pages — identité, race/classe/
+// caractéristiques, puis compétences. On avance, on revient, on valide.
+const PAGES_CREATION = [
+  { num: 1, titre: '1 · Identité' },
+  { num: 2, titre: '2 · Race, classe & caractéristiques' },
+  { num: 3, titre: '3 · Compétences' },
+];
+
+function allerPageCreation(delta) {
+  const b = etat.brouillon;
+  if (delta > 0 && b.page === 2 && pointsRestants() > 0) {
+    afficherToast(`✋ Répartissez d'abord vos ${pointsRestants()} point${pointsRestants() > 1 ? 's' : ''} de caractéristiques.`);
+    return;
+  }
+  b.page = Math.max(1, Math.min(3, b.page + delta));
+  rendreCreation();
+  window.scrollTo(0, 0);
 }
 
 function pointsRestants() {
@@ -698,6 +719,23 @@ function pointsRestants() {
 
 function rendreCreation() {
   const b = etat.brouillon;
+
+  // Pages : une seule visible à la fois, un fil d'étapes en haut.
+  document.querySelectorAll('#ecran-creation .page-creation').forEach((page) => {
+    page.classList.toggle('cache', Number(page.dataset.page) !== b.page);
+  });
+  const fil = el('creation-etapes');
+  fil.innerHTML = PAGES_CREATION
+    .map((etape) => `<span class="etape-creation${etape.num === b.page ? ' etape-active' : ''}${etape.num < b.page ? ' etape-faite' : ''}">${etape.titre}</span>`)
+    .join('<span class="etape-fleche">→</span>');
+  el('creation-retour').classList.toggle('cache', b.page === 1);
+  el('creation-suivant').classList.toggle('cache', b.page === 3);
+  el('creation-valider').classList.toggle('cache', b.page !== 3);
+  if (b.page === 2 && pointsRestants() > 0) {
+    el('creation-suivant').textContent = `Répartis encore ${pointsRestants()} point${pointsRestants() > 1 ? 's' : ''}…`;
+  } else {
+    el('creation-suivant').textContent = 'Suivant →';
+  }
 
   const zoneAvatars = el('creation-avatars');
   zoneAvatars.innerHTML = '';
@@ -855,10 +893,58 @@ function ajouterBlocSignature(p, id, comp, carte) {
   carte.appendChild(monter);
 }
 
+// v15 : avant de créer le héros, une fenêtre confirme le choix du code
+// de récupération — qu'on en ait mis un… ou pas.
 function validerCreation() {
+  const code = el('creation-recuperation').value.trim().toLowerCase();
+  const ancien = document.getElementById('voile-confirmation-code');
+  if (ancien) ancien.remove();
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-confirmation-code';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-confirmation-code';
+  modale.innerHTML = code
+    ? `<h2>🗝️ Votre code de récupération</h2>
+      <p>Vous avez choisi le code : <strong class="code-affiche">${echapper(code)}</strong></p>
+      <p>Notez-le précieusement : il suffira de le taper dans « Reprendre un héros (code) » sur n'importe quel
+      appareil pour retrouver ce héros. Toute personne qui le connaît pourra en faire autant — gardez-le pour vous.</p>`
+    : `<h2>🗝️ Aucun code de récupération</h2>
+      <p>Vous partez <strong>sans code de récupération</strong>. Si vous perdez cet appareil, seul le
+      <strong>code de sauvegarde</strong> (affiché sur la fiche du héros) permettra de le retrouver — pensez à le noter.</p>
+      <p>Vous pourrez aussi ajouter un code de récupération plus tard, depuis la fiche du héros.</p>`;
+  const boutons = document.createElement('div');
+  boutons.className = 'rangee-boutons';
+  const confirmer = document.createElement('button');
+  confirmer.className = 'btn-principal';
+  confirmer.id = 'confirmation-code-valider';
+  confirmer.textContent = code ? '✔ C’est noté — créer le héros' : '✔ Continuer sans code';
+  confirmer.addEventListener('click', () => {
+    voile.remove();
+    finaliserCreation(code);
+  });
+  const annuler = document.createElement('button');
+  annuler.className = 'btn-choix';
+  annuler.id = 'confirmation-code-annuler';
+  annuler.textContent = code ? '✖ Modifier le code' : '🗝️ Ajouter un code';
+  annuler.addEventListener('click', () => {
+    voile.remove();
+    etat.brouillon.page = 1;
+    rendreCreation();
+    el('creation-recuperation').focus();
+  });
+  boutons.appendChild(confirmer);
+  boutons.appendChild(annuler);
+  modale.appendChild(boutons);
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
+function finaliserCreation(codeRecuperation) {
   const b = etat.brouillon;
   const nom = el('creation-nom').value.trim() || `Héros ${etat.profils.length + 1}`;
   const p = nouveauPersonnage({ nom, avatar: b.avatar, race: b.race, classe: b.classe, stats: b.stats, competences: [...b.competences] });
+  if (codeRecuperation) p.recuperation = codeRecuperation;
   etat.profils.push(p);
   etat.actifId = p.id;
   etat.equipe = [p.id];
@@ -1344,6 +1430,37 @@ function rendreHeros() {
     ligne.appendChild(champ);
     ligne.appendChild(copier);
     blocCode.appendChild(ligne);
+
+    // v15 : le code de récupération, plus simple à retenir qu'un uuid.
+    const noteRecup = document.createElement('p');
+    noteRecup.className = 'aide';
+    noteRecup.textContent = p.recuperation
+      ? `🗝️ Code de récupération actuel : « ${p.recuperation} ». Le taper dans « Reprendre un héros » suffit à retrouver ce héros.`
+      : '🗝️ Aucun code de récupération : vous pouvez en définir un ici (type email) — bien plus simple à retenir que le code technique.';
+    blocCode.appendChild(noteRecup);
+    const ligneRecup = document.createElement('div');
+    ligneRecup.className = 'ligne-code';
+    const champRecup = document.createElement('input');
+    champRecup.id = 'champ-recuperation';
+    champRecup.maxLength = 60;
+    champRecup.placeholder = 'Ex. : kaela@mail.com';
+    champRecup.value = p.recuperation || '';
+    const definir = document.createElement('button');
+    definir.className = 'btn-choix';
+    definir.id = 'btn-definir-recuperation';
+    definir.textContent = '🗝️ Définir';
+    definir.addEventListener('click', async () => {
+      const codeRecup = champRecup.value.trim().toLowerCase();
+      if (!codeRecup) { afficherToast('🗝️ Saisissez un code (type email) avant de valider.'); return; }
+      p.recuperation = codeRecup;
+      sauvegarderLocal();
+      const res = typeof definirRecuperationCloud === 'function' ? await definirRecuperationCloud(p) : { ok: false };
+      if (res && res.ok) afficherToast(`🗝️ Code de récupération enregistré : « ${codeRecup} ». Gardez-le pour vous !`);
+      rendreHeros();
+    });
+    ligneRecup.appendChild(champRecup);
+    ligneRecup.appendChild(definir);
+    blocCode.appendChild(ligneRecup);
   } else {
     const note = document.createElement('p');
     note.className = 'aide';
@@ -1576,19 +1693,40 @@ async function importerHeros() {
     creerHerosAdmin();
     return;
   }
+  // Deux formes de code : « id.token » (code de sauvegarde technique)
+  // ou le CODE DE RÉCUPÉRATION choisi à la création (type email).
   const morceaux = code.split('.');
-  if (morceaux.length !== 2) {
-    message.textContent = 'Code invalide : il doit contenir deux parties séparées par un point.';
-    return;
+  let id;
+  let token;
+  if (morceaux.length === 2 && morceaux[0].length >= 32) {
+    [id, token] = morceaux;
+  } else {
+    message.textContent = 'Recherche par code de récupération…';
+    const res = typeof recupererParCodeCloud === 'function'
+      ? await recupererParCodeCloud(code.toLowerCase()) : null;
+    if (!res) {
+      message.textContent = etat.enLigne
+        ? 'Aucun héros ne répond à ce code — vérifiez le code de récupération, ou utilisez le code de sauvegarde (deux parties séparées par un point).'
+        : 'Le monde en ligne est injoignable pour le moment.';
+      return;
+    }
+    id = res.id;
+    token = res.token;
   }
   message.textContent = 'Recherche du héros…';
-  const donnees = await recupererPersonnageCloud(morceaux[0], morceaux[1]);
+  const donnees = await recupererPersonnageCloud(id, token);
   if (!donnees) {
     message.textContent = etat.enLigne
       ? 'Héros introuvable : vérifiez le code.'
       : 'Le monde en ligne est injoignable pour le moment.';
     return;
   }
+  chargerHerosImporte(donnees, id, token);
+}
+
+function chargerHerosImporte(donnees, id, token) {
+  const champ = el('champ-code-import');
+  const message = el('message-import');
   const d = donnees.donnees || {};
   const p = nouveauPersonnage({
     nom: donnees.nom, avatar: donnees.avatar || '⚔️',
@@ -1624,7 +1762,7 @@ async function importerHeros() {
   if (d.metierPrincipal !== undefined) p.metierPrincipal = d.metierPrincipal;
   if (d.ascensions && typeof d.ascensions === 'object') p.ascensions = d.ascensions;
   if (d.quetes && d.quetes.date) p.quetes = d.quetes;
-  p.cloud = { id: morceaux[0], token: morceaux[1] };
+  p.cloud = { id, token };
   bornerVie(p);
   p.hp = d.hp != null ? Math.min(p.maxHp, d.hp) : p.maxHp;
   p.mp = d.mp != null ? Math.min(p.maxMp, d.mp) : p.maxMp;
@@ -1647,6 +1785,8 @@ function initialiser() {
 
   el('btn-nouveau-perso').addEventListener('click', demarrerCreation);
   el('creation-valider').addEventListener('click', validerCreation);
+  el('creation-suivant').addEventListener('click', () => allerPageCreation(1));
+  el('creation-retour').addEventListener('click', () => allerPageCreation(-1));
   el('creation-annuler').addEventListener('click', () => { rendreTitre(); montrerEcran('ecran-titre'); });
   el('btn-importer').addEventListener('click', () => el('zone-import').classList.toggle('cache'));
   el('btn-valider-import').addEventListener('click', importerHeros);

@@ -1370,6 +1370,55 @@ button:focus-visible,
   box-shadow: 0 0 8px rgba(212, 167, 44, 0.35);
 }
 
+/* v15 — Création en trois pages : fil d'étapes et confirmation du code. */
+.etapes-creation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+}
+
+.etape-creation {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--bordure);
+  opacity: 0.6;
+}
+
+.etape-creation.etape-active {
+  border-color: #d4a72c;
+  background: linear-gradient(135deg, rgba(212, 167, 44, 0.3), rgba(212, 167, 44, 0.08));
+  font-weight: 700;
+  opacity: 1;
+}
+
+.etape-creation.etape-faite { opacity: 0.9; }
+.etape-fleche { opacity: 0.5; }
+
+#voile-confirmation-code {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 18, 0.88);
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 30px 12px;
+  overflow-y: auto;
+}
+
+.modale-confirmation-code { border-color: #d4a72c; }
+
+.code-affiche {
+  display: inline-block;
+  padding: 2px 10px;
+  border: 1px dashed #d4a72c;
+  border-radius: 8px;
+  font-size: 1.05rem;
+}
+
 /* v14 — L'écran de la mort : crâne géant, pertes détaillées, destin. */
 #voile-mort, #voile-renaissance {
   position: fixed;
