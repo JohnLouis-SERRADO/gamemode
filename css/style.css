@@ -1226,6 +1226,50 @@ button:focus-visible,
   margin-top: 10px;
 }
 
+/* ----- Arbre de classe verrouillé + fiche publique ----- */
+.carte-competence.carte-verrouillee {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.comp-verrou {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--accent);
+}
+
+#voile-joueur {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 18, 0.82);
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 30px 12px;
+  overflow-y: auto;
+}
+
+.modale-joueur {
+  background: var(--panneau);
+  border: 1px solid var(--bordure);
+  border-radius: 14px;
+  max-width: 760px;
+  width: 100%;
+  padding: 18px;
+  position: relative;
+}
+
+.modale-fermer {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+}
+
+/* ----- Console d'admin ----- */
+.panneau-admin { border-color: #d4a017; }
+.panneau-admin h3 { color: #ffd54f; }
+
 /* ----- Panoplies et grimoire ----- */
 .objet-set {
   font-size: 0.8rem;

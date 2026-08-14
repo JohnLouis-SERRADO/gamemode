@@ -132,7 +132,7 @@ function planifierSauvegardeCloud(p) {
 }
 
 async function sauvegarderCloud(p) {
-  if (!etat.enLigne) return;
+  if (!etat.enLigne || p.admin) return; // le héros admin reste local
   try {
     if (!p.cloud) {
       await creerPersonnageCloud(p);
@@ -156,7 +156,7 @@ async function sauvegarderCloud(p) {
 const creationsCloudEnCours = new Set();
 
 async function creerPersonnageCloud(p) {
-  if (!etat.enLigne || p.cloud || creationsCloudEnCours.has(p.id)) return;
+  if (!etat.enLigne || p.cloud || p.admin || creationsCloudEnCours.has(p.id)) return;
   creationsCloudEnCours.add(p.id);
   try {
     const resultat = await apiRequete('/rest/v1/rpc/creer_personnage', {
@@ -271,8 +271,8 @@ async function chargerDonneesTaverne() {
     const [boss, messages, joueurs, classement, echanges, mesVentes] = await Promise.all([
       apiRequete('/rest/v1/boss_monde?actif=eq.true&select=*&order=id.desc&limit=1'),
       apiRequete('/rest/v1/messages?select=nom,avatar,texte,cree_le&order=id.desc&limit=40'),
-      apiRequete('/rest/v1/personnages?select=nom,avatar,niveau,xp,degats_boss_total,derniere_activite&order=derniere_activite.desc&limit=30'),
-      apiRequete('/rest/v1/personnages?select=nom,avatar,niveau,xp&order=niveau.desc,xp.desc&limit=10'),
+      apiRequete('/rest/v1/personnages?select=id,nom,avatar,niveau,xp,degats_boss_total,derniere_activite&order=derniere_activite.desc&limit=30'),
+      apiRequete('/rest/v1/personnages?select=id,nom,avatar,niveau,xp&order=niveau.desc,xp.desc&limit=10'),
       apiRequete('/rest/v1/echanges?statut=eq.ouvert&select=*&order=maj.desc&limit=30'),
       p && p.cloud
         ? apiRequete(`/rest/v1/echanges?vendeur_id=eq.${p.cloud.id}&statut=eq.vendu&reclame=eq.false&select=id,prix,objet_id,acheteur_nom`)
@@ -596,9 +596,10 @@ function rendreSectionsTaverne() {
       nom.textContent = `${j.avatar || '⚔️'} ${j.nom}`;
       const detail = document.createElement('span');
       detail.className = 'joueur-detail';
-      detail.textContent = `niv. ${j.niveau} · ${enLigne ? '🟢 en ligne' : tempsRelatif(j.derniere_activite)}`;
+      detail.textContent = `niv. ${j.niveau} · ${enLigne ? '🟢 en ligne' : tempsRelatif(j.derniere_activite)} · 👁️`;
       ligne.appendChild(nom);
       ligne.appendChild(detail);
+      rendreCliquable(ligne, () => ouvrirFichePublique(j.id));
       zoneJoueurs.appendChild(ligne);
     });
   }
@@ -611,7 +612,8 @@ function rendreSectionsTaverne() {
       const ligne = document.createElement('div');
       ligne.className = 'ligne-classement';
       const medaille = ['🥇', '🥈', '🥉'][i] || `${i + 1}.`;
-      ligne.textContent = `${medaille} ${j.avatar || '⚔️'} ${j.nom} — niv. ${j.niveau} (${formatNombre(j.xp)} XP)`;
+      ligne.textContent = `${medaille} ${j.avatar || '⚔️'} ${j.nom} — niv. ${j.niveau} (${formatNombre(j.xp)} XP) 👁️`;
+      rendreCliquable(ligne, () => ouvrirFichePublique(j.id));
       zoneClassement.appendChild(ligne);
     });
   }
@@ -658,6 +660,85 @@ function rendreSectionsTaverne() {
       zoneComptoir.appendChild(ligne);
     });
   }
+}
+
+// =====================================================================
+// Fiche publique d'un joueur : cliquer un nom à la taverne montre tout
+// (stats, compétences, équipement, panoplies, hauts faits…).
+// =====================================================================
+function fermerFichePublique() {
+  const voile = el('voile-joueur');
+  if (voile) voile.remove();
+}
+
+async function ouvrirFichePublique(idJoueur) {
+  if (!idJoueur) return;
+  const lignes = await apiRequete(`/rest/v1/personnages?id=eq.${idJoueur}&select=id,nom,avatar,niveau,xp,donnees,degats_boss_total`)
+    .catch(() => null);
+  if (!lignes || !lignes[0]) { afficherToast('Fiche introuvable — le héros a peut-être quitté le monde.'); return; }
+  const ligne = lignes[0];
+  const d = ligne.donnees || {};
+
+  // Pseudo-héros reconstruit pour réutiliser les calculs du jeu.
+  const pp = {
+    stats: d.stats || { for: 4, int: 4, agi: 4, vit: 4, cha: 2 },
+    equipement: d.equipement || {},
+    familier: d.familier || null,
+    familiers: d.familiers || [],
+    race: d.race || 'humain',
+    niveau: ligne.niveau || 1,
+    rangs: d.rangs || {},
+  };
+  const s = statsEffectives(pp);
+  const classe = CLASSES[d.classe] || CLASSES.aventurier;
+  const race = RACES[pp.race] || RACES.humain;
+  const titreActif = d.titre ? HAUTS_FAITS.find((h) => h.id === d.titre) : null;
+  const compagnon = pp.familier ? FAMILIERS[pp.familier] : null;
+
+  fermerFichePublique();
+  const voile = document.createElement('div');
+  voile.id = 'voile-joueur';
+  voile.addEventListener('click', (e) => { if (e.target === voile) fermerFichePublique(); });
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur';
+
+  const statsTexte = Object.entries(CARACS)
+    .map(([cle, c]) => `${c.emoji} ${c.nom} <strong>${s[cle] || 0}</strong>`)
+    .join(' · ');
+  const equipements = Object.entries(SLOTS_EQUIPEMENT)
+    .map(([slot, meta]) => {
+      const idObjet = pp.equipement[slot];
+      const objet = idObjet ? OBJETS[idObjet] : null;
+      return `<div class="ligne-classement">${meta.emoji} ${meta.nom} : ${objet
+        ? `${objet.emoji} <strong>${objet.nom}</strong> <span class="rarete rar-${rareteDe(objet)}">${RARETES[rareteDe(objet)].nom}</span> — ${texteBonus(objet.bonus)}`
+        : '<span class="joueur-detail">vide</span>'}</div>`;
+    }).join('');
+  const sets = bonusSetActifs(pp);
+  const panoplies = sets.actifs.length
+    ? sets.actifs.map((a) => `⚙️ ${a.nom} (${a.pieces} pièces)`).join(' · ')
+    : 'aucune panoplie active';
+  const competences = (d.competences || [])
+    .filter((id) => COMPETENCES[id])
+    .map((id) => {
+      const comp = COMPETENCES[id];
+      return `<div class="ligne-classement">${comp.emoji} <strong>${comp.nom}</strong>${comp.signature ? ' 🏅' : ''}${rangDe(pp, id) ? ` (rang ${rangDe(pp, id)})` : ''}
+        <span class="joueur-detail">${detailsCompetence(comp, s, rangDe(pp, id)).join(' · ')}</span></div>`;
+    }).join('');
+
+  modale.innerHTML = `
+    <button class="btn-choix btn-compact modale-fermer">✖ Fermer</button>
+    <h2>${ligne.avatar || '⚔️'} ${echapper(ligne.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''}</h2>
+    <p class="joueur-detail">${classe.emoji} ${classe.nom} · ${race.emoji} ${race.nom} · niveau ${ligne.niveau} (${formatNombre(ligne.xp)} XP)
+      · 💰 ${formatNombre(d.po || 0)} po · ⚔️ ${formatNombre(ligne.degats_boss_total || 0)} dégâts au boss du monde</p>
+    <div class="panneau"><h3>Caractéristiques effectives</h3>
+      <p>${statsTexte}</p>
+      <p class="joueur-detail">❤️ ${maxHpDe(pp)} PV max · 💧 ${maxMpDe(pp)} PM max${s.blocage ? ` · 🛡️ ${Math.min(40, s.blocage)} % blocage` : ''}${s.esquive ? ` · 💨 ${Math.min(35, s.esquive)} % esquive` : ''}</p>
+      <p class="joueur-detail">⚙️ ${panoplies}${compagnon ? ` · 🐾 ${compagnon.emoji} ${compagnon.nom}` : ''} · 🏅 ${(d.hautsFaits || []).length}/${HAUTS_FAITS.length} hauts faits</p></div>
+    <div class="panneau"><h3>⚡ Compétences actives</h3>${competences || '<p class="aide">Aucune compétence connue.</p>'}</div>
+    <div class="panneau"><h3>🛡️ Équipement porté</h3>${equipements}</div>`;
+  modale.querySelector('.modale-fermer').addEventListener('click', fermerFichePublique);
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
 }
 
 // =====================================================================

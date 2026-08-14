@@ -351,8 +351,8 @@ function debloquerCompetencesClasse(p, annoncer) {
 // Gagne de l'XP ; une montée de niveau soigne entièrement (le fameux « ding »).
 function gagnerXp(p, xp) {
   const avant = p.niveau;
-  // Rythme global de progression : gains réduits de moitié (réglage v10).
-  xp = Math.max(1, Math.round(xp * 0.5));
+  // Rythme global de progression : gains réduits de 65 % (réglage v11).
+  xp = Math.max(1, Math.round(xp * 0.35));
   if (p.race === 'humain') xp = Math.round(xp * 1.1); // Ambition
   const familier = familierActif(p);
   if (familier && familier.bonus.xpBonus) xp = Math.round(xp * (1 + familier.bonus.xpBonus));
@@ -401,7 +401,7 @@ function rendreTitre() {
     boutons.className = 'rangee-boutons';
     const jouer = document.createElement('button');
     jouer.className = 'btn-principal btn-compact';
-    jouer.textContent = '▶ Jouer';
+    jouer.textContent = p.admin ? '🛠️ Jouer (admin)' : '▶ Jouer';
     jouer.addEventListener('click', () => {
       etat.actifId = p.id;
       etat.equipe = [p.id];
@@ -495,16 +495,18 @@ function rendreCreation() {
   const encartSignature = document.createElement('div');
   encartSignature.id = 'creation-signature';
   encartSignature.className = 'aide encart-signature';
+  // L'arbre complet de la classe, chaque compétence avec ses chiffres.
   const arbre = Object.values(COMPETENCES)
     .filter((comp) => comp.classe === b.classe && !comp.signature)
     .sort((a, c) => a.niveauRequis - c.niveauRequis)
-    .map((comp) => `${comp.emoji} ${comp.nom} (niv. ${comp.niveauRequis})`)
-    .join(' · ');
+    .map((comp) => `<br>🔓 <strong>niv. ${comp.niveauRequis}</strong> — ${comp.emoji} <strong>${comp.nom}</strong> : ${comp.desc}
+      <br><span class="encart-chiffres">${detailsCompetence(comp, b.stats).join(' · ')}</span>`)
+    .join('');
   encartSignature.innerHTML = `🏅 Signature de ${b.classe === 'aventurier' ? 'l’Aventurier (aucune classe choisie)' : `la classe <strong>${CLASSES[b.classe].nom}</strong>`} :
     ${signature.emoji} <strong>${signature.nom}</strong> — ${signature.desc}
     <br><span class="encart-chiffres">${detailsCompetence(signature, b.stats).join(' · ')}</span>
-    <br>Puis, en montant de niveau : ${arbre}.
-    <br>4 compétences exclusives par classe, améliorables avec les points de maîtrise (niv. 3, 6, 9, 12, 15, 18 — +15 % par rang).`;
+    ${arbre}
+    <br>4 compétences exclusives par classe, améliorables avec les points de maîtrise (paliers de niveau — +15 % par rang).`;
   zoneModeles.parentElement.appendChild(encartSignature);
 
   const restants = pointsRestants();
@@ -622,6 +624,121 @@ function validerCreation() {
 }
 
 // =====================================================================
+// Héros admin : un bac à sable local avec une console pour tout modifier.
+// Jamais relié au monde en ligne (ni classement, ni taverne).
+// =====================================================================
+function creerHerosAdmin() {
+  const p = nouveauPersonnage({
+    nom: `Admin ${etat.profils.filter((x) => x.admin).length + 1}`,
+    avatar: '🛠️',
+    race: 'humain',
+    classe: 'aventurier',
+    stats: { for: 5, int: 5, agi: 5, vit: 5, cha: 5 },
+    competences: ['frappe-heroique', 'boule-de-feu', 'soin', 'tir-precis'],
+  });
+  p.admin = true;
+  p.po = 100000;
+  etat.profils.push(p);
+  etat.actifId = p.id;
+  etat.equipe = [p.id];
+  sauvegarderLocal();
+  afficherToast('🛠️ Héros admin créé — sa console vous attend sur sa fiche (onglet Héros). Il reste local, jamais publié en ligne.');
+  rendreCarte();
+  montrerEcran('ecran-carte');
+}
+
+// Fixe directement le niveau (console d'admin), avec tous les déblocages.
+function adminFixerNiveau(p, n) {
+  n = Math.max(1, Math.min(NIVEAU_MAX, n));
+  const avant = p.niveau;
+  p.xp = seuilXp(n);
+  p.niveau = n;
+  if (n > avant) {
+    p.pointsEnAttente += POINTS_PAR_NIVEAU * (n - avant);
+    NIVEAUX_NOUVELLE_COMPETENCE.forEach((seuil) => {
+      if (avant < seuil && n >= seuil) p.competencesEnAttente++;
+    });
+    p.maitrise = (p.maitrise || 0) + pointsMaitrisePourNiveau(n) - pointsMaitrisePourNiveau(avant);
+    debloquerCompetencesClasse(p, false);
+  }
+  bornerVie(p);
+  p.hp = p.maxHp;
+  p.mp = p.maxMp;
+}
+
+function rendreConsoleAdmin(zone, p) {
+  const bloc = document.createElement('div');
+  bloc.className = 'panneau panneau-admin';
+  bloc.innerHTML = `<h3>🛠️ Console d'admin</h3>
+    <p class="aide">Héros bac à sable : modifiez tout, testez tout. Il n'est jamais publié en ligne — le classement des vrais joueurs reste honnête.</p>`;
+
+  const actions = [
+    ['⬆️ Niveau +1', () => adminFixerNiveau(p, p.niveau + 1)],
+    ['⬆️ Niveau +5', () => adminFixerNiveau(p, p.niveau + 5)],
+    ['🌟 Niveau 50', () => adminFixerNiveau(p, 50)],
+    ['💰 +10 000 po', () => { p.po += 10000; }],
+    ['🏅 +5 maîtrise', () => { p.maitrise = (p.maitrise || 0) + 5; }],
+    ['📚 Toutes les compétences', () => { Object.keys(COMPETENCES).forEach((id) => { if (!COMPETENCES[id].classe || COMPETENCES[id].classe === p.classe) apprendreCompetence(p, id); }); }],
+    ['🐾 Tous les familiers', () => { p.familiers = Object.keys(FAMILIERS); }],
+    ['⛏️ Matériaux ×25', () => { Object.entries(OBJETS).forEach(([id, o]) => { if (o.type === 'materiau') ajouterObjet(p, id, 25); }); }],
+    ['🧪 Potions ×10', () => { Object.entries(OBJETS).forEach(([id, o]) => { if (o.type === 'consommable') ajouterObjet(p, id, 10); }); }],
+    ['❤️ Soin complet', () => { p.hp = p.maxHp; p.mp = p.maxMp; }],
+    ['💪 +5 à toutes les stats', () => { Object.keys(CARACS).forEach((cle) => { p.stats[cle] += 5; }); bornerVie(p); }],
+    ['📜 Contrats du jour remplis', () => { p.quetes.liste.forEach((q) => { q.fait = q.requis; }); }],
+  ];
+  const rangee = document.createElement('div');
+  rangee.className = 'rangee-boutons';
+  actions.forEach(([libelle, action]) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-choix btn-compact';
+    btn.textContent = libelle;
+    btn.addEventListener('click', () => {
+      action();
+      sauvegarderLocal();
+      afficherToast(`🛠️ ${libelle} — fait.`);
+      rendreHeros();
+      rendreTopbar();
+    });
+    rangee.appendChild(btn);
+  });
+  bloc.appendChild(rangee);
+
+  // Donner n'importe quel objet, par nom ou par identifiant.
+  const ligneObjet = document.createElement('div');
+  ligneObjet.className = 'rangee-boutons';
+  const champ = document.createElement('input');
+  champ.id = 'admin-objet';
+  champ.placeholder = 'Nom ou id d’objet (ex : Lame du Firmament)';
+  champ.className = 'champ-comptoir large';
+  champ.style.width = '280px';
+  const donner = document.createElement('button');
+  donner.className = 'btn-choix btn-compact';
+  donner.textContent = '🎁 Donner ×1';
+  const donnerDix = document.createElement('button');
+  donnerDix.className = 'btn-choix btn-compact';
+  donnerDix.textContent = '🎁 ×10';
+  const chercherEtDonner = (qte) => {
+    const requete = champ.value.trim().toLowerCase();
+    if (!requete) return;
+    const trouve = OBJETS[requete]
+      ? [requete, OBJETS[requete]]
+      : Object.entries(OBJETS).find(([, o]) => o.nom.toLowerCase().includes(requete));
+    if (!trouve) { afficherToast(`🛠️ Aucun objet ne correspond à « ${champ.value} ».`); return; }
+    ajouterObjet(p, trouve[0], qte);
+    sauvegarderLocal();
+    afficherToast(`🛠️ ${trouve[1].emoji} ${trouve[1].nom} ×${qte} ajouté au sac.`);
+    rendreTopbar();
+  };
+  donner.addEventListener('click', () => chercherEtDonner(1));
+  donnerDix.addEventListener('click', () => chercherEtDonner(10));
+  ligneObjet.appendChild(champ);
+  ligneObjet.appendChild(donner);
+  ligneObjet.appendChild(donnerDix);
+  bloc.appendChild(ligneObjet);
+  zone.appendChild(bloc);
+}
+
+// =====================================================================
 // Fiche du héros : stats, compétences, équipement, inventaire, code
 // =====================================================================
 function rendreHeros() {
@@ -657,6 +774,9 @@ function rendreHeros() {
       <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${p.po} po · 💥 ${Math.round(5 + s.agi + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin${s.blocage ? ` · 🛡️ ${Math.min(40, s.blocage)} % blocage` : ''}${s.esquive ? ` · 💨 ${Math.min(35, s.esquive)} % esquive` : ''}</div>
     </div>`;
   zone.appendChild(entete);
+
+  // Console d'admin (héros bac à sable uniquement)
+  if (p.admin) rendreConsoleAdmin(zone, p);
 
   // Renommage du héros (mis à jour aussi dans le monde en ligne)
   entete.querySelector('#btn-renommer').addEventListener('click', () => {
@@ -796,6 +916,29 @@ function rendreHeros() {
       grilleGrimoire.appendChild(carte);
     });
     blocComp.appendChild(grilleGrimoire);
+  }
+  // --- L'arbre de classe : les compétences pas encore débloquées
+  // restent visibles, verrouillées, avec tous leurs chiffres. ---
+  const aVenir = Object.entries(COMPETENCES)
+    .filter(([id, comp]) => comp.classe === p.classe && !p.grimoire.includes(id))
+    .sort((a, c) => (a[1].niveauRequis || 1) - (c[1].niveauRequis || 1));
+  if (aVenir.length > 0) {
+    const titreArbre = document.createElement('h3');
+    titreArbre.className = 'titre-grimoire';
+    titreArbre.textContent = `🏅 Arbre de ${classe.nom} — à débloquer`;
+    blocComp.appendChild(titreArbre);
+    const grilleArbre = document.createElement('div');
+    grilleArbre.className = 'grille-competences';
+    aVenir.forEach(([id, comp]) => {
+      const carte = carteCompetence(id, comp, { stats: s });
+      carte.classList.add('carte-verrouillee');
+      const verrou = document.createElement('div');
+      verrou.className = 'comp-verrou';
+      verrou.textContent = `🔒 Se débloque automatiquement au niveau ${comp.niveauRequis}`;
+      carte.appendChild(verrou);
+      grilleArbre.appendChild(carte);
+    });
+    blocComp.appendChild(grilleArbre);
   }
   zone.appendChild(blocComp);
 
@@ -1188,6 +1331,8 @@ function initialiser() {
   chargerProfils();
 
   el('btn-nouveau-perso').addEventListener('click', demarrerCreation);
+  const btnAdmin = el('btn-heros-admin');
+  if (btnAdmin) btnAdmin.addEventListener('click', creerHerosAdmin);
   el('creation-valider').addEventListener('click', validerCreation);
   el('creation-annuler').addEventListener('click', () => { rendreTitre(); montrerEcran('ecran-titre'); });
   el('btn-importer').addEventListener('click', () => el('zone-import').classList.toggle('cache'));
