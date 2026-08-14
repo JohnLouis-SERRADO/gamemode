@@ -128,7 +128,78 @@ function montrerEcran(id) {
     topbar.classList.add('cache');
   }
   if (id !== 'ecran-taverne' && typeof arreterSondageTaverne === 'function') arreterSondageTaverne();
+  // v12.2 : au niveau 5, le choix de la sous-classe de récolteur s'impose.
+  if (['ecran-carte', 'ecran-zone', 'ecran-ville', 'ecran-heros'].includes(id)) {
+    verifierChoixSpecialite();
+  }
   window.scrollTo(0, 0);
+}
+
+// =====================================================================
+// Sous-classe de récolteur (v12.2) : débloquée au niveau 5, choisie via
+// une fenêtre OBLIGATOIRE (pas de croix, pas d'échappatoire) — seule la
+// description peut être passée. Chaque spécialité nourrit un pan de
+// l'artisanat : le choix compte.
+// =====================================================================
+function verifierChoixSpecialite() {
+  const p = persoActif();
+  if (!p || p.admin || p.metierPrincipal || p.niveau < NIVEAU_SPECIALITE) return;
+  if (document.getElementById('voile-specialite')) return;
+
+  const PRESENTATIONS = {
+    mineur: 'Pierres, minerais et cristaux — et la fameuse <strong>pierre magique</strong>. C\'est lui qui nourrit la <strong>Forge</strong> : lames, heaumes, cuirasses et jambières. Sans mineur, pas d\'acier — et les guerriers combattent en chemise.',
+    tanneur: 'Cuirs, os et dépouilles de bêtes — jusqu\'au précieux <strong>cuir primal</strong>. C\'est lui qui nourrit la <strong>Tannerie</strong> : gants et bottes, blocage et esquive. Sans tanneur, les aventuriers marchent pieds nus.',
+    tisseur: 'Plantes, fibres et étoffes — dont le <strong>tissu magique</strong>. C\'est lui qui nourrit le <strong>Tisserand</strong> (talismans et grimoires des mages) et l\'<strong>Alchimiste</strong> (potions, bombes, philtres). Sans tisseur, personne ne boit ni ne lance rien.',
+  };
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-specialite';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-specialite';
+  modale.innerHTML = `
+    <h2>⭐ Niveau ${NIVEAU_SPECIALITE} atteint : votre sous-classe de récolteur vous attend !</h2>
+    <div id="specialite-description">
+      <p>${echapper(p.nom)} a fait ses preuves : il est temps de choisir une <strong>spécialité de récolte</strong>.
+      Tous les métiers resteront praticables, mais le spécialiste récolte <strong>bien plus</strong> dans son domaine
+      (quantités, matériaux signatures) et y progresse <strong>deux fois plus vite</strong> — un avantage qui grandit
+      encore avec la Chance 🍀.</p>
+      <p><strong>Chaque sous-classe compte</strong>, car chacune alimente des équipements différents chez les artisans
+      du bourg — à choisir selon ce que vous voulez porter, fabriquer… ou vendre aux autres :</p>
+      <button id="specialite-passer" class="btn-choix btn-compact">↷ Passer la description</button>
+    </div>
+    <div id="specialite-choix"></div>
+    <p class="aide">Le choix est obligatoire pour continuer l'aventure — mais pas définitif :
+      changer coûtera ${COUT_CHANGEMENT_SPECIALITE} po depuis votre fiche de héros.</p>`;
+
+  const zoneChoix = modale.querySelector('#specialite-choix');
+  Object.entries(METIERS).forEach(([idMetier, metier]) => {
+    const carte = document.createElement('div');
+    carte.className = 'panneau carte-specialite';
+    carte.innerHTML = `
+      <div class="objet-entete">${metier.emoji} <strong>${metier.nom}</strong></div>
+      <div class="objet-desc description-specialite">${PRESENTATIONS[idMetier]}</div>`;
+    const choisir = document.createElement('button');
+    choisir.className = 'btn-principal btn-compact';
+    choisir.textContent = `${metier.emoji} Devenir ${metier.nom}`;
+    choisir.addEventListener('click', () => {
+      p.metierPrincipal = idMetier;
+      sauvegarder(p);
+      voile.remove();
+      afficherToast(`${metier.emoji} ⭐ ${p.nom} est désormais ${metier.nom} : ses récoltes de spécialité seront bien plus riches !`);
+      if (el('ecran-heros').classList.contains('actif')) rendreHeros();
+    });
+    carte.appendChild(choisir);
+    zoneChoix.appendChild(carte);
+  });
+
+  // La description se saute ; le choix, lui, ne se saute pas.
+  modale.querySelector('#specialite-passer').addEventListener('click', () => {
+    modale.querySelector('#specialite-description').classList.add('cache');
+    modale.querySelectorAll('.description-specialite').forEach((d) => d.classList.add('cache'));
+  });
+
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
 }
 
 function rendreTopbar() {
@@ -1035,10 +1106,10 @@ function rendreHeros() {
   blocMetiers.className = 'panneau';
   blocMetiers.innerHTML = '<h3>🧰 Métiers de récolte</h3>'
     + '<p class="aide">Pratiquez sur la carte (miner, dépecer, herboriser) pour progresser. '
-    + 'Choisissez une <strong>spécialité</strong> ⭐ : votre sous-classe de récolteur. Le spécialiste '
-    + 'récolte plus (quantités, matériaux signatures) et progresse deux fois plus vite dans son métier — '
-    + 'et plus sa Chance est haute, plus l’écart se creuse. '
-    + `Premier choix gratuit ; en changer coûte ${COUT_CHANGEMENT_SPECIALITE} po.</p>`;
+    + 'La <strong>spécialité</strong> ⭐ — votre sous-classe de récolteur — se choisit au '
+    + `niveau ${NIVEAU_SPECIALITE} : le spécialiste récolte plus (quantités, matériaux signatures) `
+    + 'et progresse deux fois plus vite dans son métier — et plus sa Chance est haute, plus l’écart se creuse. '
+    + `En changer coûte ${COUT_CHANGEMENT_SPECIALITE} po.</p>`;
   const grilleMetiers = document.createElement('div');
   grilleMetiers.className = 'rangee-chips';
   Object.entries(METIERS).forEach(([idMetier, metier]) => {
@@ -1056,6 +1127,10 @@ function rendreHeros() {
     chip.textContent = `${metier.emoji} ${metier.nom} ${progression}${specialite ? ' ⭐ spécialité' : ''}`;
     chip.addEventListener('click', () => {
       if (p.metierPrincipal === idMetier) return;
+      if (p.niveau < NIVEAU_SPECIALITE) {
+        afficherToast(`🔒 La spécialité se choisit au niveau ${NIVEAU_SPECIALITE} — continuez l'aventure !`);
+        return;
+      }
       if (p.metierPrincipal && p.po < COUT_CHANGEMENT_SPECIALITE) {
         afficherToast(`💰 Changer de spécialité coûte ${COUT_CHANGEMENT_SPECIALITE} po.`);
         return;

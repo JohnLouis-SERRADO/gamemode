@@ -443,6 +443,44 @@ function texteSet(objet) {
   return `<div class="objet-set" title="2 pièces : ${textePalierSet(paliers[2])} — 4 pièces : ${textePalierSet(paliers[4])}">⚙️ ${set.nom} <span class="set-paliers">(2 p. : ${textePalierSet(paliers[2])} · 4 p. : ${textePalierSet(paliers[4])})</span></div>`;
 }
 
+// ---------------------------------------------------------------------
+// Cohérence du craft (v12.2) : chaque pièce exige EN PLUS de la recette
+// de sa série les matériaux bruts de SA filière — forge (pierres et
+// minerais), tannerie (cuirs et dépouilles), tisserand/alchimiste
+// (plantes et fibres) — choisis dans la tranche de niveau de la série.
+// Résultat : on récolte sur toutes les cartes, et chaque sous-classe
+// de récolteur devient précieuse pour un pan de l'artisanat.
+// ---------------------------------------------------------------------
+const ECHELLE_FILIERE = {
+  mine:   [[1, 'minerai-cuivre'], [14, 'minerai-fer'], [22, 'basalte-poli'], [30, 'obsidienne-brute'], [38, 'bois-petrifie'], [46, 'fragment-de-foudre']],
+  peau:   [[1, 'peau-de-loup'], [14, 'os-ancien'], [22, 'plume-de-rokh'], [30, 'corail-sanglant'], [38, 'os-de-geant'], [46, 'plume-d-archon']],
+  plante: [[1, 'fibre-sauvage'], [14, 'lotus-noir'], [22, 'liane-tressee'], [30, 'nacre-abyssale'], [38, 'cendre-fertile'], [46, 'etoffe-du-neant']],
+};
+const SIGNATURE_FILIERE = { mine: 'pierre-magique', peau: 'cuir-primal', plante: 'tissu-magique' };
+
+// À quelle filière de récolte appartient une pièce d'équipement ?
+function filiereDeSlot(slot) {
+  if (slot === 'mains' || slot === 'pieds') return 'peau';      // la Tannerie
+  if (slot === 'accessoire') return 'plante';                    // le Tisserand
+  return 'mine';                                                 // la Forge
+}
+
+function materiauxDePiece(serie, slot) {
+  const filiere = filiereDeSlot(slot);
+  let brut = ECHELLE_FILIERE[filiere][0][1];
+  ECHELLE_FILIERE[filiere].forEach(([seuil, id]) => { if (serie.niveau >= seuil) brut = id; });
+  const materiaux = { ...serie.materiaux };
+  materiaux[brut] = (materiaux[brut] || 0) + 2;
+  // Dès le niveau 20, les matériaux signatures des sous-classes entrent
+  // dans la danse : le mineur forge pour les guerriers, le tanneur
+  // chausse les agiles, le tisseur pare les mages.
+  if (serie.niveau >= 20) {
+    const signature = SIGNATURE_FILIERE[filiere];
+    materiaux[signature] = (materiaux[signature] || 0) + 1;
+  }
+  return materiaux;
+}
+
 SETS_CRAFT.forEach((serie) => {
   const mult = MULT_RARETE_CRAFT[serie.rarete];
   const principal = Math.max(2, Math.round(serie.niveau * 0.8 * mult));
@@ -473,7 +511,7 @@ SETS_CRAFT.forEach((serie) => {
       set: `craft-${idBase}`,
       desc: `Série ${serie.suffixe} — se forge à l’atelier.`,
     };
-    RECETTES.push({ resultat: id, niveau: serie.niveau, po: serie.po, materiaux: serie.materiaux });
+    RECETTES.push({ resultat: id, niveau: serie.niveau, po: serie.po, materiaux: materiauxDePiece(serie, piece.slot) });
   });
 });
 RECETTES.sort((a, b) => a.niveau - b.niveau);
