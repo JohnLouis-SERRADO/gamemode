@@ -109,6 +109,12 @@ const NIVEAU_MAX_METIER = 10;
 // XP nécessaire pour passer du niveau n au suivant.
 function seuilXpMetier(niveau) { return 12 + niveau * 8; }
 
+// Spécialité (sous-classe de récolte) : le premier choix est gratuit,
+// en changer coûte de l'or — on ne renie pas son métier à la légère.
+const COUT_CHANGEMENT_SPECIALITE = 1000;
+// Le spécialiste récolte mieux — d'autant plus que sa Chance est haute.
+function multSpecialite(cha) { return 1 + 0.3 * multChanceDrop(cha); }
+
 // Chaque matériau récoltable appartient à une famille de métier.
 const FAMILLE_MATERIAU = {
   // ⛏️ pierres, minerais, cristaux (mineur)

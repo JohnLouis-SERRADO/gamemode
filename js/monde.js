@@ -157,16 +157,18 @@ function rendreZone(z) {
   explorer_.addEventListener('click', () => explorer(z));
   actions.appendChild(explorer_);
 
-  // v12 : trois façons de récolter — chacune nourrit son métier.
+  // v12 : trois façons de récolter — chacune nourrit son métier, et la
+  // spécialité du héros (sa sous-classe de récolteur) brille d'une étoile.
   Object.entries(METIERS).forEach(([idMetier, metier]) => {
     const m = metierDe(p, idMetier);
+    const specialite = p.metierPrincipal === idMetier;
     const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
     const noms = pool.map((e) => `${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}`).join(', ');
     const btn = document.createElement('button');
     btn.className = 'btn-action-zone';
-    btn.innerHTML = `<span class="action-zone-emoji">${metier.emoji}</span><strong>${metier.action}</strong>
+    btn.innerHTML = `<span class="action-zone-emoji">${metier.emoji}</span><strong>${metier.action}${specialite ? ' ⭐' : ''}</strong>
       <span class="action-zone-detail">${noms || `${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom} (traces à débusquer)`}
-      · ${metier.nom} niv. ${m.niveau}</span>`;
+      · ${metier.nom} niv. ${m.niveau}${specialite ? ' · spécialité' : ''}</span>`;
     btn.addEventListener('click', () => recolter(z, idMetier));
     actions.appendChild(btn);
   });
@@ -321,7 +323,10 @@ function explorer(z) {
 
 // v12 : la récolte se fait par métier (miner / dépecer / herboriser).
 // La Chance améliore les probabilités ET les prises rares ; le niveau
-// de métier améliore les quantités et le matériau signature.
+// de métier améliore les quantités et le matériau signature. Et la
+// SPÉCIALITÉ (sous-classe de récolteur) démultiplie tout : un tisseur
+// spécialiste ramasse plus de plantes qu'un mineur de passage — d'autant
+// plus que sa Chance est haute.
 function recolter(z, idMetier) {
   const p = persoActif();
   const metier = METIERS[idMetier] || METIERS.tisseur;
@@ -329,28 +334,34 @@ function recolter(z, idMetier) {
 
   const s = statsEffectives(p);
   const multChance = multChanceDrop(s.cha); // jusqu'à ×2 avec la Chance
+  const specialiste = p.metierPrincipal === idMetier;
+  const multSpec = specialiste ? multSpecialite(s.cha) : 1; // ×1.3 à ×1.6 selon la Chance
   const niveauM = metierDe(p, idMetier).niveau;
-  const bonusQte = Math.floor(niveauM / 3); // +1 dès le niv. 3, +2 au 6, +3 au 9
+  const bonusQte = Math.floor(niveauM / 3) + (specialiste ? 1 : 0); // la spécialité ajoute sa part
 
   const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
   const objets = {};
   pool.forEach((entree) => {
-    if (Math.random() < Math.min(0.95, entree.chance * multChance)) {
+    if (Math.random() < Math.min(0.95, entree.chance * multChance * multSpec)) {
       objets[entree.id] = (objets[entree.id] || 0) + alea(1, 2) + bonusQte;
     }
   });
   // Le matériau signature du métier se trouve partout — d'autant plus
-  // souvent qu'on est chanceux et expérimenté.
-  const chanceExclusif = Math.min(0.75, (0.1 + niveauM * 0.04) * multChance);
+  // souvent qu'on est chanceux, expérimenté… et spécialisé.
+  const chanceExclusif = Math.min(0.9, (0.1 + niveauM * 0.04) * multChance * multSpec);
   if (pool.length === 0 || Math.random() < chanceExclusif) {
-    objets[metier.exclusif] = (objets[metier.exclusif] || 0) + 1 + Math.floor(niveauM / 5);
+    objets[metier.exclusif] = (objets[metier.exclusif] || 0) + 1 + Math.floor(niveauM / 5) + (specialiste ? 1 : 0);
   }
   if (Object.keys(objets).length === 0) {
     objets[pool.length ? pool[0].id : metier.exclusif] = 1;
   }
 
-  // Tout le monde pratique : chaque héros progresse dans le métier du jour.
-  membresEquipe().forEach((m) => gagnerXpMetier(m, idMetier, alea(2, 4)));
+  // Tout le monde pratique : chaque héros progresse dans le métier du
+  // jour — deux fois plus vite si c'est SA spécialité.
+  const xpBase = alea(2, 4);
+  membresEquipe().forEach((m) => {
+    gagnerXpMetier(m, idMetier, m.metierPrincipal === idMetier ? xpBase * 2 : xpBase);
+  });
 
   if (Math.random() < 0.25) {
     const membres = membresEquipe();
@@ -365,7 +376,7 @@ function recolter(z, idMetier) {
     });
     Object.entries(objets).forEach(([id, qte]) => lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}`));
     const mProg = metierDe(p, idMetier);
-    lignes.push(`${metier.emoji} ${metier.nom} niv. ${mProg.niveau}${mProg.niveau < NIVEAU_MAX_METIER ? ` (${mProg.xp}/${seuilXpMetier(mProg.niveau)} XP)` : ' (maître)'}`);
+    lignes.push(`${metier.emoji} ${metier.nom} niv. ${mProg.niveau}${mProg.niveau < NIVEAU_MAX_METIER ? ` (${mProg.xp}/${seuilXpMetier(mProg.niveau)} XP)` : ' (maître)'}${specialiste ? ' · ⭐ spécialité : moisson enrichie, progression ×2' : ''}`);
     afficherButin({
       titre: `${metier.emoji} ${metier.action} : belle moisson`,
       texte: membresEquipe().length > 1 ? 'Chaque héros remplit son sac.' : 'Vous remplissez votre sac.',

@@ -736,7 +736,7 @@ async function ouvrirFichePublique(idJoueur) {
       <p class="joueur-detail">⚙️ ${panoplies}${compagnon ? ` · 🐾 ${compagnon.emoji} ${compagnon.nom}` : ''} · 🏅 ${(d.hautsFaits || []).length}/${HAUTS_FAITS.length} hauts faits</p>
       <p class="joueur-detail">${Object.entries(METIERS).map(([idMetier, metier]) => {
         const m = (d.metiers && d.metiers[idMetier]) || { niveau: 1 };
-        return `${metier.emoji} ${metier.nom} niv. ${m.niveau}`;
+        return `${metier.emoji} ${metier.nom} niv. ${m.niveau}${d.metierPrincipal === idMetier ? ' ⭐' : ''}`;
       }).join(' · ')}</p></div>
     <div class="panneau"><h3>⚡ Compétences actives</h3>${competences || '<p class="aide">Aucune compétence connue.</p>'}</div>
     <div class="panneau"><h3>🛡️ Équipement porté</h3>${equipements}</div>`;

@@ -1364,6 +1364,12 @@ button:focus-visible,
   font-weight: 700;
 }
 
+/* Spécialité (sous-classe de récolteur) : la puce étoilée du métier élu. */
+.chip-specialite {
+  background: linear-gradient(135deg, rgba(212, 167, 44, 0.55), rgba(212, 167, 44, 0.2));
+  box-shadow: 0 0 8px rgba(212, 167, 44, 0.35);
+}
+
 /* Vote d'équipe : bandeau qui annonce à qui c'est le tour de choisir. */
 .bandeau-vote {
   background: linear-gradient(135deg, rgba(124, 92, 191, 0.25), rgba(124, 92, 191, 0.08));

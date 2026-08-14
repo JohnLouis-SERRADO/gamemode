@@ -216,11 +216,14 @@ function normaliserPerso(p) {
     const depenses = Object.values(p.rangs).reduce((somme, r) => somme + r, 0);
     p.maitrise = Math.max(0, pointsMaitrisePourNiveau(p.niveau) - depenses);
   }
-  // v12 : métiers de récolte (mineur, tanneur, tisseur).
+  // v12 : métiers de récolte (mineur, tanneur, tisseur) + spécialité.
   if (!p.metiers || typeof p.metiers !== 'object') p.metiers = {};
   Object.keys(METIERS).forEach((id) => {
     if (!p.metiers[id]) p.metiers[id] = { niveau: 1, xp: 0 };
   });
+  if (p.metierPrincipal === undefined || (p.metierPrincipal && !METIERS[p.metierPrincipal])) {
+    p.metierPrincipal = null;
+  }
   if (!p.quetes || p.quetes.date !== new Date().toISOString().slice(0, 10)) {
     p.quetes = genererQuetesDuJour(p);
   }
@@ -289,7 +292,7 @@ function donneesCloud(p) {
     compteurs: p.compteurs, familiers: p.familiers, familier: p.familier,
     hautsFaits: p.hautsFaits, titre: p.titre, tourMax: p.tourMax, quetes: p.quetes,
     donjons: p.donjons, classe: p.classe, maitrise: p.maitrise, rangs: p.rangs,
-    tourBoss: p.tourBoss, metiers: p.metiers,
+    tourBoss: p.tourBoss, metiers: p.metiers, metierPrincipal: p.metierPrincipal,
   };
 }
 
@@ -1027,21 +1030,43 @@ function rendreHeros() {
     zone.appendChild(blocFamiliers);
   }
 
-  // --- Métiers de récolte (v12) ---
+  // --- Métiers de récolte et spécialité (v12) ---
   const blocMetiers = document.createElement('div');
   blocMetiers.className = 'panneau';
   blocMetiers.innerHTML = '<h3>🧰 Métiers de récolte</h3>'
-    + '<p class="aide">Pratiquez sur la carte (miner, dépecer, herboriser) pour progresser : meilleures quantités, et plus de matériaux signatures. La Chance enrichit chaque moisson.</p>';
+    + '<p class="aide">Pratiquez sur la carte (miner, dépecer, herboriser) pour progresser. '
+    + 'Choisissez une <strong>spécialité</strong> ⭐ : votre sous-classe de récolteur. Le spécialiste '
+    + 'récolte plus (quantités, matériaux signatures) et progresse deux fois plus vite dans son métier — '
+    + 'et plus sa Chance est haute, plus l’écart se creuse. '
+    + `Premier choix gratuit ; en changer coûte ${COUT_CHANGEMENT_SPECIALITE} po.</p>`;
   const grilleMetiers = document.createElement('div');
   grilleMetiers.className = 'rangee-chips';
   Object.entries(METIERS).forEach(([idMetier, metier]) => {
     const m = metierDe(p, idMetier);
-    const chip = document.createElement('span');
-    chip.className = 'chip chip-metier';
-    chip.title = `${metier.detail} — matériau signature : ${OBJETS[metier.exclusif].nom}`;
-    chip.textContent = m.niveau >= NIVEAU_MAX_METIER
-      ? `${metier.emoji} ${metier.nom} — maître`
-      : `${metier.emoji} ${metier.nom} niv. ${m.niveau} (${m.xp}/${seuilXpMetier(m.niveau)} XP)`;
+    const specialite = p.metierPrincipal === idMetier;
+    const chip = document.createElement('button');
+    chip.className = 'chip chip-metier' + (specialite ? ' chip-specialite' : '');
+    chip.title = specialite
+      ? `${metier.detail} — votre spécialité : récolte et progression améliorées`
+      : `${metier.detail} — matériau signature : ${OBJETS[metier.exclusif].nom}. `
+        + (p.metierPrincipal ? `Changer de spécialité coûte ${COUT_CHANGEMENT_SPECIALITE} po.` : 'Cliquez pour en faire votre spécialité (gratuit).');
+    const progression = m.niveau >= NIVEAU_MAX_METIER
+      ? 'maître'
+      : `niv. ${m.niveau} (${m.xp}/${seuilXpMetier(m.niveau)} XP)`;
+    chip.textContent = `${metier.emoji} ${metier.nom} ${progression}${specialite ? ' ⭐ spécialité' : ''}`;
+    chip.addEventListener('click', () => {
+      if (p.metierPrincipal === idMetier) return;
+      if (p.metierPrincipal && p.po < COUT_CHANGEMENT_SPECIALITE) {
+        afficherToast(`💰 Changer de spécialité coûte ${COUT_CHANGEMENT_SPECIALITE} po.`);
+        return;
+      }
+      if (p.metierPrincipal) p.po -= COUT_CHANGEMENT_SPECIALITE;
+      p.metierPrincipal = idMetier;
+      sauvegarder(p);
+      afficherToast(`${metier.emoji} ⭐ ${p.nom} se spécialise ${metier.nom} : ses récoltes de ${metier.famille === 'mine' ? 'pierres' : metier.famille === 'peau' ? 'cuirs' : 'plantes'} seront bien plus riches !`);
+      rendreHeros();
+      rendreTopbar();
+    });
     grilleMetiers.appendChild(chip);
   });
   blocMetiers.appendChild(grilleMetiers);
@@ -1380,6 +1405,7 @@ async function importerHeros() {
   if (d.tourBoss && typeof d.tourBoss === 'object') p.tourBoss = { normal: 0, heroique: 0, cauchemar: 0, ...d.tourBoss };
   if (d.donjons && typeof d.donjons === 'object') p.donjons = d.donjons;
   if (d.metiers && typeof d.metiers === 'object') p.metiers = d.metiers;
+  if (d.metierPrincipal !== undefined) p.metierPrincipal = d.metierPrincipal;
   if (d.quetes && d.quetes.date) p.quetes = d.quetes;
   p.cloud = { id: morceaux[0], token: morceaux[1] };
   bornerVie(p);
