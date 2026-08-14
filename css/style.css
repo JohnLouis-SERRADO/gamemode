@@ -230,6 +230,31 @@ h4 { margin-bottom: 6px; }
 
 .point-reseau.actif-reseau { background: var(--ok); opacity: 1; }
 
+/* ----- Bandeau d'événement mondial ----- */
+#bandeau-evenement {
+  background: linear-gradient(90deg, #2e2a1a, #33301c, #2e2a1a);
+  border-bottom: 1px solid var(--accent);
+  color: var(--accent-clair);
+  text-align: center;
+  padding: 7px 12px;
+  font-size: 0.88rem;
+}
+
+/* ----- Sélecteur de difficulté ----- */
+.chip-difficulte {
+  cursor: pointer;
+  min-height: 40px;
+}
+
+.chip-difficulte.active {
+  border-color: var(--accent);
+  background: #33301c;
+  color: var(--accent-clair);
+  font-weight: bold;
+}
+
+.chip-difficulte.verrouillee { opacity: 0.45; cursor: not-allowed; }
+
 /* ----- Boutons ----- */
 button {
   font-family: inherit;
@@ -981,6 +1006,53 @@ button:focus-visible,
 }
 
 .ligne-classement:last-child { border-bottom: none; }
+
+/* ----- Expédition multi-écrans ----- */
+.centre-texte { text-align: center; }
+
+.code-groupe {
+  font-size: clamp(1.8rem, 8vw, 2.6rem);
+  font-weight: bold;
+  letter-spacing: 0.35em;
+  color: var(--accent-clair);
+  background: var(--fond);
+  border: 1px dashed var(--accent);
+  border-radius: 12px;
+  padding: 12px 6px 12px 18px;
+  margin: 10px auto;
+  max-width: 340px;
+  font-variant-numeric: tabular-nums;
+  user-select: all;
+}
+
+.select-groupe {
+  background: var(--fond);
+  color: var(--texte);
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  min-height: 44px;
+  max-width: 100%;
+}
+
+.select-groupe:focus { outline: none; border-color: var(--accent); }
+
+.champ-code-groupe {
+  background: var(--fond);
+  color: var(--texte);
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 1.05rem;
+  width: 120px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  text-align: center;
+}
+
+.champ-code-groupe:focus { outline: none; border-color: var(--accent); }
 
 /* ----- Adaptation aux petits écrans ----- */
 @media (max-width: 680px) {

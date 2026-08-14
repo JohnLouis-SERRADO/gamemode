@@ -112,6 +112,41 @@ const MONSTRES = {
     ],
   },
 
+  // ----- Marais de Brumeciel (niv. 8-11) -----
+  grenouilleGeante: {
+    nom: 'Grenouille colossale', emoji: '🐸', niveau: 9, hp: 150, atk: 19, agi: 7, xp: 92, po: [22, 36],
+    drops: [{ id: 'herbe-lunaire', chance: 0.4 }, { id: 'lotus-noir', chance: 0.3 }],
+    attaques: [
+      { nom: 'Coup de langue', emoji: '👅', mult: 1.0, poids: 3, type: 'mono' },
+      { nom: 'Bond écrasant', emoji: '💢', mult: 1.3, poids: 1, type: 'mono' },
+    ],
+  },
+  sorciereMarais: {
+    nom: 'Sorcière des marais', emoji: '🧙‍♀️', niveau: 9, hp: 135, atk: 18, agi: 6, xp: 96, po: [24, 38],
+    drops: [{ id: 'lotus-noir', chance: 0.45 }, { id: 'herbe-lunaire', chance: 0.3 }],
+    attaques: [
+      { nom: 'Malédiction du bourbier', emoji: '🕸️', mult: 0.9, poids: 2, type: 'mono', effet: { type: 'poison', degats: 6, duree: 2 } },
+      { nom: 'Brume revigorante', emoji: '🌫️', poids: 2, type: 'soin', valeur: 30 },
+    ],
+  },
+  serpentVoile: {
+    nom: 'Serpent des voiles', emoji: '🐍', niveau: 10, hp: 140, atk: 21, agi: 11, xp: 100, po: [24, 40],
+    drops: [{ id: 'lotus-noir', chance: 0.25 }, { id: 'herbe-lunaire', chance: 0.3 }],
+    attaques: [
+      { nom: 'Crochets furtifs', emoji: '🦷', mult: 1.1, poids: 3, type: 'mono' },
+      { nom: 'Danse hypnotique', emoji: '💫', mult: 0.7, poids: 1, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.25 } },
+    ],
+  },
+  hydreBrumes: {
+    nom: 'Hydre des brumes', emoji: '🐉', niveau: 11, boss: true, hp: 420, atk: 26, agi: 8, xp: 380, po: [120, 180],
+    drops: [{ id: 'lotus-noir', chance: 1 }, { id: 'lotus-noir', chance: 0.7 }, { id: 'seve-ambree', chance: 0.6 }],
+    attaques: [
+      { nom: 'Triple morsure', emoji: '🦷', mult: 1.2, poids: 2, type: 'mono' },
+      { nom: 'Souffle de brume', emoji: '🌫️', mult: 0.7, poids: 2, type: 'aoe' },
+      { nom: 'Régénérescence', emoji: '💧', poids: 1, type: 'soin', valeur: 60 },
+    ],
+  },
+
   // ----- Cryptes Oubliées (niv. 10-14) -----
   squelette: {
     nom: 'Squelette', emoji: '💀', niveau: 11, hp: 130, atk: 22, agi: 6, xp: 105, po: [26, 40],
@@ -152,6 +187,42 @@ const MONSTRES = {
       { nom: 'Lame maudite', emoji: '⚔️', mult: 1.2, poids: 2, type: 'mono' },
       { nom: 'Vague nécrotique', emoji: '🌊', mult: 0.7, poids: 2, type: 'aoe' },
       { nom: 'Malédiction royale', emoji: '👑', mult: 0.9, poids: 1, type: 'mono', effet: { type: 'poison', degats: 8, duree: 3 } },
+    ],
+  },
+
+  // ----- Désert d'Ambrezine (niv. 12-16) -----
+  scorpionGeant: {
+    nom: 'Scorpion géant', emoji: '🦂', niveau: 13, hp: 185, atk: 27, agi: 9, xp: 135, po: [34, 52],
+    drops: [{ id: 'os-ancien', chance: 0.3 }, { id: 'perle-des-sables', chance: 0.2 }],
+    attaques: [
+      { nom: 'Pince broyeuse', emoji: '🦞', mult: 1.1, poids: 3, type: 'mono' },
+      { nom: 'Dard venimeux', emoji: '🪡', mult: 0.9, poids: 2, type: 'mono', effet: { type: 'poison', degats: 7, duree: 2 } },
+    ],
+  },
+  banditDunes: {
+    nom: 'Bandit des dunes', emoji: '🏴‍☠️', niveau: 13, hp: 175, atk: 26, agi: 10, xp: 138, po: [45, 70],
+    drops: [{ id: 'perle-des-sables', chance: 0.15 }, { id: 'fibre-sauvage', chance: 0.3 }],
+    attaques: [
+      { nom: 'Sabre courbe', emoji: '⚔️', mult: 1.0, poids: 3, type: 'mono' },
+      { nom: 'Estocade traîtresse', emoji: '🎭', mult: 1.35, poids: 1, type: 'mono' },
+    ],
+  },
+  elementaireSable: {
+    nom: 'Élémentaire de sable', emoji: '🌪️', niveau: 14, hp: 200, atk: 29, agi: 7, xp: 148, po: [36, 56],
+    drops: [{ id: 'perle-des-sables', chance: 0.4 }],
+    attaques: [
+      { nom: 'Tourbillon de sable', emoji: '🌪️', mult: 0.65, poids: 1, type: 'aoe' },
+      { nom: 'Poigne des dunes', emoji: '🪤', mult: 0.9, poids: 1, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
+      { nom: 'Lame de silice', emoji: '🔪', mult: 1.1, poids: 2, type: 'mono' },
+    ],
+  },
+  verDesSables: {
+    nom: 'Ver des sables colossal', emoji: '🪱', niveau: 16, boss: true, hp: 650, atk: 36, agi: 6, xp: 560, po: [200, 300],
+    drops: [{ id: 'perle-des-sables', chance: 1 }, { id: 'perle-des-sables', chance: 0.6 }, { id: 'minerai-fer', chance: 0.8 }],
+    attaques: [
+      { nom: 'Engloutissement', emoji: '🕳️', mult: 1.3, poids: 2, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.25 } },
+      { nom: 'Séisme des dunes', emoji: '🌋', mult: 0.75, poids: 2, type: 'aoe' },
+      { nom: 'Jet d’acide', emoji: '🧪', mult: 0.9, poids: 1, type: 'mono', effet: { type: 'poison', degats: 9, duree: 2 } },
     ],
   },
 
@@ -256,10 +327,22 @@ const ZONES = [
     recolte: [{ id: 'minerai-cuivre', chance: 0.8 }, { id: 'minerai-fer', chance: 0.45 }],
   },
   {
+    id: 'marais', nom: 'Marais de Brumeciel', emoji: '🐸', niveauMin: 8, plage: 'niv. 8-11',
+    desc: 'Des eaux stagnantes voilées de brume, où fleurit le précieux lotus noir. Ne buvez pas l’eau.',
+    monstres: ['grenouilleGeante', 'sorciereMarais', 'serpentVoile'], boss: 'hydreBrumes',
+    recolte: [{ id: 'lotus-noir', chance: 0.6 }, { id: 'herbe-lunaire', chance: 0.5 }, { id: 'seve-ambree', chance: 0.35 }],
+  },
+  {
     id: 'cryptes', nom: 'Cryptes Oubliées', emoji: '🕯️', niveauMin: 10, plage: 'niv. 10-14',
     desc: 'Les tombeaux d’un royaume disparu. Ses habitants n’apprécient pas les visites.',
     monstres: ['squelette', 'archerSquelette', 'pretreDechu', 'spectre'], boss: 'roiDechu',
     recolte: [{ id: 'os-ancien', chance: 0.8 }, { id: 'poussiere-spectre', chance: 0.4 }],
+  },
+  {
+    id: 'desert', nom: 'Désert d’Ambrezine', emoji: '🏜️', niveauMin: 12, plage: 'niv. 12-16',
+    desc: 'Un océan de dunes ambrées. Sous le sable dorment des perles… et des choses qui n’aiment pas être dérangées.',
+    monstres: ['scorpionGeant', 'banditDunes', 'elementaireSable'], boss: 'verDesSables',
+    recolte: [{ id: 'perle-des-sables', chance: 0.5 }, { id: 'minerai-fer', chance: 0.4 }, { id: 'os-ancien', chance: 0.3 }],
   },
   {
     id: 'pics', nom: 'Pics Gelés', emoji: '🏔️', niveauMin: 14, plage: 'niv. 14-18',

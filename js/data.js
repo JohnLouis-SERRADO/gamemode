@@ -126,6 +126,100 @@ const COMPETENCES = {
     stat: 'vit', puissance: 8, ratio: 1.5, coutMp: 3, cooldown: 4,
     desc: 'Vous reprenez votre souffle et récupérez des points de vie (basé sur la Vitalité).',
   },
+
+  // ----- Voie du Paladin -----
+  'chatiment-sacre': {
+    nom: 'Châtiment sacré', emoji: '🌟', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'for', puissance: 7, ratio: 1.3, coutMp: 5, cooldown: 2,
+    effet: { type: 'drain', part: 0.3 },
+    desc: 'Une frappe bénie qui vous rend 30 % des dégâts infligés en PV.',
+  },
+  'jugement': {
+    nom: 'Jugement', emoji: '⚖️', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'for', puissance: 6, ratio: 1.1, coutMp: 7, cooldown: 4,
+    effet: { type: 'affaibli', duree: 2 },
+    desc: 'Frappe un ennemi et l’affaiblit : −30 % de dégâts pendant 2 tours.',
+  },
+  'aura-protection': {
+    nom: 'Aura de protection', emoji: '🕊️', categorie: 'soutien', type: 'utilitaire', cible: 'allies',
+    stat: 'int', coutMp: 9, cooldown: 5,
+    effet: { type: 'bouclier', duree: 3 },
+    desc: 'Un bouclier sacré protège tout le groupe pendant 3 tours.',
+  },
+  'imposition-mains': {
+    nom: 'Imposition des mains', emoji: '🙌', categorie: 'soutien', type: 'soin', cible: 'allie',
+    stat: 'int', puissance: 18, ratio: 2.2, coutMp: 10, cooldown: 5,
+    desc: 'Un soin majeur, capable de ramener un allié du bord du gouffre.',
+  },
+
+  // ----- Voie du Nécromancien -----
+  'faux-spectrale': {
+    nom: 'Faux spectrale', emoji: '⚰️', categorie: 'magie', type: 'degats', cible: 'ennemi',
+    stat: 'int', puissance: 11, ratio: 1.6, coutMp: 7, cooldown: 3,
+    desc: 'Une lame d’outre-tombe fauche un ennemi. Dégâts élevés.',
+  },
+  'peste': {
+    nom: 'Peste', emoji: '🦠', categorie: 'magie', type: 'degats', cible: 'ennemis',
+    stat: 'int', puissance: 3, ratio: 0.7, coutMp: 10, cooldown: 4,
+    effet: { type: 'poison', duree: 2, stat: 'int' },
+    desc: 'Un nuage pestilentiel blesse et empoisonne tous les ennemis.',
+  },
+  'terreur': {
+    nom: 'Terreur', emoji: '😱', categorie: 'magie', type: 'degats', cible: 'ennemis',
+    stat: 'int', puissance: 2, ratio: 0.5, coutMp: 11, cooldown: 5,
+    effet: { type: 'etourdi', duree: 1, chance: 0.35 },
+    desc: 'Une vague d’effroi : chaque ennemi a 35 % de chances d’être étourdi.',
+  },
+  'pacte-sombre': {
+    nom: 'Pacte sombre', emoji: '🩸', categorie: 'magie', type: 'utilitaire', cible: 'soi',
+    stat: 'int', coutMp: 0, cooldown: 3,
+    effet: { type: 'pacte', partPv: 0.15, mana: 18 },
+    desc: 'Sacrifie 15 % de vos PV max pour récupérer 18 PM. Le pouvoir a un prix.',
+  },
+
+  // ----- Voie du Moine -----
+  'rafale-de-coups': {
+    nom: 'Rafale de coups', emoji: '👊', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'agi', puissance: 2, ratio: 0.55, coups: 3, coutMp: 6, cooldown: 3,
+    desc: 'Trois coups éclair sur la même cible, chacun pouvant être critique.',
+  },
+  'paume-zephyr': {
+    nom: 'Paume du zéphyr', emoji: '🌬️', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'agi', puissance: 6, ratio: 1.0, coutMp: 6, cooldown: 4,
+    effet: { type: 'etourdi', duree: 1, chance: 0.4 },
+    desc: 'Une paume précise avec 40 % de chances d’étourdir.',
+  },
+  'meditation-profonde': {
+    nom: 'Méditation profonde', emoji: '☯️', categorie: 'soutien', type: 'soin', cible: 'soi',
+    stat: 'vit', puissance: 5, ratio: 0.8, coutMp: 0, cooldown: 4,
+    effet: { type: 'mana', valeur: 8 },
+    desc: 'Un instant de calme : récupère des PV (Vitalité) et 8 PM.',
+  },
+  'poing-dragon': {
+    nom: 'Poing du dragon', emoji: '🐲', categorie: 'physique', type: 'degats', cible: 'ennemi',
+    stat: 'agi', puissance: 14, ratio: 1.8, coutMp: 9, cooldown: 5,
+    desc: 'Le coup ultime des arts martiaux. Dévastateur, mais épuisant.',
+  },
+
+  // ----- Voie du Barde -----
+  'chant-heroique': {
+    nom: 'Chant héroïque', emoji: '🎺', categorie: 'soutien', type: 'utilitaire', cible: 'allies',
+    stat: 'int', coutMp: 9, cooldown: 5,
+    effet: { type: 'benediction', duree: 2 },
+    desc: 'Tout le groupe gagne +30 % de dégâts pendant 2 tours.',
+  },
+  'melodie-apaisante': {
+    nom: 'Mélodie apaisante', emoji: '🎻', categorie: 'soutien', type: 'utilitaire', cible: 'allies',
+    stat: 'int', coutMp: 8, cooldown: 5,
+    effet: { type: 'regen', duree: 3 },
+    desc: 'Tout le groupe régénère des PV pendant 3 tours.',
+  },
+  'fausse-note': {
+    nom: 'Fausse note', emoji: '🎵', categorie: 'soutien', type: 'degats', cible: 'ennemis',
+    stat: 'int', puissance: 2, ratio: 0.4, coutMp: 8, cooldown: 4,
+    effet: { type: 'affaibli', duree: 2 },
+    desc: 'Un accord dissonant blesse tous les ennemis et les affaiblit (−30 % dégâts).',
+  },
 };
 
 // Modèles rapides : pré-remplissent stats + compétences (modifiables ensuite).
@@ -150,7 +244,44 @@ const MODELES = [
     stats: { for: 3, int: 6, agi: 3, vit: 6 },
     competences: ['soin', 'cercle-de-soin', 'benediction', 'regeneration'],
   },
+  {
+    nom: 'Paladin', emoji: '⚖️',
+    stats: { for: 5, int: 4, agi: 2, vit: 7 },
+    competences: ['chatiment-sacre', 'jugement', 'aura-protection', 'imposition-mains'],
+  },
+  {
+    nom: 'Nécromancien', emoji: '💀',
+    stats: { for: 2, int: 8, agi: 3, vit: 5 },
+    competences: ['faux-spectrale', 'peste', 'pacte-sombre', 'drain-de-vie'],
+  },
+  {
+    nom: 'Moine', emoji: '🥋',
+    stats: { for: 4, int: 2, agi: 7, vit: 5 },
+    competences: ['rafale-de-coups', 'paume-zephyr', 'meditation-profonde', 'second-souffle'],
+  },
+  {
+    nom: 'Barde', emoji: '🎵',
+    stats: { for: 3, int: 6, agi: 5, vit: 4 },
+    competences: ['chant-heroique', 'melodie-apaisante', 'fausse-note', 'soin'],
+  },
 ];
+
+// =====================================================================
+// Niveaux de difficulté des zones
+// =====================================================================
+const DIFFICULTES = {
+  normal:    { nom: 'Normal',    emoji: '⚔️', hp: 1,   atk: 1,    xp: 1,    po: 1,    drop: 1 },
+  heroique:  { nom: 'Héroïque',  emoji: '🔥', hp: 1.5, atk: 1.35, xp: 1.75, po: 1.75, drop: 1.35 },
+  cauchemar: { nom: 'Cauchemar', emoji: '💀', hp: 2.2, atk: 1.7,  xp: 2.5,  po: 2.5,  drop: 1.8 },
+};
+
+// Héroïque : boss de la zone vaincu. Cauchemar : en plus, 6 niveaux au-dessus
+// du niveau d'entrée de la zone.
+function difficulteDebloquee(p, zone, cle) {
+  if (cle === 'normal') return true;
+  if (cle === 'heroique') return p.bossVaincus.includes(zone.id);
+  return p.bossVaincus.includes(zone.id) && p.niveau >= zone.niveauMin + 6;
+}
 
 // =====================================================================
 // Progression (niveau 1 à 20)
@@ -175,6 +306,9 @@ function niveauPour(xp) {
 // Champs possibles d'un bonus : for, int, agi, vit, pvMax, pmMax, crit (%)
 // =====================================================================
 function statsEffectives(p) {
+  // Les héros distants (expéditions multi-écrans) arrivent avec leurs
+  // stats effectives déjà calculées sur leur propre appareil.
+  if (p.statsEff) return { ...p.statsEff };
   const s = { for: p.stats.for, int: p.stats.int, agi: p.stats.agi, vit: p.stats.vit, pvMax: 0, pmMax: 0, crit: 0 };
   Object.values(p.equipement || {}).forEach((idObjet) => {
     if (!idObjet) return;

@@ -8,12 +8,13 @@
 
 const EMOJI_STATUT = {
   poison: '🧪', etourdi: '💫', bouclier: '🛡️',
-  benediction: '🙏', provocation: '😤', regen: '💧',
+  benediction: '🙏', provocation: '😤', regen: '💧', affaibli: '⬇️',
 };
 
 const NOM_STATUT = {
   poison: 'Empoisonné', etourdi: 'Étourdi', bouclier: 'Bouclier',
-  benediction: 'Bénédiction (+30 % dégâts)', provocation: 'Provocation', regen: 'Régénération',
+  benediction: 'Bénédiction (+30 % dégâts)', provocation: 'Provocation',
+  regen: 'Régénération', affaibli: 'Affaibli (−30 % dégâts)',
 };
 
 function estMort(c) {
@@ -76,9 +77,13 @@ function demarrerCombat(options) {
     };
   });
 
+  // Identifiant de combat stable pour chaque héros (id cloud en groupe en ligne)
+  equipe.forEach((j) => { j.bid = j.bid || (j.cloud && j.cloud.id) || j.id; });
+
   etat.combat = {
     genre: options.genre,
     zone: options.zone || null,
+    difficulte: options.difficulte || 'normal',
     equipe,
     monstres,
     lootRecolte: options.lootRecolte || null,
@@ -92,6 +97,9 @@ function demarrerCombat(options) {
     modeActions: null,
     journalLignes: [],
     degatsBossMonde: 0,
+    groupe: options.groupe || null,
+    enAttenteDe: null,
+    consosDistantes: options.groupe ? {} : null,
   };
 
   const titres = {
@@ -100,7 +108,9 @@ function demarrerCombat(options) {
     boss: () => `👑 ${monstres[0].nom} — ${options.zone.nom}`,
     bossMonde: () => `🌍 ${monstres[0].nom} — assaut du monde`,
   };
-  el('combat-titre').textContent = titres[options.genre] ? titres[options.genre]() : 'Combat';
+  const difficulte = DIFFICULTES[etat.combat.difficulte];
+  const suffixe = difficulte && etat.combat.difficulte !== 'normal' ? ` · ${difficulte.emoji} ${difficulte.nom}` : '';
+  el('combat-titre').textContent = (titres[options.genre] ? titres[options.genre]() : 'Combat') + suffixe;
   el('combat-manche').textContent = '';
   el('zone-actions').innerHTML = '';
 
@@ -113,6 +123,7 @@ function demarrerCombat(options) {
   journal(`⚔️ ${intros[options.genre] || 'Le combat commence !'}`);
   montrerEcran('ecran-combat');
   rendreCombat();
+  if (etat.combat.groupe && etat.combat.groupe.hote) publierEtatGroupe(etat.combat);
   boucleTour();
 }
 
@@ -153,16 +164,22 @@ async function boucleTour() {
     if (debut.skip) {
       journal(`💫 ${c.nom} est étourdi et passe son tour !`);
       rendreCombat();
+      if (cb.groupe && cb.groupe.hote) await publierEtatGroupe(cb);
       await attendre(900);
       continue;
     }
 
     if (c.type === 'joueur') {
-      cb.modeActions = null;
-      rendreActions(c);
-      await new Promise((res) => { cb.finTour = res; });
-      cb.finTour = null;
-      el('zone-actions').innerHTML = '';
+      if (c.distant && cb.groupe && cb.groupe.hote) {
+        // Héros sur un autre écran : on publie l'état et on attend son action.
+        await tourJoueurDistant(c);
+      } else {
+        cb.modeActions = null;
+        rendreActions(c);
+        await new Promise((res) => { cb.finTour = res; });
+        cb.finTour = null;
+        el('zone-actions').innerHTML = '';
+      }
       finDeTourStatuts(c);
       rendreCombat();
     } else {
@@ -173,6 +190,7 @@ async function boucleTour() {
       rendreCombat();
     }
 
+    if (cb.groupe && cb.groupe.hote && !cb.termine) await publierEtatGroupe(cb);
     if (verifierFin()) break;
     await attendre(400);
   }
@@ -259,6 +277,7 @@ function infligerDegats(source, cible, brut, options = {}) {
   const cb = etat.combat;
   let d = varie(brut);
   if (source.statuts.some((s) => s.type === 'benediction')) d *= 1.3;
+  if (source.statuts.some((s) => s.type === 'affaibli')) d *= 0.7;
 
   let chanceCrit = 0.05 + (options.critBonus || 0);
   if (source.type === 'joueur') {
@@ -321,9 +340,23 @@ function poserStatut(cible, statut) {
 function appliquerEffet(source, cible, effet, resultatDegats) {
   switch (effet.type) {
     case 'poison': {
-      const valeur = effet.degats != null ? effet.degats : Math.round(3 + statDe(source, 'agi') * 0.6);
+      const valeur = effet.degats != null
+        ? effet.degats
+        : Math.round(3 + statDe(source, effet.stat || 'agi') * (effet.stat === 'int' ? 0.5 : 0.6));
       poserStatut(cible, { type: 'poison', duree: effet.duree, valeur });
       journal(`🧪 ${cible.nom} est empoisonné (${valeur} dégâts par tour, ${effet.duree} tours).`);
+      break;
+    }
+    case 'affaibli': {
+      poserStatut(cible, { type: 'affaibli', duree: effet.duree });
+      journal(`⬇️ ${cible.nom} est affaibli : −30 % de dégâts pendant ${effet.duree} tours.`);
+      break;
+    }
+    case 'pacte': {
+      const sacrifice = Math.max(1, Math.round(cible.maxHp * effet.partPv));
+      cible.hp = Math.max(1, cible.hp - sacrifice); // le pacte ne tue jamais
+      cible.mp = Math.min(cible.maxMp, cible.mp + effet.mana);
+      journal(`🩸 ${cible.nom} sacrifie ${sacrifice} PV et récupère ${effet.mana} PM.`);
       break;
     }
     case 'etourdi': {
@@ -420,7 +453,8 @@ function rendreActions(j) {
     consommablesDe(j).forEach((entree) => {
       const objet = OBJETS[entree.id];
       const inutile = (objet.effet.type === 'pv' && j.hp >= j.maxHp)
-        || (objet.effet.type === 'pm' && j.mp >= j.maxMp);
+        || (objet.effet.type === 'pm' && j.mp >= j.maxMp)
+        || (objet.effet.type === 'antidote' && !j.statuts.some((st) => st.type === 'poison'));
       const btn = document.createElement('button');
       btn.className = 'btn-action';
       btn.disabled = inutile;
@@ -494,17 +528,33 @@ function rendreActions(j) {
 
 function surActionChoisie(j, action) {
   const cb = etat.combat;
-  if (cb.termine || cb.actif !== j || !cb.finTour) return;
+  if (cb.termine) return;
+  if (cb.distant) {
+    // Membre d'une expédition multi-écrans : l'action part vers le chef.
+    const moi = persoActif();
+    if (!moi || !moi.cloud || cb.enAttenteDe !== moi.cloud.id || cb.actionEnvoyee) return;
+  } else if (cb.actif !== j || !cb.finTour) {
+    return;
+  }
 
   if (action.genre === 'objet') {
-    // Garde-fou : ne pas gaspiller potion et tour à PV/PM déjà pleins.
+    // Garde-fou : ne pas gaspiller un objet et un tour sans effet.
     const objet = OBJETS[action.idObjet];
     if (objet.effet.type === 'pv' && j.hp >= j.maxHp) { afficherToast('PV déjà au maximum.'); return; }
     if (objet.effet.type === 'pm' && j.mp >= j.maxMp) { afficherToast('PM déjà au maximum.'); return; }
+    if (objet.effet.type === 'antidote' && !j.statuts.some((st) => st.type === 'poison')) {
+      afficherToast('Vous n’êtes pas empoisonné.');
+      return;
+    }
   }
 
+  const lancer = (cible) => {
+    if (cb.distant) envoyerActionGroupe(action, cible);
+    else executerAction(j, action, cible);
+  };
+
   if (action.genre === 'defense' || action.genre === 'objet' || action.genre === 'fuite') {
-    executerAction(j, action, null);
+    lancer(null);
     return;
   }
 
@@ -512,11 +562,11 @@ function surActionChoisie(j, action) {
   const cibleType = action.genre === 'attaque' ? 'ennemi' : comp.cible;
 
   if (cibleType === 'soi') {
-    executerAction(j, action, j);
+    lancer(j);
     return;
   }
   if (cibleType === 'ennemis' || cibleType === 'allies') {
-    executerAction(j, action, null);
+    lancer(null);
     return;
   }
 
@@ -524,7 +574,7 @@ function surActionChoisie(j, action) {
     ? cb.monstres.filter((m) => !m.mort)
     : cb.equipe.filter((x) => !x.ko);
   if (possibles.length === 1) {
-    executerAction(j, action, possibles[0]);
+    lancer(possibles[0]);
   } else {
     cb.cibleEnAttente = { joueur: j, action };
     rendreCombat();
@@ -532,13 +582,10 @@ function surActionChoisie(j, action) {
   }
 }
 
-function executerAction(j, action, cible) {
+// Exécute une action de joueur (locale ou distante).
+// Renvoie 'fuite', 'retraite' (boss du monde) ou null.
+function executerActionCoeur(j, action, cible) {
   const cb = etat.combat;
-  // Empêche un double-clic de jouer deux actions dans le même tour.
-  if (!cb.finTour || cb.termine) return;
-  const finir = cb.finTour;
-  cb.finTour = null;
-
   if (action.genre === 'attaque') {
     const s = statsEffectives(j);
     const brut = 3 + Math.max(s.for, s.agi);
@@ -552,39 +599,44 @@ function executerAction(j, action, cible) {
   } else if (action.genre === 'objet') {
     const objet = OBJETS[action.idObjet];
     if (objet && retirerObjet(j, action.idObjet, 1)) {
-      if (objet.effet.type === 'pv') {
-        const soin = Math.min(objet.effet.valeur, j.maxHp - j.hp);
-        j.hp += soin;
-        journal(`${objet.emoji} ${j.nom} boit ${objet.nom} : +${soin} PV.`);
-      } else {
-        const gain = Math.min(objet.effet.valeur, j.maxMp - j.mp);
-        j.mp += gain;
-        journal(`${objet.emoji} ${j.nom} boit ${objet.nom} : +${gain} PM.`);
+      utiliserObjetEnCombat(j, objet);
+      if (j.distant && cb.consosDistantes) {
+        const conso = cb.consosDistantes[j.bid] = cb.consosDistantes[j.bid] || {};
+        conso[action.idObjet] = (conso[action.idObjet] || 0) + 1;
       }
       sauvegarderLocal();
     }
   } else if (action.genre === 'fuite') {
     if (cb.genre === 'bossMonde') {
       journal(`🏳️ ${j.nom} bat en retraite : le combat s'arrête ici.`);
-      cb.termine = true;
-      cb.actif = null;
-      rendreCombat();
-      finir();
-      setTimeout(() => apresBossMonde(cb), 800);
-      return;
+      return 'retraite';
     }
     if (Math.random() < 0.65) {
       journal('💨 Le groupe parvient à s’échapper !');
-      cb.termine = true;
-      cb.actif = null;
-      rendreCombat();
-      finir();
-      setTimeout(() => apresFuite(cb), 800);
-      return;
+      return 'fuite';
     }
     journal(`💨 ${j.nom} tente de fuir… sans succès !`);
   } else {
     lancerCompetence(j, action.compId, cible);
+  }
+  return null;
+}
+
+function executerAction(j, action, cible) {
+  const cb = etat.combat;
+  // Empêche un double-clic de jouer deux actions dans le même tour.
+  if (!cb.finTour || cb.termine) return;
+  const finir = cb.finTour;
+  cb.finTour = null;
+
+  const issue = executerActionCoeur(j, action, cible);
+  if (issue === 'retraite' || issue === 'fuite') {
+    cb.termine = true;
+    cb.actif = null;
+    rendreCombat();
+    finir();
+    setTimeout(() => (issue === 'retraite' ? apresBossMonde(cb) : apresFuite(cb)), 800);
+    return;
   }
   rendreCombat();
   finir();
@@ -601,14 +653,18 @@ function lancerCompetence(j, compId, cible) {
     const cibles = comp.cible === 'ennemis' ? cb.monstres.filter((m) => !m.mort) : [cible];
     journal(`${comp.emoji} ${j.nom} utilise ${comp.nom} !`);
     cibles.forEach((c) => {
-      const brut = comp.puissance + s[comp.stat] * comp.ratio;
-      const r = infligerDegats(j, c, brut, { critBonus: comp.critBonus || 0 });
-      journal(`→ ${c.nom} subit ${texteDegats(r)}`);
-      gererMort(c);
-      // Le drain soigne le lanceur même si le coup achève la cible ;
-      // les autres effets (poison, étourdissement…) ne s'appliquent qu'aux vivants.
-      if (comp.effet && (comp.effet.type === 'drain' || !estMort(c))) {
-        appliquerEffet(j, c, comp.effet, r);
+      // Certaines compétences frappent plusieurs fois (rafale de coups).
+      for (let coup = 0; coup < (comp.coups || 1); coup++) {
+        if (estMort(c)) break;
+        const brut = comp.puissance + s[comp.stat] * comp.ratio;
+        const r = infligerDegats(j, c, brut, { critBonus: comp.critBonus || 0 });
+        journal(`→ ${c.nom} subit ${texteDegats(r)}`);
+        gererMort(c);
+        // Le drain soigne le lanceur même si le coup achève la cible ;
+        // les autres effets (poison, étourdissement…) ne s'appliquent qu'aux vivants.
+        if (comp.effet && (comp.effet.type === 'drain' || !estMort(c))) {
+          appliquerEffet(j, c, comp.effet, r);
+        }
       }
     });
   } else if (comp.type === 'soin') {
@@ -616,9 +672,45 @@ function lancerCompetence(j, compId, cible) {
     cibles.forEach((c) => {
       const soin = soigner(c, comp.puissance + s[comp.stat] * comp.ratio);
       journal(`${comp.emoji} ${j.nom} rend ${soin} PV à ${c === j ? 'lui-même' : c.nom}.`);
+      if (comp.effet) appliquerEffet(j, c, comp.effet, null);
     });
   } else {
-    appliquerEffet(j, cible || j, comp.effet, null);
+    // Utilitaire : sur soi, un allié, ou tout le groupe (aura, chant…)
+    const cibles = comp.cible === 'allies' ? cb.equipe.filter((x) => !x.ko) : [cible || j];
+    if (comp.cible === 'allies') journal(`${comp.emoji} ${j.nom} utilise ${comp.nom} !`);
+    cibles.forEach((c) => appliquerEffet(j, c, comp.effet, null));
+  }
+}
+
+// Applique l'effet d'un consommable pendant un combat.
+function utiliserObjetEnCombat(j, objet) {
+  const cb = etat.combat;
+  const effet = objet.effet;
+  if (effet.type === 'pv') {
+    const soin = Math.min(effet.valeur, j.maxHp - j.hp);
+    j.hp += soin;
+    journal(`${objet.emoji} ${j.nom} boit ${objet.nom} : +${soin} PV.`);
+  } else if (effet.type === 'pm') {
+    const gain = Math.min(effet.valeur, j.maxMp - j.mp);
+    j.mp += gain;
+    journal(`${objet.emoji} ${j.nom} boit ${objet.nom} : +${gain} PM.`);
+  } else if (effet.type === 'antidote') {
+    j.statuts = j.statuts.filter((st) => st.type !== 'poison');
+    journal(`${objet.emoji} ${j.nom} boit un antidote : le poison se dissipe.`);
+  } else if (effet.type === 'elixir-benediction') {
+    poserStatut(j, { type: 'benediction', duree: effet.duree });
+    journal(`${objet.emoji} ${j.nom} boit ${objet.nom} : +30 % de dégâts pendant ${effet.duree} tours !`);
+  } else if (effet.type === 'bombe') {
+    journal(`${objet.emoji} ${j.nom} lance une ${objet.nom} sur les ennemis !`);
+    cb.monstres.filter((m) => !m.mort).forEach((m) => {
+      const r = infligerDegats(j, m, effet.valeur);
+      journal(`→ ${m.nom} subit ${texteDegats(r)}`);
+      gererMort(m);
+      if (!estMort(m) && Math.random() < (effet.chanceEtourdi || 0)) {
+        poserStatut(m, { type: 'etourdi', duree: 1 });
+        journal(`💫 ${m.nom} est étourdi par le givre !`);
+      }
+    });
   }
 }
 
@@ -759,7 +851,8 @@ function carteCombattant(c) {
       if (!cb.cibleEnAttente) return;
       const { joueur, action } = cb.cibleEnAttente;
       cb.cibleEnAttente = null;
-      executerAction(joueur, action, c);
+      if (cb.distant) envoyerActionGroupe(action, c);
+      else executerAction(joueur, action, c);
     });
   }
 

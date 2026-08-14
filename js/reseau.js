@@ -40,6 +40,7 @@ async function apiRequete(chemin, options = {}) {
 // Détection en ligne / hors ligne
 // =====================================================================
 let minuterieReconnexion = null;
+let minuterieEvenement = null;
 
 async function demarrerReseau() {
   try {
@@ -49,6 +50,12 @@ async function demarrerReseau() {
     etat.enLigne = false;
   }
   majUiReseau();
+  if (etat.enLigne) {
+    chargerEvenementMonde();
+    if (!minuterieEvenement) {
+      minuterieEvenement = setInterval(chargerEvenementMonde, 5 * 60 * 1000);
+    }
+  }
   if (!etat.enLigne && !minuterieReconnexion) {
     minuterieReconnexion = setInterval(async () => {
       try {
@@ -72,6 +79,42 @@ function majUiReseau() {
   }
   const point = el('point-en-ligne');
   if (point) point.classList.toggle('actif-reseau', etat.enLigne);
+}
+
+// =====================================================================
+// Événements mondiaux
+// =====================================================================
+async function chargerEvenementMonde() {
+  if (!etat.enLigne) return;
+  try {
+    const evenement = await apiRequete('/rest/v1/rpc/evenement_actuel', { methode: 'POST', corps: {} });
+    etat.evenementMonde = evenement && new Date(evenement.fin) > new Date() ? evenement : null;
+  } catch (e) { /* le jeu continue sans événement */ }
+  majBandeauEvenement();
+}
+
+// Multiplicateurs de l'événement mondial actif (1 partout sinon).
+function multiplicateursEvenement() {
+  const evenement = etat.evenementMonde;
+  if (!evenement || new Date(evenement.fin) <= new Date()) return { xp: 1, po: 1, drop: 1 };
+  return {
+    xp: Number(evenement.mult_xp) || 1,
+    po: Number(evenement.mult_po) || 1,
+    drop: Number(evenement.mult_drop) || 1,
+  };
+}
+
+function majBandeauEvenement() {
+  const bandeau = el('bandeau-evenement');
+  if (!bandeau) return;
+  const evenement = etat.evenementMonde;
+  if (!evenement || new Date(evenement.fin) <= new Date()) {
+    bandeau.classList.add('cache');
+    return;
+  }
+  const minutes = Math.max(1, Math.round((new Date(evenement.fin).getTime() - Date.now()) / 60000));
+  bandeau.textContent = `${evenement.emoji} Événement mondial — ${evenement.nom} : ${evenement.description} (encore ${minutes} min)`;
+  bandeau.classList.remove('cache');
 }
 
 // =====================================================================
@@ -257,6 +300,46 @@ function rendreTaverne() {
     zone.appendChild(panneau);
     return;
   }
+
+  // --- Expédition multi-écrans ---
+  const blocGroupe = document.createElement('div');
+  blocGroupe.className = 'panneau';
+  blocGroupe.innerHTML = `<h3>🖥️ Jouer ensemble, chacun sur son écran</h3>
+    <p class="aide">Créez un groupe et partagez son code : vos amis le rejoignent depuis leur propre
+    appareil, et vous partez combattre ensemble — chacun joue son tour sur son écran.</p>`;
+  const ligneGroupe = document.createElement('div');
+  ligneGroupe.className = 'rangee-boutons';
+  if (etat.groupeLigne) {
+    const reprendre = document.createElement('button');
+    reprendre.className = 'btn-principal btn-compact';
+    reprendre.textContent = `↩️ Retrouver mon groupe (${etat.groupeLigne.code})`;
+    reprendre.addEventListener('click', () => ouvrirLobbyGroupe());
+    ligneGroupe.appendChild(reprendre);
+  } else {
+    const creer = document.createElement('button');
+    creer.className = 'btn-principal btn-compact';
+    creer.textContent = '✨ Créer un groupe';
+    creer.addEventListener('click', () => creerGroupeLigne());
+    ligneGroupe.appendChild(creer);
+    const champCode = document.createElement('input');
+    champCode.id = 'taverne-code-groupe';
+    champCode.placeholder = 'CODE';
+    champCode.maxLength = 6;
+    champCode.autocomplete = 'off';
+    champCode.className = 'champ-code-groupe';
+    const rejoindre = document.createElement('button');
+    rejoindre.className = 'btn-choix btn-compact';
+    rejoindre.textContent = '🔑 Rejoindre avec un code';
+    rejoindre.addEventListener('click', () => {
+      const code = champCode.value.trim();
+      if (code.length < 4) { afficherToast('Entrez le code du groupe (6 caractères).'); return; }
+      rejoindreGroupeLigne(code);
+    });
+    ligneGroupe.appendChild(champCode);
+    ligneGroupe.appendChild(rejoindre);
+  }
+  blocGroupe.appendChild(ligneGroupe);
+  zone.appendChild(blocGroupe);
 
   // --- Squelette ---
   const blocBoss = document.createElement('div');

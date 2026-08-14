@@ -18,6 +18,10 @@ function rendreVille() {
       action: () => { rendreAtelier(); montrerEcran('ecran-atelier'); },
     },
     {
+      emoji: '🏺', nom: 'Antiquaire', detail: 'Curiosités rares : accessoires anciens et objets de combat',
+      action: () => { rendreAntiquaire(); montrerEcran('ecran-antiquaire'); },
+    },
+    {
       emoji: '🛏️', nom: 'Auberge', detail: 'Repos gratuit : PV et PM restaurés pour toute l’équipe',
       action: () => {
         membresEquipe().forEach((m) => {
@@ -95,7 +99,7 @@ function rendreBoutique() {
   const grille = document.createElement('div');
   grille.className = 'grille-inventaire';
   Object.entries(OBJETS)
-    .filter(([, o]) => o.prix != null && onglet.filtre(o))
+    .filter(([, o]) => o.prix != null && !o.vendeur && onglet.filtre(o))
     .sort((a, b) => (a[1].niveau || 0) - (b[1].niveau || 0) || a[1].prix - b[1].prix)
     .forEach(([id, objet]) => {
       const possede = compterObjet(p, id)
@@ -164,6 +168,48 @@ function rendreVente(contenu, p) {
     grille.appendChild(carte);
   });
   contenu.appendChild(grille);
+}
+
+// =====================================================================
+// Antiquaire : curiosités rares
+// =====================================================================
+function rendreAntiquaire() {
+  const p = persoActif();
+  el('antiquaire-po').textContent = `💰 ${p.po} po`;
+  const zone = el('antiquaire-contenu');
+  zone.innerHTML = '';
+  const grille = document.createElement('div');
+  grille.className = 'grille-inventaire';
+  Object.entries(OBJETS)
+    .filter(([, o]) => o.vendeur === 'antiquaire')
+    .sort((a, b) => (a[1].niveau || 0) - (b[1].niveau || 0) || a[1].prix - b[1].prix)
+    .forEach(([id, objet]) => {
+      const possede = compterObjet(p, id)
+        + Object.values(p.equipement).filter((e) => e === id).length;
+      const carte = document.createElement('div');
+      carte.className = 'carte-objet';
+      carte.innerHTML = `
+        <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong>${possede > 0 ? ` <span class="objet-qte">×${possede} possédé${possede > 1 ? 's' : ''}</span>` : ''}</div>
+        <div class="objet-desc">${objet.desc || ''}</div>
+        ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
+        ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}`;
+      const acheter = document.createElement('button');
+      acheter.className = 'btn-choix btn-compact btn-achat';
+      acheter.textContent = `Acheter — ${objet.prix} po`;
+      acheter.disabled = p.po < objet.prix;
+      acheter.addEventListener('click', () => {
+        if (p.po < objet.prix) return;
+        p.po -= objet.prix;
+        ajouterObjet(p, id);
+        sauvegarder(p);
+        afficherToast(`${objet.emoji} ${objet.nom} acheté !`);
+        rendreAntiquaire();
+        rendreTopbar();
+      });
+      carte.appendChild(acheter);
+      grille.appendChild(carte);
+    });
+  zone.appendChild(grille);
 }
 
 // =====================================================================

@@ -83,14 +83,37 @@ function rendreZone(z) {
   const explorations = p.explorations[z.id] || 0;
   const bossPret = explorations >= EXPLORATIONS_POUR_BOSS;
   const boss = MONSTRES[z.boss];
+  if (!DIFFICULTES[etat.difficulte] || !difficulteDebloquee(p, z, etat.difficulte)) {
+    etat.difficulte = 'normal';
+  }
 
   el('zone-entete').innerHTML = `
     <div class="entete-lieu">
       <h2>${z.emoji} ${z.nom} <span class="badge">${z.plage}</span></h2>
       <button class="btn-choix btn-compact" id="zone-retour">🗺️ Carte</button>
     </div>
-    <p class="sous-titre gauche">${z.desc}</p>`;
+    <p class="sous-titre gauche">${z.desc}</p>
+    <div class="rangee-chips" id="zone-difficultes"></div>`;
   el('zone-retour').addEventListener('click', () => naviguer('carte'));
+
+  // Sélecteur de difficulté
+  const zoneDiff = el('zone-difficultes');
+  Object.entries(DIFFICULTES).forEach(([cle, d]) => {
+    const debloquee = difficulteDebloquee(p, z, cle);
+    const chip = document.createElement('button');
+    chip.className = 'chip chip-difficulte' + (etat.difficulte === cle ? ' active' : '') + (debloquee ? '' : ' verrouillee');
+    chip.disabled = !debloquee;
+    chip.textContent = `${d.emoji} ${d.nom}`;
+    chip.title = debloquee
+      ? (cle === 'normal' ? 'Difficulté de base' : `Monstres renforcés, récompenses ×${d.xp}`)
+      : (cle === 'heroique' ? 'Vainquez le boss de la zone pour débloquer'
+        : `Boss vaincu + niveau ${z.niveauMin + 6} requis`);
+    chip.addEventListener('click', () => {
+      etat.difficulte = cle;
+      rendreZone(z);
+    });
+    zoneDiff.appendChild(chip);
+  });
 
   const actions = el('zone-actions-liste');
   actions.innerHTML = '';
@@ -171,6 +194,29 @@ function explorer(z) {
   sauvegarder(p);
 
   const tirage = Math.random();
+  if (tirage < 0.06) {
+    // 🌟 Un monstre doré surgit : redoutable, mais le butin est triplé.
+    const cle = z.monstres[alea(0, z.monstres.length - 1)];
+    const base = MONSTRES[cle];
+    const dore = {
+      ...base,
+      cle,
+      nom: `${base.nom} doré`,
+      emoji: '🌟',
+      hp: Math.round(base.hp * 2.2),
+      atk: Math.round(base.atk * 1.25),
+      xp: base.xp * 3,
+      po: [base.po[0] * 3, base.po[1] * 3],
+      drops: (base.drops || []).map((d) => ({ id: d.id, chance: Math.min(1, d.chance * 2.5) })),
+    };
+    afficherToast('🌟 Un monstre doré apparaît ! Sa fourrure vaut de l’or…');
+    demarrerCombatZone(z, 'exploration', [], { monstresDef: [dore] });
+    return;
+  }
+  if (tirage < 0.11) {
+    marchandNomade(z);
+    return;
+  }
   if (tirage < 0.72) {
     const cles = composerPack(z, tailleDuPack(membresEquipe().length));
     demarrerCombatZone(z, 'exploration', cles);
@@ -242,11 +288,62 @@ function affronterBoss(z) {
   demarrerCombatZone(z, 'boss', [z.boss]);
 }
 
+// Le marchand nomade : trois articles au hasard, 30 % de remise.
+function marchandNomade(z) {
+  const p = persoActif();
+  const candidats = Object.entries(OBJETS).filter(([, o]) => o.prix != null);
+  const choix = [];
+  while (choix.length < 3 && candidats.length > 0) {
+    const [id, objet] = candidats.splice(alea(0, candidats.length - 1), 1)[0];
+    choix.push([id, objet]);
+  }
+  afficherButin({
+    titre: '🧞 Un marchand nomade !',
+    texte: 'Sorti de nulle part, il déballe son tapis : −30 % sur tout. Il sera loin demain.',
+    lignes: [],
+    retour: 'zone',
+  });
+  const details = el('butin-details');
+  choix.forEach(([id, objet]) => {
+    const prixReduit = Math.max(1, Math.round(objet.prix * 0.7));
+    const carte = document.createElement('div');
+    carte.className = 'carte-objet';
+    carte.innerHTML = `
+      <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong></div>
+      <div class="objet-desc">${objet.desc || ''}</div>
+      ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}`;
+    const acheter = document.createElement('button');
+    acheter.className = 'btn-choix btn-compact btn-achat';
+    acheter.textContent = `Acheter — ${prixReduit} po (au lieu de ${objet.prix})`;
+    acheter.disabled = p.po < prixReduit;
+    acheter.addEventListener('click', () => {
+      if (p.po < prixReduit) return;
+      p.po -= prixReduit;
+      ajouterObjet(p, id);
+      sauvegarder(p);
+      rendreTopbar();
+      acheter.disabled = true;
+      acheter.textContent = `${objet.emoji} Acheté !`;
+      afficherToast(`${objet.emoji} ${objet.nom} acheté à prix d'ami.`);
+    });
+    carte.appendChild(acheter);
+    details.appendChild(carte);
+  });
+}
+
 function demarrerCombatZone(z, genre, cles, options = {}) {
+  const mult = DIFFICULTES[etat.difficulte] || DIFFICULTES.normal;
+  const defs = (options.monstresDef || cles.map((cle) => ({ ...MONSTRES[cle], cle })))
+    .map((def) => ({
+      ...def,
+      hp: Math.round(def.hp * mult.hp),
+      atk: Math.round(def.atk * mult.atk),
+    }));
   demarrerCombat({
     genre,
     zone: z,
-    monstresDef: cles.map((cle) => ({ ...MONSTRES[cle], cle })),
+    difficulte: etat.difficulte,
+    monstresDef: defs,
     lootRecolte: options.lootRecolte || null,
     equipe: membresEquipe(),
   });
@@ -285,6 +382,8 @@ function demarrerCombatBossMonde(boss) {
 // Fin de combat : récompenses, défaite, fuite
 // =====================================================================
 function tirerButinCombat(cb) {
+  const difficulte = DIFFICULTES[cb.difficulte] || DIFFICULTES.normal;
+  const evenement = multiplicateursEvenement();
   let xp = 0;
   let po = 0;
   const objets = {};
@@ -292,9 +391,13 @@ function tirerButinCombat(cb) {
     xp += m.xp || 0;
     if (m.po) po += alea(m.po[0], m.po[1]);
     (m.drops || []).forEach((d) => {
-      if (Math.random() < d.chance) objets[d.id] = (objets[d.id] || 0) + 1;
+      if (Math.random() < Math.min(1, d.chance * difficulte.drop * evenement.drop)) {
+        objets[d.id] = (objets[d.id] || 0) + 1;
+      }
     });
   });
+  xp = Math.round(xp * difficulte.xp * evenement.xp);
+  po = Math.round(po * difficulte.po * evenement.po);
   if (cb.lootRecolte) {
     Object.entries(cb.lootRecolte).forEach(([id, qte]) => { objets[id] = (objets[id] || 0) + qte; });
   }
@@ -310,6 +413,7 @@ function nettoyerApresCombat(m) {
 }
 
 function apresVictoire(cb) {
+  if (cb.groupe && cb.groupe.hote) { apresCombatGroupeHote(cb, 'victoire'); return; }
   if (cb.genre === 'bossMonde') { apresBossMonde(cb); return; }
   const butin = tirerButinCombat(cb);
   const membres = cb.equipe;
@@ -409,6 +513,7 @@ async function apresBossMonde(cb) {
 }
 
 function apresDefaite(cb) {
+  if (cb.groupe && cb.groupe.hote) { apresCombatGroupeHote(cb, 'defaite'); return; }
   if (cb.genre === 'bossMonde') {
     apresBossMonde(cb);
     return;
@@ -433,6 +538,7 @@ function apresDefaite(cb) {
 }
 
 function apresFuite(cb) {
+  if (cb.groupe && cb.groupe.hote) { apresCombatGroupeHote(cb, 'fuite'); return; }
   cb.equipe.forEach((m) => {
     if (m.hp <= 0) m.hp = 1;
     nettoyerApresCombat(m);
@@ -476,6 +582,8 @@ function continuerApresButin() {
     naviguer('ville');
   } else if (retour === 'taverne') {
     naviguer('taverne');
+  } else if (retour === 'groupe-ligne' && etat.groupeLigne) {
+    ouvrirLobbyGroupe();
   } else {
     naviguer('carte');
   }

@@ -16,6 +16,9 @@ const etat = {
   combat: null,
   enLigne: false,
   brouillon: null,
+  difficulte: 'normal',
+  evenementMonde: null,
+  groupeLigne: null, // expédition multi-écrans en cours
 };
 
 // ----- Utilitaires -----
@@ -111,7 +114,8 @@ function boutonConfirmation(libelle, libelleConfirme, action) {
 // Navigation
 // =====================================================================
 const ECRANS_AVEC_TOPBAR = ['ecran-carte', 'ecran-equipe', 'ecran-zone', 'ecran-ville',
-  'ecran-boutique', 'ecran-atelier', 'ecran-heros', 'ecran-taverne'];
+  'ecran-boutique', 'ecran-antiquaire', 'ecran-atelier', 'ecran-heros', 'ecran-taverne',
+  'ecran-groupe-ligne'];
 
 function montrerEcran(id) {
   document.querySelectorAll('.ecran').forEach((e) => e.classList.remove('actif'));
@@ -231,8 +235,10 @@ function nouveauPersonnage(base) {
 
 // Recalcule les maximums (équipement/niveau) et borne les valeurs courantes.
 function bornerVie(p) {
-  p.maxHp = maxHpDe(p);
-  p.maxMp = maxMpDe(p);
+  if (!p.distant) {
+    p.maxHp = maxHpDe(p);
+    p.maxMp = maxMpDe(p);
+  }
   p.hp = Math.max(0, Math.min(p.maxHp, Math.round(p.hp)));
   p.mp = Math.max(0, Math.min(p.maxMp, Math.round(p.mp)));
 }
@@ -695,6 +701,10 @@ function equiper(p, idObjet) {
 function utiliserConsommable(p, idObjet) {
   const objet = OBJETS[idObjet];
   if (!objet || objet.type !== 'consommable') return false;
+  if (objet.effet.type !== 'pv' && objet.effet.type !== 'pm') {
+    afficherToast(`${objet.emoji} ${objet.nom} s’utilise en combat.`);
+    return false;
+  }
   if (objet.effet.type === 'pv' && p.hp >= p.maxHp) { afficherToast('PV déjà au maximum.'); return false; }
   if (objet.effet.type === 'pm' && p.mp >= p.maxMp) { afficherToast('PM déjà au maximum.'); return false; }
   if (!retirerObjet(p, idObjet, 1)) return false;

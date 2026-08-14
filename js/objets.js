@@ -72,6 +72,16 @@ const OBJETS = {
   'oeil-dragon':      { nom: 'Œil de dragon', emoji: '🐉', type: 'equipement', slot: 'accessoire', niveau: 15, prixVente: 400, bonus: { for: 3, int: 3, crit: 5 }, desc: 'Se sertit à l’atelier seulement.' },
   'coeur-givre':      { nom: 'Cœur de givre', emoji: '❄️', type: 'equipement', slot: 'accessoire', niveau: 15, prixVente: 300, bonus: { vit: 3, pvMax: 30 }, desc: 'Se taille à l’atelier seulement.' },
 
+  // ----- Curiosités de l'Antiquaire -----
+  'pendentif-lunaire': { nom: 'Pendentif lunaire', emoji: '🌙', type: 'equipement', slot: 'accessoire', niveau: 7, prix: 160, vendeur: 'antiquaire', bonus: { int: 3, vit: 1 }, desc: 'Capture un rayon de lune éternel.' },
+  'broche-scarabee':   { nom: 'Broche scarabée', emoji: '🪲', type: 'equipement', slot: 'accessoire', niveau: 10, prix: 220, vendeur: 'antiquaire', bonus: { agi: 2, vit: 2, crit: 2 }, desc: 'Porte-bonheur des pilleurs de tombes.' },
+  'anneau-sanguin':    { nom: 'Anneau sanguin', emoji: '🩸', type: 'equipement', slot: 'accessoire', niveau: 11, prix: 300, vendeur: 'antiquaire', bonus: { for: 3, pvMax: 15 }, desc: 'Bat au rythme de votre cœur.' },
+  'orbe-des-dunes':    { nom: 'Orbe des dunes', emoji: '🔮', type: 'equipement', slot: 'accessoire', niveau: 13, prixVente: 130, bonus: { int: 3, agi: 2, crit: 2 }, desc: 'Se façonne à l’atelier avec des perles des sables.' },
+
+  'antidote':          { nom: 'Antidote', emoji: '🧴', type: 'consommable', prix: 12, vendeur: 'antiquaire', effet: { type: 'antidote' }, desc: 'Dissipe le poison (en combat).' },
+  'bombe-de-givre':    { nom: 'Bombe de givre', emoji: '💣', type: 'consommable', prix: 45, vendeur: 'antiquaire', effet: { type: 'bombe', valeur: 30, chanceEtourdi: 0.25 }, desc: 'Souffle glacial : ~30 dégâts à tous les ennemis, 25 % de chances de les étourdir.' },
+  'elixir-heroique':   { nom: 'Élixir héroïque', emoji: '🏺', type: 'consommable', prix: 55, vendeur: 'antiquaire', effet: { type: 'elixir-benediction', duree: 3 }, desc: '+30 % de dégâts pendant 3 tours (en combat).' },
+
   // ----- Consommables -----
   'potion-soin':        { nom: 'Potion de soin', emoji: '🧪', type: 'consommable', prix: 15,  effet: { type: 'pv', valeur: 30 },  desc: 'Rend 30 PV.' },
   'grande-potion-soin': { nom: 'Grande potion de soin', emoji: '🍶', type: 'consommable', prix: 45,  effet: { type: 'pv', valeur: 80 },  desc: 'Rend 80 PV.' },
@@ -94,6 +104,8 @@ const OBJETS = {
   'cristal-givre':     { nom: 'Cristal de givre', emoji: '❄️', type: 'materiau', prixVente: 45, desc: 'Ne fond jamais.' },
   'noyau-golem':       { nom: 'Noyau de golem', emoji: '🗿', type: 'materiau', prixVente: 55, desc: 'Le cœur encore tiède d’un golem.' },
   'ecaille-draconique': { nom: 'Écaille draconique', emoji: '🐲', type: 'materiau', prixVente: 80, desc: 'Le matériau le plus précieux du royaume.' },
+  'lotus-noir':         { nom: 'Lotus noir', emoji: '🪷', type: 'materiau', prixVente: 28, desc: 'Ne fleurit que dans la brume des marais.' },
+  'perle-des-sables':   { nom: 'Perle des sables', emoji: '💠', type: 'materiau', prixVente: 55, desc: 'Le désert la polit pendant un siècle.' },
 };
 
 const PART_REVENTE = 0.4; // un équipement/consommable se revend 40 % de son prix
@@ -119,7 +131,10 @@ const RECETTES = [
   { resultat: 'grande-potion-soin', niveau: 5,  po: 12,  materiaux: { 'herbe-lunaire': 3, 'soie-araignee': 1 } },
   { resultat: 'grande-potion-mana', niveau: 5,  po: 20,  materiaux: { 'seve-ambree': 2, 'herbe-lunaire': 2 } },
   { resultat: 'cotte-mailles',      niveau: 6,  po: 40,  materiaux: { 'minerai-cuivre': 3, 'peau-de-loup': 1 } },
+  { resultat: 'antidote',           niveau: 8,  po: 5,   materiaux: { 'lotus-noir': 1, 'herbe-lunaire': 1 } },
   { resultat: 'arc-elfique',        niveau: 8,  po: 80,  materiaux: { 'bois-chene': 2, 'soie-araignee': 2 } },
+  { resultat: 'elixir-heroique',    niveau: 9,  po: 25,  materiaux: { 'lotus-noir': 2, 'seve-ambree': 1 } },
+  { resultat: 'orbe-des-dunes',     niveau: 13, po: 150, materiaux: { 'perle-des-sables': 2, 'minerai-cuivre': 2 } },
   { resultat: 'couronne-mystique',  niveau: 14, po: 200, materiaux: { 'cristal-givre': 1, 'poussiere-spectre': 2, 'minerai-cuivre': 2 } },
   { resultat: 'jambieres-zephyr',   niveau: 14, po: 200, materiaux: { 'soie-araignee': 2, 'peau-de-loup': 2, 'cristal-givre': 1 } },
   { resultat: 'coeur-givre',        niveau: 15, po: 250, materiaux: { 'cristal-givre': 2, 'noyau-golem': 1 } },
