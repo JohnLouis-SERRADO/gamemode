@@ -230,7 +230,10 @@ async function envoyerMessageMonde(texte) {
 // Taverne : chat, joueurs, boss du monde, classement
 // =====================================================================
 let minuterieTaverne = null;
-let donneesTaverne = { boss: null, contributions: [], messages: [], joueurs: [], classement: [] };
+let donneesTaverne = {
+  boss: null, contributions: [], messages: [], joueurs: [], classement: [],
+  echanges: [], mesVentes: [],
+};
 
 function arreterSondageTaverne() {
   if (minuterieTaverne) {
@@ -242,16 +245,23 @@ function arreterSondageTaverne() {
 async function chargerDonneesTaverne() {
   if (!etat.enLigne) return false;
   try {
-    const [boss, messages, joueurs, classement] = await Promise.all([
+    const p = persoActif();
+    const [boss, messages, joueurs, classement, echanges, mesVentes] = await Promise.all([
       apiRequete('/rest/v1/boss_monde?actif=eq.true&select=*&order=id.desc&limit=1'),
       apiRequete('/rest/v1/messages?select=nom,avatar,texte,cree_le&order=id.desc&limit=40'),
       apiRequete('/rest/v1/personnages?select=nom,avatar,niveau,xp,degats_boss_total,derniere_activite&order=derniere_activite.desc&limit=30'),
       apiRequete('/rest/v1/personnages?select=nom,avatar,niveau,xp&order=niveau.desc,xp.desc&limit=10'),
+      apiRequete('/rest/v1/echanges?statut=eq.ouvert&select=*&order=maj.desc&limit=30'),
+      p && p.cloud
+        ? apiRequete(`/rest/v1/echanges?vendeur_id=eq.${p.cloud.id}&statut=eq.vendu&reclame=eq.false&select=id,prix,objet_id,acheteur_nom`)
+        : Promise.resolve([]),
     ]);
     donneesTaverne.boss = boss && boss[0] ? boss[0] : null;
     donneesTaverne.messages = (messages || []).reverse();
     donneesTaverne.joueurs = joueurs || [];
     donneesTaverne.classement = classement || [];
+    donneesTaverne.echanges = echanges || [];
+    donneesTaverne.mesVentes = mesVentes || [];
     if (donneesTaverne.boss) {
       donneesTaverne.contributions = await apiRequete(
         `/rest/v1/contributions_boss?boss_id=eq.${donneesTaverne.boss.id}&select=nom,degats&order=degats.desc&limit=8`) || [];
@@ -386,6 +396,57 @@ function rendreTaverne() {
   ligneEnvoi.appendChild(envoyer);
   blocChat.appendChild(ligneEnvoi);
   zone.appendChild(blocChat);
+
+  // --- Comptoir d'échange entre joueurs ---
+  const blocComptoir = document.createElement('div');
+  blocComptoir.className = 'panneau';
+  blocComptoir.innerHTML = `<h3>🤝 Comptoir d'échange</h3>
+    <p class="aide">Vendez vos trouvailles aux autres joueurs contre de l'or — ou faites-y de bonnes affaires.
+    L'or de vos ventes s'encaisse ici même.</p>
+    <div id="comptoir-reclamer"></div>`;
+
+  const pComptoir = persoActif();
+  const vendables = pComptoir.inventaire.filter((entree) => OBJETS[entree.id]);
+  if (vendables.length > 0) {
+    const formulaire = document.createElement('div');
+    formulaire.className = 'rangee-boutons formulaire-comptoir';
+    const selectObjet = document.createElement('select');
+    selectObjet.id = 'comptoir-objet';
+    selectObjet.className = 'select-groupe';
+    vendables.forEach((entree) => {
+      const objet = OBJETS[entree.id];
+      const option = document.createElement('option');
+      option.value = entree.id;
+      option.textContent = `${objet.emoji} ${objet.nom} (×${entree.qte})`;
+      selectObjet.appendChild(option);
+    });
+    const champQte = document.createElement('input');
+    champQte.id = 'comptoir-qte';
+    champQte.type = 'number';
+    champQte.min = '1';
+    champQte.max = '99';
+    champQte.value = '1';
+    champQte.className = 'champ-comptoir';
+    champQte.title = 'Quantité';
+    const champPrix = document.createElement('input');
+    champPrix.id = 'comptoir-prix';
+    champPrix.type = 'number';
+    champPrix.min = '1';
+    champPrix.value = '50';
+    champPrix.className = 'champ-comptoir large';
+    champPrix.title = 'Prix en po';
+    const vendre = document.createElement('button');
+    vendre.className = 'btn-choix btn-compact';
+    vendre.textContent = '📤 Mettre en vente';
+    vendre.addEventListener('click', () => vendreAuComptoir());
+    formulaire.appendChild(selectObjet);
+    formulaire.appendChild(champQte);
+    formulaire.appendChild(champPrix);
+    formulaire.appendChild(vendre);
+    blocComptoir.appendChild(formulaire);
+  }
+  blocComptoir.insertAdjacentHTML('beforeend', '<div id="comptoir-liste"><p class="aide">Chargement des annonces…</p></div>');
+  zone.appendChild(blocComptoir);
 
   const colonnes = document.createElement('div');
   colonnes.className = 'colonnes-taverne';
@@ -532,4 +593,137 @@ function rendreSectionsTaverne() {
       zoneClassement.appendChild(ligne);
     });
   }
+
+  // --- Comptoir d'échange ---
+  const zoneReclamer = el('comptoir-reclamer');
+  if (zoneReclamer) {
+    zoneReclamer.innerHTML = '';
+    if (donneesTaverne.mesVentes.length > 0) {
+      const total = donneesTaverne.mesVentes.reduce((somme, vente) => somme + vente.prix, 0);
+      const encaisser = document.createElement('button');
+      encaisser.className = 'btn-principal btn-compact';
+      encaisser.textContent = `💰 Encaisser ${donneesTaverne.mesVentes.length} vente${donneesTaverne.mesVentes.length > 1 ? 's' : ''} — ${total} po`;
+      encaisser.addEventListener('click', () => reclamerVentes());
+      zoneReclamer.appendChild(encaisser);
+    }
+  }
+  const zoneComptoir = el('comptoir-liste');
+  if (zoneComptoir) {
+    zoneComptoir.innerHTML = '';
+    if (donneesTaverne.echanges.length === 0) {
+      zoneComptoir.innerHTML = '<p class="aide">Aucune annonce au comptoir. Soyez le premier marchand !</p>';
+    }
+    donneesTaverne.echanges.forEach((annonce) => {
+      const objet = OBJETS[annonce.objet_id];
+      if (!objet) return; // annonce d'une version plus récente du jeu
+      const estMoi = p && p.cloud && annonce.vendeur_id === p.cloud.id;
+      const ligne = document.createElement('div');
+      ligne.className = `ligne-annonce bord-rar-${rareteDe(objet)}`;
+      ligne.innerHTML = `<span class="annonce-objet">${objet.emoji} <strong>${objet.nom}</strong>
+        ${etiquetteRarete(objet)}${annonce.qte > 1 ? ` ×${annonce.qte}` : ''}</span>
+        <span class="annonce-detail">${annonce.prix} po · par ${estMoi ? 'vous' : echapper(annonce.vendeur_nom)}</span>`;
+      const bouton = document.createElement('button');
+      bouton.className = 'btn-choix btn-compact';
+      if (estMoi) {
+        bouton.textContent = '↩️ Retirer';
+        bouton.addEventListener('click', () => annulerEchange(annonce));
+      } else {
+        bouton.textContent = `Acheter — ${annonce.prix} po`;
+        bouton.disabled = !p || p.po < annonce.prix;
+        bouton.addEventListener('click', () => acheterEchange(annonce));
+      }
+      ligne.appendChild(bouton);
+      zoneComptoir.appendChild(ligne);
+    });
+  }
+}
+
+// =====================================================================
+// Comptoir d'échange : actions
+// =====================================================================
+async function rafraichirComptoir() {
+  const ok = await chargerDonneesTaverne();
+  if (ok) rendreSectionsTaverne();
+}
+
+async function vendreAuComptoir() {
+  const p = persoActif();
+  if (!p.cloud && typeof creerPersonnageCloud === 'function') await creerPersonnageCloud(p);
+  if (!p.cloud) { afficherToast('Impossible de relier ce héros au monde.'); return; }
+  const idObjet = el('comptoir-objet').value;
+  const qte = Math.max(1, Math.min(99, parseInt(el('comptoir-qte').value, 10) || 1));
+  const prix = Math.max(1, Math.min(1000000, parseInt(el('comptoir-prix').value, 10) || 1));
+  const objet = OBJETS[idObjet];
+  if (!objet || compterObjet(p, idObjet) < qte) { afficherToast('Vous n’avez pas cette quantité.'); return; }
+  const resultat = await apiRequete('/rest/v1/rpc/echange_creer', {
+    methode: 'POST',
+    corps: { p_id: p.cloud.id, p_token: p.cloud.token, p_objet: idObjet, p_qte: qte, p_prix: prix },
+  }).catch(() => null);
+  if (!resultat || resultat.erreur) {
+    afficherToast(resultat && resultat.erreur ? `❌ ${resultat.erreur}` : 'Dépôt impossible.');
+    return;
+  }
+  retirerObjet(p, idObjet, qte);
+  sauvegarder(p);
+  afficherToast(`📤 ${objet.emoji} ${objet.nom} ×${qte} en vente pour ${prix} po.`);
+  rendreTaverne(); // reconstruit le formulaire avec l'inventaire à jour
+}
+
+async function acheterEchange(annonce) {
+  const p = persoActif();
+  if (p.po < annonce.prix) { afficherToast('Pas assez d’or.'); return; }
+  if (!p.cloud && typeof creerPersonnageCloud === 'function') await creerPersonnageCloud(p);
+  if (!p.cloud) return;
+  const resultat = await apiRequete('/rest/v1/rpc/echange_acheter', {
+    methode: 'POST',
+    corps: { p_id: p.cloud.id, p_token: p.cloud.token, p_echange: annonce.id },
+  }).catch(() => null);
+  if (!resultat || resultat.erreur) {
+    afficherToast(resultat && resultat.erreur ? `❌ ${resultat.erreur}` : 'Achat impossible.');
+    rafraichirComptoir();
+    return;
+  }
+  p.po -= resultat.prix;
+  ajouterObjet(p, resultat.objet_id, resultat.qte);
+  verifierHautsFaits(p);
+  sauvegarder(p);
+  const objet = OBJETS[resultat.objet_id];
+  afficherToast(`🤝 ${objet ? objet.emoji + ' ' + objet.nom : 'Objet'} ×${resultat.qte} acheté !`);
+  rendreTopbar();
+  rafraichirComptoir();
+}
+
+async function annulerEchange(annonce) {
+  const p = persoActif();
+  if (!p.cloud) return;
+  const resultat = await apiRequete('/rest/v1/rpc/echange_annuler', {
+    methode: 'POST',
+    corps: { p_id: p.cloud.id, p_token: p.cloud.token, p_echange: annonce.id },
+  }).catch(() => null);
+  if (!resultat || resultat.erreur) {
+    afficherToast(resultat && resultat.erreur ? `❌ ${resultat.erreur}` : 'Retrait impossible.');
+    rafraichirComptoir();
+    return;
+  }
+  ajouterObjet(p, resultat.objet_id, resultat.qte);
+  sauvegarder(p);
+  afficherToast('↩️ Annonce retirée, les objets reviennent dans votre sac.');
+  rendreTaverne();
+}
+
+async function reclamerVentes() {
+  const p = persoActif();
+  if (!p.cloud) return;
+  const resultat = await apiRequete('/rest/v1/rpc/echange_reclamer', {
+    methode: 'POST',
+    corps: { p_id: p.cloud.id, p_token: p.cloud.token },
+  }).catch(() => null);
+  if (!resultat || !resultat.total) { rafraichirComptoir(); return; }
+  p.po += resultat.total;
+  p.compteurs.orTotal += resultat.total;
+  verifierHautsFaits(p);
+  sauvegarder(p);
+  afficherToast(`💰 ${resultat.nb} vente${resultat.nb > 1 ? 's' : ''} encaissée${resultat.nb > 1 ? 's' : ''} : +${resultat.total} po !`);
+  rendreTopbar();
+  rafraichirComptoir();
 }

@@ -39,6 +39,7 @@ function snapshotPourGroupe(p) {
     mp: p.mp,
     competences: p.competences,
     bossVaincus: p.bossVaincus,
+    familiers: p.familiers,
     potions: p.inventaire.filter((e) => OBJETS[e.id] && OBJETS[e.id].type === 'consommable')
       .map((e) => ({ id: e.id, qte: e.qte })),
   };
@@ -56,7 +57,8 @@ function creerJoueurDistant(m) {
     competences: m.competences || [],
     inventaire: (m.potions || []).map((e) => ({ ...e })),
     equipement: {}, statuts: [], cooldowns: {}, defense: false, ko: false,
-    explorations: {}, bossVaincus: m.bossVaincus || [], pointsEnAttente: 0, competencesEnAttente: 0, po: 0, xp: 0,
+    explorations: {}, bossVaincus: m.bossVaincus || [], familiers: m.familiers || [],
+    pointsEnAttente: 0, competencesEnAttente: 0, po: 0, xp: 0,
   };
 }
 
@@ -439,6 +441,7 @@ function apresCombatGroupeHote(cb, type) {
     cb.equipe.forEach((j) => {
       recompenses[j.bid] = {
         xp: xpParHeros, po: poParHeros, objets: parts[j.bid],
+        nbMonstres: cb.monstres.length,
         potionsConsommees: (cb.consosDistantes && cb.consosDistantes[j.bid]) || {},
         hpFinal: Math.max(1, j.hp), mpFinal: j.mp,
       };
@@ -450,6 +453,7 @@ function apresCombatGroupeHote(cb, type) {
         });
         recompenses[j.bid].lignesCoffre = coffre.lignes;
         recompenses[j.bid].bossVaincu = cb.zone.id;
+        recompenses[j.bid].familier = coffre.familier;
       }
     });
   } else if (type === 'defaite') {
@@ -491,6 +495,16 @@ function appliquerRecompenseGroupe(p, recompense) {
   if (recompense.bossVaincu && !p.bossVaincus.includes(recompense.bossVaincu)) {
     p.bossVaincus.push(recompense.bossVaincu);
   }
+  if (recompense.familier && !p.familiers.includes(recompense.familier)) {
+    p.familiers.push(recompense.familier);
+    afficherToast(`🐾 ${FAMILIERS[recompense.familier].emoji} ${FAMILIERS[recompense.familier].nom} vous adopte !`);
+  }
+  if (recompense.nbMonstres) {
+    p.compteurs.monstres += recompense.nbMonstres;
+    progresserQuete(p, 'monstres', recompense.nbMonstres);
+  }
+  if (recompense.bossVaincu) progresserQuete(p, 'boss', 1);
+  p.compteurs.orTotal += Math.max(0, recompense.po || 0);
   p.po += recompense.po || 0;
   if (recompense.defaite) p.po = Math.max(0, p.po - Math.round(p.po * 0.1));
   Object.entries(recompense.objets || {}).forEach(([id, qte]) => ajouterObjet(p, id, qte));
@@ -503,6 +517,7 @@ function appliquerRecompenseGroupe(p, recompense) {
     p.hp = Math.min(p.maxHp, recompense.hpFinal != null ? recompense.hpFinal : p.hp);
     p.mp = Math.min(p.maxMp, recompense.mpFinal != null ? recompense.mpFinal : p.mp);
   }
+  verifierHautsFaits(p);
   sauvegarder(p);
   rendreTopbar();
 }

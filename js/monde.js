@@ -73,6 +73,20 @@ function rendreCarte() {
     }
     zone.appendChild(carte);
   });
+
+  // La Tour Sans Fin : combats enchaînés sans repos, de plus en plus durs.
+  const tourVerrouillee = p.niveau < 3;
+  const tour = document.createElement('div');
+  tour.className = 'carte-zone tour-sans-fin' + (tourVerrouillee ? ' verrouillee' : '');
+  tour.innerHTML = `
+    <div class="zone-emoji">🗼</div>
+    <div class="zone-nom">Tour Sans Fin ${p.tourMax > 0 ? `· record : étage ${p.tourMax}` : ''}</div>
+    <div class="zone-plage">défi — expédition solo ou locale</div>
+    <div class="zone-desc">${tourVerrouillee
+    ? '🔒 Atteignez le niveau 3 pour tenter l’ascension.'
+    : 'Des étages infinis, aucun repos entre les combats, un butin qui grimpe à chaque palier. Jusqu’où monterez-vous ?'}</div>`;
+  if (!tourVerrouillee) rendreCliquable(tour, () => demarrerTour());
+  zone.appendChild(tour);
 }
 
 // =====================================================================
@@ -191,6 +205,7 @@ function composerPack(z, nb) {
 function explorer(z) {
   const p = persoActif();
   p.explorations[z.id] = (p.explorations[z.id] || 0) + 1;
+  progresserQuete(p, 'exploration', 1);
   sauvegarder(p);
 
   const tirage = Math.random();
@@ -256,6 +271,7 @@ function explorer(z) {
 }
 
 function recolter(z) {
+  progresserQuete(persoActif(), 'recolte', 1);
   const objets = {};
   z.recolte.forEach((entree) => {
     if (Math.random() < entree.chance) objets[entree.id] = (objets[entree.id] || 0) + alea(1, 2);
@@ -425,6 +441,13 @@ function ouvrirCoffreBoss(p, zone, difficulte) {
     const o = OBJETS[unique];
     lignes.push(`✨ ${o.emoji} ${o.nom}${texteRarete(o)} — trophée unique !`);
   }
+  // Le familier du boss peut se cacher dans le coffre (20 %).
+  let familier = null;
+  const idFamilier = Object.keys(FAMILIERS).find((id) => FAMILIERS[id].source === zone.boss);
+  if (idFamilier && !(p.familiers || []).includes(idFamilier) && Math.random() < 0.2) {
+    familier = idFamilier;
+    lignes.push(`🐾 ${FAMILIERS[idFamilier].emoji} ${FAMILIERS[idFamilier].nom} sort du coffre et vous adopte !`);
+  }
   let tirages = 2 + (Math.random() < 0.5 ? 1 : 0);
   if (difficulte === 'heroique' && Math.random() < 0.5) tirages++;
   if (difficulte === 'cauchemar') tirages++;
@@ -438,7 +461,120 @@ function ouvrirCoffreBoss(p, zone, difficulte) {
     objets[id] = (objets[id] || 0) + 1;
     lignes.push(`${o.emoji} ${o.nom}${texteRarete(o)}`);
   }
-  return { objets, lignes };
+  return { objets, lignes, familier };
+}
+
+// =====================================================================
+// La Tour Sans Fin : étages enchaînés sans repos
+// =====================================================================
+function zonePourEtage(etage) {
+  return ZONES[Math.min(ZONES.length - 1, Math.floor((etage - 1) / 2.5))];
+}
+
+function demarrerTour() {
+  etat.tour = { etage: 1 };
+  afficherToast('🗼 L’ascension commence ! Aucun repos entre les étages…');
+  demarrerCombatTourEtage(1);
+}
+
+function demarrerCombatTourEtage(etage) {
+  etat.tour = { etage };
+  const z = zonePourEtage(etage);
+  const mult = 1 + etage * 0.06;
+  const estPalier = etage % 5 === 0;
+  const cles = estPalier ? [z.boss] : composerPack(z, tailleDuPack(membresEquipe().length));
+  const defs = cles.map((cle) => ({
+    ...MONSTRES[cle], cle,
+    hp: Math.round(MONSTRES[cle].hp * mult),
+    atk: Math.round(MONSTRES[cle].atk * mult),
+  }));
+  demarrerCombat({
+    genre: 'tour',
+    zone: z,
+    tourEtage: etage,
+    monstresDef: defs,
+    equipe: membresEquipe(),
+  });
+}
+
+function apresVictoireTour(cb) {
+  const etage = cb.tourEtage;
+  const membres = cb.equipe;
+  const partage = membres.length;
+  const estPalier = etage % 5 === 0;
+  const lignes = [];
+
+  const butin = tirerButinCombat(cb);
+  const multTour = 1 + etage * 0.12;
+  const xpParHeros = Math.max(1, Math.round((butin.xp * multTour) / partage));
+  const poParHeros = Math.max(0, Math.round((butin.po * multTour) / partage));
+  lignes.push(`⭐ +${xpParHeros} XP et 💰 +${poParHeros} po par héros (prime d'étage +${Math.round(etage * 12)} %)`);
+  Object.entries(butin.objets).forEach(([id, qte]) => {
+    lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
+  });
+
+  membres.forEach((m) => {
+    if (m.hp <= 0) m.hp = 1;
+    const compagnon = familierActif(m);
+    const poGagne = Math.round(poParHeros * (1 + ((compagnon && compagnon.bonus.poBonus) || 0)));
+    m.po += poGagne;
+    m.compteurs.orTotal += poGagne;
+    m.compteurs.monstres += cb.monstres.length;
+    progresserQuete(m, 'monstres', cb.monstres.length);
+    progresserQuete(m, 'tour', 1);
+    Object.entries(butin.objets).forEach(([id, qte]) => ajouterObjet(m, id, qte));
+    if (m.tourMax < etage) m.tourMax = etage;
+
+    // Palier (étages 5, 10, 15…) : coffre de la Tour + familier éventuel
+    if (estPalier) {
+      const s = statsEffectives(m);
+      for (let i = 0; i < 2; i++) {
+        const rarete = tirerRarete(s.cha + etage);
+        const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
+          && (o.type === 'materiau' || o.type === 'consommable'
+            || (o.type === 'equipement' && o.niveau <= m.niveau + 3)));
+        if (pool.length) {
+          const [id, objet] = pool[alea(0, pool.length - 1)];
+          ajouterObjet(m, id, 1);
+          lignes.push(`🎁 Coffre de la Tour : ${objet.emoji} ${objet.nom}${texteRarete(objet)}`);
+        }
+      }
+      const idFamilier = FAMILIERS_TOUR[etage];
+      if (idFamilier && !m.familiers.includes(idFamilier)) {
+        m.familiers.push(idFamilier);
+        lignes.push(`🐾 ${FAMILIERS[idFamilier].emoji} ${FAMILIERS[idFamilier].nom} vous rejoint — gardien de l'étage ${etage} !`);
+      }
+    }
+
+    const niveaux = gagnerXp(m, xpParHeros);
+    verifierHautsFaits(m);
+    nettoyerApresCombat(m); // ne soigne pas : la Tour ne pardonne rien
+    if (niveaux > 0) lignes.push(`🎉 ${m.avatar} ${m.nom} passe niveau ${m.niveau} ! PV et PM restaurés.`);
+    sauvegarder(m);
+  });
+
+  const vies = membres.map((m) => `${m.avatar} ${m.hp}/${m.maxHp} PV`).join(' · ');
+  afficherButin({
+    titre: `🗼 Étage ${etage} vaincu !`,
+    texte: `${estPalier ? 'Un palier ! Le coffre de la Tour s’ouvre. ' : ''}Pas de repos : ${vies}.`,
+    lignes,
+    retour: 'carte',
+    boutons: [
+      {
+        texte: `⬆️ Étage ${etage + 1} — ennemis +${Math.round((etage + 1) * 6)} %`,
+        classe: 'btn-principal',
+        action: () => demarrerCombatTourEtage(etage + 1),
+      },
+      {
+        texte: '🏳️ Redescendre en gardant les gains',
+        action: () => {
+          etat.tour = null;
+          afficherToast(`🗼 Belle ascension : étage ${etage} atteint !`);
+          naviguer('carte');
+        },
+      },
+    ],
+  });
 }
 
 function nettoyerApresCombat(m) {
@@ -452,6 +588,7 @@ function nettoyerApresCombat(m) {
 function apresVictoire(cb) {
   if (cb.groupe && cb.groupe.hote) { apresCombatGroupeHote(cb, 'victoire'); return; }
   if (cb.genre === 'bossMonde') { apresBossMonde(cb); return; }
+  if (cb.genre === 'tour') { apresVictoireTour(cb); return; }
   const butin = tirerButinCombat(cb);
   const membres = cb.equipe;
   const lignes = [];
@@ -481,12 +618,14 @@ function apresVictoire(cb) {
   });
 
   // Un boss abattu laisse un coffre pour chaque héros présent.
+  const familiersGagnes = membres.map(() => null);
   if (cb.genre === 'boss') {
     membres.forEach((m, i) => {
       const coffre = ouvrirCoffreBoss(m, cb.zone, cb.difficulte);
       Object.entries(coffre.objets).forEach(([id, qte]) => {
         partsObjets[i][id] = (partsObjets[i][id] || 0) + qte;
       });
+      familiersGagnes[i] = coffre.familier;
       coffre.lignes.forEach((ligne, idx) => {
         lignes.push(partage > 1 && idx === 0 ? `${m.avatar} ${m.nom} — ${ligne}` : ligne);
       });
@@ -495,10 +634,19 @@ function apresVictoire(cb) {
 
   membres.forEach((m, i) => {
     if (m.hp <= 0) m.hp = 1; // les héros KO se relèvent après la victoire
-    m.po += poParHeros;
+    const compagnon = familierActif(m);
+    const poGagne = Math.round(poParHeros * (1 + ((compagnon && compagnon.bonus.poBonus) || 0)));
+    m.po += poGagne;
     Object.entries(partsObjets[i]).forEach(([id, qte]) => ajouterObjet(m, id, qte));
+    if (familiersGagnes[i] && !m.familiers.includes(familiersGagnes[i])) m.familiers.push(familiersGagnes[i]);
     if (cb.genre === 'boss' && !m.bossVaincus.includes(cb.zone.id)) m.bossVaincus.push(cb.zone.id);
     const niveaux = gagnerXp(m, xpParHeros);
+    // Progression des compteurs et contrats de guilde
+    m.compteurs.monstres += cb.monstres.length;
+    m.compteurs.orTotal += poGagne;
+    progresserQuete(m, 'monstres', cb.monstres.length);
+    if (cb.genre === 'boss') progresserQuete(m, 'boss', 1);
+    verifierHautsFaits(m);
     nettoyerApresCombat(m);
     if (niveaux > 0) lignes.push(`🎉 ${m.avatar} ${m.nom} passe niveau ${m.niveau} ! PV et PM restaurés.`);
     sauvegarder(m);
@@ -568,6 +716,10 @@ function apresDefaite(cb) {
     apresBossMonde(cb);
     return;
   }
+  if (cb.genre === 'tour' && etat.tour) {
+    afficherToast(`🗼 La Tour vous recrache à l'étage ${cb.tourEtage}… Record : ${persoActif().tourMax}.`);
+    etat.tour = null;
+  }
   const membres = cb.equipe;
   const lignes = [];
   membres.forEach((m) => {
@@ -608,7 +760,7 @@ function apresFuite(cb) {
 // =====================================================================
 // Écran de butin
 // =====================================================================
-function afficherButin({ titre, texte, lignes, retour }) {
+function afficherButin({ titre, texte, lignes, retour, boutons }) {
   etat.butinRetour = retour || 'carte';
   el('butin-titre').textContent = titre;
   el('butin-texte').textContent = texte || '';
@@ -620,6 +772,22 @@ function afficherButin({ titre, texte, lignes, retour }) {
     div.textContent = ligne;
     details.appendChild(div);
   });
+  // Boutons personnalisés (ex. Tour : continuer ou redescendre)
+  const zoneBoutons = el('butin-boutons');
+  zoneBoutons.innerHTML = '';
+  const defaut = el('butin-continuer');
+  if (boutons && boutons.length) {
+    defaut.classList.add('cache');
+    boutons.forEach((bouton) => {
+      const btn = document.createElement('button');
+      btn.className = bouton.classe || 'btn-choix';
+      btn.textContent = bouton.texte;
+      btn.addEventListener('click', bouton.action);
+      zoneBoutons.appendChild(btn);
+    });
+  } else {
+    defaut.classList.remove('cache');
+  }
   montrerEcran('ecran-butin');
 }
 

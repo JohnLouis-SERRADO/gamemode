@@ -87,6 +87,7 @@ function demarrerCombat(options) {
     genre: options.genre,
     zone: options.zone || null,
     difficulte: options.difficulte || 'normal',
+    tourEtage: options.tourEtage || null,
     equipe,
     monstres,
     lootRecolte: options.lootRecolte || null,
@@ -110,6 +111,7 @@ function demarrerCombat(options) {
     embuscade: () => `⚠️ Embuscade — ${options.zone.nom}`,
     boss: () => `👑 ${monstres[0].nom} — ${options.zone.nom}`,
     bossMonde: () => `🌍 ${monstres[0].nom} — assaut du monde`,
+    tour: () => `🗼 Tour Sans Fin — Étage ${options.tourEtage}`,
   };
   const difficulte = DIFFICULTES[etat.combat.difficulte];
   const suffixe = difficulte && etat.combat.difficulte !== 'normal' ? ` · ${difficulte.emoji} ${difficulte.nom}` : '';

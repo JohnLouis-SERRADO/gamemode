@@ -22,6 +22,10 @@ function rendreVille() {
       action: () => { rendreAntiquaire(); montrerEcran('ecran-antiquaire'); },
     },
     {
+      emoji: '🏰', nom: 'Guilde des Aventuriers', detail: 'Trois contrats par jour : monstres, récolte, boss…',
+      action: () => { rendreGuilde(); montrerEcran('ecran-guilde'); },
+    },
+    {
       emoji: '🛏️', nom: 'Auberge', detail: 'Repos gratuit : PV et PM restaurés pour toute l’équipe',
       action: () => {
         membresEquipe().forEach((m) => {
@@ -229,6 +233,83 @@ function rendreAntiquaire() {
 }
 
 // =====================================================================
+// Guilde des Aventuriers : contrats journaliers
+// =====================================================================
+function rendreGuilde() {
+  const p = persoActif();
+  normaliserPerso(p); // régénère les contrats si la date a changé
+  const zone = el('guilde-contenu');
+  zone.innerHTML = '';
+
+  const intro = document.createElement('p');
+  intro.className = 'sous-titre';
+  intro.textContent = '« Trois contrats par jour, aventurier. Le tableau est remis à zéro chaque matin. »';
+  zone.appendChild(intro);
+
+  p.quetes.liste.forEach((quete) => {
+    const complete = quete.fait >= quete.requis;
+    const carte = document.createElement('div');
+    carte.className = 'panneau carte-contrat' + (quete.reclamee ? ' contrat-reclame' : '');
+    const pct = Math.round((quete.fait / quete.requis) * 100);
+    carte.innerHTML = `
+      <div class="objet-entete">${quete.emoji} <strong>${quete.texte}</strong>
+        ${quete.reclamee ? '<span class="objet-qte">✔ récompense empochée</span>' : ''}</div>
+      <div class="barre contrat"><div class="remplissage" style="width:${pct}%"></div>
+        <span>${quete.fait} / ${quete.requis}</span></div>
+      <div class="objet-bonus">🎁 ${quete.recompense.po} po · ⭐ ${quete.recompense.xp} XP${quete.recompense.coffre ? ' · 🎁 un objet surprise' : ''}</div>`;
+    if (!quete.reclamee) {
+      const reclamer = document.createElement('button');
+      reclamer.className = complete ? 'btn-principal btn-compact' : 'btn-choix btn-compact';
+      reclamer.textContent = complete ? '🎉 Réclamer la récompense' : 'Contrat en cours…';
+      reclamer.disabled = !complete;
+      reclamer.addEventListener('click', () => reclamerQuete(p, quete));
+      carte.appendChild(reclamer);
+    }
+    zone.appendChild(carte);
+  });
+
+  const note = document.createElement('p');
+  note.className = 'aide';
+  note.textContent = `📜 Contrats remplis en tout : ${p.compteurs.quetes}. Les hauts faits de la Guilde attendent les plus assidus.`;
+  zone.appendChild(note);
+}
+
+function reclamerQuete(p, quete) {
+  if (quete.reclamee || quete.fait < quete.requis) return;
+  quete.reclamee = true;
+  p.compteurs.quetes++;
+  const compagnon = familierActif(p);
+  const poGagne = Math.round(quete.recompense.po * (1 + ((compagnon && compagnon.bonus.poBonus) || 0)));
+  p.po += poGagne;
+  p.compteurs.orTotal += poGagne;
+  const lignes = [`💰 +${poGagne} po`, `⭐ +${quete.recompense.xp} XP`];
+  // Le grand contrat du jour offre un objet tiré selon la chance.
+  if (quete.recompense.coffre) {
+    const s = statsEffectives(p);
+    const rarete = tirerRarete(s.cha + 5);
+    const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
+      && (o.type === 'materiau' || o.type === 'consommable'
+        || (o.type === 'equipement' && o.niveau <= p.niveau + 3)));
+    if (pool.length) {
+      const [id, objet] = pool[alea(0, pool.length - 1)];
+      ajouterObjet(p, id, 1);
+      lignes.push(`${objet.emoji} ${objet.nom}${texteRarete(objet)}`);
+    }
+  }
+  const niveaux = gagnerXp(p, quete.recompense.xp);
+  if (niveaux > 0) {
+    p.hp = p.maxHp;
+    p.mp = p.maxMp;
+    lignes.push(`🎉 ${p.nom} passe niveau ${p.niveau} !`);
+  }
+  verifierHautsFaits(p);
+  sauvegarder(p);
+  afficherToast(`🏰 Contrat honoré : ${lignes.join(' · ')}`);
+  rendreGuilde();
+  rendreTopbar();
+}
+
+// =====================================================================
 // Atelier de craft
 // =====================================================================
 function rendreAtelier() {
@@ -275,6 +356,9 @@ function rendreAtelier() {
       Object.entries(recette.materiaux).forEach(([id, qte]) => retirerObjet(p, id, qte));
       p.po -= recette.po;
       ajouterObjet(p, recette.resultat);
+      p.compteurs.crafts++;
+      progresserQuete(p, 'craft', 1);
+      verifierHautsFaits(p);
       sauvegarder(p);
       afficherToast(`⚒️ ${objet.emoji} ${objet.nom} fabriqué !`);
       rendreAtelier();

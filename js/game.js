@@ -114,8 +114,8 @@ function boutonConfirmation(libelle, libelleConfirme, action) {
 // Navigation
 // =====================================================================
 const ECRANS_AVEC_TOPBAR = ['ecran-carte', 'ecran-equipe', 'ecran-zone', 'ecran-ville',
-  'ecran-boutique', 'ecran-antiquaire', 'ecran-atelier', 'ecran-heros', 'ecran-taverne',
-  'ecran-groupe-ligne'];
+  'ecran-boutique', 'ecran-antiquaire', 'ecran-guilde', 'ecran-atelier', 'ecran-heros',
+  'ecran-taverne', 'ecran-groupe-ligne'];
 
 function montrerEcran(id) {
   document.querySelectorAll('.ecran').forEach((e) => e.classList.remove('actif'));
@@ -175,16 +175,31 @@ function chargerProfils() {
     etat.profils = (Array.isArray(brut) ? brut : [])
       .filter((p) => p && p.stats && p.equipement && Array.isArray(p.inventaire) && Array.isArray(p.competences));
     etat.actifId = localStorage.getItem(CLE_STOCKAGE_ACTIF) || null;
-    etat.profils.forEach((p) => {
-      // Migration des sauvegardes d'avant les races et la chance.
-      if (!p.race) p.race = 'humain';
-      if (p.stats.cha == null) p.stats.cha = 2;
-      bornerVie(p);
-    });
+    etat.profils.forEach((p) => normaliserPerso(p));
   } catch (e) {
     etat.profils = [];
     etat.actifId = null;
   }
+}
+
+// Complète les sauvegardes venues d'anciennes versions du jeu.
+function normaliserPerso(p) {
+  if (!p.race) p.race = 'humain';
+  if (p.stats.cha == null) p.stats.cha = 2;
+  if (!p.compteurs) p.compteurs = {};
+  ['monstres', 'orTotal', 'crafts', 'quetes', 'legendaires', 'divins'].forEach((cle) => {
+    if (p.compteurs[cle] == null) p.compteurs[cle] = 0;
+  });
+  if (!Array.isArray(p.familiers)) p.familiers = [];
+  if (p.familier === undefined) p.familier = null;
+  if (!Array.isArray(p.hautsFaits)) p.hautsFaits = [];
+  if (p.titre === undefined) p.titre = null;
+  if (p.tourMax == null) p.tourMax = 0;
+  if (!p.quetes || p.quetes.date !== new Date().toISOString().slice(0, 10)) {
+    p.quetes = genererQuetesDuJour(p);
+  }
+  bornerVie(p);
+  return p;
 }
 
 function sauvegarderLocal() {
@@ -206,7 +221,35 @@ function donneesCloud(p) {
     competences: p.competences, po: p.po, inventaire: p.inventaire,
     equipement: p.equipement, hp: p.hp, mp: p.mp,
     explorations: p.explorations, bossVaincus: p.bossVaincus,
+    compteurs: p.compteurs, familiers: p.familiers, familier: p.familier,
+    hautsFaits: p.hautsFaits, titre: p.titre, tourMax: p.tourMax, quetes: p.quetes,
   };
+}
+
+// =====================================================================
+// Hauts faits et contrats de guilde
+// =====================================================================
+function verifierHautsFaits(p) {
+  HAUTS_FAITS.forEach((hautFait) => {
+    if (p.hautsFaits.includes(hautFait.id)) return;
+    if (!hautFait.cond(p)) return;
+    p.hautsFaits.push(hautFait.id);
+    afficherToast(`${hautFait.emoji} Haut fait : ${hautFait.nom} ! Titre débloqué : « ${hautFait.titre} »`);
+  });
+}
+
+// Fait avancer les contrats de guilde du type donné.
+function progresserQuete(p, type, n = 1) {
+  if (!p.quetes || p.quetes.date !== new Date().toISOString().slice(0, 10)) {
+    p.quetes = genererQuetesDuJour(p);
+  }
+  p.quetes.liste.forEach((quete) => {
+    if (quete.type !== type || quete.reclamee || quete.fait >= quete.requis) return;
+    quete.fait = Math.min(quete.requis, quete.fait + n);
+    if (quete.fait >= quete.requis) {
+      afficherToast(`🏰 Contrat rempli : ${quete.texte} ! Passez à la Guilde.`);
+    }
+  });
 }
 
 function nouveauPersonnage(base) {
@@ -232,8 +275,7 @@ function nouveauPersonnage(base) {
     hp: 0, mp: 0, maxHp: 0, maxMp: 0,
     statuts: [], cooldowns: {}, defense: false, ko: false,
   };
-  p.maxHp = maxHpDe(p);
-  p.maxMp = maxMpDe(p);
+  normaliserPerso(p);
   p.hp = p.maxHp;
   p.mp = p.maxMp;
   return p;
@@ -253,6 +295,8 @@ function bornerVie(p) {
 function gagnerXp(p, xp) {
   const avant = p.niveau;
   if (p.race === 'humain') xp = Math.round(xp * 1.1); // Ambition
+  const familier = familierActif(p);
+  if (familier && familier.bonus.xpBonus) xp = Math.round(xp * (1 + familier.bonus.xpBonus));
   p.xp += xp;
   const apres = niveauPour(p.xp);
   if (apres > avant) {
@@ -477,10 +521,12 @@ function rendreHeros() {
   const entete = document.createElement('div');
   entete.className = 'panneau heros-entete';
   const race = raceDe(p);
+  const familier = familierActif(p);
+  const titreActif = p.titre ? HAUTS_FAITS.find((h) => h.id === p.titre) : null;
   entete.innerHTML = `
-    <span class="avatar-titan">${p.avatar}</span>
+    <span class="avatar-titan">${p.avatar}${familier ? `<span class="familier-avatar" title="${familier.nom}">${familier.emoji}</span>` : ''}</span>
     <div class="heros-identite">
-      <h2>${echapper(p.nom)} <span class="niveau">niveau ${p.niveau}</span></h2>
+      <h2>${echapper(p.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''} <span class="niveau">niveau ${p.niveau}</span></h2>
       <div class="heros-race">${race.emoji} ${race.nom} — <em>${race.passif}</em> : ${race.desc}</div>
       <div class="barre xp"><div class="remplissage" style="width:${pctXp}%"></div>
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
@@ -558,6 +604,67 @@ function rendreHeros() {
   });
   blocComp.appendChild(grilleComp);
   zone.appendChild(blocComp);
+
+  // --- Familiers ---
+  if (p.familiers.length > 0) {
+    const blocFamiliers = document.createElement('div');
+    blocFamiliers.className = 'panneau';
+    blocFamiliers.innerHTML = `<h3>🐾 Familiers (${p.familiers.length}/${Object.keys(FAMILIERS).length})</h3>
+      <p class="aide">Un seul familier vous accompagne à la fois. Les autres attendent au chenil.</p>`;
+    const grilleFamiliers = document.createElement('div');
+    grilleFamiliers.className = 'grille-inventaire';
+    p.familiers.forEach((idFamilier) => {
+      const compagnon = FAMILIERS[idFamilier];
+      if (!compagnon) return;
+      const actif = p.familier === idFamilier;
+      const carte = document.createElement('div');
+      carte.className = 'carte-objet' + (actif ? ' bord-rar-legendaire' : '');
+      carte.innerHTML = `
+        <div class="objet-entete">${compagnon.emoji} <strong>${compagnon.nom}</strong>${actif ? ' <span class="objet-qte">✔ actif</span>' : ''}</div>
+        <div class="objet-bonus">${compagnon.desc}</div>`;
+      const bouton = document.createElement('button');
+      bouton.className = 'btn-choix btn-compact';
+      bouton.textContent = actif ? 'Renvoyer au chenil' : 'Prendre avec soi';
+      bouton.addEventListener('click', () => {
+        p.familier = actif ? null : idFamilier;
+        bornerVie(p);
+        sauvegarder(p);
+        afficherToast(actif ? `${compagnon.emoji} ${compagnon.nom} retourne au chenil.` : `${compagnon.emoji} ${compagnon.nom} trottine à vos côtés !`);
+        rendreHeros();
+        rendreTopbar();
+      });
+      carte.appendChild(bouton);
+      grilleFamiliers.appendChild(carte);
+    });
+    blocFamiliers.appendChild(grilleFamiliers);
+    zone.appendChild(blocFamiliers);
+  }
+
+  // --- Hauts faits et titres ---
+  const blocFaits = document.createElement('div');
+  blocFaits.className = 'panneau';
+  blocFaits.innerHTML = `<h3>🏅 Hauts faits (${p.hautsFaits.length}/${HAUTS_FAITS.length})</h3>
+    <p class="aide">Chaque haut fait débloque un titre. Touchez un haut fait accompli pour porter son titre.</p>`;
+  const grilleFaits = document.createElement('div');
+  grilleFaits.className = 'rangee-chips';
+  HAUTS_FAITS.forEach((hautFait) => {
+    const obtenu = p.hautsFaits.includes(hautFait.id);
+    const chip = document.createElement('button');
+    chip.className = 'chip chip-haut-fait' + (obtenu ? ' obtenu' : ' verrouille') + (p.titre === hautFait.id ? ' titre-porte' : '');
+    chip.title = hautFait.desc + (obtenu ? ` — titre : « ${hautFait.titre} »` : '');
+    chip.textContent = obtenu ? `${hautFait.emoji} ${hautFait.nom}` : `🔒 ${hautFait.desc}`;
+    if (obtenu) {
+      chip.addEventListener('click', () => {
+        p.titre = p.titre === hautFait.id ? null : hautFait.id;
+        sauvegarder(p);
+        afficherToast(p.titre ? `🏅 Vous portez le titre « ${hautFait.titre} ».` : 'Titre retiré.');
+        rendreHeros();
+      });
+    }
+    grilleFaits.appendChild(chip);
+  });
+  blocFaits.appendChild(grilleFaits);
+  zone.appendChild(blocFaits);
 
   // --- Équipement ---
   const blocEquip = document.createElement('div');

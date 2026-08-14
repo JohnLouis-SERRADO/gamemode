@@ -244,6 +244,64 @@ SETS_CRAFT.forEach((serie) => {
 RECETTES.sort((a, b) => a.niveau - b.niveau);
 
 // =====================================================================
+// Butin d'aventure généré : ~1500 équipements introuvables en boutique.
+// Ils tombent des coffres de boss, de la Tour et des contrats de guilde.
+// Pour chaque archétype × niveau × rareté disponible, deux variantes.
+// =====================================================================
+const ARCHETYPES_BUTIN = [
+  { cle: 'epee',     noms: ['Épée', 'Hache', 'Masse'],           emoji: '⚔️', slot: 'arme',       principal: 'for', secondaire: 'vit' },
+  { cle: 'baton',    noms: ['Bâton', 'Sceptre', 'Orbe'],         emoji: '🪄', slot: 'arme',       principal: 'int', secondaire: 'cha' },
+  { cle: 'arc',      noms: ['Arc', 'Dague', 'Arbalète'],         emoji: '🏹', slot: 'arme',       principal: 'agi', secondaire: 'for' },
+  { cle: 'heaume',   noms: ['Heaume', 'Capuche', 'Diadème'],     emoji: '🪖', slot: 'tete',       principal: 'vit', secondaire: 'int' },
+  { cle: 'plastron', noms: ['Plastron', 'Tunique', 'Cuirasse'],  emoji: '🛡️', slot: 'torse',      principal: 'vit', secondaire: 'for' },
+  { cle: 'jambes',   noms: ['Jambières', 'Bottes', 'Grèves'],    emoji: '👖', slot: 'jambes',     principal: 'agi', secondaire: 'vit' },
+  { cle: 'anneau',   noms: ['Anneau', 'Sceau', 'Chevalière'],    emoji: '💍', slot: 'accessoire', principal: 'cha', secondaire: 'agi' },
+  { cle: 'amulette', noms: ['Amulette', 'Pendentif', 'Relique'], emoji: '📿', slot: 'accessoire', principal: 'int', secondaire: 'cha' },
+];
+
+// Qualificatifs sans accord de genre (formes en « de/du/des »).
+const QUALIFICATIFS_BUTIN = {
+  commun:     ['de recrue', 'd’apprenti', 'de fortune'],
+  inhabituel: ['de vétéran', 'de la garde', 'du compagnon'],
+  rare:       ['des runes', 'de l’enchanteur', 'des murmures'],
+  epique:     ['des tempêtes', 'du zénith', 'des abysses'],
+  legendaire: ['du crépuscule', 'des légendes', 'du phénix'],
+  mythique:   ['des origines', 'du chaos', 'des Titans'],
+  divin:      ['des dieux', 'de l’éternité', 'des étoiles'],
+};
+
+// Niveau minimal d'apparition et puissance de chaque rareté.
+const PALIER_RARETE = { commun: 1, inhabituel: 1, rare: 3, epique: 6, legendaire: 10, mythique: 14, divin: 17 };
+const MULT_RARETE_BUTIN = { commun: 0.8, inhabituel: 0.95, rare: 1.1, epique: 1.3, legendaire: 1.55, mythique: 1.8, divin: 2.15 };
+
+ARCHETYPES_BUTIN.forEach((archetype) => {
+  for (let niveau = 1; niveau <= 20; niveau++) {
+    Object.keys(RARETES).forEach((rarete) => {
+      if (niveau < PALIER_RARETE[rarete]) return;
+      for (let variante = 0; variante < 2; variante++) {
+        const nomBase = archetype.noms[(niveau + variante) % archetype.noms.length];
+        const qualificatif = QUALIFICATIFS_BUTIN[rarete][(niveau + variante * 2) % 3];
+        const mult = MULT_RARETE_BUTIN[rarete];
+        const principal = Math.max(1, Math.round((2 + niveau * 0.85) * mult) + variante);
+        const bonus = { [archetype.principal]: principal };
+        if (niveau >= 4) bonus[archetype.secondaire] = Math.max(1, Math.round(principal * 0.35));
+        if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = Math.round(niveau * 2 * mult);
+        if (archetype.principal === 'int') bonus.pmMax = Math.round(niveau * 1.5 * mult);
+        if (rarete === 'mythique' || rarete === 'divin') bonus.crit = Math.round(2 + niveau * 0.25);
+        OBJETS[`butin-${archetype.cle}-${rarete}-${niveau}-${variante}`] = {
+          nom: `${nomBase} ${qualificatif}`,
+          emoji: archetype.emoji, type: 'equipement', slot: archetype.slot,
+          niveau, rarete,
+          prixVente: Math.max(5, Math.round(niveau * 6 * mult)),
+          bonus,
+          desc: 'Butin d’aventure : coffres de boss, Tour Sans Fin et contrats de guilde.',
+        };
+      }
+    });
+  }
+});
+
+// =====================================================================
 // Inventaire : liste de { id, qte }
 // =====================================================================
 function compterObjet(p, idObjet) {
@@ -255,6 +313,13 @@ function ajouterObjet(p, idObjet, qte = 1) {
   const entree = p.inventaire.find((e) => e.id === idObjet);
   if (entree) entree.qte += qte;
   else p.inventaire.push({ id: idObjet, qte });
+  // Compteurs de hauts faits : trouvailles de haut rang.
+  const objet = OBJETS[idObjet];
+  if (objet && p.compteurs) {
+    const rarete = rareteDe(objet);
+    if (rarete === 'legendaire' || rarete === 'mythique') p.compteurs.legendaires += qte;
+    if (rarete === 'divin') p.compteurs.divins += qte;
+  }
 }
 
 function retirerObjet(p, idObjet, qte = 1) {
@@ -267,7 +332,10 @@ function retirerObjet(p, idObjet, qte = 1) {
 
 function texteBonus(bonus) {
   if (!bonus) return '';
-  const libelles = { for: '💪 FOR', int: '🧠 INT', agi: '🏃 AGI', vit: '❤️ VIT', pvMax: '❤️ PV max', pmMax: '💧 PM max', crit: '💥 Crit.' };
+  const libelles = {
+    for: '💪 FOR', int: '🧠 INT', agi: '🏃 AGI', vit: '❤️ VIT', cha: '🍀 CHA',
+    pvMax: '❤️ PV max', pmMax: '💧 PM max', crit: '💥 Crit.',
+  };
   return Object.entries(bonus)
     .map(([cle, valeur]) => `+${valeur}${cle === 'crit' ? ' %' : ''} ${libelles[cle] || cle}`)
     .join(' · ');

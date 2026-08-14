@@ -245,11 +245,15 @@ h4 { margin-bottom: 6px; }
 .rar-rare       { color: #60a5fa; }
 .rar-epique     { color: #c084fc; }
 .rar-legendaire { color: #f59e0b; }
+.rar-mythique   { color: #fb7185; text-shadow: 0 0 8px rgba(251, 113, 133, 0.5); }
+.rar-divin      { color: #fde047; text-shadow: 0 0 10px rgba(253, 224, 71, 0.6); }
 
 .bord-rar-inhabituel { border-left: 3px solid #4ade80; }
 .bord-rar-rare       { border-left: 3px solid #60a5fa; }
 .bord-rar-epique     { border-left: 3px solid #c084fc; }
 .bord-rar-legendaire { border-left: 3px solid #f59e0b; }
+.bord-rar-mythique   { border: 1px solid #fb7185; border-left-width: 3px; box-shadow: 0 0 10px rgba(251, 113, 133, 0.25); }
+.bord-rar-divin      { border: 1px solid #fde047; border-left-width: 3px; box-shadow: 0 0 14px rgba(253, 224, 71, 0.3); }
 
 .article-verrouille { opacity: 0.55; }
 
@@ -284,6 +288,32 @@ h4 { margin-bottom: 6px; }
   color: var(--texte-doux);
   margin: 2px 0 6px;
 }
+
+.titre-heros {
+  color: var(--accent-clair);
+  font-style: italic;
+  font-size: 0.85em;
+}
+
+.familier-avatar {
+  font-size: 0.5em;
+  vertical-align: sub;
+  margin-left: -8px;
+}
+
+.carte-contrat .barre.contrat {
+  height: 20px;
+  margin: 8px 0 6px;
+}
+
+.barre.contrat .remplissage { background: linear-gradient(90deg, #7a5f2a, var(--accent)); }
+
+.contrat-reclame { opacity: 0.6; }
+
+.chip-haut-fait { cursor: default; }
+.chip-haut-fait.obtenu { border-color: var(--accent); cursor: pointer; }
+.chip-haut-fait.verrouille { opacity: 0.5; }
+.chip-haut-fait.titre-porte { background: #33301c; color: var(--accent-clair); font-weight: bold; }
 
 /* ----- Bandeau d'événement mondial ----- */
 #bandeau-evenement {
@@ -1108,6 +1138,38 @@ button:focus-visible,
 }
 
 .champ-code-groupe:focus { outline: none; border-color: var(--accent); }
+
+/* ----- Comptoir d'échange ----- */
+.formulaire-comptoir { margin: 10px 0; }
+
+.champ-comptoir {
+  background: var(--fond);
+  color: var(--texte);
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.95rem;
+  width: 64px;
+  text-align: center;
+}
+
+.champ-comptoir.large { width: 90px; }
+.champ-comptoir:focus { outline: none; border-color: var(--accent); }
+
+.ligne-annonce {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--fond);
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+
+.annonce-objet { flex: 1; min-width: 150px; }
+.annonce-detail { color: var(--texte-doux); font-size: 0.85rem; }
 
 /* ----- Adaptation aux petits écrans ----- */
 @media (max-width: 680px) {
