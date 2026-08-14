@@ -23,10 +23,36 @@ function estMort(c) {
   return c.type === 'joueur' ? c.ko : c.mort;
 }
 
+// v16 : nivelage de groupe — en expédition en ligne, les plus aguerris
+// se calent sur le niveau du moins avancé (facteur < 1 sur leurs stats).
+function facteurNivelage(c) {
+  const cb = etat.combat;
+  if (!cb || !cb.nivelage || !c.bid) return 1;
+  return cb.nivelage[c.bid] || 1;
+}
+
+// Les stats de COMBAT d'un héros : statsEffectives, éventuellement
+// bridées par le nivelage. Toute la résolution passe par ici.
+function statsCombat(j) {
+  const s = statsEffectives(j);
+  const f = facteurNivelage(j);
+  if (f >= 1) return s;
+  const bride = { ...s };
+  Object.keys(CARACS).forEach((cle) => { bride[cle] = Math.max(1, Math.round((s[cle] || 0) * f)); });
+  return bride;
+}
+
 function statDe(source, cle) {
-  if (source.type === 'joueur') return statsEffectives(source)[cle] || 0;
+  if (source.type === 'joueur') return statsCombat(source)[cle] || 0;
   if (source.type === 'invocation') return source.stats[cle] || 0;
   return 0;
+}
+
+// v16 : deux lignes de combat. Les lanceurs de sorts (Intelligence
+// dominante) partent naturellement à l'arrière, les autres à l'avant.
+function ligneParDefaut(c) {
+  const s = c.type === 'invocation' ? c.stats : statsEffectives(c);
+  return (s.int || 0) > (s.for || 0) && (s.int || 0) > (s.agi || 0) ? 'arriere' : 'avant';
 }
 
 function tirageAuPoids(liste) {
@@ -137,6 +163,7 @@ function demarrerCombat(options) {
     j.cooldowns = {};
     j.defense = false;
     j.ko = false;
+    j.ligne = ligneParDefaut(j); // v16 : chacun rejoint sa ligne naturelle
     if (j.hp <= 0) j.hp = 1;
   });
 
@@ -174,6 +201,8 @@ function demarrerCombat(options) {
     journalLignes: [],
     degatsBossMonde: 0,
     groupe: options.groupe || null,
+    groupeExtra: options.groupeExtra || null,
+    nivelage: options.nivelage || null,
     donjon: options.donjon || null,
     ascension: options.ascension || false,
     enAttenteDe: null,
@@ -225,7 +254,7 @@ async function boucleTour() {
         break;
       }
       cb.file = [...cb.equipe.filter((j) => !j.ko), ...cb.monstres.filter((m) => !m.mort)]
-        .map((c) => ({ c, init: (c.type === 'joueur' ? statsEffectives(c).agi : c.agi) * 2 + alea(1, 10) }))
+        .map((c) => ({ c, init: (c.type === 'monstre' ? c.agi : statDe(c, 'agi')) * 2 + alea(1, 10) }))
         .sort((a, b) => b.init - a.init)
         .map((x) => x.c);
       el('combat-manche').textContent = cb.manchesMax
@@ -415,6 +444,12 @@ function infligerDegats(source, cible, brut, options = {}) {
   }
   if (cible.defense) d *= 0.5;
   if (cible.race === 'nain') d *= 0.9; // Peau de pierre
+  // v16 : les lignes de combat — un coup PHYSIQUE perd 40 % quand il part
+  // de la ligne arrière ou qu'il la vise. La magie ignore les lignes.
+  if (!options.magique) {
+    if (source.ligne === 'arriere') d *= 0.6;
+    if (cible.ligne === 'arriere') d *= 0.6;
+  }
   d = Math.max(1, Math.round(d));
 
   let absorbe = 0;
@@ -636,6 +671,14 @@ function rendreActions(j) {
   btnDefense.addEventListener('click', () => surActionChoisie(j, { genre: 'defense' }));
   barre.appendChild(btnDefense);
 
+  // v16 : changer de ligne est une action à part entière — elle consomme le tour.
+  const btnLigne = document.createElement('button');
+  btnLigne.className = 'btn-action';
+  const versArriere = j.ligne !== 'arriere';
+  btnLigne.innerHTML = `🔁 <strong>${versArriere ? 'Passer à l’arrière' : 'Passer à l’avant'}</strong><span class="action-detail">${versArriere ? 'Physique −40 % (donné ET subi)' : 'Pleine puissance, pleine exposition'} · consomme le tour</span>`;
+  btnLigne.addEventListener('click', () => surActionChoisie(j, { genre: 'ligne' }));
+  barre.appendChild(btnLigne);
+
   const statsJoueur = statsEffectives(j);
   j.competences.forEach((compId) => {
     const comp = COMPETENCES[compId];
@@ -712,7 +755,7 @@ function surActionChoisie(j, action) {
     else executerAction(j, action, cible);
   };
 
-  if (action.genre === 'defense' || action.genre === 'objet' || action.genre === 'fuite') {
+  if (action.genre === 'defense' || action.genre === 'objet' || action.genre === 'fuite' || action.genre === 'ligne') {
     lancer(null);
     return;
   }
@@ -746,11 +789,15 @@ function surActionChoisie(j, action) {
 function executerActionCoeur(j, action, cible) {
   const cb = etat.combat;
   if (action.genre === 'attaque') {
-    const s = statsEffectives(j);
+    const s = statsCombat(j);
     const brut = 3 + Math.max(s.for, s.agi);
     const r = infligerDegats(j, cible, brut);
     journal(`⚔️ ${j.nom} attaque ${cible.nom} : ${texteDegats(r)}`);
     gererMort(cible);
+  } else if (action.genre === 'ligne') {
+    // v16 : se déplacer est un tour à part entière.
+    j.ligne = j.ligne === 'arriere' ? 'avant' : 'arriere';
+    journal(`🔁 ${j.nom} se replace en ligne ${j.ligne === 'arriere' ? 'arrière (physique −40 %, donné et subi)' : 'avant'} !`);
   } else if (action.genre === 'defense') {
     j.defense = true;
     j.mp = Math.min(j.maxMp, j.mp + 3);
@@ -806,7 +853,7 @@ function lancerCompetence(j, compId, cible) {
   const cb = etat.combat;
   const comp = COMPETENCES[compId];
   if (comp.type === 'invocation') { lancerInvocation(j, compId); return; }
-  const s = statsEffectives(j);
+  const s = statsCombat(j);
   j.mp -= comp.coutMp;
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
 
@@ -821,7 +868,7 @@ function lancerCompetence(j, compId, cible) {
       for (let coup = 0; coup < (comp.coups || 1); coup++) {
         if (estMort(c)) break;
         const brut = (comp.puissance + s[comp.stat] * comp.ratio) * multRang;
-        const r = infligerDegats(j, c, brut, { critBonus: comp.critBonus || 0 });
+        const r = infligerDegats(j, c, brut, { critBonus: comp.critBonus || 0, magique: comp.stat === 'int' });
         journal(`→ ${c.nom} subit ${texteDegats(r)}`);
         gererMort(c);
         // Le drain soigne le lanceur même si le coup achève la cible ;
@@ -855,10 +902,8 @@ function lancerCompetence(j, compId, cible) {
 function lancerInvocation(j, compId) {
   const cb = etat.combat;
   const comp = COMPETENCES[compId];
-  if (cb.groupe) {
-    journal('🐾 Les invocations refusent de traverser les liaisons des expéditions en ligne.');
-    return;
-  }
+  // v16 : les invocations traversent désormais les expéditions en ligne —
+  // le chef héberge la simulation, la créature vit sur son écran.
   // v15.2 : l'Invocateur, maître des liens, entretient DEUX créatures à
   // la fois — tout autre héros n'en contrôle qu'une.
   const limite = j.classe === 'invocateur' ? 2 : 1;
@@ -873,7 +918,7 @@ function lancerInvocation(j, compId) {
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
 
   const modele = INVOCATIONS[comp.invocation];
-  const sm = statsEffectives(j);
+  const sm = statsCombat(j); // stats nivelées en groupe : la créature suit
   // Les stats de la créature sont des fractions de celles du maître —
   // et ne peuvent JAMAIS les dépasser.
   const stats = {};
@@ -904,6 +949,7 @@ function lancerInvocation(j, compId) {
     mort: false,
     race: null,
   };
+  inv.ligne = ligneParDefaut(inv); // v16 : la créature rejoint sa ligne naturelle
   cb.equipe.push(inv);
   cb.file.push(inv); // elle agit dès cette manche, en fin de file
   journal(`${comp.emoji} ${j.nom} invoque ${modele.emoji} ${modele.nom} ! (stats bridées aux siennes, 50 % de son mana — elle combattra seule jusqu'à sa mort ou la fin du combat)`);
@@ -954,7 +1000,7 @@ function tourInvocation(c) {
       for (let coup = 0; coup < (comp.coups || 1); coup++) {
         if (estMort(m)) break;
         const brut = comp.puissance + (s[comp.stat] || 0) * comp.ratio;
-        const r = infligerDegats(c, m, brut, { critBonus: comp.critBonus || 0 });
+        const r = infligerDegats(c, m, brut, { critBonus: comp.critBonus || 0, magique: comp.stat === 'int' });
         journal(`→ ${m.nom} subit ${texteDegats(r)}`);
         gererMort(m);
         if (comp.effet && (comp.effet.type === 'drain' || !estMort(m))) appliquerEffet(c, m, comp.effet, r);
@@ -1130,7 +1176,24 @@ function rendreCombat() {
   const zoneJ = el('zone-joueurs');
   const defilJ = zoneJ.scrollLeft;
   zoneJ.innerHTML = '';
-  cb.equipe.forEach((j) => zoneJ.appendChild(carteCombattant(j)));
+  // v16 : l'équipe se déploie sur deux lignes — avant et arrière.
+  const arriere = cb.equipe.filter((x) => x.ligne === 'arriere');
+  if (arriere.length === 0) {
+    cb.equipe.forEach((j) => zoneJ.appendChild(carteCombattant(j)));
+  } else {
+    [['avant', '⚔️ Ligne avant', cb.equipe.filter((x) => x.ligne !== 'arriere')],
+      ['arriere', '🏹 Ligne arrière · physique −40 % (donné et subi)', arriere]]
+      .forEach(([, libelle, groupe]) => {
+        const bloc = document.createElement('div');
+        bloc.className = 'ligne-combat';
+        bloc.innerHTML = `<div class="libelle-ligne">${libelle}</div>`;
+        const rangee = document.createElement('div');
+        rangee.className = 'rangee-cartes combat-rangee';
+        groupe.forEach((j) => rangee.appendChild(carteCombattant(j)));
+        bloc.appendChild(rangee);
+        zoneJ.appendChild(bloc);
+      });
+  }
   zoneJ.scrollLeft = defilJ;
   rendreJournal();
   // En mode ciblage, amener la première cible en vue.

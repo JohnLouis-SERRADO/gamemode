@@ -2781,6 +2781,27 @@ function verrousChronique(p, donjon) {
   return verrous;
 }
 
+// v16 : la liste des donjons qu'un héros a DÉBLOQUÉS — calculée sur son
+// propre appareil (verrous complets : niveau, stat, objet-clé, boss de
+// zone, prérequis d'épopée), puis embarquée dans l'instantané de groupe.
+function donjonDebloquePour(p, donjon) {
+  if (p.niveau < donjon.niveauMin) return false;
+  if (donjon.requiert && !(progresDonjon(p, donjon.requiert).fini > 0)) return false;
+  if (donjon.chronique && verrousChronique(p, donjon).length > 0) return false;
+  return true;
+}
+
+function donjonsDebloquesPour(p) {
+  return DONJONS.filter((d) => donjonDebloquePour(p, d)).map((d) => d.id);
+}
+
+// Le boss FINAL d'un donjon : la dernière étape de type « boss » du récit.
+function bossDeDonjon(donjon) {
+  let boss = null;
+  Object.values(donjon.etapes).forEach((etape) => { if (etape.type === 'boss') boss = etape; });
+  return boss;
+}
+
 function rendreCartesDonjons(conteneur, p) {
   const sections = [
     {

@@ -1419,6 +1419,23 @@ button:focus-visible,
   font-size: 1.05rem;
 }
 
+/* v16 — Deux lignes de combat côté équipe : avant et arrière. */
+.ligne-combat { flex-basis: 100%; }
+
+.libelle-ligne {
+  text-align: center;
+  color: var(--texte-doux);
+  font-size: 0.76rem;
+  margin: 4px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ligne-combat .rangee-cartes {
+  justify-content: center;
+  gap: 8px;
+}
+
 /* v14 — L'écran de la mort : crâne géant, pertes détaillées, destin. */
 #voile-mort, #voile-renaissance {
   position: fixed;

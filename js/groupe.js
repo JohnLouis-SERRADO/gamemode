@@ -31,6 +31,7 @@ function snapshotPourGroupe(p) {
     nom: p.nom,
     avatar: p.avatar,
     race: p.race || 'humain',
+    classe: p.classe || 'aventurier',
     niveau: p.niveau,
     statsEff: statsEffectives(p),
     maxHp: p.maxHp,
@@ -41,6 +42,10 @@ function snapshotPourGroupe(p) {
     rangs: p.rangs || {},
     bossVaincus: p.bossVaincus,
     familiers: p.familiers,
+    // v16 : la progression qui ouvre les expéditions de groupe.
+    tourMax: p.tourMax || 0,
+    tourBoss: p.tourBoss || { normal: 0, heroique: 0, cauchemar: 0 },
+    donjonsDebloques: typeof donjonsDebloquesPour === 'function' ? donjonsDebloquesPour(p) : [],
     potions: p.inventaire.filter((e) => OBJETS[e.id] && OBJETS[e.id].type === 'consommable')
       .map((e) => ({ id: e.id, qte: e.qte })),
   };
@@ -52,6 +57,7 @@ function creerJoueurDistant(m) {
     type: 'joueur', distant: true,
     id: 'distant-' + m.id, bid: m.id,
     nom: m.nom, avatar: m.avatar, race: m.race || 'humain', niveau: m.niveau,
+    classe: m.classe || 'aventurier',
     stats: { for: m.statsEff.for, int: m.statsEff.int, agi: m.statsEff.agi, vit: m.statsEff.vit, cha: m.statsEff.cha || 0 },
     statsEff: m.statsEff,
     maxHp: m.maxHp, maxMp: m.maxMp, hp: m.hp, mp: m.mp,
@@ -62,6 +68,43 @@ function creerJoueurDistant(m) {
     explorations: {}, bossVaincus: m.bossVaincus || [], familiers: m.familiers || [],
     pointsEnAttente: 0, competencesEnAttente: 0, po: 0, xp: 0,
   };
+}
+
+// =====================================================================
+// v16 : ce que le GROUPE a débloqué — toujours calé sur le moins avancé,
+// pour que l'expédition reste cohérente pour tout le monde.
+// =====================================================================
+function etageTourGroupe(membres) {
+  return Math.min(...membres.map((m) => m.tourMax || 0)) + 1;
+}
+
+function difficultesTourBossGroupe(membres) {
+  const dispo = ['normal'];
+  if (membres.every((m) => ((m.tourBoss || {}).normal || 0) >= 3)) dispo.push('heroique');
+  if (membres.every((m) => ((m.tourBoss || {}).heroique || 0) >= 3)) dispo.push('cauchemar');
+  return dispo;
+}
+
+function etageTourBossGroupe(membres, difficulte) {
+  return Math.min(...membres.map((m) => ((m.tourBoss || {})[difficulte]) || 0)) + 1;
+}
+
+function donjonsCommunsGroupe(membres) {
+  if (!membres.length) return [];
+  return membres.reduce(
+    (communs, m) => communs.filter((id) => (m.donjonsDebloques || []).includes(id)),
+    [...(membres[0].donjonsDebloques || [])],
+  );
+}
+
+// Le nivelage : chacun est bridé au niveau du moins aguerri du groupe.
+function nivelageGroupe(membres) {
+  const niveauBas = Math.min(...membres.map((m) => m.niveau || 1));
+  const facteurs = {};
+  membres.forEach((m) => {
+    if ((m.niveau || 1) > niveauBas) facteurs[m.id] = niveauBas / m.niveau;
+  });
+  return { niveauBas, facteurs: Object.keys(facteurs).length ? facteurs : null };
 }
 
 // =====================================================================
@@ -197,6 +240,21 @@ function rendreLobbyGroupe(ligne) {
     const ligneChoix = document.createElement('div');
     ligneChoix.className = 'rangee-boutons';
 
+    // v16 : cinq genres d'expédition — zones, tours et donjons débloqués.
+    const membres = ligne.membres;
+    const selectGenre = document.createElement('select');
+    selectGenre.className = 'select-groupe';
+    [['exploration', '🗡️ Explorer une zone'], ['boss', '👑 Boss de zone'],
+      ['tour', `🗼 Tour Sans Fin — étage ${etageTourGroupe(membres)}`],
+      ['tourBoss', `🏯 Tour des Boss`],
+      ['assautDonjon', '🏰 Assaut de donjon (boss final)']].forEach(([valeur, libelle]) => {
+      const option = document.createElement('option');
+      option.value = valeur;
+      option.textContent = libelle;
+      if (groupe.genreChoisi === valeur) option.selected = true;
+      selectGenre.appendChild(option);
+    });
+
     const selectZone = document.createElement('select');
     selectZone.className = 'select-groupe';
     ZONES.filter((z) => p.niveau >= z.niveauMin).forEach((z) => {
@@ -210,6 +268,7 @@ function rendreLobbyGroupe(ligne) {
 
     const selectDifficulte = document.createElement('select');
     selectDifficulte.className = 'select-groupe';
+    const difficultesBoss = difficultesTourBossGroupe(membres);
     Object.entries(DIFFICULTES).forEach(([cle, d]) => {
       const option = document.createElement('option');
       option.value = cle;
@@ -219,25 +278,62 @@ function rendreLobbyGroupe(ligne) {
     });
     selectDifficulte.addEventListener('change', () => { groupe.difficulteChoisie = selectDifficulte.value; });
 
-    const selectGenre = document.createElement('select');
-    selectGenre.className = 'select-groupe';
-    [['exploration', '🗡️ Explorer'], ['boss', '👑 Boss de zone']].forEach(([valeur, libelle]) => {
+    // Les donjons dont TOUTE l'équipe a ouvert les portes.
+    const communs = donjonsCommunsGroupe(membres);
+    const selectDonjon = document.createElement('select');
+    selectDonjon.className = 'select-groupe';
+    if (communs.length === 0) {
       const option = document.createElement('option');
-      option.value = valeur;
-      option.textContent = libelle;
-      if (groupe.genreChoisi === valeur) option.selected = true;
-      selectGenre.appendChild(option);
-    });
-    selectGenre.addEventListener('change', () => { groupe.genreChoisi = selectGenre.value; });
+      option.textContent = '🔒 Aucun donjon débloqué par toute l’équipe';
+      option.disabled = true;
+      option.selected = true;
+      selectDonjon.appendChild(option);
+    } else {
+      communs.forEach((id) => {
+        const d = DONJONS_PAR_ID[id];
+        if (!d) return;
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = `${d.emoji} ${d.nom}`;
+        if (groupe.donjonChoisi === id) option.selected = true;
+        selectDonjon.appendChild(option);
+      });
+    }
+    selectDonjon.addEventListener('change', () => { groupe.donjonChoisi = selectDonjon.value; });
 
+    const aideGenre = document.createElement('p');
+    aideGenre.className = 'aide';
+    const majVisibilite = () => {
+      const genre = groupe.genreChoisi;
+      selectZone.classList.toggle('cache', genre !== 'exploration' && genre !== 'boss');
+      selectDifficulte.classList.toggle('cache', genre !== 'exploration' && genre !== 'boss' && genre !== 'tourBoss');
+      selectDonjon.classList.toggle('cache', genre !== 'assautDonjon');
+      if (genre === 'tour') {
+        aideGenre.textContent = `🗼 L'équipe grimpe ensemble : l'étage ${etageTourGroupe(membres)} (celui du moins avancé). Victoire = le record de chacun progresse.`;
+      } else if (genre === 'tourBoss') {
+        aideGenre.textContent = `🏯 Étage ${etageTourBossGroupe(membres, groupe.difficulteChoisie)} — difficultés ouvertes à toute l'équipe : ${difficultesBoss.map((d) => DIFFICULTES[d].nom).join(', ')}. Niveau 10 requis pour chacun.`;
+      } else if (genre === 'assautDonjon') {
+        aideGenre.textContent = communs.length
+          ? '🏰 Affrontez ensemble le boss final d’un donjon que TOUTE l’équipe a débloqué (l’histoire, elle, se vit en solo).'
+          : '🏰 Personne ne partage encore de donjon débloqué — progressez chacun dans vos histoires !';
+      } else {
+        aideGenre.textContent = '⚖️ En groupe, les plus aguerris sont bridés au niveau du moins avancé — et la défaite est MORTELLE (vraie mort, comme en solo).';
+      }
+    };
+    selectGenre.addEventListener('change', () => { groupe.genreChoisi = selectGenre.value; majVisibilite(); });
+    selectDifficulte.addEventListener('change', majVisibilite);
+    majVisibilite();
+
+    ligneChoix.appendChild(selectGenre);
     ligneChoix.appendChild(selectZone);
     ligneChoix.appendChild(selectDifficulte);
-    ligneChoix.appendChild(selectGenre);
+    ligneChoix.appendChild(selectDonjon);
     panneauLancement.appendChild(ligneChoix);
+    panneauLancement.appendChild(aideGenre);
 
     const lancer = document.createElement('button');
     lancer.className = 'btn-principal';
-    lancer.textContent = '⚔️ Lancer le combat';
+    lancer.textContent = '⚔️ Lancer l’expédition';
     lancer.addEventListener('click', () => lancerExpeditionGroupe(ligne));
     panneauLancement.appendChild(lancer);
     zone.appendChild(panneauLancement);
@@ -258,16 +354,104 @@ function rendreLobbyGroupe(ligne) {
 async function lancerExpeditionGroupe(ligne) {
   const groupe = etat.groupeLigne;
   const p = persoActif();
+  const genre = groupe.genreChoisi;
+  const membres = ligne.membres;
   const zone = zonePar(groupe.zoneChoisie) || ZONES[0];
-  if (!difficulteDebloquee(p, zone, groupe.difficulteChoisie)) {
-    afficherToast(`${DIFFICULTES[groupe.difficulteChoisie].emoji} Difficulté non débloquée pour cette zone (par le chef).`);
-    return;
+  const nbHeros = membres.length;
+  const multEquipe = 1 + 0.35 * (nbHeros - 1);
+  const multAtkEquipe = 1 + 0.1 * (nbHeros - 1);
+
+  // v16 : composer l'expédition selon le genre — toujours calée sur le
+  // moins avancé du groupe ("débloqué par TOUTE l'équipe").
+  let defs;
+  let genreCombat = 'exploration';
+  let zoneCombat = zone;
+  let difficulte = groupe.difficulteChoisie;
+  let titre = null;
+  let intro = null;
+  let groupeExtra = null;
+
+  if (genre === 'exploration' || genre === 'boss') {
+    if (!difficulteDebloquee(p, zone, difficulte)) {
+      afficherToast(`${DIFFICULTES[difficulte].emoji} Difficulté non débloquée pour cette zone (par le chef).`);
+      return;
+    }
+    const mult = DIFFICULTES[difficulte] || DIFFICULTES.normal;
+    const cles = genre === 'boss' ? [zone.boss] : composerPack(zone, tailleDuPack(membres));
+    defs = cles.map((cle) => ({
+      ...MONSTRES[cle], cle,
+      hp: Math.round(MONSTRES[cle].hp * mult.hp),
+      atk: Math.round(MONSTRES[cle].atk * mult.atk),
+    }));
+    genreCombat = genre === 'boss' ? 'boss' : 'exploration';
+  } else if (genre === 'tour') {
+    const etage = etageTourGroupe(membres);
+    const z = zonePourEtage(etage);
+    const multTour = 1 + etage * 0.06;
+    const cles = etage % 5 === 0 ? [z.boss] : composerPack(z, tailleDuPack(membres));
+    defs = cles.map((cle) => ({
+      ...MONSTRES[cle], cle,
+      hp: Math.round(MONSTRES[cle].hp * multTour),
+      atk: Math.round(MONSTRES[cle].atk * multTour),
+    }));
+    genreCombat = 'exploration';
+    zoneCombat = z;
+    difficulte = 'normal';
+    titre = `🗼 Tour Sans Fin — Étage ${etage} (groupe)`;
+    intro = `L'équipe grimpe ensemble : l'étage ${etage}, celui du moins avancé. Victoire = le record de chacun progresse !`;
+    groupeExtra = { tourEtage: etage };
+  } else if (genre === 'tourBoss') {
+    if (membres.some((m) => (m.niveau || 1) < 10)) {
+      afficherToast('🏯 La Tour des Boss exige le niveau 10 — pour CHAQUE membre du groupe.');
+      return;
+    }
+    const dispo = difficultesTourBossGroupe(membres);
+    if (!dispo.includes(difficulte)) difficulte = dispo[dispo.length - 1];
+    const etage = etageTourBossGroupe(membres, difficulte);
+    const diff = DIFFICULTES[difficulte];
+    const cle = CYCLE_TOUR_BOSS[(etage - 1) % CYCLE_TOUR_BOSS.length];
+    const cycle = Math.floor((etage - 1) / CYCLE_TOUR_BOSS.length);
+    const base = MONSTRES[cle];
+    defs = [{
+      ...base, cle,
+      nom: cycle > 0 ? `${base.nom} transcendé` : base.nom,
+      hp: Math.round(base.hp * diff.hp * (1 + etage * 0.08 + cycle * 0.6) * multEquipe),
+      atk: Math.round(base.atk * diff.atk * (1 + etage * 0.03) * multAtkEquipe),
+    }];
+    genreCombat = 'boss';
+    zoneCombat = null;
+    titre = `🏯 Tour des Boss — Étage ${etage} (groupe)`;
+    intro = `${defs[0].nom} garde l'étage ${etage}. L'équipe grimpe depuis le record du moins avancé.`;
+    groupeExtra = { tourBoss: { etage, difficulte } };
+  } else if (genre === 'assautDonjon') {
+    const communs = donjonsCommunsGroupe(membres);
+    const idDonjon = communs.includes(groupe.donjonChoisi) ? groupe.donjonChoisi : communs[0];
+    const donjon = idDonjon ? DONJONS_PAR_ID[idDonjon] : null;
+    if (!donjon) {
+      afficherToast('🏰 Aucun donjon n’est débloqué par TOUTE l’équipe.');
+      return;
+    }
+    const boss = bossDeDonjon(donjon);
+    if (!boss) { afficherToast('🏰 Ce donjon n’a pas de boss à assaillir.'); return; }
+    const base = defMonstreDonjon(boss.monstre);
+    defs = [{
+      ...base, cle: boss.monstre,
+      hp: Math.round(base.hp * multEquipe),
+      atk: Math.round(base.atk * multAtkEquipe),
+    }];
+    genreCombat = 'boss';
+    zoneCombat = null;
+    difficulte = 'normal';
+    titre = `🏰 ${donjon.emoji} ${donjon.nom} — l'assaut du boss`;
+    intro = boss.intro || 'Le maître du donjon vous attend de pied ferme.';
+    groupeExtra = { assautDonjon: donjon.id };
   }
+
   const ok = await apiRequete('/rest/v1/rpc/groupe_lancer', {
     methode: 'POST',
     corps: {
       p_id: p.cloud.id, p_token: p.cloud.token, p_groupe: groupe.id,
-      p_zone: zone.id, p_difficulte: groupe.difficulteChoisie, p_genre: groupe.genreChoisi,
+      p_zone: zone.id, p_difficulte: difficulte, p_genre: genre,
     },
   }).catch(() => null);
   if (!ok) { afficherToast('Lancement impossible.'); return; }
@@ -275,28 +459,29 @@ async function lancerExpeditionGroupe(ligne) {
   groupe.seqTraite = 0;
 
   // Le chef héberge le combat : son vrai héros + les instantanés distants.
-  const membres = (await lireGroupe(groupe.id)).membres;
-  const equipe = membres.map((m) => {
+  const membresFrais = (await lireGroupe(groupe.id)).membres;
+  const equipe = membresFrais.map((m) => {
     if (m.id === p.cloud.id) { p.bid = p.cloud.id; return p; }
     return creerJoueurDistant(m);
   });
-  const mult = DIFFICULTES[groupe.difficulteChoisie] || DIFFICULTES.normal;
-  const cles = groupe.genreChoisi === 'boss'
-    ? [zone.boss]
-    : composerPack(zone, tailleDuPack(equipe));
-  const defs = cles.map((cle) => ({
-    ...MONSTRES[cle], cle,
-    hp: Math.round(MONSTRES[cle].hp * mult.hp),
-    atk: Math.round(MONSTRES[cle].atk * mult.atk),
-  }));
+  // v16 : le nivelage — chacun est bridé au niveau du moins aguerri.
+  const nivelage = nivelageGroupe(membresFrais);
   demarrerCombat({
-    genre: groupe.genreChoisi === 'boss' ? 'boss' : 'exploration',
-    zone,
-    difficulte: groupe.difficulteChoisie,
+    genre: genreCombat,
+    zone: zoneCombat,
+    difficulte,
+    titre,
+    intro,
     monstresDef: defs,
     equipe,
     groupe: { id: groupe.id, hote: true, seqTraite: 0 },
+    groupeExtra,
+    nivelage: nivelage.facteurs,
   });
+  if (nivelage.facteurs) {
+    journal(`⚖️ L'équipe se cale sur le niveau ${nivelage.niveauBas} : les plus aguerris brident leur puissance.`);
+    rendreCombat();
+  }
 }
 
 // =====================================================================
@@ -316,10 +501,12 @@ function serialiserCombat(cb) {
       hp: m.hp, maxHp: m.maxHp, statuts: m.statuts, mort: m.mort, boss: !!m.boss,
     })),
     equipe: cb.equipe.map((j) => ({
-      bid: j.bid, nom: j.nom, avatar: j.avatar, race: j.race, niveau: j.niveau,
+      type: j.type, bid: j.bid || null, maitre: j.maitre || null,
+      nom: j.nom, avatar: j.avatar, emoji: j.emoji || null,
+      race: j.race, niveau: j.niveau, ligne: j.ligne || null,
       hp: j.hp, maxHp: j.maxHp, mp: j.mp, maxMp: j.maxMp,
-      statsEff: statsEffectives(j),
-      statuts: j.statuts, ko: j.ko, defense: j.defense,
+      statsEff: j.type === 'invocation' ? j.stats : statsCombat(j),
+      statuts: j.statuts, ko: j.ko, mort: j.mort || false, defense: j.defense,
       cooldowns: j.cooldowns, competences: j.competences,
       potions: (j.inventaire || [])
         .filter((e) => OBJETS[e.id] && OBJETS[e.id].type === 'consommable')
@@ -422,13 +609,19 @@ function apresCombatGroupeHote(cb, type) {
   const p = persoActif();
   const lignes = [];
   const recompenses = {};
+  // v16 : les invocations ne comptent ni dans le partage ni dans les gains.
+  cb.equipe = cb.equipe.filter((j) => j.type !== 'invocation');
   const partage = cb.equipe.length;
+  const extra = cb.groupeExtra || {};
 
   if (type === 'victoire') {
     const butin = tirerButinCombat(cb);
     const bonusGroupe = partage > 1 ? 1.15 : 1;
-    const xpParHeros = Math.max(1, Math.round((butin.xp / partage) * bonusGroupe));
-    const poParHeros = Math.max(0, Math.round(butin.po / partage));
+    // Les tours paient leur prime d'étage, comme en solo.
+    const multEtage = extra.tourEtage ? 1 + extra.tourEtage * 0.12
+      : (extra.tourBoss ? 1 + extra.tourBoss.etage * 0.15 : 1);
+    const xpParHeros = Math.max(1, Math.round((butin.xp * multEtage / partage) * bonusGroupe));
+    const poParHeros = Math.max(0, Math.round(butin.po * multEtage / partage));
     lignes.push(`⭐ +${xpParHeros} XP par héros`);
     lignes.push(`💰 +${poParHeros} pièces d'or par héros`);
     const parts = {};
@@ -457,14 +650,23 @@ function apresCombatGroupeHote(cb, type) {
         recompenses[j.bid].bossVaincu = cb.zone.id;
         recompenses[j.bid].familier = coffre.familier;
       }
+      // v16 : les tours gravées en groupe font progresser le record de CHACUN.
+      if (extra.tourEtage) recompenses[j.bid].tourEtage = extra.tourEtage;
+      if (extra.tourBoss) recompenses[j.bid].tourBoss = extra.tourBoss;
     });
+    if (extra.tourEtage) lignes.push(`🗼 Étage ${extra.tourEtage} gravé ensemble : le record de chacun progresse !`);
+    if (extra.tourBoss) lignes.push(`🏯 Étage ${extra.tourBoss.etage} (${DIFFICULTES[extra.tourBoss.difficulte].nom}) vaincu ensemble : record pour chacun !`);
+    if (extra.assautDonjon && DONJONS_PAR_ID[extra.assautDonjon]) {
+      lignes.push(`🏰 Le boss de « ${DONJONS_PAR_ID[extra.assautDonjon].nom} » est tombé sous l'assaut du groupe !`);
+    }
   } else if (type === 'defaite') {
-    lignes.push('💫 Le groupe est vaincu… Chacun se réveille à l’auberge (−10 % de ses po).');
+    // v16 : la défaite en groupe est MORTELLE — la vraie mort, comme en
+    // solo, appliquée par chaque écran sur son propre héros.
+    lignes.push('💀 Le groupe est anéanti… La mort prend son dû sur chaque écran : équipement porté, familier, la moitié de la bourse et un niveau.');
     cb.equipe.forEach((j) => {
       recompenses[j.bid] = {
         xp: 0, po: 0, objets: {}, defaite: true,
         potionsConsommees: (cb.consosDistantes && cb.consosDistantes[j.bid]) || {},
-        hpFinal: Math.max(1, Math.round(j.maxHp * 0.5)), mpFinal: Math.round(j.maxMp * 0.5),
       };
     });
   } else {
@@ -494,6 +696,15 @@ function apresCombatGroupeHote(cb, type) {
 
 function appliquerRecompenseGroupe(p, recompense) {
   if (!recompense) return;
+  // v16 : la défaite du groupe déclenche la vraie mort — pertes
+  // définitives, écran au crâne et retour dans le passé, comme en solo.
+  if (recompense.defaite) {
+    Object.entries(recompense.potionsConsommees || {}).forEach(([id, qte]) => retirerObjet(p, id, qte));
+    const bilan = appliquerMortHeros(p);
+    rendreTopbar();
+    afficherEcranMort([bilan], ['💀 L’expédition du groupe a été anéantie.']);
+    return;
+  }
   if (recompense.bossVaincu && !p.bossVaincus.includes(recompense.bossVaincu)) {
     p.bossVaincus.push(recompense.bossVaincu);
   }
@@ -506,9 +717,18 @@ function appliquerRecompenseGroupe(p, recompense) {
     progresserQuete(p, 'monstres', recompense.nbMonstres);
   }
   if (recompense.bossVaincu) progresserQuete(p, 'boss', 1);
+  // v16 : les tours gravées en groupe font progresser les records solo.
+  if (recompense.tourEtage) {
+    if (p.tourMax < recompense.tourEtage) p.tourMax = recompense.tourEtage;
+    progresserQuete(p, 'tour', 1);
+  }
+  if (recompense.tourBoss && p.tourBoss) {
+    const { etage, difficulte } = recompense.tourBoss;
+    if ((p.tourBoss[difficulte] || 0) < etage) p.tourBoss[difficulte] = etage;
+    progresserQuete(p, 'tourBoss', 1);
+  }
   p.compteurs.orTotal += Math.max(0, recompense.po || 0);
   p.po += recompense.po || 0;
-  if (recompense.defaite) p.po = Math.max(0, p.po - Math.round(p.po * 0.1));
   Object.entries(recompense.objets || {}).forEach(([id, qte]) => ajouterObjet(p, id, qte));
   Object.entries(recompense.potionsConsommees || {}).forEach(([id, qte]) => retirerObjet(p, id, qte));
   const niveaux = gagnerXp(p, recompense.xp || 0);
@@ -601,11 +821,11 @@ function majCombatDistant(recu) {
   cb.enAttenteDe = recu.enAttenteDe;
   cb.journalLignes = recu.journal || [];
   cb.monstres = (recu.monstres || []).map((m) => ({ ...m, type: 'monstre' }));
-  cb.equipe = (recu.equipe || []).map((j) => ({
-    ...j, type: 'joueur', id: j.bid,
+  cb.equipe = (recu.equipe || []).map((j, index) => ({
+    ...j, type: j.type || 'joueur', id: j.bid || `c${index}`,
     inventaire: (j.potions || []).map((e) => ({ ...e })),
   }));
-  cb.actif = cb.equipe.find((j) => j.bid === recu.enAttenteDe) || null;
+  cb.actif = cb.equipe.find((j) => j.type === 'joueur' && j.bid === recu.enAttenteDe) || null;
 
   if (!el('ecran-combat').classList.contains('actif')) montrerEcran('ecran-combat');
   el('combat-titre').textContent = recu.titre || 'Expédition de groupe';
