@@ -22,7 +22,8 @@ Le tout en JavaScript pur, sans dépendance ni étape de build, jouable dans n'i
 - **Farmer et crafter** : ~4 500 objets en 7 raretés (jusqu'à Divin), panoplies à bonus de set (2/4 pièces), **craft en chaîne** (récolte brute → matériaux raffinés → grandes séries d'équipement, dont une série qui exige les trois métiers).
 - **Grimper les tours** : la Tour Sans Fin (étages infinis, sans soins) et la **Tour des Boss** (16 boss, difficultés Normal/Héroïque/Cauchemar).
 - **Se retrouver à la taverne** : 💬 chat, 🏆 classement (avec **fiche publique complète** de chaque héros), 🌍 boss du monde à barre de vie partagée, 🤝 comptoir d'échange entre joueurs.
-- **31+ hauts faits** à titres portables, familiers à bonus passifs, jouable sur plusieurs appareils via un code de sauvegarde.
+- **Craindre la mort** : une expédition qui tombe, c'est la mort — l'équipement porté est **perdu à jamais**, le familier qui accompagnait le héros **meurt avec lui**, la moitié de la bourse s'évapore et **10 niveaux s'effacent** (avec leurs points de caractéristiques). Puis la ville, le repos… et la révélation : mourir renvoie dans le passé, là où le destin peut encore s'écrire autrement — car les compétences, métiers et hauts faits, eux, survivent au voyage.
+- **36 hauts faits** à titres portables, familiers à bonus passifs, jouable sur plusieurs appareils via un code de sauvegarde.
 
 ## 🌍 Multijoueur : comment ça marche
 

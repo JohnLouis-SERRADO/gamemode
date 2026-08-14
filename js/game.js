@@ -305,6 +305,144 @@ function normaliserPerso(p) {
 }
 
 // =====================================================================
+// v14 — LA MORT. Quand une expédition tombe, chaque héros paie le prix :
+// l'équipement porté est perdu à jamais, le familier qui l'accompagnait
+// meurt, la moitié de la bourse s'évapore, et dix niveaux s'effacent —
+// avec les points de caractéristiques qui allaient avec. Puis la ville,
+// le repos… et la compréhension : mourir renvoie dans le passé, là où
+// le destin peut encore s'écrire autrement.
+// =====================================================================
+function appliquerMortHeros(m) {
+  const bilan = {
+    nom: m.nom, avatar: m.avatar,
+    objets: [], familier: null, po: 0,
+    niveauAvant: m.niveau, niveauApres: m.niveau,
+  };
+
+  // L'équipement porté disparaît, définitivement.
+  Object.keys(m.equipement).forEach((slot) => {
+    const id = m.equipement[slot];
+    if (id && OBJETS[id]) bilan.objets.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}`);
+    m.equipement[slot] = null;
+  });
+
+  // Le familier qui l'accompagnait meurt avec lui.
+  const compagnon = familierActif(m);
+  if (compagnon) {
+    bilan.familier = `${compagnon.emoji} ${compagnon.nom}`;
+    m.familiers = m.familiers.filter((id) => id !== m.familier);
+    m.familier = null;
+  }
+
+  // La moitié de la bourse s'évapore.
+  bilan.po = Math.floor(m.po / 2);
+  m.po -= bilan.po;
+
+  // Dix niveaux s'effacent — et leurs points de caractéristiques.
+  const apres = Math.max(1, m.niveau - 10);
+  const niveauxPerdus = m.niveau - apres;
+  if (niveauxPerdus > 0) {
+    let aRetirer = POINTS_PAR_NIVEAU * niveauxPerdus;
+    const surAttente = Math.min(m.pointsEnAttente || 0, aRetirer);
+    m.pointsEnAttente -= surAttente;
+    aRetirer -= surAttente;
+    while (aRetirer > 0) {
+      let plusHaute = null;
+      Object.keys(CARACS).forEach((cle) => {
+        if (m.stats[cle] > STAT_BASE && (plusHaute === null || m.stats[cle] > m.stats[plusHaute])) plusHaute = cle;
+      });
+      if (plusHaute === null) break;
+      m.stats[plusHaute]--;
+      aRetirer--;
+    }
+    m.niveau = apres;
+    m.xp = seuilXp(apres);
+  }
+  bilan.niveauApres = m.niveau;
+
+  // Le corps, lui, se remettra : on se réveille reposé en ville.
+  m.statuts = [];
+  bornerVie(m);
+  m.hp = m.maxHp;
+  m.mp = m.maxMp;
+  sauvegarder(m);
+  return bilan;
+}
+
+function traiterMortEquipe(cb, lignesContexte) {
+  const bilans = cb.equipe.map((m) => appliquerMortHeros(m));
+  rendreTopbar();
+  afficherEcranMort(bilans, lignesContexte || []);
+}
+
+// L'écran de la mort : un crâne en grand, et le décompte de ce qui part.
+function afficherEcranMort(bilans, lignesContexte) {
+  const ancien = document.getElementById('voile-mort');
+  if (ancien) ancien.remove();
+  const voile = document.createElement('div');
+  voile.id = 'voile-mort';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-mort';
+  const pertes = bilans.map((b) => `
+    <div class="panneau pertes-mort">
+      <div class="objet-entete">${b.avatar} <strong>${echapper(b.nom)}</strong> — niveau ${b.niveauAvant} ➜ ${b.niveauApres}</div>
+      ${b.objets.length
+    ? `<div class="ligne-butin">🛡️ Équipement perdu à jamais : ${b.objets.join(', ')}</div>`
+    : '<div class="ligne-butin">🛡️ Aucun équipement porté — rien que la mort puisse prendre.</div>'}
+      ${b.familier ? `<div class="ligne-butin">🐾 ${b.familier} meurt aux côtés de son maître.</div>` : ''}
+      <div class="ligne-butin">💰 −${formatNombre(b.po)} po — la moitié de la bourse.</div>
+      <div class="ligne-butin">⬇️ ${b.niveauAvant - b.niveauApres} niveau${b.niveauAvant - b.niveauApres > 1 ? 'x' : ''} perdu${b.niveauAvant - b.niveauApres > 1 ? 's' : ''}, et les points de caractéristiques qui allaient avec.</div>
+    </div>`).join('');
+  modale.innerHTML = `
+    <div class="crane-mort">💀</div>
+    <h2 class="titre-mort">La mort vous a trouvés.</h2>
+    ${lignesContexte.map((l) => `<p class="sous-titre">${l}</p>`).join('')}
+    ${pertes}
+    <p class="aide">Ce qui est perdu est perdu. Ce qui est appris — compétences, métiers, hauts faits — reste à jamais.</p>`;
+  const bouton = document.createElement('button');
+  bouton.className = 'btn-principal';
+  bouton.id = 'mort-accepter';
+  bouton.textContent = '⚰️ Accepter son destin ➜';
+  bouton.addEventListener('click', () => {
+    voile.remove();
+    naviguer('ville');
+    afficherRenaissance(bilans);
+  });
+  modale.appendChild(bouton);
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
+// Le réveil en ville : la mort n'était qu'un voyage dans le passé.
+function afficherRenaissance(bilans) {
+  const noms = bilans.map((b) => b.nom);
+  const nom = noms.length > 1 ? `${noms.slice(0, -1).join(', ')} et ${noms[noms.length - 1]}` : noms[0];
+  const accord = noms.length > 1 ? 'comprennent' : 'comprend';
+  const voile = document.createElement('div');
+  voile.id = 'voile-renaissance';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-renaissance';
+  modale.innerHTML = `
+    <div class="crane-mort">🕯️</div>
+    <h2>Le réveil</h2>
+    <p>${echapper(nom)} retourne en ville et se repose — un sommeil noir, sans rêves, long comme une saison.</p>
+    <p>Au réveil, la bourse est plus légère, le sac aussi… et pourtant les rues semblent plus jeunes, les visages moins marqués,
+    les affiches de la Guilde annoncent des contrats d'il y a longtemps. Alors ${echapper(nom)} ${accord} :
+    <strong>mourir n'est pas une fin — c'est un retour dans le passé</strong>, dix niveaux en arrière,
+    au temps où le destin pouvait encore s'écrire autrement.</p>
+    <p>Les souvenirs, eux, ont fait le voyage : chaque compétence apprise, chaque métier maîtrisé, chaque leçon durement payée.
+    Cette fois, l'histoire ne se répétera pas. Cette fois, elle sera mieux écrite.</p>`;
+  const bouton = document.createElement('button');
+  bouton.className = 'btn-principal';
+  bouton.id = 'renaissance-fermer';
+  bouton.textContent = '🌅 Se relever et réécrire l’histoire';
+  bouton.addEventListener('click', () => voile.remove());
+  modale.appendChild(bouton);
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
+// =====================================================================
 // Métiers de récolte (v12) : mineur / tanneur / tisseur montent en
 // niveau à force de pratiquer — meilleures quantités, meilleures prises.
 // =====================================================================

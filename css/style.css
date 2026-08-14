@@ -1370,6 +1370,58 @@ button:focus-visible,
   box-shadow: 0 0 8px rgba(212, 167, 44, 0.35);
 }
 
+/* v14 — L'écran de la mort : crâne géant, pertes détaillées, destin. */
+#voile-mort, #voile-renaissance {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 4, 6, 0.94);
+  z-index: 90;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 12px;
+  overflow-y: auto;
+}
+
+.modale-mort {
+  border-color: #8b1a1a;
+  box-shadow: 0 0 40px rgba(139, 26, 26, 0.45);
+  text-align: center;
+}
+
+.modale-mort .pertes-mort {
+  text-align: left;
+  border-left: 4px solid #8b1a1a;
+  margin: 10px 0;
+}
+
+.crane-mort {
+  font-size: 110px;
+  line-height: 1.1;
+  text-align: center;
+  filter: drop-shadow(0 6px 18px rgba(139, 26, 26, 0.6));
+  animation: pulsation-mort 1.6s ease-in-out infinite;
+}
+
+@keyframes pulsation-mort {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
+}
+
+.titre-mort { color: #e05252; }
+
+.modale-renaissance {
+  border-color: #d4a72c;
+  text-align: left;
+}
+
+.modale-renaissance .crane-mort {
+  font-size: 72px;
+  animation: none;
+}
+
+.modale-renaissance p { margin: 10px 0; }
+
 /* Fenêtre obligatoire du niveau 5 : le choix de la sous-classe. */
 #voile-specialite {
   position: fixed;

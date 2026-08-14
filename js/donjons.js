@@ -3326,19 +3326,13 @@ function apresVictoireDonjon(cb) {
 
 function apresDefaiteDonjon(cb) {
   if (cb.ascension) { apresDefaiteAscension(cb); return; }
-  cb.equipe.forEach((m) => {
-    m.hp = Math.max(1, Math.round(m.maxHp * 0.5));
-    m.mp = Math.max(0, Math.round(m.maxMp * 0.5));
-    nettoyerApresCombat(m);
-    sauvegarder(m);
-  });
+  cb.equipe.forEach((m) => nettoyerApresCombat(m));
+  const nomDonjon = etat.donjon ? etat.donjon.donjon.nom : 'du donjon';
   etat.donjon = null;
-  afficherButin({
-    titre: '💫 Repoussés…',
-    texte: 'Une force obscure vous rejette hors du donjon. Votre progression est sauvegardée : revenez plus forts, l’histoire vous attend au même chapitre.',
-    lignes: ['📖 Reprenez l’aventure depuis la carte, au dernier chapitre atteint.'],
-    retour: 'carte',
-  });
+  // v14 : tomber dans une histoire, c'est mourir dedans.
+  traiterMortEquipe(cb, [
+    `📖 « ${nomDonjon} » garde votre progression : l'histoire vous attend au dernier chapitre atteint.`,
+  ]);
 }
 
 // =====================================================================
@@ -3601,19 +3595,12 @@ function apresVictoireAscension(cb) {
 function apresDefaiteAscension(cb) {
   const a = etat.ascension;
   etat.ascension = null;
-  cb.equipe.forEach((m) => {
-    m.hp = Math.max(1, Math.round(m.maxHp * 0.3));
-    m.mp = Math.max(0, Math.round(m.maxMp * 0.3));
-    nettoyerApresCombat(m);
-    sauvegarder(m);
-  });
+  cb.equipe.forEach((m) => nettoyerApresCombat(m));
   const record = recordAscension(persoActif(), a.donjon.id);
-  afficherButin({
-    titre: '💀 L’Ascension vous a repris…',
-    texte: `L'étage ${a.etage} de « ${a.donjon.nom} » a eu raison de votre expédition. Le donjon, lui, continue de monter — il vous attend.`,
-    lignes: [`⛰️ Record conservé : étage ${record}.`],
-    retour: 'carte',
-  });
+  // v14 : l'Ascension tient sa promesse — on y grimpe jusqu'à la MORT.
+  traiterMortEquipe(cb, [
+    `⛰️ L'étage ${a.etage} de « ${a.donjon.nom} » a eu raison de votre expédition. Record conservé : étage ${record}.`,
+  ]);
 }
 
 // =====================================================================

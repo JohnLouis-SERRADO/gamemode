@@ -948,31 +948,18 @@ function apresDefaite(cb) {
     return;
   }
   if (cb.genre === 'donjon') { apresDefaiteDonjon(cb); return; }
+  const lignesContexte = [];
   if (cb.genre === 'tour' && etat.tour) {
-    afficherToast(`🗼 La Tour vous recrache à l'étage ${cb.tourEtage}… Record : ${persoActif().tourMax}.`);
+    lignesContexte.push(`🗼 La Tour Sans Fin garde votre record : étage ${persoActif().tourMax}.`);
     etat.tour = null;
   }
   if (cb.genre === 'tourBoss' && etat.tourBoss) {
-    afficherToast(`🏯 Le boss de l'étage ${etat.tourBoss.etage} vous renvoie au pied de la Tour…`);
+    lignesContexte.push(`🏯 Le boss de l'étage ${etat.tourBoss.etage} de la Tour des Boss a eu le dernier mot.`);
     etat.tourBoss = null;
   }
-  const membres = cb.equipe;
-  const lignes = [];
-  membres.forEach((m) => {
-    const perte = Math.round(m.po * 0.1);
-    m.po -= perte;
-    m.hp = Math.max(1, Math.round(m.maxHp * 0.5));
-    m.mp = Math.max(0, Math.round(m.maxMp * 0.5));
-    nettoyerApresCombat(m);
-    sauvegarder(m);
-    if (perte > 0) lignes.push(`💸 ${m.avatar} ${m.nom} perd ${perte} po dans la déroute.`);
-  });
-  afficherButin({
-    titre: '💫 Défaite…',
-    texte: 'Des mains secourables vous ramènent au Bourg de Valciel. L’aubergiste ne pose pas de questions.',
-    lignes: lignes.length ? lignes : ['Vous vous réveillez à l’auberge, un peu sonnés mais entiers.'],
-    retour: 'ville',
-  });
+  // v14 : une expédition qui tombe, c'est la MORT — et la mort a un prix.
+  cb.equipe.forEach((m) => nettoyerApresCombat(m));
+  traiterMortEquipe(cb, lignesContexte);
 }
 
 function apresFuite(cb) {
