@@ -1,28 +1,32 @@
 # ⚔️ GameMode — Les Royaumes de Valciel
 
-Un **RPG tour par tour dans l'esprit d'un MMORPG** (façon Final Fantasy XIV, en tout petit) : monde persistant, personnages sauvegardés, zones par niveau, équipement, artisanat… et un **multijoueur asynchrone** — chacun joue quand il veut, seul ou avec les autres.
+Un **RPG tour par tour dans l'esprit d'un MMORPG** (façon Final Fantasy XIV, en tout petit) : monde persistant, personnages sauvegardés, zones par niveau, donjons d'histoire façon *Donjons & Dragons*, artisanat par métiers… et un **multijoueur asynchrone** — chacun joue quand il veut, seul ou avec les autres.
 
 Le tout en JavaScript pur, sans dépendance ni étape de build, jouable dans n'importe quel navigateur — mobile compris.
 
+🕹️ **Jouer** : https://johnlouis-serrado.github.io/gamemode/
+
 ## 🎮 Ce qu'on y fait
 
-- **Créer son héros** : nom, avatar, 10 points de caractéristiques (Force 💪, Intelligence 🧠, Agilité 🏃, Vitalité ❤️) et **4 compétences choisies librement** parmi 18. Les héros sont **persistants** : sauvegardés sur l'appareil et, quand le monde en ligne est joignable, dans le cloud.
-- **Explorer la carte** : 6 zones débloquées par niveau (des Plaines de l'Aube niv. 1 au Cœur des Profondeurs niv. 18), chacune avec ses créatures, ses matériaux à récolter et son **boss de zone**.
-- **Combattre au tour par tour** : initiative, critiques, effets de statut, potions en plein combat, fuite… En **solo** ou jusqu'à **3 héros sur le même écran** (on se passe la main à chaque tour).
-- **S'équiper** : 6 emplacements (arme, tête, torse, jambes, 2 accessoires), une cinquantaine d'objets qui améliorent réellement les stats.
-- **Ville de Valciel** : boutique (achat/vente), **atelier de craft** (matériaux → potions et équipements légendaires introuvables en boutique), auberge (repos gratuit).
-- **Progresser** : niveau 1 à 20, +2 points de caractéristiques par niveau, nouvelles compétences aux niveaux 4, 8, 12, 16 et 20.
-- **Se retrouver à la taverne** (multijoueur asynchrone) :
-  - 💬 **chat** entre tous les joueurs ;
-  - 🏆 **classement** des héros ;
-  - 🌍 **boss du monde** : une barre de vie géante **partagée par tout le monde** — chacun affronte sa propre instance du boss quand il veut, et tous les dégâts s'additionnent. Quand elle tombe à zéro, un boss plus redoutable apparaît.
-- **Jouer sur plusieurs appareils** : chaque héros a un **code de sauvegarde** (fiche du héros) pour le reprendre ailleurs.
+- **Créer son héros** : 6 races à passifs uniques, **21 classes** (compétence signature exclusive + arbre de classe débloqué aux niveaux 5/10/15), 5 caractéristiques (Force 💪, Intelligence 🧠, Agilité 🏃, Vitalité ❤️, Chance 🍀). Progression jusqu'au **niveau 50**, points de maîtrise pour monter ses compétences en rang.
+- **Explorer 16 zones** (niveaux 1 à 48), chacune avec ses monstres, son boss, ses difficultés (Normal/Héroïque/Cauchemar) et ses matériaux propres. Les packs de monstres **s'adaptent à la puissance de l'équipe**.
+- **Vivre 9 donjons d'histoire** écrits comme des aventures de *Donjons & Dragons* : dialogues, intrigues, choix à conséquences, **votes d'équipe** sur chaque décision, **épreuves au d20** (la meilleure stat de l'équipe s'y colle, 20 naturel = triomphe), trésors, boss à phases uniques et épilogues à variantes. Les trois derniers sont des **défis de niveaux 50, 60 et 70**, enchaînés, pensés pour des équipes complètes.
+- **Combattre au tour par tour** : ordre d'initiative affiché, critiques, blocage/esquive, statuts, bombes et élixirs tactiques, boss à mécaniques (phases, invocations, boucliers, enrage). En solo ou en **équipe sur le même écran**, et en **expéditions en ligne** à plusieurs appareils.
+- **Pratiquer 3 métiers de récolte** : dans chaque zone, on choisit de **⛏️ miner**, **🔪 dépecer** ou **🌿 herboriser**. Chaque métier monte en niveau (meilleures quantités, matériaux signatures : pierre magique, cuir primal, tissu magique) — et **plus on a de Chance, plus la moisson est riche**.
+- **Faire vivre le Bourg de Valciel**, découpé en quartiers :
+  - 🏪 **Le quartier marchand** — trois boutiques spécialisées (armes, armures, accessoires & potions), l'Antiquaire à curiosités, l'Arcanium aux 68 grimoires de compétences ;
+  - ⚒️ **La cour des artisans** — la Forge (armes, armures lourdes, lingots), la Tannerie (gants, bottes, cuirs), le Tisserand (accessoires, étoffes) et l'Alchimiste (potions de PV/mana, bombes, philtres) ;
+  - 🏛️ **La grand-place** — Guilde des Aventuriers (6 contrats journaliers, 3 récompenses/jour), Auberge, Taverne.
+- **Farmer et crafter** : ~4 500 objets en 7 raretés (jusqu'à Divin), panoplies à bonus de set (2/4 pièces), **craft en chaîne** (récolte brute → matériaux raffinés → grandes séries d'équipement, dont une série qui exige les trois métiers).
+- **Grimper les tours** : la Tour Sans Fin (étages infinis, sans soins) et la **Tour des Boss** (16 boss, difficultés Normal/Héroïque/Cauchemar).
+- **Se retrouver à la taverne** : 💬 chat, 🏆 classement (avec **fiche publique complète** de chaque héros), 🌍 boss du monde à barre de vie partagée, 🤝 comptoir d'échange entre joueurs.
+- **31+ hauts faits** à titres portables, familiers à bonus passifs, jouable sur plusieurs appareils via un code de sauvegarde.
 
 ## 🌍 Multijoueur : comment ça marche
 
 Le jeu détecte tout seul s'il peut joindre le monde en ligne (un backend Supabase — PostgreSQL + API REST) :
 
-- **En ligne** : héros synchronisés, taverne active, boss du monde commun. Toutes les écritures passent par des fonctions RPC vérifiant un token secret par personnage (avec plafond anti-triche sur les dégâts de boss). Le token n'est jamais lisible publiquement.
+- **En ligne** : héros synchronisés, taverne active, boss du monde commun, groupes multi-appareils, échanges entre joueurs. Toutes les écritures passent par des fonctions RPC vérifiant un token secret par personnage (avec plafonds anti-triche). Le token n'est jamais lisible publiquement.
 - **Hors ligne** : tout le reste du jeu fonctionne normalement, sauvegardé sur l'appareil.
 
 Aucun compte, aucun mot de passe : on crée un héros et on joue.
@@ -38,21 +42,16 @@ npx serve .
 ## 🗂️ Structure du projet
 
 ```
-index.html      — les écrans du jeu (titre, création, carte, zone, combat, butin, ville, boutique, atelier, héros, taverne)
+index.html      — les écrans du jeu (titre, création, carte, zone, combat, butin, ville, boutiques, ateliers, donjon, héros, sac, taverne)
 css/style.css   — thème sombre fantasy, pensé mobile d'abord
-js/data.js      — caractéristiques, compétences, progression (niveaux 1-20), stats effectives
-js/objets.js    — ~50 objets (armes, armures, accessoires, potions, matériaux) + recettes d'atelier
-js/zones.js     — 6 zones, ~25 monstres avec butins
-js/reseau.js    — client REST Supabase (fetch pur), synchronisation, taverne multijoueur
-js/game.js      — profils persistants, création, fiche du héros, inventaire, équipement, navigation
-js/monde.js     — carte, exploration, récolte, boss, récompenses, boss du monde
-js/ville.js     — boutique, atelier, auberge
-js/combat.js    — moteur de combat tour par tour
+js/data.js      — caractéristiques, classes, compétences, métiers, hauts faits, progression (niveaux 1-50)
+js/objets.js    — ~4 500 objets (générateurs par niveau/rareté), panoplies, recettes, raffinage
+js/zones.js     — 16 zones, ~65 monstres avec butins
+js/donjons.js   — 9 donjons d'histoire : moteur narratif (dialogues, choix, votes, épreuves d20) + récits complets
+js/reseau.js    — client REST Supabase (fetch pur), synchronisation, taverne, fiches publiques, échanges
+js/game.js      — profils persistants, création, fiche du héros, métiers, hauts faits, navigation
+js/monde.js     — carte, exploration, récolte par métier, boss, Tour des Boss, boss du monde
+js/ville.js     — quartiers du bourg : boutiques, artisans, Arcanium, Antiquaire, Guilde, Auberge
+js/combat.js    — moteur de combat tour par tour (initiative, statuts, mécaniques de boss)
+js/groupe.js    — expéditions en ligne à plusieurs appareils
 ```
-
-## 🔮 Pistes pour la suite
-
-- Groupes en ligne en temps réel (combat à plusieurs appareils via Supabase Realtime ou WebSocket).
-- Quêtes et histoire, donjons instanciés, PvP en arène.
-- Métiers de récolte et de craft avec niveaux dédiés.
-- Événements mondiaux programmés (invasions, saisons).

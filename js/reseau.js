@@ -733,7 +733,11 @@ async function ouvrirFichePublique(idJoueur) {
     <div class="panneau"><h3>Caractéristiques effectives</h3>
       <p>${statsTexte}</p>
       <p class="joueur-detail">❤️ ${maxHpDe(pp)} PV max · 💧 ${maxMpDe(pp)} PM max${s.blocage ? ` · 🛡️ ${Math.min(40, s.blocage)} % blocage` : ''}${s.esquive ? ` · 💨 ${Math.min(35, s.esquive)} % esquive` : ''}</p>
-      <p class="joueur-detail">⚙️ ${panoplies}${compagnon ? ` · 🐾 ${compagnon.emoji} ${compagnon.nom}` : ''} · 🏅 ${(d.hautsFaits || []).length}/${HAUTS_FAITS.length} hauts faits</p></div>
+      <p class="joueur-detail">⚙️ ${panoplies}${compagnon ? ` · 🐾 ${compagnon.emoji} ${compagnon.nom}` : ''} · 🏅 ${(d.hautsFaits || []).length}/${HAUTS_FAITS.length} hauts faits</p>
+      <p class="joueur-detail">${Object.entries(METIERS).map(([idMetier, metier]) => {
+        const m = (d.metiers && d.metiers[idMetier]) || { niveau: 1 };
+        return `${metier.emoji} ${metier.nom} niv. ${m.niveau}`;
+      }).join(' · ')}</p></div>
     <div class="panneau"><h3>⚡ Compétences actives</h3>${competences || '<p class="aide">Aucune compétence connue.</p>'}</div>
     <div class="panneau"><h3>🛡️ Équipement porté</h3>${equipements}</div>`;
   modale.querySelector('.modale-fermer').addEventListener('click', fermerFichePublique);

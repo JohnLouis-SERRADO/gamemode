@@ -330,6 +330,27 @@ const DONJONS = [
         type: 'combat',
         intro: 'Deux silhouettes se dressent dans l’eau noire : les gardes du roi, noyés à leur poste, toujours en faction.',
         monstres: ['garde-noye', 'garde-noye'],
+        suite: 'ossuaire',
+      },
+      ossuaire: {
+        type: 'epreuve',
+        qui: 'Narrateur', emoji: '💀',
+        texte: 'La galerie suivante est un ossuaire : des centaines de crânes empilés du sol au plafond, et un silence qui vous regarde passer. Le couloir est étroit — un seul os qui roule, et tout l’étage se réveillera.',
+        stat: 'agi', difficulte: 16,
+        reussite: {
+          texte: 'Pas à pas, souffle court, vous glissez entre les piles sans en effleurer une seule. Au passage, vos doigts trouvent une coupelle d’offrandes que les siècles avaient oubliée.',
+          effet: { po: 40, objets: { 'poussiere-spectre': 1 } },
+          suite: 'salle-vorn',
+        },
+        echec: {
+          texte: 'Un talon accroche un fémur. Le cliquetis roule de pile en pile comme un rire — et l’ossuaire entier se lève pour vous saluer.',
+          suite: 'combat-ossuaire',
+        },
+      },
+      'combat-ossuaire': {
+        type: 'combat',
+        intro: 'Les gardes d’outre-tombe s’assemblent os par os, très contrariés d’être réveillés.',
+        monstres: ['garde-outre-tombe', 'garde-outre-tombe'],
         suite: 'salle-vorn',
       },
       'salle-vorn': {
@@ -362,7 +383,23 @@ const DONJONS = [
         titre: '⛲ La fontaine des ablutions',
         texte: 'Une source souterraine chante encore dans la salle des ablutions royales. L’eau y est d’une pureté irréelle : le groupe s’y refait une santé.',
         effet: { pvPct: 0.35, mpPct: 0.5 },
-        suite: 'avant-boss',
+        suite: 'pont-effondre',
+      },
+      'pont-effondre': {
+        type: 'epreuve',
+        qui: 'Narrateur', emoji: '🌉',
+        texte: 'Entre vous et la salle du trône, le pont des funérailles s’est effondré : il n’en reste qu’une poutre de marbre suspendue au-dessus d’un gouffre où chante de l’eau noire.',
+        stat: 'agi', difficulte: 16,
+        reussite: {
+          texte: 'Bras écartés, un pied devant l’autre, vous traversez la poutre comme un funambule de cour. Sur la corniche d’en face, une cache royale n’attendait que vous.',
+          effet: { po: 50, objets: { 'grande-potion-soin': 1 } },
+          suite: 'avant-boss',
+        },
+        echec: {
+          texte: 'La poutre roule sous un pied. La chute est courte, l’eau est glaciale, et la remontée interminable — mais tout le monde est là.',
+          effet: { pvPct: -0.12 },
+          suite: 'avant-boss',
+        },
       },
       'avant-boss': {
         type: 'dialogue',
@@ -428,17 +465,39 @@ const DONJONS = [
             texte: '🧪 Boire la fiole n° 47',
             detail: 'Soit géniale, soit épouvantable — c’est le principe',
             resultats: [
-              { poids: 3, texte: 'Un goût de miel et d’orage. Une chaleur formidable vous parcourt : la n° 47 était GÉNIALE. (Vitalité retrouvée, et une étrange chance au bout des doigts.)', effet: { pvPct: 0.4, mpPct: 0.4, po: 80 }, suite: 'cobayes' },
-              { poids: 2, texte: 'Un goût de chaussette et d’éclair. Votre peau vire au vert pomme pendant une minute — et vos jambes flageolent. La n° 47 était ÉPOUVANTABLE.', effet: { pvPct: -0.2, drapeau: 'teint-vert' }, suite: 'cobayes' },
+              { poids: 3, texte: 'Un goût de miel et d’orage. Une chaleur formidable vous parcourt : la n° 47 était GÉNIALE. (Vitalité retrouvée, et une étrange chance au bout des doigts.)', effet: { pvPct: 0.4, mpPct: 0.4, po: 80 }, suite: 'distillerie' },
+              { poids: 2, texte: 'Un goût de chaussette et d’éclair. Votre peau vire au vert pomme pendant une minute — et vos jambes flageolent. La n° 47 était ÉPOUVANTABLE.', effet: { pvPct: -0.2, drapeau: 'teint-vert' }, suite: 'distillerie' },
             ],
           },
           {
             texte: '🚫 Reposer la fiole avec précaution',
             detail: 'Boulon a dit : ne rien boire',
             resultat: 'Vous reposez la fiole. Boulon souffle de soulagement — un vrai petit sifflet de bouilloire.',
-            suite: 'cobayes',
+            suite: 'distillerie',
           },
         ],
+      },
+      distillerie: {
+        type: 'epreuve',
+        qui: 'Boulon', emoji: '⚗️',
+        texte: 'La distillerie. Des alambics gros comme des tonneaux rotent des vapeurs multicolores. « Ne respirez pas les roses, ne touchez pas les vertes, ne regardez pas les bleues, » énumère Boulon. « Le chemin sûr change toutes les dix secondes. Suivez-moi. Vite. »',
+        stat: 'agi', difficulte: 19,
+        reussite: {
+          texte: 'Vous dansez entre les vapeurs sur les talons de Boulon. Au dernier passage, vous cueillez au vol une fiole qui flottait, tranquille, au-dessus d’un alambic.',
+          effet: { po: 60, objets: { 'grande-potion-soin': 1 } },
+          suite: 'cobayes',
+        },
+        echec: {
+          texte: 'Une vapeur rose vous prend à la gorge — vous éternuez dans une vapeur verte, qui n’apprécie pas. L’explosion réveille tout ce qui dormait dans les cuves.',
+          effet: { pvPct: -0.12 },
+          suite: 'combat-distillerie',
+        },
+      },
+      'combat-distillerie': {
+        type: 'combat',
+        intro: 'Deux flaques vives jaillissent des cuves renversées, bouillonnantes d’indignation.',
+        monstres: ['flaque-vive', 'flaque-vive'],
+        suite: 'cobayes',
       },
       cobayes: {
         type: 'choix',
@@ -464,7 +523,23 @@ const DONJONS = [
         type: 'combat',
         intro: 'Au pied de l’escalier de la cuve, deux gelées fusionnées montent la garde en glougloutant des menaces.',
         monstres: ['gelee-instable', 'gelee-instable'],
-        suite: 'runes',
+        suite: 'monte-charge',
+      },
+      'monte-charge': {
+        type: 'epreuve',
+        qui: 'Boulon', emoji: '🛗',
+        texte: 'Le monte-charge de la tour pend de travers, retenu par une chaîne qui a connu de meilleurs siècles. « Le treuil est grippé, » diagnostique Boulon. « Il faudrait des bras. De vrais bras. Pas les miens — j’ai des bras décoratifs. »',
+        stat: 'for', difficulte: 19,
+        reussite: {
+          texte: 'Vous empoignez le treuil et hissez la cabine à la force des épaules, étage après étage. Coincée sous la banquette : la réserve personnelle du maître.',
+          effet: { po: 70, objets: { 'potion-supreme-mana': 1 } },
+          suite: 'runes',
+        },
+        echec: {
+          texte: 'La chaîne saute au deuxième étage. La cabine redescend « à vitesse pédagogique », commente Boulon — et vous montez finalement par l’escalier de service, qui compte neuf cents marches.',
+          effet: { pvPct: -0.1 },
+          suite: 'runes',
+        },
       },
       runes: {
         type: 'choix',
@@ -572,6 +647,27 @@ const DONJONS = [
         type: 'combat',
         intro: 'L’équipage vous a vus. Un matelot spectral abandonne son cordage imaginaire et dégaine un crochet très réel.',
         monstres: ['matelot-spectral', 'matelot-spectral'],
+        suite: 'journal-de-bord',
+      },
+      'journal-de-bord': {
+        type: 'epreuve',
+        qui: 'Maëlle', emoji: '📔',
+        texte: 'Dans la cabine de veille, le journal de bord du Brise-Brume attend, gonflé d’humidité. « Le pacte y est retranscrit, » souffle Maëlle. « Mais Morvane l’a rédigé en code corsaire — et le code corsaire a été inventé par des gens qui ne savaient pas écrire. »',
+        stat: 'int', difficulte: 21,
+        reussite: {
+          texte: 'Ligne à ligne, le code cède. Le pacte exige que le sabre reste « chargé de la peur de l’équipage » : un capitaine flatté, rassuré, tiendra une lame affaiblie. Voilà qui servira.',
+          effet: { drapeau: 'pacte-compris' },
+          suite: 'mat',
+        },
+        echec: {
+          texte: 'Les pages détrempées se déchirent sous vos doigts — et la brume, jalouse de ses secrets, se coule dans la cabine par la serrure.',
+          suite: 'combat-cabine',
+        },
+      },
+      'combat-cabine': {
+        type: 'combat',
+        intro: 'La brume affamée s’engouffre, flanquée d’un mousse spectral qui n’a pas grandi en cent ans.',
+        monstres: ['brume-affamee', 'mousse-spectral'],
         suite: 'mat',
       },
       mat: {
@@ -605,15 +701,31 @@ const DONJONS = [
             detail: 'Promettre de sauver aussi Maëlle — il faudra frapper plus fort',
             effet: { drapeau: 'promesse-maelle' },
             resultat: 'Maëlle vous regarde comme si vous étiez le premier lever de soleil en cent ans. « …Capitaine, » dit-elle en vous saluant. Ce n’était pas une erreur de personne.',
-            suite: 'boss',
+            suite: 'tempete',
           },
           {
             texte: '💰 « Marché conclu. Ton âme contre la liberté des autres. »',
             detail: 'Accepter son sacrifice — le plus sûr',
             resultat: 'Maëlle hoche la tête, très droite. « Cent ans de “Terre !” dans le vide. Au moins, ce cri-là aura servi. » Elle vous ouvre la voie.',
-            suite: 'boss',
+            suite: 'tempete',
           },
         ],
+      },
+      tempete: {
+        type: 'epreuve',
+        qui: 'Narrateur', emoji: '🌩️',
+        texte: 'Au moment où vous approchez du gaillard d’arrière, le navire revit sa dernière nuit : la tempête fantôme se lève, voiles hurlantes, pont debout. Il faut tenir la barre — ou être balayés par un souvenir.',
+        stat: 'for', difficulte: 21,
+        reussite: {
+          texte: 'Vous vous arrimez à la barre et tenez le cap au cœur de la mémoire de la tempête. Quand elle s’apaise, l’équipage spectral vous regarde autrement : comme un des leurs.',
+          effet: { pvPct: 0.1 },
+          suite: 'boss',
+        },
+        echec: {
+          texte: 'La barre vous échappe et la tempête fantôme vous roule d’un bastingage à l’autre. Elle finit par se lasser — les tempêtes mortes se lassent vite.',
+          effet: { pvPct: -0.12 },
+          suite: 'boss',
+        },
       },
       boss: {
         type: 'boss',
@@ -621,6 +733,7 @@ const DONJONS = [
         monstre: 'capitaine-morvane',
         modificateurs: [
           { drapeau: 'pavillon-hisse', atkMult: 0.85, annonce: '🏴‍☠️ Morvane parade sous ses couleurs retrouvées — son sabre traîne, sa garde aussi !' },
+          { drapeau: 'pacte-compris', hpMult: 0.9, annonce: '📔 Vous connaissez le pacte gravé sur le sabre : chaque coup vise le fil de l’écriture !' },
         ],
         suite: 'fin',
       },
@@ -696,7 +809,7 @@ const DONJONS = [
             detail: 'Répondre à l’énigme',
             effet: { drapeau: 'enigme-resolue', po: 200, objets: { 'ecaille-draconique': 1 } },
             resultat: '« EXACT, » tonne la porte, presque déçue. Elle pivote en dévoilant une niche d’offrandes : le péage des visiteurs moins perspicaces, qui vous revient de droit.',
-            suite: 'atelier',
+            suite: 'geysers',
           },
           {
             texte: '🔥 « L’étincelle. »',
@@ -716,7 +829,23 @@ const DONJONS = [
         type: 'combat',
         intro: 'Vous atterrissez dans une salle ronde où deux golems correcteurs vous attendent, bras croisés. La pédagogie du maître est directe.',
         monstres: ['golem-basalte', 'elementaire-magma'],
-        suite: 'atelier',
+        suite: 'geysers',
+      },
+      geysers: {
+        type: 'epreuve',
+        qui: 'Narrateur', emoji: '💨',
+        texte: 'Le champ de geysers. Le sol siffle, crache, se tait — puis recommence, jamais dans le même ordre. Barguzan le traverse en trois enjambées de géant et vous attend de l’autre côté, poliment.',
+        stat: 'agi', difficulte: 24,
+        reussite: {
+          texte: 'Vous lisez le sol comme une partition : deux pas, pause, trois pas, saut. Le dernier geyser fuse dans votre dos, vexé. Dans une vasque refroidie, une écaille attendait depuis mille ans.',
+          effet: { po: 150, objets: { 'ecaille-draconique': 1 } },
+          suite: 'atelier',
+        },
+        echec: {
+          texte: 'Le sol se tait un instant de trop — vous y croyez, et il n’attendait que ça. Le jet vous ébouillante les mollets et vous dépose, fumants, aux pieds de Barguzan.',
+          effet: { pvPct: -0.15 },
+          suite: 'atelier',
+        },
       },
       atelier: {
         type: 'choix',
@@ -728,16 +857,32 @@ const DONJONS = [
             detail: 'Vos armes mordront le magma — et Ignarok vous attendra',
             effet: { drapeau: 'benediction-forgeron' },
             resultat: 'Barguzan frappe trois coups qui font trembler la montagne. Vos armes ressortent de l’enclume avec un reflet de braise qui ne s’éteint pas. Au loin, le pouls du volcan change de rythme : il sait.',
-            suite: 'avant-boss',
+            suite: 'memoire-du-maitre',
           },
           {
             texte: '🤫 Refuser — garder l’effet de surprise',
             detail: 'Ignarok ne vous verra pas venir : premier sang assuré',
             effet: { drapeau: 'surprise', pvPct: 0.2 },
             resultat: 'Barguzan repose son marteau avec un respect nouveau. « La discrétion. Mon maître n’en a jamais forgé. » Il vous offre à la place une gourde d’eau de source gardée froide dans la pierre — un luxe inouï, ici.',
-            suite: 'avant-boss',
+            suite: 'memoire-du-maitre',
           },
         ],
+      },
+      'memoire-du-maitre': {
+        type: 'epreuve',
+        qui: 'Barguzan', emoji: '📚',
+        texte: 'Avant l’arche, Barguzan tire d’une niche un livre de plaques de cuivre : les carnets de forge d’Ignarok. « Mille ans de coups de marteau, tous notés. Son rythme est là-dedans. Qui sait le lire saura quand il frappe — et quand il respire. »',
+        stat: 'int', difficulte: 24,
+        reussite: {
+          texte: 'Les plaques chantent sous vos doigts : trois coups lourds, un temps, deux coups courts. Le rythme du maître est en vous — vous saurez exactement quand baisser la tête.',
+          effet: { drapeau: 'rythme-connu' },
+          suite: 'avant-boss',
+        },
+        echec: {
+          texte: 'Les notations de forge géante vous restent closes — mille ans de métier ne se lisent pas en une veillée. Barguzan range les carnets sans un mot de reproche. C’est pire.',
+          effet: { mpPct: -0.15 },
+          suite: 'avant-boss',
+        },
       },
       'avant-boss': {
         type: 'dialogue',
@@ -753,6 +898,7 @@ const DONJONS = [
         modificateurs: [
           { drapeau: 'benediction-forgeron', hpMult: 0.85, annonce: '🔨 La bénédiction de Barguzan mord le magma : chaque entaille reste béante — Ignarok paraît déjà entamé !' },
           { drapeau: 'surprise', atkMult: 0.9, annonce: '🤫 Ignarok ne vous avait pas vus venir : il frappe encore à contretemps !' },
+          { drapeau: 'rythme-connu', atkMult: 0.9, annonce: '📚 Trois coups lourds, un temps : vous connaissez le rythme du maître et esquivez avant même qu’il frappe !' },
         ],
         suite: 'choix-forge',
       },
@@ -959,6 +1105,27 @@ DONJONS.push(
         type: 'combat',
         intro: 'Le parvis du Sanctuaire luit d’une clarté verte. Ses gardes de corail n’ont pas dormi non plus.',
         monstres: ['garde-corail', 'garde-corail', 'pelerin-noye'],
+        suite: 'courant',
+      },
+      courant: {
+        type: 'epreuve',
+        qui: 'Nérée', emoji: '🌀',
+        texte: 'Le grand couloir des processions est devenu un fleuve : le Sanctuaire inspire, et tout ce qui flotte descend vers ses poumons. « Nagez contre le courant, » crie Nérée. « Et surtout, ne vous laissez pas avaler par la salle de garde ! »',
+        stat: 'vit', difficulte: 28,
+        reussite: {
+          texte: 'Brasse après brasse, vous remontez le souffle du Sanctuaire. Dans un remous tourbillonne une bourse d’offrandes — vous la cueillez au passage.',
+          effet: { po: 300 },
+          suite: 'autel',
+        },
+        echec: {
+          texte: 'Le courant gagne. Il vous roule, vous retourne et vous recrache — précisément dans la salle de garde, comme Nérée l’avait prédit.',
+          suite: 'combat-ressac',
+        },
+      },
+      'combat-ressac': {
+        type: 'combat',
+        intro: 'La salle de garde. Les sentinelles du ressac vous regardent tomber du plafond avec un intérêt professionnel.',
+        monstres: ['garde-corail', 'pelerin-noye', 'pelerin-noye'],
         suite: 'autel',
       },
       autel: {
@@ -1020,7 +1187,23 @@ DONJONS.push(
         titre: '⛲ La fontaine d’Azuria',
         texte: 'Une source d’eau douce jaillit encore au cœur de la cité salée — le trésor le mieux gardé d’Azuria. Le groupe s’y refait entièrement.',
         effet: { pvPct: 0.5, mpPct: 0.6, po: 400, objets: { 'potion-supreme-soin': 2 } },
-        suite: 'avant-boss',
+        suite: 'orgue-de-nacre',
+      },
+      'orgue-de-nacre': {
+        type: 'epreuve',
+        qui: 'Nérée', emoji: '🎼',
+        texte: 'Devant les portes du trône : l’orgue de nacre d’Azuria, dont les tuyaux sont des coquillages centenaires. « Ma sœur aimait un chant, avant, » murmure Nérée. « Je me souviens des notes… mais plus de l’ordre. Tentez votre chance. Au pire, l’orgue improvisera. »',
+        stat: 'cha', difficulte: 28,
+        reussite: {
+          texte: 'Vos mains trouvent, par un bonheur insolent, l’ordre exact que la mémoire de Nérée cherchait. Le chant de la Gardienne monte dans la cité engloutie — et derrière les portes, un trident se baisse à demi.',
+          effet: { drapeau: 'chant-retrouve' },
+          suite: 'avant-boss',
+        },
+        echec: {
+          texte: 'L’orgue improvise. C’est… expérimental. Les coquillages hurlent un accord que la mer mettra cent ans à pardonner, et l’écho vous vrille les tempes.',
+          effet: { mpPct: -0.15 },
+          suite: 'avant-boss',
+        },
       },
       'avant-boss': {
         type: 'dialogue',
@@ -1037,6 +1220,7 @@ DONJONS.push(
           { drapeau: 'autel-purifie', hpMult: 0.85, annonce: '🕯️ L’autel purifié ne nourrit plus la Gardienne : la marée lui manque, elle paraît déjà entamée !' },
           { drapeau: 'autel-brise', atkMult: 0.85, annonce: '💥 Sans son autel, les vagues de la Gardienne frappent à contretemps !' },
           { drapeau: 'pelerins-sauves', atkMult: 0.9, annonce: '🤲 Les pèlerins réveillés chantent depuis la nef : la Gardienne hésite à chaque coup !' },
+          { drapeau: 'chant-retrouve', atkMult: 0.9, annonce: '🎼 Le chant d’autrefois flotte encore dans la salle : le trident de la Gardienne tremble entre deux coups !' },
         ],
         suite: 'fin',
       },
@@ -1080,6 +1264,27 @@ DONJONS.push(
         type: 'combat',
         intro: 'L’esplanade d’embarquement. Les sentinelles de la Couronne appliquent la dernière consigne reçue : « plus aucun visiteur ».',
         monstres: ['sentinelle-de-la-couronne', 'sentinelle-de-la-couronne', 'choeur-d-echos'],
+        suite: 'pont-de-nuages',
+      },
+      'pont-de-nuages': {
+        type: 'epreuve',
+        qui: 'Céleste-Écho', emoji: '☁️',
+        texte: 'Le pont qui mène aux Archives se dématérialise par plaques — la citadelle recycle sa propre substance pour retarder la chute. « Il tiendra, » assure l’Écho. « Statistiquement. Par endroits. Courez selon un motif imprévisible, c’est ma meilleure recommandation. »',
+        stat: 'agi', difficulte: 36,
+        reussite: {
+          texte: 'Vous courez sur des nuages qui cessent d’exister une demi-seconde après votre passage. Sur la dernière plaque, un fragment d’acier céleste s’était détaché du garde-corps — il est pour vous.',
+          effet: { objets: { 'acier-celeste': 2 } },
+          suite: 'archives',
+        },
+        echec: {
+          texte: 'Une plaque ment. La chute traverse trois étages de brume — et vous dépose dans la soute, où la sécurité de la citadelle vous attendait déjà.',
+          suite: 'combat-soute',
+        },
+      },
+      'combat-soute': {
+        type: 'combat',
+        intro: 'La soute aux étoiles. Une sentinelle s’avance, escortée d’éclats qui grésillent comme des guêpes de lumière.',
+        monstres: ['sentinelle-de-la-couronne', 'eclat-d-archonte', 'eclat-d-archonte'],
         suite: 'archives',
       },
       archives: {
@@ -1132,16 +1337,32 @@ DONJONS.push(
             detail: 'L’Archonte perd son rempart d’étoiles plus vite',
             effet: { drapeau: 'defenses-coupees' },
             resultat: 'Un frisson parcourt les murs — la citadelle retient son souffle. Quelque part au-dessus, une voix immense cesse de fredonner. « Il sait, » dit l’Écho. « Et pour la première fois en mille ans… il a peur. »',
-            suite: 'avant-boss',
+            suite: 'noyau-gravite',
           },
           {
             texte: '🤫 « Reste silencieuse. On entre sans prévenir. »',
             detail: 'Premier sang assuré : l’Archonte frappera à contretemps',
             effet: { drapeau: 'entree-silencieuse' },
             resultat: 'L’Écho s’éteint jusqu’à n’être qu’une veilleuse. Vous poussez les portes du trône dans un silence de fin du monde.',
-            suite: 'avant-boss',
+            suite: 'noyau-gravite',
           },
         ],
+      },
+      'noyau-gravite': {
+        type: 'epreuve',
+        qui: 'Céleste-Écho', emoji: '🌀',
+        texte: 'Dernier obstacle : la salle du noyau de gravité, que l’Archonte a déréglé. Le haut et le bas y changent d’avis plusieurs fois par minute. « Traversez entre deux inversions, » conseille l’Écho. « Et quoi qu’il arrive : ne vomissez pas sur les consoles. »',
+        stat: 'vit', difficulte: 36,
+        reussite: {
+          texte: 'Vous traversez la salle en marchant tour à tour sur le sol, le mur et le plafond, l’estomac tenu par la seule volonté. Au passage, vous redressez une console — qui vous remercie en pièces sonnantes.',
+          effet: { po: 1200 },
+          suite: 'avant-boss',
+        },
+        echec: {
+          texte: 'La gravité change d’avis à mi-parcours — deux fois, dans des directions différentes. Vous finissez la traversée en roulant. La citadelle a la délicatesse de ne pas commenter.',
+          effet: { pvPct: -0.12 },
+          suite: 'avant-boss',
+        },
       },
       'avant-boss': {
         type: 'dialogue',
@@ -1192,6 +1413,696 @@ DONJONS.push(
   },
 );
 
+// =====================================================================
+// Les Défis de la Fin (v12) : trois donjons « hard » de niveaux 50/60/70,
+// enchaînés — chacun exige d'avoir terminé le précédent. Pensés pour des
+// équipes complètes au niveau maximum.
+// =====================================================================
+Object.assign(OBJETS, {
+  'linceul-de-nihelm': {
+    nom: 'Linceul de Nihelm', emoji: '🕳️', type: 'equipement', slot: 'torse', niveau: 50,
+    rarete: 'divin', prixVente: 3200, bonus: { vit: 22, for: 10, pvMax: 120, blocage: 6 },
+    desc: 'Tissé dans l’ombre de tous les monstres vaincus. Il pèse exactement le poids d’une conscience tranquille.',
+  },
+  'couronne-des-heures': {
+    nom: 'Couronne des Heures', emoji: '⏰', type: 'equipement', slot: 'tete', niveau: 50,
+    rarete: 'divin', prixVente: 3600, bonus: { int: 20, agi: 12, pmMax: 50, esquive: 6 },
+    desc: 'Chaque pointe est une aiguille arrêtée sur un instant parfait. Récompense de la Forteresse du Temps Brisé.',
+  },
+  'coeur-du-neant': {
+    nom: 'Cœur du Néant', emoji: '🖤', type: 'equipement', slot: 'arme', niveau: 50,
+    rarete: 'divin', prixVente: 4500, bonus: { for: 26, int: 26, crit: 10 },
+    desc: 'Ce qui restait de Celui-qui-Attend, dévoré et forgé. Il bat encore, très lentement.',
+  },
+  'sceau-de-l-aube': {
+    nom: 'Sceau de l’Aube', emoji: '🌅', type: 'equipement', slot: 'accessoire', niveau: 50,
+    rarete: 'divin', prixVente: 4500, bonus: { cha: 12, vit: 14, pvMax: 90, esquive: 5 },
+    desc: 'La marque de qui a refermé l’Œil sans le regarder mourir. Le matin lui obéit un peu.',
+  },
+});
+
+Object.assign(MONSTRES_DONJONS, {
+  // ----- Le Gouffre de Nihelm (défi 50) -----
+  'ombre-de-heros': {
+    nom: 'Ombre de héros', emoji: '👤', niveau: 52, hp: 2550, atk: 79, agi: 14, xp: 879, po: [52, 104],
+    drops: [{ id: 'essence-primordiale', chance: 0.1 }],
+    attaques: [
+      { nom: 'Lame retournée', emoji: '🗡️', mult: 1.1, poids: 3, type: 'mono' },
+      { nom: 'Frappe miroir', emoji: '🪞', mult: 1.3, poids: 1, type: 'mono' },
+    ],
+  },
+  'deuil-rampant': {
+    nom: 'Deuil rampant', emoji: '🕷️', niveau: 53, hp: 2648, atk: 81, agi: 10, xp: 913, po: [53, 106],
+    drops: [{ id: 'poussiere-spectre', chance: 0.5 }],
+    attaques: [
+      { nom: 'Morsure de chagrin', emoji: '🕷️', mult: 1.0, poids: 3, type: 'mono', effet: { type: 'poison', degats: 22, duree: 2 } },
+      { nom: 'Toile de regrets', emoji: '🕸️', mult: 0.8, poids: 1, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+    ],
+  },
+  'porteur-de-cendres': {
+    nom: 'Porteur de cendres', emoji: '⚱️', niveau: 54, hp: 2748, atk: 82, agi: 11, xp: 947, po: [54, 108],
+    drops: [{ id: 'os-ancien', chance: 0.45 }],
+    attaques: [
+      { nom: 'Urne brisée', emoji: '⚱️', mult: 1.15, poids: 3, type: 'mono' },
+      { nom: 'Nuée funèbre', emoji: '🌫️', mult: 0.85, poids: 1, type: 'aoe' },
+    ],
+  },
+  'avatar-de-nihelm': {
+    nom: 'L’Avatar de Nihelm', emoji: '🕳️', niveau: 55, boss: true, hp: 11950, atk: 105, agi: 13, xp: 4910, po: [400, 600],
+    drops: [{ id: 'essence-primordiale', chance: 1 }, { id: 'poussiere-spectre', chance: 1 }],
+    attaques: [
+      { nom: 'Poigne du gouffre', emoji: '🕳️', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Marée d’ombres', emoji: '🌑', mult: 0.9, poids: 1, type: 'aoe' },
+    ],
+    mecaniques: {
+      invocations: {
+        toutesLes: 4, max: 4, monstres: ['ombre-de-heros'],
+        annonce: '🕳️ Le gouffre recrache une ombre de plus — elle a vos gestes, vos coups, votre garde !',
+      },
+      phases: [
+        {
+          seuil: 0.7,
+          annonce: '🌑 L’Avatar se drape de toutes les nuits du gouffre : un linceul d’ombre l’enveloppe !',
+          bouclier: 500,
+        },
+        {
+          seuil: 0.4,
+          annonce: '💢 L’Avatar prend le visage de chaque monstre que vous avez vaincu — tous frappent à travers lui !',
+          atkMult: 1.4,
+          attaques: [
+            { nom: 'Mille rancunes', emoji: '💢', mult: 0.95, poids: 2, type: 'aoe' },
+            { nom: 'Poigne du gouffre', emoji: '🕳️', mult: 1.3, poids: 2, type: 'mono' },
+          ],
+        },
+      ],
+      enrage: { manche: 12, atkMult: 1.7, annonce: '⚠️ Le gouffre entier se referme comme une mâchoire : Nihelm veut en finir !' },
+    },
+  },
+
+  // ----- La Forteresse du Temps Brisé (défi 60) -----
+  'sentinelle-des-heures': {
+    nom: 'Sentinelle des heures', emoji: '⏳', niveau: 60, hp: 3384, atk: 91, agi: 12, xp: 1166, po: [60, 120],
+    drops: [{ id: 'eclat-d-etoile', chance: 0.3 }],
+    attaques: [
+      { nom: 'Hallebarde-aiguille', emoji: '🕰️', mult: 1.1, poids: 3, type: 'mono' },
+      { nom: 'Seconde volée', emoji: '⏳', mult: 0.9, poids: 1, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.25 } },
+    ],
+  },
+  'regret-devorant': {
+    nom: 'Regret dévorant', emoji: '🫥', niveau: 61, hp: 3497, atk: 92, agi: 11, xp: 1205, po: [61, 122],
+    drops: [{ id: 'larme-de-sirene', chance: 0.3 }],
+    attaques: [
+      { nom: 'Si-seulement', emoji: '🫥', mult: 1.05, poids: 2, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
+      { nom: 'Rembobinage', emoji: '⏪', valeur: 220, poids: 1, type: 'soin' },
+    ],
+  },
+  'paradoxe-arme': {
+    nom: 'Paradoxe armé', emoji: '🌀', niveau: 62, hp: 3611, atk: 94, agi: 15, xp: 1244, po: [62, 124],
+    drops: [{ id: 'coeur-d-orage', chance: 0.3 }],
+    attaques: [
+      { nom: 'Coup déjà porté', emoji: '🌀', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Onde causale', emoji: '💫', mult: 0.85, poids: 1, type: 'aoe' },
+    ],
+  },
+  'grand-horloger': {
+    nom: 'Le Grand Horloger', emoji: '⏰', niveau: 62, boss: true, hp: 15150, atk: 117, agi: 14, xp: 6220, po: [500, 750],
+    drops: [{ id: 'essence-primordiale', chance: 1 }, { id: 'eclat-d-etoile', chance: 1 }],
+    attaques: [
+      { nom: 'Balancier de bronze', emoji: '⏰', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Douzième coup', emoji: '🕛', mult: 0.9, poids: 1, type: 'aoe' },
+    ],
+    mecaniques: {
+      invocations: {
+        toutesLes: 4, max: 4, monstres: ['paradoxe-arme'],
+        annonce: '⏰ L’Horloger rembobine un instant : un paradoxe armé se produit — au sens propre !',
+      },
+      phases: [
+        {
+          seuil: 0.75,
+          annonce: '🕰️ « REPRENONS DEPUIS LE DÉBUT. » — l’Horloger rappelle ses gardes d’une heure passée !',
+          invoque: ['sentinelle-des-heures', 'sentinelle-des-heures'],
+        },
+        {
+          seuil: 0.45,
+          annonce: '⚡ Le balancier s’emballe : l’Horloger vit trois secondes dans chacune des vôtres !',
+          atkMult: 1.35,
+          attaques: [
+            { nom: 'Grêle de secondes', emoji: '⚡', mult: 0.95, poids: 2, type: 'aoe' },
+            { nom: 'Balancier de bronze', emoji: '⏰', mult: 1.3, poids: 2, type: 'mono' },
+          ],
+        },
+        {
+          seuil: 0.2,
+          annonce: '🛡️ L’Horloger fige sa dernière minute autour de lui comme une armure !',
+          bouclier: 600,
+        },
+      ],
+      enrage: { manche: 12, atkMult: 1.7, annonce: '⚠️ Minuit approche : l’Horloger frappe tous les coups à la fois !' },
+    },
+  },
+
+  // ----- L'Œil du Néant (défi 70) -----
+  'annonciateur-du-neant': {
+    nom: 'Annonciateur du Néant', emoji: '🌑', niveau: 70, hp: 4593, atk: 106, agi: 14, xp: 1582, po: [70, 140],
+    drops: [{ id: 'essence-primordiale', chance: 0.25 }],
+    attaques: [
+      { nom: 'Verbe d’effacement', emoji: '🌑', mult: 1.15, poids: 3, type: 'mono' },
+      { nom: 'Prêche du vide', emoji: '📿', mult: 0.85, poids: 1, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+    ],
+  },
+  'mange-etoiles': {
+    nom: 'Mange-étoiles', emoji: '🐋', niveau: 71, hp: 4724, atk: 107, agi: 12, xp: 1627, po: [71, 142],
+    drops: [{ id: 'eclat-d-etoile', chance: 0.6 }],
+    attaques: [
+      { nom: 'Gober la lumière', emoji: '🐋', mult: 1.3, poids: 2, type: 'mono' },
+      { nom: 'Remous de constellations', emoji: '✨', mult: 0.9, poids: 1, type: 'aoe' },
+    ],
+  },
+  'echo-du-devoreur': {
+    nom: 'Écho du Dévoreur', emoji: '💫', niveau: 70, hp: 2300, atk: 95, agi: 15, xp: 380, po: [20, 40],
+    drops: [],
+    attaques: [
+      { nom: 'Réplique du vide', emoji: '💫', mult: 1.0, poids: 1, type: 'mono' },
+    ],
+  },
+  'celui-qui-attend': {
+    nom: 'Celui-qui-Attend', emoji: '👁️', niveau: 72, boss: true, hp: 20400, atk: 135, agi: 15, xp: 8400, po: [700, 1000],
+    drops: [{ id: 'essence-primordiale', chance: 1 }, { id: 'plume-d-archon', chance: 0.8 }],
+    attaques: [
+      { nom: 'Regard qui défait', emoji: '👁️', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Battement de cil', emoji: '🌌', mult: 0.9, poids: 1, type: 'aoe' },
+    ],
+    mecaniques: {
+      invocations: {
+        toutesLes: 3, max: 4, monstres: ['echo-du-devoreur', 'echo-du-devoreur'],
+        annonce: '👁️ L’Œil cligne — et chaque larme devient un écho du Dévoreur !',
+      },
+      phases: [
+        {
+          seuil: 0.8,
+          annonce: '🌌 Celui-qui-Attend replie le vide autour de lui : un rempart de non-existence !',
+          bouclier: 800,
+        },
+        {
+          seuil: 0.55,
+          annonce: '🌑 L’Œil s’ouvre en grand : le Néant regarde chacun de vous, personnellement !',
+          atkMult: 1.3,
+          attaques: [
+            { nom: 'Regard total', emoji: '👁️', mult: 1.3, poids: 2, type: 'mono' },
+            { nom: 'Effacement latéral', emoji: '🌌', mult: 0.95, poids: 2, type: 'aoe' },
+          ],
+        },
+        {
+          seuil: 0.25,
+          annonce: '💥 Pour la première fois depuis l’aube des mondes… Celui-qui-Attend est pressé !',
+          atkMult: 1.25,
+        },
+      ],
+      enrage: { manche: 14, atkMult: 1.8, annonce: '⚠️ Le Néant cesse d’attendre. C’est précisément ce qu’il ne fallait pas.' },
+    },
+  },
+});
+
+DONJONS.push(
+  // ============================================================
+  // 7. Le Gouffre de Nihelm — défi 50 (après la Couronne Céleste)
+  // ============================================================
+  {
+    id: 'nihelm',
+    nom: 'Le Gouffre de Nihelm',
+    emoji: '🕳️',
+    niveauMin: 50,
+    defi: 50,
+    requiert: 'couronne-celeste',
+    resume: 'Tout ce que les héros ont vaincu coule quelque part. Ce quelque part vient de déborder. Défi de niveau 50 — équipe complète recommandée.',
+    hautFait: 'donjon-nihelm',
+    depart: 'intro',
+    recompenses: { xp: 14000, po: 9000, objet: 'linceul-de-nihelm' },
+    etapes: {
+      intro: {
+        type: 'dialogue',
+        scenes: [
+          { qui: 'Narrateur', emoji: '📜', texte: 'Là où la pluie d’étoiles de la Couronne a touché terre, le sol s’est ouvert. Pas un cratère : une bouche. Les anciens l’appellent Nihelm — le gouffre où coulent les ombres de tout ce qui meurt vaincu. Et depuis quelques nuits, les ombres remontent.' },
+          { qui: 'Le Fossoyeur', emoji: '⚰️', texte: 'Au bord du gouffre, un vieil homme appuyé sur une bêche vous regarde arriver sans surprise. « Je suis le Fossoyeur. J’enterre les histoires finies — les vôtres m’ont donné du travail, ces derniers temps. Aldric, Morvane, Ignarok, l’Archonte… Tous couchés là-dessous. Le problème, c’est qu’ils ne dorment plus. »' },
+          { qui: 'Le Fossoyeur', emoji: '⚰️', texte: '« Quelque chose, tout au fond, recoud leurs ombres en une seule. Un Avatar de tout ce que vous avez vaincu. Descendez le voir. C’est votre ouvrage, après tout — chaque coup que vous avez porté est cousu dedans. Moi, je vous garde une tombe fraîche. Par politesse. On ne sait jamais. »' },
+        ],
+        suite: 'descente',
+      },
+      descente: {
+        type: 'epreuve',
+        qui: 'Narrateur', emoji: '🪢',
+        texte: 'La paroi du gouffre descend à pic, luisante d’une rosée noire. Les prises existent — mais elles bougent, très légèrement, comme si la pierre respirait. Le Fossoyeur, lui, descend par son propre escalier, qu’il refuse de partager : « professionnel uniquement ».',
+        stat: 'agi', difficulte: 40,
+        reussite: {
+          texte: 'Vous descendez la paroi vivante comme si vous l’aviez gravie cent fois. À mi-hauteur, une anfractuosité abrite le sac d’un précédent visiteur — qui n’en aura plus besoin.',
+          effet: { po: 600, objets: { 'potion-supreme-soin': 2 } },
+          suite: 'veillee',
+        },
+        echec: {
+          texte: 'La pierre inspire au mauvais moment. Les derniers mètres se font en chute libre, amortie par un tapis d’ombres qui n’avait rien de moelleux.',
+          effet: { pvPct: -0.12 },
+          suite: 'veillee',
+        },
+      },
+      veillee: {
+        type: 'combat',
+        intro: 'Au fond du gouffre, vos propres silhouettes vous attendent — découpées dans la nuit, armées de vos gestes. Entre elles rampe un deuil aux pattes trop nombreuses.',
+        monstres: ['ombre-de-heros', 'ombre-de-heros', 'deuil-rampant'],
+        suite: 'fosse-commune',
+      },
+      'fosse-commune': {
+        type: 'choix',
+        qui: 'Le Fossoyeur', emoji: '⚰️',
+        texte: 'La fosse commune des vaincus : des tertres à perte de vue, un par monstre tombé sous vos coups. Le Fossoyeur ôte son chapeau. « Chacun a droit à une veillée. Personne ne la fait jamais. Vous avez le temps — enfin, non. Mais vous avez le choix. »',
+        options: [
+          {
+            texte: '🕯️ Veiller les tombes, une par une',
+            detail: 'Intelligence ≥ 32 — dire chaque nom apaise les ombres : l’Avatar en sera affaibli',
+            condition: { stat: 'int', min: 32 },
+            effet: { drapeau: 'tombes-veillees' },
+            resultat: 'Vous passez de tertre en tertre en disant les noms — ceux que vous connaissez, et pour les autres, ce que vous vous rappelez du combat. Les tertres cessent un à un de frémir. Le Fossoyeur remet son chapeau : « Première fois en mille ans que quelqu’un fait la moitié de mon travail. »',
+            suite: 'galerie-echos',
+          },
+          {
+            texte: '⛏️ Fouiller la fosse — les vaincus n’ont plus besoin de leur or',
+            detail: 'Un butin certain… et une rancune certaine',
+            effet: { drapeau: 'fosse-profanee', po: 800, objets: { 'essence-primordiale': 1 } },
+            resultat: 'Les tertres rendent leur tribut : l’or des vaincus, l’essence de leurs restes. Le Fossoyeur ne dit rien. Les tombes non plus — et c’est bien ça le problème : elles retiennent leur souffle.',
+            suite: 'combat-reproches',
+          },
+          {
+            texte: '🚶 Traverser sans toucher à rien',
+            detail: 'Le respect minimal : passer son chemin',
+            resultat: 'Vous traversez la fosse entre les tertres, sans un mot. Le Fossoyeur hoche la tête : « Neutre. Je note. Le gouffre aussi. »',
+            suite: 'galerie-echos',
+          },
+        ],
+      },
+      'combat-reproches': {
+        type: 'combat',
+        intro: 'Les cendres profanées se lèvent en colonnes. Deux porteurs d’urnes marchent sur vous, et le deuil suit, ravi qu’on lui donne raison.',
+        monstres: ['porteur-de-cendres', 'porteur-de-cendres', 'deuil-rampant'],
+        suite: 'galerie-echos',
+      },
+      'galerie-echos': {
+        type: 'dialogue',
+        scenes: [
+          { qui: 'Écho d’Aldric', emoji: '👑', texte: 'La galerie suivante murmure avec des voix connues. « Toi, » dit une ombre couronnée sans se retourner. « Tu m’as rendu le silence, dans ma crypte. Ici, quelque chose me le reprend. Chaque nuit, il me recoud dans sa colère. Finis-le — ou nous reviendrons tous, pour toujours, dans le mauvais sens. »' },
+          { qui: 'Écho de Morvane', emoji: '🏴‍☠️', texte: 'Plus loin, un tricorne d’ombre vous salue. « Le mousse avait raison sur un point : on ne mouille jamais deux fois dans le même port. Sauf ici. Ici, on recommence à couler chaque nuit. Coulez-LE, capitaine. C’est un ordre — enfin, une prière. La différence s’est perdue en route. »' },
+        ],
+        suite: 'pari-du-fossoyeur',
+      },
+      'pari-du-fossoyeur': {
+        type: 'epreuve',
+        qui: 'Le Fossoyeur', emoji: '🎲',
+        texte: 'Devant le puits final, le Fossoyeur sort deux dés taillés dans des os que vous préférez ne pas identifier. « Tradition de la maison : on joue avant la fin. Si vous gagnez, je vous rends une trouvaille de mes fouilles. Si je gagne… je prends quelques-unes de vos années. J’en fais collection. »',
+        stat: 'cha', difficulte: 40,
+        reussite: {
+          texte: 'Les dés roulent, hésitent — et vous offrent la paire parfaite. Le Fossoyeur siffle entre ses dents et s’exécute : une essence primordiale, exhumée de la tombe d’un monde précédent. « Personne ne gagne jamais. Je commençais à trouver ça monotone. »',
+          effet: { po: 500, objets: { 'essence-primordiale': 1 } },
+          suite: 'puits',
+        },
+        echec: {
+          texte: 'Les dés d’os vous trahissent avec un enthousiasme suspect. Le Fossoyeur cueille délicatement quelque chose d’invisible au-dessus de vos têtes et le range dans une boîte. Vous vous sentez… un peu moins nombreux à l’intérieur.',
+          effet: { pvPct: -0.1 },
+          suite: 'puits',
+        },
+      },
+      puits: {
+        type: 'combat',
+        intro: 'Le puits central. Les dernières ombres libres se jettent entre vous et le fond — non pour protéger l’Avatar, mais pour ne pas être recousues dedans.',
+        monstres: ['porteur-de-cendres', 'ombre-de-heros', 'deuil-rampant'],
+        suite: 'confession',
+      },
+      confession: {
+        type: 'choix',
+        qui: 'Narrateur', emoji: '🪞',
+        texte: 'Au bord du fond, le gouffre vous renvoie votre reflet — en noir. Il a chacun de vos coups, chacune de vos victoires, et il attend de savoir ce que vous en dites. Le Fossoyeur souffle : « Répondez-lui avec soin. C’est de VOUS qu’il est cousu. »',
+        options: [
+          {
+            texte: '🕯️ Reconnaître chaque ombre : « Oui, c’était nous. Chaque coup. »',
+            detail: 'Chance ≥ 32 — assumer désarme la rancune : l’Avatar frappera moins fort',
+            condition: { stat: 'cha', min: 32 },
+            effet: { drapeau: 'ombres-reconnues' },
+            resultat: 'Vous ne détournez pas les yeux. Le reflet noir vous dévisage longuement… puis incline la tête, comme un duelliste qui salue. La rancune reste — mais elle a perdu son meilleur argument.',
+            suite: 'avant-boss',
+          },
+          {
+            texte: '🛡️ Renier le reflet : « Nous avons fait ce qu’il fallait. Rien de plus. »',
+            detail: 'Le déni est une armure — épaisse, mais bruyante',
+            effet: { pvPct: 0.15 },
+            resultat: 'Le reflet noir sourit — c’est votre sourire, et c’est bien le pire. Votre certitude vous enveloppe comme une cuirasse. Elle tiendra. Probablement.',
+            suite: 'avant-boss',
+          },
+        ],
+      },
+      'avant-boss': {
+        type: 'dialogue',
+        scenes: [
+          { qui: 'Le Fossoyeur', emoji: '⚰️', texte: '« Le voilà. Tout ce que vous avez vaincu, cousu en un seul deuil. Je ne peux pas creuser assez vite pour lui — alors faites votre métier, que je puisse faire le mien. Et si ça tourne mal… votre tombe est la troisième à gauche. J’ai mis de la mousse. C’est confortable, la mousse. »' },
+        ],
+        suite: 'boss',
+      },
+      boss: {
+        type: 'boss',
+        intro: 'Le fond du gouffre se lève. Ce n’est pas une créature : c’est une foule cousue en une seule — couronnes, tricornes, marteaux et trônes fondus dans une silhouette immense qui vous reconnaît. « VOUS, » dit l’Avatar de Nihelm avec toutes ses voix à la fois.',
+        monstre: 'avatar-de-nihelm',
+        modificateurs: [
+          { drapeau: 'tombes-veillees', hpMult: 0.9, annonce: '🕯️ Les tombes veillées refusent de nourrir l’Avatar : des pans entiers de son ombre se détachent !' },
+          { drapeau: 'ombres-reconnues', atkMult: 0.85, annonce: '🪞 Vous avez assumé chaque coup : la rancune de l’Avatar frappe sans conviction !' },
+          { drapeau: 'fosse-profanee', atkMult: 1.1, annonce: '⚱️ Les cendres profanées hurlent dans l’ombre de l’Avatar : sa colère a un argument de plus !' },
+        ],
+        suite: 'fin',
+      },
+      fin: {
+        type: 'fin',
+        variantes: [
+          { drapeau: 'ombres-reconnues', cle: 'deuil-fait', texte: 'L’Avatar se défait couture par couture — et chaque ombre libérée s’arrête un instant devant vous. Certaines saluent. Une (un tricorne) fait mine de vous embaucher. Puis elles coulent, une à une, dans un sommeil qui ressemble enfin à du repos. Le Fossoyeur contemple le gouffre apaisé et plante sa bêche : « Fermé pour deuil. Le premier vrai depuis mille ans. » Il vous tend le Linceul — plié au carré, évidemment.' },
+          { drapeau: 'fosse-profanee', cle: 'deuil-amer', texte: 'L’Avatar se défait en hurlant, et les ombres libérées vous évitent soigneusement en s’écoulant vers le fond. Le Fossoyeur récupère le Linceul dans les décombres et vous le tend sans un mot. Au moment de partir, il ajoute, sans se retourner : « La prochaine fois, laissez l’or des morts aux morts. Ils comptent. Ils comptent TRÈS bien. »' },
+        ],
+        texte: 'L’Avatar se défait couture par couture, et les ombres coulent une à une vers un sommeil qui ressemble enfin à du repos. Le Fossoyeur plante sa bêche dans le silence retrouvé : « Joli travail. Propre. Je n’aurai presque rien à recoudre. » Il vous tend le Linceul de Nihelm — et referme le gouffre derrière vous comme on borde un lit.',
+      },
+    },
+  },
+
+  // ============================================================
+  // 8. La Forteresse du Temps Brisé — défi 60
+  // ============================================================
+  {
+    id: 'temps-brise',
+    nom: 'La Forteresse du Temps Brisé',
+    emoji: '⏰',
+    niveauMin: 50,
+    defi: 60,
+    requiert: 'nihelm',
+    resume: 'Une forteresse fige sa dernière heure en boucle depuis mille ans. Son Horloger refuse que minuit sonne. Défi de niveau 60 — équipe complète recommandée.',
+    hautFait: 'donjon-temps-brise',
+    depart: 'intro',
+    recompenses: { xp: 20000, po: 13000, objet: 'couronne-des-heures' },
+    etapes: {
+      intro: {
+        type: 'dialogue',
+        scenes: [
+          { qui: 'Narrateur', emoji: '📜', texte: 'Au nord des Terres lointaines se dresse une forteresse que les cartes refusent d’admettre : elle n’y est que de 23 h à minuit. Mille ans plus tôt, à minuit moins une, elle est tombée — et son Horloger a refusé le douzième coup. Depuis, la même heure recommence. Toutes les nuits. Pour toujours.' },
+          { qui: 'Perpétue', emoji: '🕯️', texte: 'Une apprentie en tablier d’horlogerie vous attend à la herse, une bougie à la main — la flamme brûle à l’envers. « Je suis Perpétue. Apprentie de l’Horloger depuis… » Elle consulte la bougie. « …trois cent soixante-cinq mille nuits, environ. Je suis la seule à me souvenir des boucles. C’est une forme de promotion, j’imagine. »' },
+          { qui: 'Perpétue', emoji: '🕯️', texte: '« Le maître a figé notre chute pour nous sauver — et il a oublié de nous demander si mille ans de la même heure valaient mieux qu’une fin. Montez jusqu’au beffroi. Laissez minuit sonner. Je vous guiderai — j’ai eu le temps d’apprendre le chemin par cœur. Tous les chemins. Par cœur. »' },
+        ],
+        suite: 'cour-gelee',
+      },
+      'cour-gelee': {
+        type: 'combat',
+        intro: 'La cour de la forteresse, saisie en pleine bataille d’il y a mille ans. Les sentinelles vous détectent : vous n’étiez pas dans l’heure d’origine. Erreur à corriger.',
+        monstres: ['sentinelle-des-heures', 'sentinelle-des-heures', 'regret-devorant'],
+        suite: 'carillon',
+      },
+      carillon: {
+        type: 'epreuve',
+        qui: 'Perpétue', emoji: '🔔',
+        texte: 'Le petit carillon de la chapelle — le seul instrument que l’Horloger n’a jamais su faire taire. « Il est accordé sur la boucle, » explique Perpétue. « Réaccordez-le sur le temps VRAI, et le maître perdra sa meilleure oreille. Mais une fausse note, et toute la ronde de garde saura que vous existez. »',
+        stat: 'int', difficulte: 44,
+        reussite: {
+          texte: 'Cloche après cloche, vous rendez au carillon l’heure juste. Son premier accord de temps réel traverse la forteresse comme un frisson — et quelque part très haut, un balancier rate un battement.',
+          effet: { drapeau: 'carillon-accorde' },
+          suite: 'salle-des-pendules',
+        },
+        echec: {
+          texte: 'L’avant-dernière cloche sonne un quart de ton trop bas. Dans le silence qui suit, vous entendez très distinctement toute une ronde de garde faire demi-tour.',
+          suite: 'combat-ronde',
+        },
+      },
+      'combat-ronde': {
+        type: 'combat',
+        intro: 'La ronde déboule dans la chapelle, hallebardes-aiguilles en avant. Un paradoxe armé les suit — il est déjà là avant d’arriver, ce qui est vexant.',
+        monstres: ['sentinelle-des-heures', 'paradoxe-arme'],
+        suite: 'salle-des-pendules',
+      },
+      'salle-des-pendules': {
+        type: 'choix',
+        qui: 'Perpétue', emoji: '🕰️',
+        texte: 'La salle des pendules : des centaines de balanciers, un par habitant de la forteresse, chacun figé sur sa dernière seconde. « Le maître garde leurs heures ici, » murmure Perpétue. « On peut en rendre — ou en prendre. Je ne vous jugerai pas. Enfin si. Mais en silence. »',
+        options: [
+          {
+            texte: '🗝️ Rendre leur heure aux gardes de la forteresse',
+            detail: 'Intelligence ≥ 36 — libérés de la boucle, ils cesseront de défendre l’Horloger',
+            condition: { stat: 'int', min: 36 },
+            effet: { drapeau: 'gardes-liberes' },
+            resultat: 'Vous relancez les balanciers un à un. Dans toute la forteresse, des soldats figés terminent enfin leur geste — et le laissent inachevé, désertant leur poste millénaire pour aller voir minuit en face. L’Horloger n’a plus d’armée : il a des témoins.',
+            suite: 'bibliotheque',
+          },
+          {
+            texte: '⌛ Voler une heure pour l’équipe',
+            detail: 'Une heure entière de repos absolu — mais l’Horloger saura compter',
+            effet: { drapeau: 'heure-volee', pvPct: 0.2, mpPct: 0.2 },
+            resultat: 'Vous décrochez une heure vacante et la partagez : une heure de sommeil parfait, hors du temps, sans rêves ni sentinelle. Vous vous relevez neufs. Au plafond, une pendule de bronze vient de se mettre à compter — à rebours, et pour vous.',
+            suite: 'bibliotheque',
+          },
+          {
+            texte: '🚶 Ne toucher à aucun balancier',
+            detail: 'Le temps des autres ne se manipule pas',
+            resultat: 'Vous traversez la salle les mains derrière le dos, ostensiblement. Perpétue approuve : « C’est ce que je dis au maître depuis mille ans. Mot pour mot. »',
+            suite: 'bibliotheque',
+          },
+        ],
+      },
+      bibliotheque: {
+        type: 'tresor',
+        titre: '📚 La bibliothèque des futurs annulés',
+        texte: 'Des rayonnages entiers de « demain » que la boucle a rendus impossibles : moissons jamais faites, lettres jamais lues — et les trésors que la forteresse aurait un jour frappés.',
+        effet: { po: 1800, objets: { 'eclat-d-etoile': 2, 'potion-supreme-soin': 2, 'potion-supreme-mana': 1 } },
+        suite: 'escalier-inverse',
+      },
+      'escalier-inverse': {
+        type: 'epreuve',
+        qui: 'Perpétue', emoji: '🌀',
+        texte: 'L’escalier du beffroi monte à travers les âges de la forteresse — au sens propre : chaque volée de marches vous fait vieillir, la palier suivant vous rajeunit, et l’équilibre des deux dépend de votre vitesse. « Courez régulier, » conseille Perpétue. « Le maître l’a conçu pour décourager les visites. Et les huissiers. »',
+        stat: 'vit', difficulte: 44,
+        reussite: {
+          texte: 'Vous trouvez la cadence exacte où vieillir et rajeunir s’annulent. Au sommet, vous avez l’âge précis du départ — et dans une niche du palier, la bourse d’un huissier moins régulier que vous.',
+          effet: { po: 900 },
+          suite: 'atelier-perpetue',
+        },
+        echec: {
+          texte: 'À mi-course, vous avez brièvement soixante-dix ans, puis sept. Le corps encaisse les deux notes de frais. Perpétue vous attend au sommet avec l’air de quelqu’un qui a vu ça trois cent mille fois — parce que c’est le cas.',
+          effet: { pvPct: -0.15 },
+          suite: 'atelier-perpetue',
+        },
+      },
+      'atelier-perpetue': {
+        type: 'choix',
+        qui: 'Perpétue', emoji: '🕯️',
+        texte: 'Son ancien atelier, sous le beffroi. Perpétue pose sa bougie inversée et vous regarde en face. « Je peux fausser le grand ressort du maître d’ici. Son mécanisme perdra un temps précieux — c’est le cas de le dire. Mais la boucle me protège : si je la sabote, mes trois cent soixante-cinq mille nuits me rattraperont d’un coup. Je suis prête. La question, c’est : vous, êtes-vous prêts à me le demander ? »',
+        options: [
+          {
+            texte: '🔧 Accepter son sacrifice : « Fausse le ressort. »',
+            detail: 'L’Horloger sera affaibli — mais Perpétue paiera ses mille ans d’un coup',
+            effet: { drapeau: 'ressort-fausse' },
+            resultat: 'Perpétue sourit — un vrai sourire, le premier depuis des siècles, dirait-on — et plonge ses mains dans la mécanique. Quelque part au-dessus, le grand ressort gémit et se voile. Quand elle se retourne, ses cheveux ont blanchi aux tempes. « Ce n’est qu’un acompte, » dit-elle. « Allez. Je finis de compter. »',
+            suite: 'garde-final',
+          },
+          {
+            texte: '🕯️ Refuser : « Personne ne paie mille ans pour nous. »',
+            detail: 'L’Horloger restera entier — mais Perpétue verra minuit',
+            effet: { drapeau: 'perpetue-epargnee', pvPct: 0.1 },
+            resultat: 'Vous refermez doucement le panneau de la mécanique. Perpétue proteste pour la forme, puis vous glisse une fiole de sa réserve — « pour la route » — et reprend sa bougie. Sa flamme inversée, pour la première fois, vacille dans le bon sens.',
+            suite: 'garde-final',
+          },
+        ],
+      },
+      'garde-final': {
+        type: 'combat',
+        intro: 'La porte du beffroi. Les derniers fidèles de l’Horloger s’y produisent — des paradoxes en armes, qui vous ont déjà perdu ce combat et comptent bien prendre leur revanche à l’avance.',
+        monstres: ['paradoxe-arme', 'paradoxe-arme', 'regret-devorant'],
+        suite: 'avant-boss',
+      },
+      'avant-boss': {
+        type: 'dialogue',
+        scenes: [
+          { qui: 'Perpétue', emoji: '🕯️', texte: '« Le beffroi. Il est là-haut, au milieu de ses cadrans, à retenir le douzième coup à bout de bras depuis mille ans. Ne le détestez pas trop : il nous aimait. C’est bien ça, le problème — il nous aimait au point de nous garder. Sonnez minuit. Toutes les cloches. Je veux entendre la fin. »' },
+        ],
+        suite: 'boss',
+      },
+      boss: {
+        type: 'boss',
+        intro: 'Le beffroi est un ciel de cadrans. Suspendu au grand balancier, un vieillard aux yeux d’émail vous toise — onze coups de bronze flottent autour de lui comme une couronne, et il retient le douzième dans son poing. « MILLE ANS QUE JE LE TIENS, » dit le Grand Horloger. « VOUS NE SONNEREZ RIEN. »',
+        monstre: 'grand-horloger',
+        modificateurs: [
+          { drapeau: 'carillon-accorde', hpMult: 0.9, annonce: '🔔 Le carillon accordé chante le temps vrai : la mécanique de l’Horloger se voile à chaque note !' },
+          { drapeau: 'gardes-liberes', atkMult: 0.9, annonce: '🗝️ Ses gardes libérés regardent sans intervenir : l’Horloger frappe seul, pour la première fois !' },
+          { drapeau: 'ressort-fausse', hpMult: 0.9, annonce: '🔧 Le grand ressort faussé par Perpétue grince : chaque geste de l’Horloger coûte double !' },
+          { drapeau: 'heure-volee', atkMult: 1.1, annonce: '⌛ L’Horloger a compté l’heure volée — et il la fait payer avec intérêts !' },
+        ],
+        suite: 'fin',
+      },
+      fin: {
+        type: 'fin',
+        variantes: [
+          { drapeau: 'ressort-fausse', cle: 'minuit-paye', texte: 'Le douzième coup échappe au poing de l’Horloger et sonne — énorme, rond, définitif. La forteresse achève sa chute de mille ans… en trois mètres : le temps figé l’avait presque posée. Dans la cour, les habitants terminent leurs gestes et éclatent en questions. Vous trouvez Perpétue assise contre le beffroi, très vieille et très satisfaite, sa bougie éteinte à la main. « J’ai entendu la fin, » souffle-t-elle. « Elle était à l’heure. » Elle vous lègue la Couronne des Heures — et son dernier tour de cadran.' },
+          { drapeau: 'perpetue-epargnee', cle: 'minuit-partage', texte: 'Le douzième coup sonne — énorme, rond, définitif — et la forteresse achève sa chute de mille ans en trois mètres à peine. Perpétue écoute l’écho mourir, compte jusqu’à douze, puis souffle enfin sa bougie inversée. « Trois cent soixante-cinq mille nuits, » dit-elle, « et c’est la première fois que je vois minuit UNE. » Elle vous coiffe elle-même de la Couronne des Heures, de ses mains d’apprentie — enfin libre de devenir maîtresse horlogère. Elle a le temps, désormais.' },
+        ],
+        texte: 'Minuit sonne enfin sur la Forteresse, douze coups ronds et définitifs, et le temps reprend son cours interrompu. Dans le beffroi silencieux, il ne reste du Grand Horloger qu’un balancier immobile — et la Couronne des Heures, qui vous revient.',
+      },
+    },
+  },
+
+  // ============================================================
+  // 9. L'Œil du Néant — défi 70, la fin des histoires
+  // ============================================================
+  {
+    id: 'neant',
+    nom: 'L’Œil du Néant',
+    emoji: '👁️',
+    niveauMin: 50,
+    defi: 70,
+    requiert: 'temps-brise',
+    resume: 'Sous le gouffre, derrière le temps, quelque chose attendait depuis avant les Royaumes. Il a fini d’attendre. Défi de niveau 70 — le dernier.',
+    hautFait: 'donjon-neant',
+    depart: 'intro',
+    recompenses: {
+      xp: 30000, po: 20000,
+      objet: 'coeur-du-neant',
+      objetParDrapeau: { 'neant-scelle': 'sceau-de-l-aube' },
+    },
+    etapes: {
+      intro: {
+        type: 'dialogue',
+        scenes: [
+          { qui: 'Narrateur', emoji: '📜', texte: 'Les ombres de Nihelm coulaient quelque part. L’Horloger retenait minuit pour quelqu’un. Les savants de Valciel ont fini par superposer les cartes : sous le gouffre et derrière le temps, il y a un même endroit. Une porte qui n’apparaît sur aucun plan — parce qu’elle est dessinée sur l’envers du monde.' },
+          { qui: 'Le Fossoyeur', emoji: '⚰️', texte: 'Il vous attend devant, bêche sur l’épaule, plus vieux que la dernière fois — ce qui ne devrait pas être possible en si peu de jours. « Je vous dois la vérité : je ne creuse pas les tombes. Je les creuse POUR quelqu’un. Celui-qui-Attend. Il mange les histoires finies — c’est son droit, c’est l’ordre des choses. Mais il a cessé d’attendre qu’elles finissent. »' },
+          { qui: 'Le Fossoyeur', emoji: '⚰️', texte: '« L’Avatar, c’était lui qui goûtait. La boucle de l’Horloger, c’était lui qui patientait mal. Derrière cette porte, il y a un œil ouvert sur tout ce qui existe — et il cligne de moins en moins. Entrez. Finissez la seule histoire qu’il ne peut pas manger : la sienne. Moi… je creuse. Une grande, cette fois. Je ne sais pas encore pour qui. Je creuse toujours juste. »' },
+        ],
+        suite: 'seuil',
+      },
+      seuil: {
+        type: 'combat',
+        intro: 'Le seuil de l’envers du monde. Deux annonciateurs psalmodient l’arrivée de leur maître — et une baleine d’ombre nage entre les étoiles mortes, gobant les dernières lumières.',
+        monstres: ['annonciateur-du-neant', 'annonciateur-du-neant', 'mange-etoiles'],
+        suite: 'porte-scellee',
+      },
+      'porte-scellee': {
+        type: 'epreuve',
+        qui: 'Narrateur', emoji: '🚪',
+        texte: 'La porte intérieure n’a ni gonds ni serrure : elle est simplement plus lourde que tout ce qui existe de ce côté-ci. Elle ne s’ouvre pas — elle se TIENT ouverte, à la force des bras, le temps que tout le monde passe.',
+        stat: 'for', difficulte: 48,
+        reussite: {
+          texte: 'Les épaules calées sous le battant, vous tenez ouvert l’envers du monde le temps que l’équipe passe — et une seconde de plus, par principe. La porte, en se refermant, laisse tomber un fragment d’elle-même : plus lourd qu’il n’en a l’air, et précieux de même.',
+          effet: { po: 1500, objets: { 'essence-primordiale': 1 } },
+          suite: 'memoire-du-monde',
+        },
+        echec: {
+          texte: 'La porte pèse une idée de plus que vos forces. Elle se referme sur le dernier passant comme un livre qu’on claque — tout le monde passe, mais personne n’en sort indemne.',
+          effet: { pvPct: -0.12 },
+          suite: 'memoire-du-monde',
+        },
+      },
+      'memoire-du-monde': {
+        type: 'choix',
+        qui: 'Celui-qui-Attend', emoji: '🌌',
+        texte: 'La salle suivante n’existe pas : elle est faite de votre mémoire, dépliée. Chaque héros y voit ce qu’il a de plus cher — et une voix immense, patiente, propose : « RESTE. JE PEUX REFAIRE TOUT CECI. EN MIEUX. IL SUFFIT DE CESSER D’AVANCER. »',
+        options: [
+          {
+            texte: '🧠 Retourner le vœu : « Alors montre-nous TA plus chère mémoire. »',
+            detail: 'Intelligence ≥ 40 — piéger le Néant dans sa propre offre',
+            condition: { stat: 'int', min: 40 },
+            effet: { drapeau: 'voeu-retourne' },
+            resultat: 'Un silence — le premier vrai silence du Néant. Car sa plus chère mémoire, c’est le monde d’avant les mondes, celui qu’il a mangé en premier. Et se la montrer, c’est se souvenir qu’il a déjà tout eu — et tout fini. Quelque chose d’immense, derrière les murs, se replie sur une vieille douleur.',
+            suite: 'pont-etoiles',
+          },
+          {
+            texte: '⚔️ Refuser en bloc : « Nos souvenirs ne sont pas à vendre. »',
+            detail: 'Chance ≥ 40 — un refus unanime le blesse plus qu’une lame',
+            condition: { stat: 'cha', min: 40 },
+            effet: { drapeau: 'voeu-refuse' },
+            resultat: 'Le refus part d’une seule voix — la salle entière vacille, vexée. Les souvenirs dépliés se replient un à un, intacts, inachetés. La voix immense note, quelque part : « INTÉRESSANT. » Elle ment. Elle est furieuse.',
+            suite: 'pont-etoiles',
+          },
+          {
+            texte: '👂 Écouter l’offre… juste un instant',
+            detail: 'Dangereux — mais le Néant paie parfois ses auditeurs',
+            resultats: [
+              { poids: 3, texte: 'Vous écoutez — un instant seulement — et dans le flot de la tentation, vous attrapez au vol un fragment du monde promis : il est solide, lui. Le reste, vous le laissez couler.', effet: { pvPct: 0.15, po: 1000 }, suite: 'pont-etoiles' },
+              { poids: 2, texte: 'Vous écoutez un instant de trop. Le monde promis a le goût exact de ce qui vous manque — et le retirer de votre bouche coûte une part de vous.', effet: { pvPct: -0.18 }, suite: 'pont-etoiles' },
+            ],
+          },
+        ],
+      },
+      'pont-etoiles': {
+        type: 'tresor',
+        titre: '🌉 Le pont des étoiles mortes',
+        texte: 'Un pont bâti de toutes les étoiles que le Mange-étoiles a gobées — éteintes, mais pas vides. Entre deux pas, vous ramassez ce que la lumière a laissé.',
+        effet: { po: 2000, objets: { 'essence-primordiale': 2, 'potion-supreme-soin': 3, 'eclat-d-etoile': 2 } },
+        suite: 'regard',
+      },
+      regard: {
+        type: 'epreuve',
+        qui: 'Le Fossoyeur', emoji: '👁️',
+        texte: 'Au bout du pont, l’Œil vous a vus. Pas encore en colère — curieux. Le Fossoyeur, resté au seuil, vous avait prévenus : « Il regardera l’un de vous en premier. Soutenez ce regard sans ciller, et il doutera. Personne n’a jamais soutenu son regard. Remarquez, personne n’a jamais eu votre chance. »',
+        stat: 'cha', difficulte: 48,
+        reussite: {
+          texte: 'Le regard de l’Œil pèse tous les mondes finis — et s’arrête sur des yeux qui ne baissent pas. Une éternité passe. Puis l’Œil cligne. LE PREMIER. Quelque part au seuil, on entend un fossoyeur rire pour la première fois de sa très longue vie.',
+          effet: { drapeau: 'regard-soutenu' },
+          suite: 'derniers-pas',
+        },
+        echec: {
+          texte: 'Le regard pèse, pèse — et vous cillez. Rien qu’une fois. L’Œil s’en contente : il a lu, dans ce battement, tout ce qu’il voulait savoir de vos peurs. Vous vous sentez feuilletés.',
+          effet: { mpPct: -0.2 },
+          suite: 'derniers-pas',
+        },
+      },
+      'derniers-pas': {
+        type: 'combat',
+        intro: 'Les derniers fidèles du Néant se dressent sur le pont — non pour le protéger, mais pour retarder l’heure où il devra, enfin, faire quelque chose lui-même.',
+        monstres: ['annonciateur-du-neant', 'mange-etoiles', 'mange-etoiles'],
+        suite: 'avant-boss',
+      },
+      'avant-boss': {
+        type: 'dialogue',
+        scenes: [
+          { qui: 'Le Fossoyeur', emoji: '⚰️', texte: 'Sa voix vous parvient depuis le seuil, portée par rien. « La grande tombe est prête. Je ne sais toujours pas pour qui — c’est VOTRE page à écrire, pas la mienne. Mais un conseil de professionnel : quand il tombera, il vous offrira sa place. Manger les fins, décider des fins… c’est un métier, ça aussi. Réfléchissez à deux fois avant de reprendre la boutique. »' },
+        ],
+        suite: 'boss',
+      },
+      boss: {
+        type: 'boss',
+        intro: 'Il n’y a plus de salle. Il n’y a que l’Œil — vaste comme un ciel retourné, ancien comme l’envie de dormir. Celui-qui-Attend vous regarde arriver et, pour la première fois depuis l’aube des mondes, se lève. « J’AI MANGÉ MILLE FINS, » dit-il. « LA VÔTRE SERA LA MEILLEURE. »',
+        monstre: 'celui-qui-attend',
+        modificateurs: [
+          { drapeau: 'voeu-retourne', hpMult: 0.85, annonce: '🧠 Le Néant rumine sa plus chère mémoire : une part de lui combat ailleurs, dans un monde déjà mangé !' },
+          { drapeau: 'voeu-refuse', atkMult: 0.85, annonce: '⚔️ Votre refus unanime le blesse encore : chaque coup du Néant hésite une demi-éternité !' },
+          { drapeau: 'regard-soutenu', atkMult: 0.9, annonce: '👁️ Il a cligné le premier — et il le sait. Le doute est une chose neuve, et elle le ronge !' },
+        ],
+        suite: 'choix-final',
+      },
+      'choix-final': {
+        type: 'choix',
+        qui: 'Le Néant mourant', emoji: '🌌',
+        texte: 'Celui-qui-Attend se replie sur lui-même, de plus en plus petit, jusqu’à tenir dans une main : un cœur noir, très lent, très vieux. Il bat encore. La voix n’est plus qu’un souffle : « QUELQU’UN… DOIT… MANGER LES FINS. SINON ELLES S’EMPILENT. CHOISIS. »',
+        options: [
+          {
+            texte: '🖤 Dévorer le cœur du Néant — reprendre la charge',
+            detail: 'Son pouvoir passe en vous, forgé en arme. (Récompense : le Cœur du Néant)',
+            effet: { drapeau: 'neant-devore' },
+            suite: 'fin',
+          },
+          {
+            texte: '🌅 Sceller l’Œil — confier les fins à l’aube',
+            detail: 'Les fins attendront le matin, comme tout le monde. (Récompense : le Sceau de l’Aube)',
+            effet: { drapeau: 'neant-scelle' },
+            suite: 'fin',
+          },
+        ],
+      },
+      fin: {
+        type: 'fin',
+        variantes: [
+          { drapeau: 'neant-devore', cle: 'la-charge-reprise', texte: 'Vous mangez la fin des fins. C’est froid, puis immense, puis étrangement calme : quelque part en vous, désormais, les histoires terminées viennent se ranger d’elles-mêmes, sages comme des livres. Le Fossoyeur comble la grande tombe — vide — et s’en repart en sifflotant : « Patron, » vous salue-t-il au passage. Dans votre main, le Cœur du Néant bat au rythme exact de votre pouls. Les Royaumes de Valciel continuent — et leurs fins, dorénavant, vous demanderont la permission.' },
+          { drapeau: 'neant-scelle', cle: 'l-aube-en-heritage', texte: 'Vous refermez l’Œil comme on borde un très vieux dormeur, et vous le scellez du seul sceau qu’il respecte : la promesse d’un matin. Les fins attendront l’aube, désormais — elles s’empileront la nuit et fondront au soleil, comme le givre. Le Fossoyeur contemple sa grande tombe vide, hausse les épaules, et y plante un arbre. « Faute de client. » Sur le chemin du retour, le premier lever de soleil des Royaumes libres semble durer un peu plus longtemps que d’habitude. Il vous salue.' },
+        ],
+        texte: 'Celui-qui-Attend n’attend plus rien, et l’envers du monde est silencieux. Les Royaumes de Valciel, eux, continuent — toutes leurs histoires désormais libres de finir quand ELLES le décident.',
+      },
+    },
+  },
+);
+
 const DONJONS_PAR_ID = {};
 DONJONS.forEach((d) => { DONJONS_PAR_ID[d.id] = d; });
 
@@ -1217,7 +2128,8 @@ function rendreCartesDonjons(conteneur, p) {
 
   DONJONS.forEach((donjon) => {
     const prog = progresDonjon(p, donjon.id);
-    const verrouille = p.niveau < donjon.niveauMin;
+    const prerequisManquant = donjon.requiert && !(progresDonjon(p, donjon.requiert).fini > 0);
+    const verrouille = p.niveau < donjon.niveauMin || prerequisManquant;
     const enCours = !!prog.checkpoint;
     const carte = document.createElement('div');
     carte.className = 'carte-zone donjon-histoire' + (verrouille ? ' verrouillee' : '');
@@ -1225,13 +2137,17 @@ function rendreCartesDonjons(conteneur, p) {
     if (prog.fini > 0) statut = ' ✅';
     else if (enCours) statut = ' 📖';
     let action = 'Commencer l’histoire';
-    if (verrouille) action = `🔒 Atteignez le niveau ${donjon.niveauMin}.`;
+    if (p.niveau < donjon.niveauMin) action = `🔒 Atteignez le niveau ${donjon.niveauMin}.`;
+    else if (prerequisManquant) action = `🔒 Terminez d’abord « ${DONJONS_PAR_ID[donjon.requiert].nom} ».`;
     else if (enCours) action = '▶ Reprendre l’aventure en cours';
     else if (prog.fini > 0) action = 'Revivre l’histoire (récompenses réduites)';
+    const etiquette = donjon.defi
+      ? `☠️ défi niv. ${donjon.defi} · héros niv. ${donjon.niveauMin}+`
+      : `histoire · niv. ${donjon.niveauMin}+`;
     carte.innerHTML = `
       <div class="zone-emoji">${donjon.emoji}</div>
       <div class="zone-nom">${donjon.nom}${statut}</div>
-      <div class="zone-plage">histoire · niv. ${donjon.niveauMin}+</div>
+      <div class="zone-plage">${etiquette}</div>
       <div class="zone-desc">${verrouille ? action : `${donjon.resume}<br><em>${action}</em>`}</div>`;
     if (!verrouille) rendreCliquable(carte, () => ouvrirDonjon(donjon));
     conteneur.appendChild(carte);
@@ -1290,6 +2206,7 @@ function demarrerEtapeDonjon(idEtape) {
   scene.innerHTML = '';
   if (etape.type === 'dialogue') rendreDialogueDonjon(etape, 0);
   else if (etape.type === 'choix') rendreChoixDonjon(etape);
+  else if (etape.type === 'epreuve') rendreEpreuveDonjon(etape);
   else if (etape.type === 'tresor') rendreTresorDonjon(etape);
   else if (etape.type === 'fin') terminerDonjon(etape);
   montrerEcran('ecran-donjon');
@@ -1346,10 +2263,18 @@ function rendreDialogueDonjon(etape, index) {
 function conditionRemplie(condition, p) {
   if (!condition) return { ok: true };
   if (condition.stat) {
-    const valeur = statsEffectives(p)[condition.stat] || 0;
+    // En équipe, c'est le membre le plus doué qui « fait l'action »
+    // (l'esprit Donjons & Dragons : chacun son moment de gloire).
+    const membres = membresEquipe();
+    let valeur = 0;
+    let champion = p;
+    membres.forEach((m) => {
+      const v = statsEffectives(m)[condition.stat] || 0;
+      if (v >= valeur) { valeur = v; champion = m; }
+    });
     const nomStat = CARACS[condition.stat] ? CARACS[condition.stat].nom : condition.stat;
     return valeur >= condition.min
-      ? { ok: true }
+      ? { ok: true, champion: membres.length > 1 ? champion : null }
       : { ok: false, raison: `${nomStat} ${valeur}/${condition.min}` };
   }
   if (condition.drapeau) {
@@ -1380,7 +2305,9 @@ function appliquerEffetDonjon(effet) {
     membres.forEach((m) => {
       m.mp = Math.max(0, Math.min(m.maxMp, m.mp + Math.round(m.maxMp * effet.mpPct)));
     });
-    lignes.push(`💧 +${Math.round(effet.mpPct * 100)} % de PM pour l'équipe`);
+    lignes.push(effet.mpPct > 0
+      ? `💧 +${Math.round(effet.mpPct * 100)} % de PM pour l'équipe`
+      : `🌀 ${Math.round(effet.mpPct * 100)} % de PM pour l'équipe`);
   }
   if (effet.po) {
     membres.forEach((m) => { m.po += effet.po; m.compteurs.orTotal += effet.po; });
@@ -1402,23 +2329,110 @@ function appliquerEffetDonjon(effet) {
   return lignes;
 }
 
-function rendreChoixDonjon(etape) {
+// =====================================================================
+// Épreuves façon Donjons & Dragons : un jet de d20 + la meilleure stat
+// de l'équipe contre une difficulté. Réussite et échec ont chacun
+// leurs conséquences — et l'histoire continue dans les deux cas.
+// =====================================================================
+function rendreEpreuveDonjon(etape) {
   const scene = el('donjon-scene');
-  scene.appendChild(carteScene(etape.qui, etape.emoji, etape.texte));
+  scene.appendChild(carteScene(etape.qui || 'Épreuve', etape.emoji || '🎲', etape.texte));
+
+  const membres = membresEquipe();
+  let champion = membres[0];
+  membres.forEach((m) => {
+    if ((statsEffectives(m)[etape.stat] || 0) > (statsEffectives(champion)[etape.stat] || 0)) champion = m;
+  });
+  const bonus = statsEffectives(champion)[etape.stat] || 0;
+  const nomStat = CARACS[etape.stat].nom;
+  const epreuveDe = /^[aeioué]/i.test(nomStat) ? `d’${nomStat}` : `de ${nomStat}`;
+
+  const bloc = document.createElement('div');
+  bloc.className = 'panneau bloc-epreuve';
+  bloc.innerHTML = `<p>🎲 <strong>Épreuve ${epreuveDe}</strong> — difficulté ${etape.difficulte}.
+    ${membres.length > 1 ? `C'est <strong>${echapper(champion.nom)}</strong> (le plus doué, ${nomStat} ${bonus}) qui s'y colle.` : `Votre ${nomStat} : ${bonus}.`}</p>`;
+  const lancer = document.createElement('button');
+  lancer.className = 'btn-principal';
+  lancer.textContent = '🎲 Lancer le d20 !';
+  lancer.addEventListener('click', () => {
+    lancer.disabled = true;
+    const de = alea(1, 20);
+    const total = de + bonus;
+    const critique = de === 20;
+    const echecCritique = de === 1;
+    const reussite = critique || (!echecCritique && total >= etape.difficulte);
+    const resultat = document.createElement('p');
+    resultat.className = 'resultat-de';
+    resultat.innerHTML = `🎲 <strong>${de}</strong> + ${bonus} (${nomStat}) = <strong>${total}</strong> contre ${etape.difficulte}
+      — ${critique ? '🌟 20 NATUREL !' : echecCritique ? '💀 1 naturel…' : reussite ? '✅ Réussite !' : '❌ Échec…'}`;
+    bloc.appendChild(resultat);
+    const issue = reussite ? etape.reussite : etape.echec;
+    const lignes = appliquerEffetDonjon(issue.effet);
+    // L'épreuve est consommée : pas de relance en boucle.
+    sauvegarderProgresDonjon(issue.suite);
+    setTimeout(() => rendreResultatDonjon(issue.texte, lignes, issue.suite), 900);
+  });
+  bloc.appendChild(lancer);
+  scene.appendChild(bloc);
+  bloc.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function rendreChoixDonjon(etape, sansCarte) {
+  const scene = el('donjon-scene');
+  if (!sansCarte) scene.appendChild(carteScene(etape.qui, etape.emoji, etape.texte));
   const p = persoActif();
+  const membres = membresEquipe();
+
+  // En équipe locale, les décisions se prennent AU VOTE : chaque héros
+  // choisit à son tour (on se passe l'écran), la majorité l'emporte,
+  // et le chef d'expédition tranche les égalités.
+  const contexte = etat.donjon;
+  const enVote = membres.length > 1;
+  if (enVote && !contexte.vote) contexte.vote = { votes: [], tour: 0 };
 
   const boutons = document.createElement('div');
   boutons.className = 'choix-donjon';
-  etape.options.forEach((option) => {
+  if (enVote) {
+    const votant = membres[contexte.vote.tour];
+    const bandeau = document.createElement('div');
+    bandeau.className = 'bandeau-vote';
+    bandeau.innerHTML = `🗳️ <strong>Vote d'équipe</strong> (${contexte.vote.tour + 1}/${membres.length}) —
+      au tour de <strong>${echapper(votant.nom)}</strong> ${votant.avatar} de choisir. Passez-lui l'écran !`;
+    boutons.appendChild(bandeau);
+  }
+  etape.options.forEach((option, indexOption) => {
     const verif = conditionRemplie(option.condition, p);
     const btn = document.createElement('button');
     btn.className = 'btn-action choix-option';
     btn.disabled = !verif.ok;
+    const voix = enVote ? contexte.vote.votes.filter((v) => v === indexOption).length : 0;
     const detail = verif.ok
-      ? (option.detail || '')
+      ? `${option.detail || ''}${verif.champion ? ` — c'est ${verif.champion.nom} qui agira` : ''}`
       : `🔒 ${option.detail || ''} — ${verif.raison}`;
-    btn.innerHTML = `<strong>${option.texte}</strong>${detail ? `<span class="action-detail">${detail}</span>` : ''}`;
-    btn.addEventListener('click', () => choisirOptionDonjon(etape, option));
+    btn.innerHTML = `<strong>${option.texte}</strong>${voix ? ` <span class="badge">${voix} voix</span>` : ''}${detail ? `<span class="action-detail">${detail}</span>` : ''}`;
+    btn.addEventListener('click', () => {
+      if (!enVote) { choisirOptionDonjon(etape, option); return; }
+      // Enregistre la voix du votant courant, puis passe au suivant.
+      contexte.vote.votes.push(indexOption);
+      contexte.vote.tour++;
+      if (contexte.vote.tour < membres.length) {
+        scene.querySelectorAll('.choix-donjon').forEach((x) => x.remove());
+        rendreChoixDonjon(etape, true); // la carte de scène reste, seul le vote se rafraîchit
+        return;
+      }
+      // Dépouillement : majorité, le chef (1er membre) tranche les égalités.
+      const compte = {};
+      contexte.vote.votes.forEach((v) => { compte[v] = (compte[v] || 0) + 1; });
+      const maxVoix = Math.max(...Object.values(compte));
+      const exaequo = Object.keys(compte).filter((k) => compte[k] === maxVoix).map(Number);
+      const gagnante = exaequo.length > 1
+        ? contexte.vote.votes[0] // le vote du chef départage
+        : exaequo[0];
+      const elue = etape.options[gagnante];
+      afficherToast(`🗳️ L'équipe a tranché : « ${elue.texte} » (${maxVoix} voix${exaequo.length > 1 ? ' — le chef départage' : ''}).`);
+      contexte.vote = null;
+      choisirOptionDonjon(etape, elue);
+    });
     boutons.appendChild(btn);
   });
   scene.appendChild(boutons);

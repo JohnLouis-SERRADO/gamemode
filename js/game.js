@@ -216,11 +216,42 @@ function normaliserPerso(p) {
     const depenses = Object.values(p.rangs).reduce((somme, r) => somme + r, 0);
     p.maitrise = Math.max(0, pointsMaitrisePourNiveau(p.niveau) - depenses);
   }
+  // v12 : métiers de récolte (mineur, tanneur, tisseur).
+  if (!p.metiers || typeof p.metiers !== 'object') p.metiers = {};
+  Object.keys(METIERS).forEach((id) => {
+    if (!p.metiers[id]) p.metiers[id] = { niveau: 1, xp: 0 };
+  });
   if (!p.quetes || p.quetes.date !== new Date().toISOString().slice(0, 10)) {
     p.quetes = genererQuetesDuJour(p);
   }
   bornerVie(p);
   return p;
+}
+
+// =====================================================================
+// Métiers de récolte (v12) : mineur / tanneur / tisseur montent en
+// niveau à force de pratiquer — meilleures quantités, meilleures prises.
+// =====================================================================
+function metierDe(p, idMetier) {
+  if (!p.metiers) p.metiers = {};
+  if (!p.metiers[idMetier]) p.metiers[idMetier] = { niveau: 1, xp: 0 };
+  return p.metiers[idMetier];
+}
+
+function gagnerXpMetier(p, idMetier, xp) {
+  const m = metierDe(p, idMetier);
+  if (m.niveau >= NIVEAU_MAX_METIER) return false;
+  m.xp += xp;
+  let monte = false;
+  while (m.niveau < NIVEAU_MAX_METIER && m.xp >= seuilXpMetier(m.niveau)) {
+    m.xp -= seuilXpMetier(m.niveau);
+    m.niveau++;
+    monte = true;
+  }
+  if (monte) {
+    afficherToast(`${METIERS[idMetier].emoji} ${p.nom} passe ${METIERS[idMetier].nom} niveau ${m.niveau} — ses récoltes s'enrichissent !`);
+  }
+  return monte;
 }
 
 // Devine la classe d'un héros d'avant la v8 : le modèle dont il connaît
@@ -258,7 +289,7 @@ function donneesCloud(p) {
     compteurs: p.compteurs, familiers: p.familiers, familier: p.familier,
     hautsFaits: p.hautsFaits, titre: p.titre, tourMax: p.tourMax, quetes: p.quetes,
     donjons: p.donjons, classe: p.classe, maitrise: p.maitrise, rangs: p.rangs,
-    tourBoss: p.tourBoss,
+    tourBoss: p.tourBoss, metiers: p.metiers,
   };
 }
 
@@ -685,6 +716,7 @@ function rendreConsoleAdmin(zone, p) {
     ['❤️ Soin complet', () => { p.hp = p.maxHp; p.mp = p.maxMp; }],
     ['💪 +5 à toutes les stats', () => { Object.keys(CARACS).forEach((cle) => { p.stats[cle] += 5; }); bornerVie(p); }],
     ['📜 Contrats du jour remplis', () => { p.quetes.liste.forEach((q) => { q.fait = q.requis; }); }],
+    ['🧰 Métiers au maximum', () => { Object.keys(METIERS).forEach((id) => { metierDe(p, id).niveau = NIVEAU_MAX_METIER; metierDe(p, id).xp = 0; }); }],
   ];
   const rangee = document.createElement('div');
   rangee.className = 'rangee-boutons';
@@ -995,6 +1027,26 @@ function rendreHeros() {
     zone.appendChild(blocFamiliers);
   }
 
+  // --- Métiers de récolte (v12) ---
+  const blocMetiers = document.createElement('div');
+  blocMetiers.className = 'panneau';
+  blocMetiers.innerHTML = '<h3>🧰 Métiers de récolte</h3>'
+    + '<p class="aide">Pratiquez sur la carte (miner, dépecer, herboriser) pour progresser : meilleures quantités, et plus de matériaux signatures. La Chance enrichit chaque moisson.</p>';
+  const grilleMetiers = document.createElement('div');
+  grilleMetiers.className = 'rangee-chips';
+  Object.entries(METIERS).forEach(([idMetier, metier]) => {
+    const m = metierDe(p, idMetier);
+    const chip = document.createElement('span');
+    chip.className = 'chip chip-metier';
+    chip.title = `${metier.detail} — matériau signature : ${OBJETS[metier.exclusif].nom}`;
+    chip.textContent = m.niveau >= NIVEAU_MAX_METIER
+      ? `${metier.emoji} ${metier.nom} — maître`
+      : `${metier.emoji} ${metier.nom} niv. ${m.niveau} (${m.xp}/${seuilXpMetier(m.niveau)} XP)`;
+    grilleMetiers.appendChild(chip);
+  });
+  blocMetiers.appendChild(grilleMetiers);
+  zone.appendChild(blocMetiers);
+
   // --- Hauts faits et titres ---
   const blocFaits = document.createElement('div');
   blocFaits.className = 'panneau';
@@ -1274,6 +1326,15 @@ async function importerHeros() {
   const champ = el('champ-code-import');
   const message = el('message-import');
   const code = champ.value.trim();
+  // Mot de passe secret : invoque le héros admin (bac à sable local,
+  // jamais publié en ligne) sans aucun bouton visible.
+  if (code.toLowerCase() === 'admin-valciel') {
+    champ.value = '';
+    message.textContent = '';
+    el('zone-import').classList.add('cache');
+    creerHerosAdmin();
+    return;
+  }
   const morceaux = code.split('.');
   if (morceaux.length !== 2) {
     message.textContent = 'Code invalide : il doit contenir deux parties séparées par un point.';
@@ -1309,6 +1370,17 @@ async function importerHeros() {
   p.equipement = { arme: null, tete: null, torse: null, jambes: null, acc1: null, acc2: null, ...(d.equipement || {}) };
   p.explorations = d.explorations || {};
   p.bossVaincus = d.bossVaincus || [];
+  // Toute la progression annexe voyage aussi d'un appareil à l'autre.
+  if (d.compteurs) p.compteurs = { ...p.compteurs, ...d.compteurs };
+  if (Array.isArray(d.familiers)) p.familiers = d.familiers;
+  if (d.familier !== undefined) p.familier = d.familier;
+  if (Array.isArray(d.hautsFaits)) p.hautsFaits = d.hautsFaits;
+  if (d.titre !== undefined) p.titre = d.titre;
+  if (d.tourMax != null) p.tourMax = d.tourMax;
+  if (d.tourBoss && typeof d.tourBoss === 'object') p.tourBoss = { normal: 0, heroique: 0, cauchemar: 0, ...d.tourBoss };
+  if (d.donjons && typeof d.donjons === 'object') p.donjons = d.donjons;
+  if (d.metiers && typeof d.metiers === 'object') p.metiers = d.metiers;
+  if (d.quetes && d.quetes.date) p.quetes = d.quetes;
   p.cloud = { id: morceaux[0], token: morceaux[1] };
   bornerVie(p);
   p.hp = d.hp != null ? Math.min(p.maxHp, d.hp) : p.maxHp;
@@ -1331,8 +1403,6 @@ function initialiser() {
   chargerProfils();
 
   el('btn-nouveau-perso').addEventListener('click', demarrerCreation);
-  const btnAdmin = el('btn-heros-admin');
-  if (btnAdmin) btnAdmin.addEventListener('click', creerHerosAdmin);
   el('creation-valider').addEventListener('click', validerCreation);
   el('creation-annuler').addEventListener('click', () => { rendreTitre(); montrerEcran('ecran-titre'); });
   el('btn-importer').addEventListener('click', () => el('zone-import').classList.toggle('cache'));
@@ -1345,6 +1415,10 @@ function initialiser() {
 
   document.querySelectorAll('#topbar-nav button').forEach((btn) => {
     btn.addEventListener('click', () => naviguer(btn.dataset.nav));
+  });
+  // Chaque échoppe et atelier propose un retour direct vers le bourg.
+  document.querySelectorAll('.btn-retour-ville').forEach((btn) => {
+    btn.addEventListener('click', () => naviguer('ville'));
   });
 
   rendreTitre();

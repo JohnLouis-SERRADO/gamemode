@@ -157,12 +157,19 @@ function rendreZone(z) {
   explorer_.addEventListener('click', () => explorer(z));
   actions.appendChild(explorer_);
 
-  const recolter_ = document.createElement('button');
-  recolter_.className = 'btn-action-zone';
-  recolter_.innerHTML = `<span class="action-zone-emoji">🌿</span><strong>Récolter</strong>
-    <span class="action-zone-detail">Ramasser des matériaux d’artisanat (gare aux embuscades !)</span>`;
-  recolter_.addEventListener('click', () => recolter(z));
-  actions.appendChild(recolter_);
+  // v12 : trois façons de récolter — chacune nourrit son métier.
+  Object.entries(METIERS).forEach(([idMetier, metier]) => {
+    const m = metierDe(p, idMetier);
+    const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
+    const noms = pool.map((e) => `${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}`).join(', ');
+    const btn = document.createElement('button');
+    btn.className = 'btn-action-zone';
+    btn.innerHTML = `<span class="action-zone-emoji">${metier.emoji}</span><strong>${metier.action}</strong>
+      <span class="action-zone-detail">${noms || `${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom} (traces à débusquer)`}
+      · ${metier.nom} niv. ${m.niveau}</span>`;
+    btn.addEventListener('click', () => recolter(z, idMetier));
+    actions.appendChild(btn);
+  });
 
   const bossBtn = document.createElement('button');
   bossBtn.className = 'btn-action-zone boss';
@@ -178,15 +185,21 @@ function rendreZone(z) {
   const chipsMonstres = z.monstres
     .map((cle) => `<span class="chip">${MONSTRES[cle].emoji} ${MONSTRES[cle].nom}</span>`)
     .join('');
-  const chipsMateriaux = z.recolte
-    .map((entree) => `<span class="chip">${OBJETS[entree.id].emoji} ${OBJETS[entree.id].nom}</span>`)
-    .join('');
+  // Matériaux groupés par métier : on sait tout de suite quoi venir y faire.
+  const chipsMateriaux = Object.values(METIERS).map((metier) => {
+    const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
+    const chips = pool
+      .map((e) => `<span class="chip">${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}</span>`)
+      .join('');
+    return `<span class="chip chip-metier">${metier.emoji} ${metier.action}</span>${chips
+      || `<span class="chip">${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom} (traces)</span>`}`;
+  }).join(' ');
   infos.innerHTML = `
     <div class="panneau">
       <h3>🐾 Créatures de la zone</h3>
       <div class="rangee-chips">${chipsMonstres}
         <span class="chip chip-boss">${boss.emoji} ${boss.nom} (boss)</span></div>
-      <h3>⛏️ Matériaux récoltables</h3>
+      <h3>⛏️ Matériaux récoltables <span class="badge">🍀 la Chance enrichit la moisson</span></h3>
       <div class="rangee-chips">${chipsMateriaux}</div>
       <p class="aide">Explorations dans cette zone : ${explorations}${p.bossVaincus.includes(z.id) ? ' · 🏆 boss déjà vaincu (il peut être défié à nouveau)' : ''}</p>
     </div>`;
@@ -306,18 +319,43 @@ function explorer(z) {
   }
 }
 
-function recolter(z) {
-  progresserQuete(persoActif(), 'recolte', 1);
+// v12 : la récolte se fait par métier (miner / dépecer / herboriser).
+// La Chance améliore les probabilités ET les prises rares ; le niveau
+// de métier améliore les quantités et le matériau signature.
+function recolter(z, idMetier) {
+  const p = persoActif();
+  const metier = METIERS[idMetier] || METIERS.tisseur;
+  progresserQuete(p, 'recolte', 1);
+
+  const s = statsEffectives(p);
+  const multChance = multChanceDrop(s.cha); // jusqu'à ×2 avec la Chance
+  const niveauM = metierDe(p, idMetier).niveau;
+  const bonusQte = Math.floor(niveauM / 3); // +1 dès le niv. 3, +2 au 6, +3 au 9
+
+  const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
   const objets = {};
-  z.recolte.forEach((entree) => {
-    if (Math.random() < entree.chance) objets[entree.id] = (objets[entree.id] || 0) + alea(1, 2);
+  pool.forEach((entree) => {
+    if (Math.random() < Math.min(0.95, entree.chance * multChance)) {
+      objets[entree.id] = (objets[entree.id] || 0) + alea(1, 2) + bonusQte;
+    }
   });
-  if (Object.keys(objets).length === 0) objets[z.recolte[0].id] = 1;
+  // Le matériau signature du métier se trouve partout — d'autant plus
+  // souvent qu'on est chanceux et expérimenté.
+  const chanceExclusif = Math.min(0.75, (0.1 + niveauM * 0.04) * multChance);
+  if (pool.length === 0 || Math.random() < chanceExclusif) {
+    objets[metier.exclusif] = (objets[metier.exclusif] || 0) + 1 + Math.floor(niveauM / 5);
+  }
+  if (Object.keys(objets).length === 0) {
+    objets[pool.length ? pool[0].id : metier.exclusif] = 1;
+  }
+
+  // Tout le monde pratique : chaque héros progresse dans le métier du jour.
+  membresEquipe().forEach((m) => gagnerXpMetier(m, idMetier, alea(2, 4)));
 
   if (Math.random() < 0.25) {
     const membres = membresEquipe();
     const cles = composerPack(z, Math.max(1, Math.min(5, membres.length + bonusTaillePack(membres))));
-    afficherToast('⚠️ Une embuscade pendant la récolte !');
+    afficherToast(`⚠️ ${metier.emoji} Une embuscade pendant la récolte !`);
     demarrerCombatZone(z, 'embuscade', cles, { lootRecolte: objets });
   } else {
     const lignes = [];
@@ -326,8 +364,10 @@ function recolter(z) {
       sauvegarder(m);
     });
     Object.entries(objets).forEach(([id, qte]) => lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}`));
+    const mProg = metierDe(p, idMetier);
+    lignes.push(`${metier.emoji} ${metier.nom} niv. ${mProg.niveau}${mProg.niveau < NIVEAU_MAX_METIER ? ` (${mProg.xp}/${seuilXpMetier(mProg.niveau)} XP)` : ' (maître)'}`);
     afficherButin({
-      titre: '🌿 Récolte fructueuse',
+      titre: `${metier.emoji} ${metier.action} : belle moisson`,
       texte: membresEquipe().length > 1 ? 'Chaque héros remplit son sac.' : 'Vous remplissez votre sac.',
       lignes,
       retour: 'zone',

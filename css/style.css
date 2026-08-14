@@ -1354,6 +1354,45 @@ button:focus-visible,
 
 .scene-boutons { justify-content: center; margin: 14px 0 30px; }
 
+/* Quartiers du bourg : séparateurs de sections dans la ville. */
+.separateur-quartier { margin-top: 18px; }
+
+/* Métiers de récolte : chips d'en-tête (zone) et de progression (fiche). */
+.chip-metier {
+  background: linear-gradient(135deg, rgba(212, 167, 44, 0.25), rgba(212, 167, 44, 0.08));
+  border-color: #d4a72c;
+  font-weight: 700;
+}
+
+/* Vote d'équipe : bandeau qui annonce à qui c'est le tour de choisir. */
+.bandeau-vote {
+  background: linear-gradient(135deg, rgba(124, 92, 191, 0.25), rgba(124, 92, 191, 0.08));
+  border: 1px solid #7c5cbf;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.92rem;
+  animation: apparition-scene 0.3s ease;
+}
+
+/* Épreuves façon Donjons & Dragons : jet de d20 contre une difficulté. */
+.bloc-epreuve {
+  margin: 12px 0;
+  border-left: 4px solid #d4a72c;
+  animation: apparition-scene 0.3s ease;
+}
+
+.bloc-epreuve .btn-principal { margin-top: 10px; }
+
+.resultat-de {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--fond);
+  border: 1px dashed #d4a72c;
+  border-radius: 10px;
+  font-size: 1.02rem;
+  animation: apparition-scene 0.35s ease;
+}
+
 /* ----- Comptoir d'échange ----- */
 .formulaire-comptoir { margin: 10px 0; }
 

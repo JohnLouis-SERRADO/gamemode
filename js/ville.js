@@ -1,61 +1,114 @@
 'use strict';
 
 // =====================================================================
-// Bourg de Valciel : boutique (achat/vente), atelier de craft, auberge.
+// Bourg de Valciel (v12) : la ville est découpée en quartiers — trois
+// boutiques spécialisées, quatre ateliers d'artisans, et la grand-place.
 // =====================================================================
+
+// Les trois boutiques partagent le même écran, chacune avec sa vitrine.
+const BOUTIQUES = {
+  armes: {
+    emoji: '🗡️', nom: 'À la Bonne Lame', titre: '🗡️ Armurerie « À la Bonne Lame »',
+    detail: 'L’armurerie du bourg : toutes les armes, du gourdin au divin',
+    accueil: '« Une lame pour chaque bras, un prix pour chaque bourse. » — maître Brisefer',
+    onglets: ['armes', 'vendre'],
+  },
+  armures: {
+    emoji: '🛡️', nom: 'Le Bastion', titre: '🛡️ Halle d’armures « Le Bastion »',
+    detail: 'Casques, cuirasses, gantelets, jambières et bottes — des pieds à la tête',
+    accueil: '« Revenez entier, on fait aussi les retouches. » — dame Ferraille',
+    onglets: ['armures', 'vendre'],
+  },
+  bazar: {
+    emoji: '💍', nom: 'Le Bazar Étincelant', titre: '💍 « Le Bazar Étincelant »',
+    detail: 'Accessoires, potions et fioles de voyage — tout ce qui brille ou pétille',
+    accueil: '« Touchez avec les yeux, achetez avec le cœur. » — Zibeline',
+    onglets: ['accessoires', 'potions', 'vendre'],
+  },
+};
+
+function ouvrirBoutique(idBoutique) {
+  boutiqueCourante = idBoutique;
+  ongletBoutique = BOUTIQUES[idBoutique].onglets[0];
+  sousFiltres = { rarete: 'tous', type: 'tous' };
+  rendreBoutique();
+  montrerEcran('ecran-boutique');
+}
 
 function rendreVille() {
   const zone = el('ville-lieux');
   zone.innerHTML = '';
 
-  const lieux = [
+  const quartiers = [
     {
-      emoji: '🛒', nom: 'Boutique', detail: 'Armes, armures, accessoires et potions',
-      action: () => { rendreBoutique(); montrerEcran('ecran-boutique'); },
+      titre: '🏪 Le quartier marchand',
+      note: 'Trois vitrines spécialisées, une échoppe de curiosités et la magie en rayon.',
+      lieux: [
+        ...Object.entries(BOUTIQUES).map(([id, b]) => ({
+          emoji: b.emoji, nom: b.nom, detail: b.detail,
+          action: () => ouvrirBoutique(id),
+        })),
+        {
+          emoji: '🏺', nom: 'Antiquaire', detail: 'Curiosités rares : accessoires anciens et objets tactiques de combat',
+          action: () => { rendreAntiquaire(); montrerEcran('ecran-antiquaire'); },
+        },
+        {
+          emoji: '🔮', nom: 'L’Arcanium', detail: 'La magie en échoppe : les grimoires de compétences, chez Dame Sibylle',
+          action: () => { rendreArcanium(); montrerEcran('ecran-arcanium'); },
+        },
+      ],
     },
     {
-      emoji: '⚒️', nom: 'Atelier', detail: 'Fabriquez équipements et potions avec vos matériaux',
-      action: () => { rendreAtelier(); montrerEcran('ecran-atelier'); },
+      titre: '⚒️ La cour des artisans',
+      note: 'Quatre maîtres, quatre savoir-faire : apportez vos matériaux, repartez équipés.',
+      lieux: Object.entries(ARTISANS).map(([id, a]) => ({
+        emoji: a.emoji, nom: a.nom, detail: a.detail,
+        action: () => ouvrirAtelier(id),
+      })),
     },
     {
-      emoji: '🏺', nom: 'Antiquaire', detail: 'Curiosités rares : accessoires anciens et objets tactiques de combat',
-      action: () => { rendreAntiquaire(); montrerEcran('ecran-antiquaire'); },
-    },
-    {
-      emoji: '🔮', nom: 'L’Arcanium', detail: 'La magie en échoppe : les 68 grimoires de compétences, chez Dame Sibylle',
-      action: () => { rendreArcanium(); montrerEcran('ecran-arcanium'); },
-    },
-    {
-      emoji: '🏰', nom: 'Guilde des Aventuriers', detail: 'Trois contrats par jour : monstres, récolte, boss…',
-      action: () => { rendreGuilde(); montrerEcran('ecran-guilde'); },
-    },
-    {
-      emoji: '🛏️', nom: 'Auberge', detail: 'Repos gratuit : PV et PM restaurés pour toute l’équipe',
-      action: () => {
-        membresEquipe().forEach((m) => {
-          m.hp = m.maxHp;
-          m.mp = m.maxMp;
-          sauvegarder(m);
-        });
-        rendreTopbar();
-        afficherToast('🛏️ Une bonne nuit de sommeil : toute l’équipe est requinquée !');
-      },
-    },
-    {
-      emoji: '🍻', nom: 'Taverne', detail: 'Chat, classement et boss du monde — avec tous les joueurs',
-      action: () => naviguer('taverne'),
+      titre: '🏛️ La grand-place',
+      note: 'Contrats, repos et rumeurs : le cœur battant du bourg.',
+      lieux: [
+        {
+          emoji: '🏰', nom: 'Guilde des Aventuriers', detail: 'Six contrats au tableau, trois récompenses par jour',
+          action: () => { rendreGuilde(); montrerEcran('ecran-guilde'); },
+        },
+        {
+          emoji: '🛏️', nom: 'Auberge', detail: 'Repos gratuit : PV et PM restaurés pour toute l’équipe',
+          action: () => {
+            membresEquipe().forEach((m) => {
+              m.hp = m.maxHp;
+              m.mp = m.maxMp;
+              sauvegarder(m);
+            });
+            rendreTopbar();
+            afficherToast('🛏️ Une bonne nuit de sommeil : toute l’équipe est requinquée !');
+          },
+        },
+        {
+          emoji: '🍻', nom: 'Taverne', detail: 'Chat, classement et boss du monde — avec tous les joueurs',
+          action: () => naviguer('taverne'),
+        },
+      ],
     },
   ];
 
-  lieux.forEach((lieu) => {
-    const carte = document.createElement('div');
-    carte.className = 'carte-zone';
-    carte.innerHTML = `
-      <div class="zone-emoji">${lieu.emoji}</div>
-      <div class="zone-nom">${lieu.nom}</div>
-      <div class="zone-desc">${lieu.detail}</div>`;
-    rendreCliquable(carte, lieu.action);
-    zone.appendChild(carte);
+  quartiers.forEach((quartier) => {
+    const separateur = document.createElement('div');
+    separateur.className = 'separateur-donjons separateur-quartier';
+    separateur.innerHTML = `<strong>${quartier.titre}</strong> — ${quartier.note}`;
+    zone.appendChild(separateur);
+    quartier.lieux.forEach((lieu) => {
+      const carte = document.createElement('div');
+      carte.className = 'carte-zone';
+      carte.innerHTML = `
+        <div class="zone-emoji">${lieu.emoji}</div>
+        <div class="zone-nom">${lieu.nom}</div>
+        <div class="zone-desc">${lieu.detail}</div>`;
+      rendreCliquable(carte, lieu.action);
+      zone.appendChild(carte);
+    });
   });
 
   const retour = document.createElement('div');
@@ -147,14 +200,18 @@ function passeSousFiltres(objet, contexte) {
 }
 
 let ongletBoutique = 'armes';
+let boutiqueCourante = 'armes';
 
 function rendreBoutique() {
   const p = persoActif();
+  const config = BOUTIQUES[boutiqueCourante];
+  el('boutique-titre').textContent = config.titre;
+  el('boutique-accueil').textContent = config.accueil;
   el('boutique-po').textContent = `💰 ${p.po} po`;
 
   const zoneOnglets = el('boutique-onglets');
   zoneOnglets.innerHTML = '';
-  ONGLETS_BOUTIQUE.forEach((onglet) => {
+  ONGLETS_BOUTIQUE.filter((o) => config.onglets.includes(o.id)).forEach((onglet) => {
     const btn = document.createElement('button');
     btn.className = 'onglet' + (ongletBoutique === onglet.id ? ' actif' : '');
     btn.textContent = onglet.nom;
@@ -472,16 +529,76 @@ function reclamerQuete(p, quete) {
 }
 
 // =====================================================================
-// Atelier de craft
+// La cour des artisans (v12) : quatre maîtres se partagent les recettes.
+// Forge (armes + armures lourdes + métaux), Tannerie (mains/pieds + cuirs),
+// Tisserand (accessoires + étoffes), Alchimiste (potions + essences).
 // =====================================================================
-let filtresAtelier = { type: 'tous', realisables: false };
+const ARTISANS = {
+  forge: {
+    emoji: '🔨', nom: 'La Forge', titre: '🔨 La Forge — Sigrid, maîtresse de fer',
+    detail: 'Forgeron & maître de fer : armes, casques, cuirasses, jambières — et les lingots pour les nourrir',
+    accueil: '« Le fer écoute qui le chauffe. Parlez-lui fort. » — Sigrid',
+    chips: [['tous', 'Tout'], ['armes', '⚔️ Armes'], ['armures', '🛡️ Armures'], ['raffinage', '🧱 Raffinage']],
+  },
+  tannerie: {
+    emoji: '🧤', nom: 'La Tannerie', titre: '🧤 La Tannerie — Karv, maître-tanneur',
+    detail: 'Gants et bottes taillés dans le cuir des bêtes — et les cuirs raffinés qui vont avec',
+    accueil: '« Chaque bête a deux vies. La seconde vous va comme un gant. » — Karv',
+    chips: [['tous', 'Tout'], ['armures', '🧤 Cuirs (mains & pieds)'], ['raffinage', '🟫 Raffinage']],
+  },
+  tisserand: {
+    emoji: '🧵', nom: 'Le Tisserand', titre: '🧵 Le Tisserand — Aracine, fileuse d’étoffes',
+    detail: 'Accessoires, talismans et capes — tissés de toiles runiques et de fils d’ailleurs',
+    accueil: '« Tout tient à un fil. Autant qu’il soit solide. » — Aracine',
+    chips: [['tous', 'Tout'], ['accessoires', '💍 Accessoires'], ['raffinage', '🧵 Raffinage']],
+  },
+  alchimiste: {
+    emoji: '⚗️', nom: 'L’Alchimiste', titre: '⚗️ L’Alchimiste — Griotte, maîtresse des fioles',
+    detail: 'Potions de PV et de mana, bombes, élixirs tactiques — tout ce qui se boit ou explose',
+    accueil: '« Si ça fume, c’est normal. Si ça fume VERT, courez. » — Griotte',
+    chips: [['tous', 'Tout'], ['soins', '❤️ Soins & mana'], ['tactiques', '💥 Tactiques'], ['raffinage', '⚗️ Raffinage']],
+  },
+};
 
-// Catégorie d'une recette selon l'objet produit.
+// Chaque matériau raffiné a son artisan attitré.
+const ARTISAN_RAFFINAGE = {
+  'lingot-ferreux': 'forge', 'alliage-hurlant': 'forge', 'perle-de-magma': 'forge',
+  'quartz-eveille': 'forge', 'coeur-d-orage': 'forge', 'lingot-arcanique': 'forge',
+  'cuir-double': 'tannerie', 'resine-de-jungle': 'tannerie', 'moelle-titanesque': 'tannerie',
+  'cuir-de-legende': 'tannerie',
+  'toile-runique': 'tisserand', 'fil-du-neant': 'tisserand', 'etoffe-enchantee': 'tisserand',
+  'essence-sylvestre': 'alchimiste', 'sel-d-abysse': 'alchimiste',
+};
+
+// À quel artisan appartient une recette ?
+function artisanDeRecette(recette) {
+  const objet = OBJETS[recette.resultat];
+  if (objet.type === 'materiau') return ARTISAN_RAFFINAGE[recette.resultat] || 'forge';
+  if (objet.type === 'consommable') return 'alchimiste';
+  if (objet.slot === 'arme' || ['tete', 'torse', 'jambes'].includes(objet.slot)) return 'forge';
+  if (['mains', 'pieds'].includes(objet.slot)) return 'tannerie';
+  return 'tisserand';
+}
+
+let filtresAtelier = { type: 'tous', realisables: false };
+let atelierCourant = 'forge';
+
+function ouvrirAtelier(idArtisan) {
+  atelierCourant = idArtisan;
+  filtresAtelier = { type: 'tous', realisables: false };
+  rendreAtelier();
+  montrerEcran('ecran-atelier');
+}
+
+// Catégorie d'une recette selon l'objet produit (pour les chips).
 function categorieRecette(recette) {
   const objet = OBJETS[recette.resultat];
-  if (objet.type === 'consommable') return 'potions';
+  if (objet.type === 'materiau') return 'raffinage';
+  if (objet.type === 'consommable') {
+    return ['pv', 'pm', 'soin-groupe', 'regen'].includes(objet.effet.type) ? 'soins' : 'tactiques';
+  }
   if (objet.slot === 'arme') return 'armes';
-  if (['tete', 'torse', 'jambes'].includes(objet.slot)) return 'armures';
+  if (['tete', 'torse', 'jambes', 'mains', 'pieds'].includes(objet.slot)) return 'armures';
   return 'accessoires';
 }
 
@@ -492,6 +609,9 @@ function recetteRealisable(p, recette) {
 
 function rendreAtelier() {
   const p = persoActif();
+  const config = ARTISANS[atelierCourant];
+  el('atelier-titre').textContent = config.titre;
+  el('atelier-accueil').textContent = config.accueil;
   el('atelier-po').textContent = `💰 ${p.po} po`;
   const zone = el('atelier-recettes');
   zone.innerHTML = '';
@@ -499,14 +619,13 @@ function rendreAtelier() {
   // Sous-filtres : catégorie du résultat + « réalisables maintenant »
   const rangee = document.createElement('div');
   rangee.className = 'rangee-chips rangee-sous-filtres';
-  [['tous', 'Tout'], ['potions', '🧪 Potions'], ['armes', '⚔️ Armes'], ['armures', '🛡️ Armures'], ['accessoires', '💍 Accessoires']]
-    .forEach(([id, nom]) => {
-      const chip = document.createElement('button');
-      chip.className = 'chip chip-filtre' + (filtresAtelier.type === id ? ' active' : '');
-      chip.textContent = nom;
-      chip.addEventListener('click', () => { filtresAtelier.type = id; rendreAtelier(); });
-      rangee.appendChild(chip);
-    });
+  config.chips.forEach(([id, nom]) => {
+    const chip = document.createElement('button');
+    chip.className = 'chip chip-filtre' + (filtresAtelier.type === id ? ' active' : '');
+    chip.textContent = nom;
+    chip.addEventListener('click', () => { filtresAtelier.type = id; rendreAtelier(); });
+    rangee.appendChild(chip);
+  });
   const separateur = document.createElement('span');
   separateur.className = 'separateur-chips';
   rangee.appendChild(separateur);
@@ -520,10 +639,11 @@ function rendreAtelier() {
   rangee.appendChild(chipRealisables);
   zone.appendChild(rangee);
 
-  // L'établi ne montre que les recettes proches du niveau du héros ;
+  // L'établi de CET artisan : ses recettes proches du niveau du héros ;
   // le reste se débloque en progressant.
-  const proches = RECETTES.filter((recette) => recette.niveau <= p.niveau + 2);
-  const cachees = RECETTES.length - proches.length;
+  const chezLui = RECETTES.filter((recette) => artisanDeRecette(recette) === atelierCourant);
+  const proches = chezLui.filter((recette) => recette.niveau <= p.niveau + 2);
+  const cachees = chezLui.length - proches.length;
   const visibles = proches
     .filter((recette) => filtresAtelier.type === 'tous' || categorieRecette(recette) === filtresAtelier.type)
     .filter((recette) => !filtresAtelier.realisables || recetteRealisable(p, recette));

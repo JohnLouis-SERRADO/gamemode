@@ -33,7 +33,6 @@
         <div class="rangee-boutons">
           <button id="btn-nouveau-perso" class="btn-principal">✨ Nouveau héros</button>
           <button id="btn-importer" class="btn-choix">📥 Reprendre un héros (code)</button>
-          <button id="btn-heros-admin" class="btn-choix" title="Un héros bac à sable, jamais publié en ligne, avec une console pour tout modifier">🛠️ Héros admin</button>
         </div>
         <div id="zone-import" class="cache bloc-import">
           <p class="aide">Colle ici le code de sauvegarde affiché sur ton autre appareil (fiche du héros → « Code de sauvegarde »).</p>
@@ -143,9 +142,11 @@
     <!-- ===== Boutique ===== -->
     <section id="ecran-boutique" class="ecran">
       <div class="entete-lieu">
-        <h2>🛒 Boutique « À la Bonne Lame »</h2>
+        <h2 id="boutique-titre">🛒 Boutique</h2>
         <span id="boutique-po" class="badge badge-po"></span>
+        <button class="btn-choix btn-compact btn-retour-ville">↩️ Retour au bourg</button>
       </div>
+      <p id="boutique-accueil" class="sous-titre"></p>
       <div id="boutique-onglets" class="onglets"></div>
       <div id="boutique-contenu"></div>
     </section>
@@ -161,6 +162,7 @@
       <div class="entete-lieu">
         <h2>🏺 Antiquaire des Merveilles</h2>
         <span id="antiquaire-po" class="badge badge-po"></span>
+        <button class="btn-choix btn-compact btn-retour-ville">↩️ Retour au bourg</button>
       </div>
       <p class="sous-titre">« Tout ce que vous voyez a une histoire. La plupart finissent mal. »</p>
       <div id="antiquaire-contenu"></div>
@@ -169,10 +171,11 @@
     <!-- ===== Atelier de craft ===== -->
     <section id="ecran-atelier" class="ecran">
       <div class="entete-lieu">
-        <h2>⚒️ Atelier des artisans</h2>
+        <h2 id="atelier-titre">⚒️ Atelier</h2>
         <span id="atelier-po" class="badge badge-po"></span>
+        <button class="btn-choix btn-compact btn-retour-ville">↩️ Retour au bourg</button>
       </div>
-      <p class="sous-titre">Transformez vos matériaux en potions et en équipements — dont des pièces légendaires introuvables en boutique.</p>
+      <p id="atelier-accueil" class="sous-titre"></p>
       <div id="atelier-recettes" class="grille-recettes"></div>
     </section>
 
@@ -192,6 +195,7 @@
       <div class="entete-lieu">
         <h2>🔮 L'Arcanium</h2>
         <span id="arcanium-po" class="badge badge-po"></span>
+        <button class="btn-choix btn-compact btn-retour-ville">↩️ Retour au bourg</button>
       </div>
       <p class="sous-titre">« Chaque grimoire enseigne une compétence, pour toujours. Choisissez avec gourmandise. » — Dame Sibylle</p>
       <div id="arcanium-contenu"></div>

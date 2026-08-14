@@ -335,6 +335,44 @@ SETS_CRAFT.push(
   { suffixe: 'du Firmament',  niveau: 50, rarete: 'divin',      po: 2200, materiaux: { 'coeur-d-orage': 2, 'fil-du-neant': 2, 'quartz-eveille': 1 } },
 );
 
+// ---------------------------------------------------------------------
+// Métiers de récolte (v12) : chaque métier a son matériau signature,
+// introuvable autrement — et son raffiné, qui alimente les artisans.
+// ---------------------------------------------------------------------
+Object.assign(OBJETS, {
+  'pierre-magique': { nom: 'Pierre magique', emoji: '🧿', type: 'materiau', rarete: 'rare', prixVente: 60, desc: 'La fierté du mineur : une pierre qui rêve encore de la montagne.' },
+  'cuir-primal':    { nom: 'Cuir primal', emoji: '🐆', type: 'materiau', rarete: 'rare', prixVente: 60, desc: 'La fierté du tanneur : un cuir qui se souvient d’avoir couru.' },
+  'tissu-magique':  { nom: 'Tissu magique', emoji: '🧶', type: 'materiau', rarete: 'rare', prixVente: 60, desc: 'La fierté du tisseur : une étoffe tissée à même la rosée.' },
+  'lingot-arcanique':  { nom: 'Lingot arcanique', emoji: '🔷', type: 'materiau', rarete: 'mythique', prixVente: 950, desc: 'Pierre magique et fer, fondus à la Forge. Il fredonne.' },
+  'cuir-de-legende':   { nom: 'Cuir de légende', emoji: '🦬', type: 'materiau', rarete: 'mythique', prixVente: 950, desc: 'Tanné dans les règles de l’art — et un peu en dehors.' },
+  'etoffe-enchantee':  { nom: 'Étoffe enchantée', emoji: '🪡', type: 'materiau', rarete: 'mythique', prixVente: 950, desc: 'Chaque fil est une petite promesse tenue.' },
+});
+
+// Raffinés de métier — un par artisan, gourmands en récolte spécialisée.
+[
+  { resultat: 'lingot-arcanique', niveau: 30, po: 200, materiaux: { 'pierre-magique': 4, 'lingot-ferreux': 2 } },
+  { resultat: 'cuir-de-legende',  niveau: 30, po: 200, materiaux: { 'cuir-primal': 4, 'cuir-double': 2 } },
+  { resultat: 'etoffe-enchantee', niveau: 30, po: 200, materiaux: { 'tissu-magique': 4, 'toile-runique': 2 } },
+].forEach((recette) => RECETTES.push(recette));
+
+// Le grand œuvre des artisans : une série qui exige les trois métiers.
+SETS_CRAFT.push(
+  { suffixe: 'des Trois Maîtres', niveau: 36, rarete: 'mythique', po: 1600, materiaux: { 'lingot-arcanique': 1, 'cuir-de-legende': 1, 'etoffe-enchantee': 1 } },
+);
+
+// L'alchimiste apprend à fabriquer les objets tactiques : potions,
+// bombes et philtres, à base de plantes, venins et pierres magiques.
+[
+  { resultat: 'poudre-evasion',  niveau: 10, po: 20,  materiaux: { 'fibre-sauvage': 2, 'poussiere-spectre': 1 } },
+  { resultat: 'trefle-seche',    niveau: 12, po: 45,  materiaux: { 'herbe-lunaire': 2, 'fibre-sauvage': 3 } },
+  { resultat: 'bombe-de-givre',  niveau: 14, po: 40,  materiaux: { 'pierre-magique': 1, 'cristal-givre': 1, 'herbe-lunaire': 1 } },
+  { resultat: 'fiole-acide',     niveau: 22, po: 50,  materiaux: { 'venin-concentre': 1, 'seve-ambree': 2 } },
+  { resultat: 'bombe-foudre',    niveau: 24, po: 60,  materiaux: { 'pierre-magique': 1, 'cristal-hurleur': 1, 'lotus-noir': 1 } },
+  { resultat: 'potion-colosse',  niveau: 26, po: 160, materiaux: { 'essence-sylvestre': 1, 'lotus-noir': 3, 'seve-ambree': 3 } },
+  { resultat: 'elixir-titan',    niveau: 28, po: 90,  materiaux: { 'essence-sylvestre': 1, 'coeur-de-braise': 1 } },
+  { resultat: 'bombe-obscure',   niveau: 30, po: 110, materiaux: { 'pierre-magique': 2, 'poussiere-spectre': 3, 'obsidienne-brute': 1 } },
+].forEach((recette) => RECETTES.push(recette));
+
 // =====================================================================
 // Panoplies : équiper plusieurs pièces d'une même collection active des
 // bonus supplémentaires (2 pièces, puis 4 pièces). Les paliers dépendent

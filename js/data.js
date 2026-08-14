@@ -86,6 +86,48 @@ function tirerRarete(cha) {
   return 'commun';
 }
 
+// =====================================================================
+// Métiers de récolte (v12) : mineur, tanneur, tisseur. Dans chaque zone,
+// on choisit SA façon de récolter — et la chance améliore la moisson.
+// =====================================================================
+const METIERS = {
+  mineur: {
+    nom: 'Mineur', emoji: '⛏️', action: 'Miner', exclusif: 'pierre-magique', famille: 'mine',
+    detail: 'Pierres, minerais et cristaux — et parfois une pierre magique',
+  },
+  tanneur: {
+    nom: 'Tanneur', emoji: '🔪', action: 'Dépecer', exclusif: 'cuir-primal', famille: 'peau',
+    detail: 'Cuirs, os et dépouilles de bêtes — et parfois un cuir primal',
+  },
+  tisseur: {
+    nom: 'Tisseur', emoji: '🌿', action: 'Herboriser', exclusif: 'tissu-magique', famille: 'plante',
+    detail: 'Plantes, fibres et étoffes — et parfois un tissu magique',
+  },
+};
+
+const NIVEAU_MAX_METIER = 10;
+// XP nécessaire pour passer du niveau n au suivant.
+function seuilXpMetier(niveau) { return 12 + niveau * 8; }
+
+// Chaque matériau récoltable appartient à une famille de métier.
+const FAMILLE_MATERIAU = {
+  // ⛏️ pierres, minerais, cristaux (mineur)
+  'minerai-cuivre': 'mine', 'minerai-fer': 'mine', 'perle-des-sables': 'mine', 'cristal-givre': 'mine',
+  'noyau-golem': 'mine', 'basalte-poli': 'mine', 'cristal-hurleur': 'mine', 'obsidienne-brute': 'mine',
+  'coeur-de-braise': 'mine', 'bois-petrifie': 'mine', 'ambre-noir': 'mine', 'sphere-runique': 'mine',
+  'fragment-de-foudre': 'mine', 'acier-celeste': 'mine', 'eclat-d-etoile': 'mine', 'relique-antique': 'mine',
+  'pierre-magique': 'mine',
+  // 🔪 dépouilles de bêtes et de monstres (tanneur)
+  'peau-de-loup': 'peau', 'soie-araignee': 'peau', 'os-ancien': 'peau', 'poussiere-spectre': 'peau',
+  'ecaille-draconique': 'peau', 'venin-concentre': 'peau', 'plume-de-rokh': 'peau', 'corail-sanglant': 'peau',
+  'os-de-geant': 'peau', 'peau-de-mammouth': 'peau', 'plume-d-archon': 'peau', 'cuir-primal': 'peau',
+  // 🌿 plantes, fibres et étoffes (tisseur)
+  'fibre-sauvage': 'plante', 'herbe-lunaire': 'plante', 'bois-chene': 'plante', 'seve-ambree': 'plante',
+  'lotus-noir': 'plante', 'liane-tressee': 'plante', 'orchidee-lunaire': 'plante', 'cendre-fertile': 'plante',
+  'nacre-abyssale': 'plante', 'larme-de-sirene': 'plante', 'etoffe-du-neant': 'plante',
+  'essence-primordiale': 'plante', 'tissu-magique': 'plante',
+};
+
 const CATEGORIES = {
   physique: '⚔️ Physique',
   magie: '🔮 Magie',
@@ -881,6 +923,9 @@ const HAUTS_FAITS = [
   { id: 'donjons-tous',       nom: 'Toutes les histoires', emoji: '📖', titre: 'le Chroniqueur', desc: 'Terminer les 4 donjons fondateurs', cond: (p) => ['crypte', 'laboratoire', 'brise-brume', 'volcan'].every((id) => donjonFini(p, id)) },
   { id: 'donjon-sanctuaire',  nom: 'Marées apaisées', emoji: '🌊', titre: 'des Marées', desc: 'Terminer « Le Sanctuaire des Marées »', cond: (p) => donjonFini(p, 'sanctuaire') },
   { id: 'donjon-couronne',    nom: 'Porteur de la Couronne', emoji: '👑', titre: 'Céleste', desc: 'Terminer « La Couronne Céleste »', cond: (p) => donjonFini(p, 'couronne-celeste') },
+  { id: 'donjon-nihelm',      nom: 'Fossoyeur d’ombres', emoji: '🕳️', titre: 'de Nihelm', desc: 'Terminer le défi 50 « Le Gouffre de Nihelm »', cond: (p) => donjonFini(p, 'nihelm') },
+  { id: 'donjon-temps-brise', nom: 'Maître des heures', emoji: '⏰', titre: 'Hors du Temps', desc: 'Terminer le défi 60 « La Forteresse du Temps Brisé »', cond: (p) => donjonFini(p, 'temps-brise') },
+  { id: 'donjon-neant',       nom: 'Face au Néant', emoji: '👁️', titre: 'Fin des Histoires', desc: 'Terminer le défi 70 « L’Œil du Néant »', cond: (p) => donjonFini(p, 'neant') },
   { id: 'tour-boss-8',        nom: 'Fléau des seigneurs', emoji: '🏯', titre: 'Tueur de Rois', desc: 'Atteindre l’étage 8 de la Tour des Boss', cond: (p) => p.tourBoss && Math.max(p.tourBoss.normal, p.tourBoss.heroique, p.tourBoss.cauchemar) >= 8 },
   { id: 'niveau-35',          nom: 'Au-delà des Royaumes', emoji: '🌅', titre: 'des Terres lointaines', desc: 'Atteindre le niveau 35', cond: (p) => p.niveau >= 35 },
   { id: 'niveau-50',          nom: 'Sommet du possible', emoji: '🌟', titre: 'l’Éternel', desc: 'Atteindre le niveau 50', cond: (p) => p.niveau >= 50 },
