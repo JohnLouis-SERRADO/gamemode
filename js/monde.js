@@ -88,6 +88,21 @@ function rendreCarte() {
   if (!tourVerrouillee) rendreCliquable(tour, () => demarrerTour());
   zone.appendChild(tour);
 
+  // La Tour des Boss : que des boss, avec paliers de difficulté.
+  const tourBossVerrouillee = p.niveau < 10;
+  const meilleurRecord = Math.max(p.tourBoss.normal, p.tourBoss.heroique, p.tourBoss.cauchemar);
+  const tourBoss = document.createElement('div');
+  tourBoss.className = 'carte-zone tour-sans-fin tour-des-boss' + (tourBossVerrouillee ? ' verrouillee' : '');
+  tourBoss.innerHTML = `
+    <div class="zone-emoji">🏯</div>
+    <div class="zone-nom">Tour des Boss ${meilleurRecord > 0 ? `· record : étage ${meilleurRecord}` : ''}</div>
+    <div class="zone-plage">défi — solo ou équipe · 3 difficultés</div>
+    <div class="zone-desc">${tourBossVerrouillee
+    ? '🔒 Atteignez le niveau 10 pour défier les seigneurs des Royaumes.'
+    : 'Un boss par étage, du premier loup au Dévoreur de Mondes. Normal, Héroïque puis Cauchemar : chaque difficulté a son record.'}</div>`;
+  if (!tourBossVerrouillee) rendreCliquable(tourBoss, () => ouvrirTourBoss());
+  zone.appendChild(tourBoss);
+
   // Donjons d'histoire : aventures scénarisées à choix.
   rendreCartesDonjons(zone, p);
 }
@@ -180,11 +195,29 @@ function rendreZone(z) {
 // =====================================================================
 // Actions de zone
 // =====================================================================
-function tailleDuPack(taille) {
-  let nb = taille;
+// Score de puissance moyen de l'équipe : la somme des stats effectives.
+// Plus les héros sont puissants, plus les packs sont fournis — les
+// combats restent dynamiques et durent un peu plus longtemps.
+function scorePuissance(membres) {
+  if (!membres.length) return 0;
+  return membres.reduce((somme, m) => {
+    const s = statsEffectives(m);
+    return somme + s.for + s.int + s.agi + s.vit + (s.cha || 0);
+  }, 0) / membres.length;
+}
+
+function bonusTaillePack(membres) {
+  const score = scorePuissance(membres);
+  if (score >= 90) return 2;
+  if (score >= 50) return 1;
+  return 0;
+}
+
+function tailleDuPack(membres) {
+  let nb = membres.length + bonusTaillePack(membres);
   if (Math.random() < 0.35) nb++;
   if (nb > 1 && Math.random() < 0.25) nb--;
-  return Math.max(1, Math.min(4, nb));
+  return Math.max(1, Math.min(6, nb));
 }
 
 // Compose un pack en limitant à un seul soigneur : deux soigneurs qui se
@@ -236,7 +269,7 @@ function explorer(z) {
     return;
   }
   if (tirage < 0.72) {
-    const cles = composerPack(z, tailleDuPack(membresEquipe().length));
+    const cles = composerPack(z, tailleDuPack(membresEquipe()));
     demarrerCombatZone(z, 'exploration', cles);
   } else if (tirage < 0.9) {
     // Trouvaille
@@ -282,7 +315,8 @@ function recolter(z) {
   if (Object.keys(objets).length === 0) objets[z.recolte[0].id] = 1;
 
   if (Math.random() < 0.25) {
-    const cles = composerPack(z, Math.max(1, Math.min(4, membresEquipe().length)));
+    const membres = membresEquipe();
+    const cles = composerPack(z, Math.max(1, Math.min(5, membres.length + bonusTaillePack(membres))));
     afficherToast('⚠️ Une embuscade pendant la récolte !');
     demarrerCombatZone(z, 'embuscade', cles, { lootRecolte: objets });
   } else {
@@ -304,7 +338,11 @@ function recolter(z) {
 function affronterBoss(z) {
   const p = persoActif();
   if ((p.explorations[z.id] || 0) < EXPLORATIONS_POUR_BOSS) return;
-  demarrerCombatZone(z, 'boss', [z.boss]);
+  // Une équipe puissante attire l'attention : le boss vient escorté.
+  const escorte = bonusTaillePack(membresEquipe());
+  const cles = [z.boss];
+  for (let i = 0; i < escorte; i++) cles.push(z.monstres[alea(0, z.monstres.length - 1)]);
+  demarrerCombatZone(z, 'boss', cles);
 }
 
 // Le marchand nomade : trois articles au hasard, 30 % de remise.
@@ -489,7 +527,7 @@ function demarrerCombatTourEtage(etage) {
   const z = zonePourEtage(etage);
   const mult = 1 + etage * 0.06;
   const estPalier = etage % 5 === 0;
-  const cles = estPalier ? [z.boss] : composerPack(z, tailleDuPack(membresEquipe().length));
+  const cles = estPalier ? [z.boss] : composerPack(z, tailleDuPack(membresEquipe()));
   const defs = cles.map((cle) => ({
     ...MONSTRES[cle], cle,
     hp: Math.round(MONSTRES[cle].hp * mult),
@@ -583,6 +621,141 @@ function apresVictoireTour(cb) {
   });
 }
 
+// =====================================================================
+// La Tour des Boss : un boss par étage, solo ou en équipe locale,
+// trois difficultés à débloquer, un record par difficulté.
+// =====================================================================
+const CYCLE_TOUR_BOSS = ['loupAlpha', 'araigneeMatriarche', 'chefOrc', 'hydreBrumes',
+  'roiDechu', 'verDesSables', 'elementaireAncien', 'gardienEternel',
+  'matriarcheSarpense', 'rokhTempetueux', 'leviathanCorallien', 'behemothCendre',
+  'avatarQuartz', 'roiOssements', 'archonteTempete', 'devoreurMondes'];
+
+function ouvrirTourBoss() {
+  const p = persoActif();
+  const records = p.tourBoss;
+  const lignes = [
+    `⚔️ Normal — record : étage ${records.normal}`,
+    `🔥 Héroïque — record : étage ${records.heroique}${records.normal >= 3 ? '' : ' · 🔒 atteignez l’étage 3 en Normal'}`,
+    `💀 Cauchemar — record : étage ${records.cauchemar}${records.heroique >= 3 ? '' : ' · 🔒 atteignez l’étage 3 en Héroïque'}`,
+  ];
+  const boutons = [{ texte: '⚔️ Grimper en Normal', classe: 'btn-principal', action: () => demarrerTourBoss('normal') }];
+  if (records.normal >= 3) boutons.push({ texte: '🔥 Grimper en Héroïque', classe: 'btn-choix', action: () => demarrerTourBoss('heroique') });
+  if (records.heroique >= 3) boutons.push({ texte: '💀 Grimper en Cauchemar', classe: 'btn-choix', action: () => demarrerTourBoss('cauchemar') });
+  boutons.push({ texte: '🗺️ Revenir à la carte', action: () => naviguer('carte') });
+  afficherButin({
+    titre: '🏯 La Tour des Boss',
+    texte: 'Un boss par étage — du Loup Alpha au Dévoreur de Mondes, puis le cycle reprend, toujours plus féroce. Solo ou en équipe locale. Chaque difficulté garde son propre record.',
+    lignes,
+    boutons,
+    retour: 'carte',
+  });
+}
+
+function demarrerTourBoss(difficulte) {
+  etat.tourBoss = { etage: 1, difficulte };
+  afficherToast(`🏯 Tour des Boss — ${DIFFICULTES[difficulte].emoji} ${DIFFICULTES[difficulte].nom} : étage 1 !`);
+  demarrerCombatTourBossEtage(1);
+}
+
+function demarrerCombatTourBossEtage(etage) {
+  const contexte = etat.tourBoss;
+  contexte.etage = etage;
+  const membres = membresEquipe();
+  const diff = DIFFICULTES[contexte.difficulte];
+  const cle = CYCLE_TOUR_BOSS[(etage - 1) % CYCLE_TOUR_BOSS.length];
+  const cycle = Math.floor((etage - 1) / CYCLE_TOUR_BOSS.length);
+  const base = MONSTRES[cle];
+  // Chaque étage renforce le boss ; chaque cycle complet le transcende.
+  const multHp = diff.hp * (1 + etage * 0.08 + cycle * 0.6) * (1 + 0.35 * (membres.length - 1));
+  const def = {
+    ...base,
+    cle,
+    nom: cycle > 0 ? `${base.nom} transcendé` : base.nom,
+    hp: Math.round(base.hp * multHp),
+    atk: Math.round(base.atk * diff.atk * (1 + etage * 0.03)),
+  };
+  demarrerCombat({
+    genre: 'tourBoss',
+    zone: null,
+    difficulte: contexte.difficulte,
+    titre: `🏯 Tour des Boss — Étage ${etage}`,
+    intro: `${def.nom} garde l'étage ${etage}. Pas de repos entre les étages !`,
+    monstresDef: [def],
+    equipe: membres,
+  });
+}
+
+function apresVictoireTourBoss(cb) {
+  const contexte = etat.tourBoss;
+  const etage = contexte ? contexte.etage : 1;
+  const difficulte = contexte ? contexte.difficulte : 'normal';
+  const membres = cb.equipe;
+  const partage = membres.length;
+  const butin = tirerButinCombat(cb);
+  const multEtage = 1 + etage * 0.15;
+  const xpParHeros = Math.max(1, Math.round((butin.xp * multEtage) / partage));
+  const poParHeros = Math.max(0, Math.round((butin.po * multEtage) / partage));
+  const lignes = [`⭐ +${xpParHeros} XP et 💰 +${poParHeros} po par héros (prime d'étage +${Math.round(etage * 15)} %)`];
+  Object.entries(butin.objets).forEach(([id, qte]) => {
+    lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
+  });
+
+  membres.forEach((m) => {
+    if (m.hp <= 0) m.hp = 1;
+    const poGagne = Math.round(poParHeros * multiplicateurOr(m));
+    m.po += poGagne;
+    m.compteurs.orTotal += poGagne;
+    m.compteurs.monstres += cb.monstres.length;
+    progresserQuete(m, 'monstres', cb.monstres.length);
+    progresserQuete(m, 'tourBoss', 1);
+    Object.entries(butin.objets).forEach(([id, qte]) => ajouterObjet(m, id, qte));
+    // Coffre de l'étage : deux tirages dopés par l'étage et la difficulté.
+    const s = statsEffectives(m);
+    const tirages = difficulte === 'cauchemar' ? 3 : 2;
+    for (let i = 0; i < tirages; i++) {
+      const rarete = tirerRarete(s.cha + etage * 2);
+      const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
+        && (o.type === 'materiau' || o.type === 'consommable'
+          || (o.type === 'equipement' && o.niveau <= m.niveau + 3)));
+      if (pool.length) {
+        const [id, objet] = pool[alea(0, pool.length - 1)];
+        ajouterObjet(m, id, 1);
+        lignes.push(`🎁 Coffre du boss : ${objet.emoji} ${objet.nom}${texteRarete(objet)}`);
+      }
+    }
+    if (m.tourBoss[difficulte] < etage) m.tourBoss[difficulte] = etage;
+    const niveaux = gagnerXp(m, xpParHeros);
+    verifierHautsFaits(m);
+    nettoyerApresCombat(m); // pas de soin entre les étages
+    if (niveaux > 0) lignes.push(`🎉 ${m.avatar} ${m.nom} passe niveau ${m.niveau} ! PV et PM restaurés.`);
+    sauvegarder(m);
+  });
+
+  const vies = membres.map((m) => `${m.avatar} ${m.hp}/${m.maxHp} PV`).join(' · ');
+  const prochain = MONSTRES[CYCLE_TOUR_BOSS[etage % CYCLE_TOUR_BOSS.length]];
+  afficherButin({
+    titre: `🏯 Étage ${etage} vaincu !`,
+    texte: `${DIFFICULTES[difficulte].emoji} ${DIFFICULTES[difficulte].nom} · Pas de repos : ${vies}.`,
+    lignes,
+    retour: 'carte',
+    boutons: [
+      {
+        texte: `⬆️ Étage ${etage + 1} — ${prochain.emoji} ${prochain.nom}`,
+        classe: 'btn-principal',
+        action: () => demarrerCombatTourBossEtage(etage + 1),
+      },
+      {
+        texte: '🏳️ Redescendre en gardant les gains',
+        action: () => {
+          etat.tourBoss = null;
+          afficherToast(`🏯 Record ${DIFFICULTES[difficulte].nom} : étage ${etage} !`);
+          naviguer('carte');
+        },
+      },
+    ],
+  });
+}
+
 function nettoyerApresCombat(m) {
   m.statuts = [];
   m.cooldowns = {};
@@ -595,6 +768,7 @@ function apresVictoire(cb) {
   if (cb.groupe && cb.groupe.hote) { apresCombatGroupeHote(cb, 'victoire'); return; }
   if (cb.genre === 'bossMonde') { apresBossMonde(cb); return; }
   if (cb.genre === 'tour') { apresVictoireTour(cb); return; }
+  if (cb.genre === 'tourBoss') { apresVictoireTourBoss(cb); return; }
   if (cb.genre === 'donjon') { apresVictoireDonjon(cb); return; }
   const butin = tirerButinCombat(cb);
   const membres = cb.equipe;
@@ -726,6 +900,10 @@ function apresDefaite(cb) {
   if (cb.genre === 'tour' && etat.tour) {
     afficherToast(`🗼 La Tour vous recrache à l'étage ${cb.tourEtage}… Record : ${persoActif().tourMax}.`);
     etat.tour = null;
+  }
+  if (cb.genre === 'tourBoss' && etat.tourBoss) {
+    afficherToast(`🏯 Le boss de l'étage ${etat.tourBoss.etage} vous renvoie au pied de la Tour…`);
+    etat.tourBoss = null;
   }
   const membres = cb.equipe;
   const lignes = [];

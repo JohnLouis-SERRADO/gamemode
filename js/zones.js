@@ -358,6 +358,341 @@ const ZONES = [
   },
 ];
 
+// =====================================================================
+// Terres lointaines (v10, niveaux 22-50) : quatre paliers, chacun avec
+// DEUX zones jumelles aux récoltes radicalement différentes. À partir
+// du palier 38, les monstres sont taillés pour une équipe.
+// =====================================================================
+Object.assign(MONSTRES, {
+  // ----- Jungle de Vaï-Sombre (niv. 22-28) — plantes et venins -----
+  panthereOmbre: {
+    nom: 'Panthère d’ombre', emoji: '🐆', niveau: 24, hp: 381, atk: 39, agi: 14, xp: 198, po: [24, 48],
+    drops: [{ id: 'liane-tressee', chance: 0.4 }, { id: 'venin-concentre', chance: 0.2 }],
+    attaques: [
+      { nom: 'Griffes jumelles', emoji: '🐾', mult: 1.1, poids: 3, type: 'mono' },
+      { nom: 'Bond des ténèbres', emoji: '🌑', mult: 1.4, poids: 1, type: 'mono' },
+    ],
+  },
+  grenouilleDard: {
+    nom: 'Grenouille-dard', emoji: '🐸', niveau: 23, hp: 352, atk: 37, agi: 11, xp: 183, po: [22, 44],
+    drops: [{ id: 'venin-concentre', chance: 0.35 }, { id: 'orchidee-lunaire', chance: 0.2 }],
+    attaques: [
+      { nom: 'Langue-harpon', emoji: '👅', mult: 1.0, poids: 3, type: 'mono' },
+      { nom: 'Crachat venimeux', emoji: '🧪', mult: 0.8, poids: 2, type: 'mono', effet: { type: 'poison', degats: 12, duree: 2 } },
+    ],
+  },
+  hommeLiane: {
+    nom: 'Homme-liane', emoji: '🌿', niveau: 26, hp: 443, atk: 42, agi: 8, xp: 230, po: [26, 52],
+    drops: [{ id: 'liane-tressee', chance: 0.5 }, { id: 'orchidee-lunaire', chance: 0.25 }],
+    attaques: [
+      { nom: 'Fouet de liane', emoji: '🌿', mult: 1.0, poids: 3, type: 'mono' },
+      { nom: 'Sève réparatrice', emoji: '💚', valeur: 52, poids: 1, type: 'soin', nomSoin: true },
+    ],
+  },
+  matriarcheSarpense: {
+    nom: 'Matriarche Sarpense', emoji: '🐍', niveau: 28, boss: true, hp: 2142, atk: 56, agi: 12, xp: 1325, po: [168, 280],
+    drops: [{ id: 'orchidee-lunaire', chance: 1 }, { id: 'venin-concentre', chance: 0.8 }],
+    attaques: [
+      { nom: 'Morsure colossale', emoji: '🐍', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Étreinte broyeuse', emoji: '💫', mult: 0.9, poids: 1, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
+      { nom: 'Nuée de serpenteaux', emoji: '🐍', mult: 0.75, poids: 1, type: 'aoe', effet: { type: 'poison', degats: 14, duree: 2 } },
+    ],
+  },
+
+  // ----- Falaises Hurlantes (niv. 22-28) — minéral et plumes -----
+  harpieHurlante: {
+    nom: 'Harpie hurlante', emoji: '🦅', niveau: 23, hp: 352, atk: 37, agi: 13, xp: 183, po: [22, 44],
+    drops: [{ id: 'plume-de-rokh', chance: 0.4 }, { id: 'cristal-hurleur', chance: 0.15 }],
+    attaques: [
+      { nom: 'Serres plongeantes', emoji: '🦅', mult: 1.1, poids: 3, type: 'mono' },
+      { nom: 'Cri perçant', emoji: '📢', mult: 0.7, poids: 1, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+    ],
+  },
+  gargouilleVigie: {
+    nom: 'Gargouille-vigie', emoji: '🗿', niveau: 25, hp: 411, atk: 40, agi: 6, xp: 214, po: [25, 50],
+    drops: [{ id: 'basalte-poli', chance: 0.5 }],
+    attaques: [
+      { nom: 'Poing de pierre', emoji: '🗿', mult: 1.15, poids: 3, type: 'mono' },
+      { nom: 'Chute contrôlée', emoji: '💢', mult: 1.45, poids: 1, type: 'mono' },
+    ],
+  },
+  elementaireBourrasque: {
+    nom: 'Élémentaire de bourrasque', emoji: '🌬️', niveau: 27, hp: 476, atk: 43, agi: 14, xp: 247, po: [27, 54],
+    drops: [{ id: 'cristal-hurleur', chance: 0.35 }, { id: 'plume-de-rokh', chance: 0.3 }],
+    attaques: [
+      { nom: 'Rafale tranchante', emoji: '🌬️', mult: 1.0, poids: 2, type: 'mono' },
+      { nom: 'Tourbillon hurlant', emoji: '🌪️', mult: 0.8, poids: 1, type: 'aoe' },
+    ],
+  },
+  rokhTempetueux: {
+    nom: 'Rokh Tempétueux', emoji: '🦅', niveau: 28, boss: true, hp: 2142, atk: 56, agi: 15, xp: 1325, po: [168, 280],
+    drops: [{ id: 'plume-de-rokh', chance: 1 }, { id: 'basalte-poli', chance: 0.8 }],
+    attaques: [
+      { nom: 'Piqué foudroyant', emoji: '⚡', mult: 1.25, poids: 3, type: 'mono' },
+      { nom: 'Battement d’ouragan', emoji: '🌪️', mult: 0.8, poids: 2, type: 'aoe' },
+    ],
+  },
+
+  // ----- Abysses d'Émeraude (niv. 30-36) — trésors de la mer -----
+  mureneRodeuse: {
+    nom: 'Murène rôdeuse', emoji: '🐍', niveau: 31, hp: 620, atk: 49, agi: 12, xp: 322, po: [31, 62],
+    drops: [{ id: 'nacre-abyssale', chance: 0.4 }, { id: 'corail-sanglant', chance: 0.2 }],
+    attaques: [
+      { nom: 'Morsure éclair', emoji: '⚡', mult: 1.15, poids: 3, type: 'mono' },
+      { nom: 'Reptation sournoise', emoji: '🌊', mult: 1.4, poids: 1, type: 'mono' },
+    ],
+  },
+  crabeCuirasse: {
+    nom: 'Crabe cuirassé', emoji: '🦀', niveau: 32, hp: 659, atk: 50, agi: 6, xp: 342, po: [32, 64],
+    drops: [{ id: 'corail-sanglant', chance: 0.45 }, { id: 'nacre-abyssale', chance: 0.25 }],
+    attaques: [
+      { nom: 'Pince-étau', emoji: '🦀', mult: 1.1, poids: 3, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.2 } },
+      { nom: 'Carapace projetée', emoji: '🛡️', mult: 0.85, poids: 1, type: 'aoe' },
+    ],
+  },
+  sireneFuneste: {
+    nom: 'Sirène funeste', emoji: '🧜‍♀️', niveau: 34, hp: 741, atk: 53, agi: 11, xp: 384, po: [34, 68],
+    drops: [{ id: 'larme-de-sirene', chance: 0.3 }, { id: 'nacre-abyssale', chance: 0.3 }],
+    attaques: [
+      { nom: 'Complainte déchirante', emoji: '🎶', mult: 1.0, poids: 2, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
+      { nom: 'Chant des abysses', emoji: '💙', valeur: 68, poids: 1, type: 'soin' },
+    ],
+  },
+  leviathanCorallien: {
+    nom: 'Léviathan Corallien', emoji: '🐋', niveau: 36, boss: true, hp: 5210, atk: 70, agi: 10, xp: 3070, po: [216, 360],
+    drops: [{ id: 'larme-de-sirene', chance: 1 }, { id: 'corail-sanglant', chance: 0.9 }],
+    attaques: [
+      { nom: 'Mâchoire océane', emoji: '🐋', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Raz-de-marée', emoji: '🌊', mult: 0.85, poids: 2, type: 'aoe' },
+      { nom: 'Harpon de corail', emoji: '🔱', mult: 1.45, poids: 1, type: 'mono' },
+    ],
+  },
+
+  // ----- Steppe des Cendres (niv. 30-36) — feu et os -----
+  chacalCendre: {
+    nom: 'Chacal cendré', emoji: '🐺', niveau: 31, hp: 620, atk: 49, agi: 13, xp: 322, po: [31, 62],
+    drops: [{ id: 'cendre-fertile', chance: 0.45 }],
+    attaques: [
+      { nom: 'Crocs fumants', emoji: '🔥', mult: 1.1, poids: 3, type: 'mono' },
+      { nom: 'Meute de cendre', emoji: '💨', mult: 0.8, poids: 1, type: 'aoe' },
+    ],
+  },
+  salamandreBraise: {
+    nom: 'Salamandre de braise', emoji: '🦎', niveau: 33, hp: 699, atk: 52, agi: 10, xp: 362, po: [33, 66],
+    drops: [{ id: 'coeur-de-braise', chance: 0.25 }, { id: 'obsidienne-brute', chance: 0.35 }],
+    attaques: [
+      { nom: 'Langue de feu', emoji: '🔥', mult: 1.05, poids: 3, type: 'mono', effet: { type: 'poison', degats: 15, duree: 2 } },
+      { nom: 'Queue incandescente', emoji: '☄️', mult: 1.35, poids: 1, type: 'mono' },
+    ],
+  },
+  ogreMagmatique: {
+    nom: 'Ogre magmatique', emoji: '👹', niveau: 35, hp: 783, atk: 55, agi: 7, xp: 406, po: [35, 70],
+    drops: [{ id: 'obsidienne-brute', chance: 0.45 }, { id: 'coeur-de-braise', chance: 0.2 }],
+    attaques: [
+      { nom: 'Massue en fusion', emoji: '🌋', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Piétinement sismique', emoji: '💢', mult: 0.85, poids: 1, type: 'aoe', effet: { type: 'etourdi', duree: 1, chance: 0.2 } },
+    ],
+  },
+  behemothCendre: {
+    nom: 'Béhémoth de Cendre', emoji: '🌋', niveau: 36, boss: true, hp: 5210, atk: 70, agi: 8, xp: 3070, po: [216, 360],
+    drops: [{ id: 'coeur-de-braise', chance: 1 }, { id: 'obsidienne-brute', chance: 0.9 }],
+    attaques: [
+      { nom: 'Poing de basalte', emoji: '🌋', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Nuée ardente', emoji: '🔥', mult: 0.85, poids: 2, type: 'aoe', effet: { type: 'poison', degats: 16, duree: 2 } },
+    ],
+  },
+
+  // ----- Forêt Pétrifiée (niv. 38-44, équipe conseillée) -----
+  treantPetrifie: {
+    nom: 'Tréant pétrifié', emoji: '🗿', niveau: 39, hp: 1450, atk: 61, agi: 6, xp: 501, po: [39, 78],
+    drops: [{ id: 'bois-petrifie', chance: 0.45 }, { id: 'ambre-noir', chance: 0.2 }],
+    attaques: [
+      { nom: 'Branche de granit', emoji: '🪨', mult: 1.15, poids: 3, type: 'mono' },
+      { nom: 'Racines sismiques', emoji: '💢', mult: 0.85, poids: 1, type: 'aoe' },
+    ],
+  },
+  basilicRunique: {
+    nom: 'Basilic runique', emoji: '🦎', niveau: 41, hp: 1599, atk: 63, agi: 11, xp: 552, po: [41, 82],
+    drops: [{ id: 'ambre-noir', chance: 0.4 }, { id: 'sphere-runique', chance: 0.12 }],
+    attaques: [
+      { nom: 'Regard pétrifiant', emoji: '👁️', mult: 0.95, poids: 2, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
+      { nom: 'Morsure gravée', emoji: '🦷', mult: 1.25, poids: 2, type: 'mono' },
+    ],
+  },
+  moissonneurRunique: {
+    nom: 'Moissonneur runique', emoji: '⚱️', niveau: 43, hp: 1747, atk: 66, agi: 9, xp: 606, po: [43, 86],
+    drops: [{ id: 'sphere-runique', chance: 0.2 }, { id: 'bois-petrifie', chance: 0.4 }],
+    attaques: [
+      { nom: 'Faux de quartz', emoji: '⚱️', mult: 1.2, poids: 3, type: 'mono', effet: { type: 'drain', part: 0.35 } },
+      { nom: 'Moisson d’éclats', emoji: '💎', mult: 0.85, poids: 1, type: 'aoe' },
+    ],
+  },
+  avatarQuartz: {
+    nom: 'Avatar de Quartz', emoji: '💎', niveau: 44, boss: true, hp: 7712, atk: 85, agi: 9, xp: 3170, po: [264, 440],
+    drops: [{ id: 'sphere-runique', chance: 1 }, { id: 'ambre-noir', chance: 0.9 }],
+    attaques: [
+      { nom: 'Lame cristalline', emoji: '💎', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Éclats en éventail', emoji: '✨', mult: 0.85, poids: 2, type: 'aoe' },
+      { nom: 'Prisme écrasant', emoji: '🔷', mult: 1.5, poids: 1, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.25 } },
+    ],
+  },
+
+  // ----- Vallée des Géants (niv. 38-44, équipe conseillée) -----
+  geantDechu: {
+    nom: 'Géant déchu', emoji: '🗿', niveau: 39, hp: 1450, atk: 61, agi: 6, xp: 501, po: [39, 78],
+    drops: [{ id: 'os-de-geant', chance: 0.45 }, { id: 'peau-de-mammouth', chance: 0.2 }],
+    attaques: [
+      { nom: 'Revers de montagne', emoji: '🗿', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Frappe au sol', emoji: '💢', mult: 0.85, poids: 1, type: 'aoe', effet: { type: 'etourdi', duree: 1, chance: 0.2 } },
+    ],
+  },
+  mammouthSpectral: {
+    nom: 'Mammouth spectral', emoji: '🦣', niveau: 41, hp: 1599, atk: 63, agi: 7, xp: 552, po: [41, 82],
+    drops: [{ id: 'peau-de-mammouth', chance: 0.45 }, { id: 'os-de-geant', chance: 0.3 }],
+    attaques: [
+      { nom: 'Charge d’outre-monde', emoji: '👻', mult: 1.25, poids: 3, type: 'mono' },
+      { nom: 'Barrissement glacé', emoji: '🌫️', mult: 0.8, poids: 1, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+    ],
+  },
+  chamanOsseux: {
+    nom: 'Chaman des os', emoji: '💀', niveau: 43, hp: 1747, atk: 66, agi: 9, xp: 606, po: [43, 86],
+    drops: [{ id: 'relique-antique', chance: 0.15 }, { id: 'os-de-geant', chance: 0.4 }],
+    attaques: [
+      { nom: 'Volée d’esquilles', emoji: '🦴', mult: 1.05, poids: 2, type: 'mono' },
+      { nom: 'Chant des ancêtres géants', emoji: '💚', valeur: 92, poids: 1, type: 'soin' },
+    ],
+  },
+  roiOssements: {
+    nom: 'Roi des Ossements', emoji: '👑', niveau: 44, boss: true, hp: 7712, atk: 85, agi: 8, xp: 3170, po: [264, 440],
+    drops: [{ id: 'relique-antique', chance: 1 }, { id: 'peau-de-mammouth', chance: 0.9 }],
+    attaques: [
+      { nom: 'Sceptre fémoral', emoji: '🦴', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Avalanche d’os', emoji: '☠️', mult: 0.85, poids: 2, type: 'aoe' },
+      { nom: 'Poigne sépulcrale', emoji: '🪦', mult: 1.3, poids: 1, type: 'mono', effet: { type: 'drain', part: 0.4 } },
+    ],
+  },
+
+  // ----- Citadelle de Foudre (niv. 46-50, équipe requise) -----
+  sentinelleAcier: {
+    nom: 'Sentinelle d’acier', emoji: '🤖', niveau: 47, hp: 2091, atk: 72, agi: 9, xp: 721, po: [47, 94],
+    drops: [{ id: 'acier-celeste', chance: 0.35 }, { id: 'fragment-de-foudre', chance: 0.4 }],
+    attaques: [
+      { nom: 'Lame à induction', emoji: '⚡', mult: 1.15, poids: 3, type: 'mono' },
+      { nom: 'Surtension', emoji: '💥', mult: 0.85, poids: 1, type: 'aoe', effet: { type: 'etourdi', duree: 1, chance: 0.2 } },
+    ],
+  },
+  vouivreOrage: {
+    nom: 'Vouivre d’orage', emoji: '🐉', niveau: 48, hp: 2183, atk: 74, agi: 13, xp: 751, po: [48, 96],
+    drops: [{ id: 'fragment-de-foudre', chance: 0.45 }, { id: 'plume-d-archon', chance: 0.1 }],
+    attaques: [
+      { nom: 'Souffle voltaïque', emoji: '⚡', mult: 1.1, poids: 2, type: 'mono' },
+      { nom: 'Tempête d’ailes', emoji: '🌩️', mult: 0.85, poids: 2, type: 'aoe' },
+    ],
+  },
+  forgeronFoudroye: {
+    nom: 'Forgeron foudroyé', emoji: '⚒️', niveau: 49, hp: 2278, atk: 75, agi: 8, xp: 782, po: [49, 98],
+    drops: [{ id: 'acier-celeste', chance: 0.4 }, { id: 'fragment-de-foudre', chance: 0.35 }],
+    attaques: [
+      { nom: 'Marteau conducteur', emoji: '⚒️', mult: 1.25, poids: 3, type: 'mono' },
+      { nom: 'Gerbe d’étincelles', emoji: '✨', mult: 0.8, poids: 1, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+    ],
+  },
+  archonteTempete: {
+    nom: 'Archonte de la Tempête', emoji: '⛈️', niveau: 50, boss: true, hp: 9916, atk: 96, agi: 12, xp: 4070, po: [300, 500],
+    drops: [{ id: 'plume-d-archon', chance: 1 }, { id: 'acier-celeste', chance: 0.9 }],
+    attaques: [
+      { nom: 'Jugement fulgurant', emoji: '⚡', mult: 1.25, poids: 3, type: 'mono' },
+      { nom: 'Orage total', emoji: '⛈️', mult: 0.9, poids: 2, type: 'aoe' },
+      { nom: 'Lance du firmament', emoji: '🌩️', mult: 1.5, poids: 1, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
+    ],
+  },
+
+  // ----- Néant Scintillant (niv. 46-50, équipe requise) -----
+  horreurDuVide: {
+    nom: 'Horreur du vide', emoji: '👁️', niveau: 47, hp: 2091, atk: 72, agi: 11, xp: 721, po: [47, 94],
+    drops: [{ id: 'etoffe-du-neant', chance: 0.45 }],
+    attaques: [
+      { nom: 'Tentacule d’ailleurs', emoji: '🌀', mult: 1.15, poids: 3, type: 'mono', effet: { type: 'drain', part: 0.35 } },
+      { nom: 'Regard impossible', emoji: '👁️', mult: 0.8, poids: 1, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+    ],
+  },
+  tisseuseEtoiles: {
+    nom: 'Tisseuse d’étoiles', emoji: '🕷️', niveau: 48, hp: 2183, atk: 74, agi: 12, xp: 751, po: [48, 96],
+    drops: [{ id: 'eclat-d-etoile', chance: 0.4 }, { id: 'etoffe-du-neant', chance: 0.3 }],
+    attaques: [
+      { nom: 'Fil de constellation', emoji: '✨', mult: 1.1, poids: 2, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.25 } },
+      { nom: 'Toile cosmique', emoji: '🕸️', mult: 0.85, poids: 2, type: 'aoe' },
+    ],
+  },
+  echoNeant: {
+    nom: 'Écho du néant', emoji: '🌌', niveau: 49, hp: 2278, atk: 75, agi: 13, xp: 782, po: [49, 98],
+    drops: [{ id: 'essence-primordiale', chance: 0.12 }, { id: 'eclat-d-etoile', chance: 0.35 }],
+    attaques: [
+      { nom: 'Réplique d’annihilation', emoji: '🌌', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Résonance du rien', emoji: '🔇', mult: 0.85, poids: 1, type: 'aoe' },
+    ],
+  },
+  devoreurMondes: {
+    nom: 'Dévoreur de Mondes', emoji: '🕳️', niveau: 50, boss: true, hp: 9916, atk: 96, agi: 11, xp: 4070, po: [300, 500],
+    drops: [{ id: 'essence-primordiale', chance: 1 }, { id: 'eclat-d-etoile', chance: 0.9 }],
+    attaques: [
+      { nom: 'Gueule d’horizon', emoji: '🕳️', mult: 1.25, poids: 3, type: 'mono', effet: { type: 'drain', part: 0.4 } },
+      { nom: 'Effondrement local', emoji: '🌌', mult: 0.9, poids: 2, type: 'aoe' },
+    ],
+  },
+});
+
+ZONES.push(
+  {
+    id: 'jungle-vai', nom: 'Jungle de Vaï-Sombre', emoji: '🌴', niveauMin: 22, plage: 'niv. 22-28',
+    desc: 'Une jungle si dense que le jour n’y descend jamais tout à fait. Tout y pousse, tout y mord.',
+    monstres: ['grenouilleDard', 'panthereOmbre', 'hommeLiane'], boss: 'matriarcheSarpense',
+    recolte: [{ id: 'liane-tressee', chance: 0.8 }, { id: 'orchidee-lunaire', chance: 0.5 }, { id: 'venin-concentre', chance: 0.3 }],
+  },
+  {
+    id: 'falaises-hurlantes', nom: 'Falaises Hurlantes', emoji: '🪨', niveauMin: 22, plage: 'niv. 22-28',
+    desc: 'Des à-pics battus par des vents qui hurlent des noms. Le minerai y est superbe — l’accrochage aussi.',
+    monstres: ['harpieHurlante', 'gargouilleVigie', 'elementaireBourrasque'], boss: 'rokhTempetueux',
+    recolte: [{ id: 'basalte-poli', chance: 0.8 }, { id: 'plume-de-rokh', chance: 0.5 }, { id: 'cristal-hurleur', chance: 0.3 }],
+  },
+  {
+    id: 'abysses-emeraude', nom: 'Abysses d’Émeraude', emoji: '🐚', niveauMin: 30, plage: 'niv. 30-36',
+    desc: 'Une cité engloutie dont les lanternes brûlent encore sous l’eau. Ses trésors n’attendent que des poumons solides.',
+    monstres: ['mureneRodeuse', 'crabeCuirasse', 'sireneFuneste'], boss: 'leviathanCorallien',
+    recolte: [{ id: 'nacre-abyssale', chance: 0.7 }, { id: 'corail-sanglant', chance: 0.45 }, { id: 'larme-de-sirene', chance: 0.25 }],
+  },
+  {
+    id: 'steppe-cendres', nom: 'Steppe des Cendres', emoji: '🌋', niveauMin: 30, plage: 'niv. 30-36',
+    desc: 'Une plaine grise où la terre couve encore. Les cendres fertilisent tout — surtout les ennuis.',
+    monstres: ['chacalCendre', 'salamandreBraise', 'ogreMagmatique'], boss: 'behemothCendre',
+    recolte: [{ id: 'cendre-fertile', chance: 0.7 }, { id: 'obsidienne-brute', chance: 0.45 }, { id: 'coeur-de-braise', chance: 0.25 }],
+  },
+  {
+    id: 'foret-petrifiee', nom: 'Forêt Pétrifiée', emoji: '🗿', niveauMin: 38, plage: 'niv. 38-44 · équipe conseillée',
+    desc: 'Une forêt changée en pierre en une seule nuit, il y a mille ans. Les arbres se souviennent. En équipe, de préférence.',
+    monstres: ['treantPetrifie', 'basilicRunique', 'moissonneurRunique'], boss: 'avatarQuartz',
+    recolte: [{ id: 'bois-petrifie', chance: 0.75 }, { id: 'ambre-noir', chance: 0.45 }, { id: 'sphere-runique', chance: 0.2 }],
+  },
+  {
+    id: 'vallee-geants', nom: 'Vallée des Géants', emoji: '🦴', niveauMin: 38, plage: 'niv. 38-44 · équipe conseillée',
+    desc: 'Le cimetière des géants d’avant les Royaumes. Leurs os valent des fortunes — et ils y tiennent. Venez accompagnés.',
+    monstres: ['geantDechu', 'mammouthSpectral', 'chamanOsseux'], boss: 'roiOssements',
+    recolte: [{ id: 'os-de-geant', chance: 0.75 }, { id: 'peau-de-mammouth', chance: 0.45 }, { id: 'relique-antique', chance: 0.2 }],
+  },
+  {
+    id: 'citadelle-foudre', nom: 'Citadelle de Foudre', emoji: '⛈️', niveauMin: 46, plage: 'niv. 46-50 · équipe requise',
+    desc: 'La forteresse volante des Archontes, échouée entre deux nuages. Tout y est sous tension. Ne venez pas seul.',
+    monstres: ['sentinelleAcier', 'vouivreOrage', 'forgeronFoudroye'], boss: 'archonteTempete',
+    recolte: [{ id: 'fragment-de-foudre', chance: 0.7 }, { id: 'acier-celeste', chance: 0.4 }, { id: 'plume-d-archon', chance: 0.15 }],
+  },
+  {
+    id: 'neant-scintillant', nom: 'Néant Scintillant', emoji: '🌌', niveauMin: 46, plage: 'niv. 46-50 · équipe requise',
+    desc: 'Une déchirure dans le monde, pleine d’étoiles qui ne sont pas les nôtres. Ce qui en sort n’a pas de nom. Équipe obligatoire — sérieusement.',
+    monstres: ['horreurDuVide', 'tisseuseEtoiles', 'echoNeant'], boss: 'devoreurMondes',
+    recolte: [{ id: 'etoffe-du-neant', chance: 0.7 }, { id: 'eclat-d-etoile', chance: 0.4 }, { id: 'essence-primordiale', chance: 0.15 }],
+  },
+);
+
 function zonePar(idZone) {
   return ZONES.find((z) => z.id === idZone);
 }

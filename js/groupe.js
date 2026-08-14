@@ -283,7 +283,7 @@ async function lancerExpeditionGroupe(ligne) {
   const mult = DIFFICULTES[groupe.difficulteChoisie] || DIFFICULTES.normal;
   const cles = groupe.genreChoisi === 'boss'
     ? [zone.boss]
-    : composerPack(zone, tailleDuPack(equipe.length));
+    : composerPack(zone, tailleDuPack(equipe));
   const defs = cles.map((cle) => ({
     ...MONSTRES[cle], cle,
     hp: Math.round(MONSTRES[cle].hp * mult.hp),

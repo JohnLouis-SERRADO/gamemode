@@ -377,6 +377,19 @@ function infligerDegats(source, cible, brut, options = {}) {
   }
   const crit = Math.random() < chanceCrit;
   if (crit) d *= 1.5;
+
+  // Esquive et blocage (stats d'équipement des joueurs, plafonnées).
+  let bloque = false;
+  if (cible.type === 'joueur') {
+    const defensif = statsEffectives(cible);
+    if (Math.random() < Math.min(35, defensif.esquive || 0) / 100) {
+      return { degats: 0, crit: false, absorbe: 0, esquive: true };
+    }
+    if (Math.random() < Math.min(40, defensif.blocage || 0) / 100) {
+      bloque = true;
+      d *= 0.5;
+    }
+  }
   if (cible.defense) d *= 0.5;
   if (cible.race === 'nain') d *= 0.9; // Peau de pierre
   d = Math.max(1, Math.round(d));
@@ -401,12 +414,14 @@ function infligerDegats(source, cible, brut, options = {}) {
     cible.hp = 1;
     journal(`🐱 ${cible.nom} retombe sur ses pattes : Neuf vies le laisse à 1 PV !`);
   }
-  return { degats: d, crit, absorbe };
+  return { degats: d, crit, absorbe, bloque };
 }
 
 function texteDegats(r) {
+  if (r.esquive) return 'esquivé ! 💨';
   let t = `${r.degats} dégâts`;
   if (r.crit) t += ' 💥 CRITIQUE !';
+  if (r.bloque) t += ' 🛡️ (bloqué : −50 %)';
   if (r.absorbe > 0) t += ` (${r.absorbe} absorbés par le bouclier)`;
   return t;
 }

@@ -196,6 +196,7 @@ function normaliserPerso(p) {
   if (!Array.isArray(p.hautsFaits)) p.hautsFaits = [];
   if (p.titre === undefined) p.titre = null;
   if (p.tourMax == null) p.tourMax = 0;
+  if (!p.tourBoss || typeof p.tourBoss !== 'object') p.tourBoss = { normal: 0, heroique: 0, cauchemar: 0 };
   if (!p.donjons || typeof p.donjons !== 'object') p.donjons = {};
   // v7 : le grimoire recense toutes les compétences connues ; seules
   // MAX_COMPETENCES_ACTIVES d'entre elles sont équipées en même temps.
@@ -204,6 +205,9 @@ function normaliserPerso(p) {
   if (p.competences.length > MAX_COMPETENCES_ACTIVES) {
     p.competences = p.competences.slice(0, MAX_COMPETENCES_ACTIVES);
   }
+  // v10 : deux nouveaux emplacements d'équipement (mains, pieds).
+  if (p.equipement.mains === undefined) p.equipement.mains = null;
+  if (p.equipement.pieds === undefined) p.equipement.pieds = null;
   // v8 : classe, compétences de classe exclusives et points de maîtrise.
   if (!p.classe || !CLASSES[p.classe]) p.classe = infererClasse(p);
   if (!p.rangs || typeof p.rangs !== 'object') p.rangs = {};
@@ -254,6 +258,7 @@ function donneesCloud(p) {
     compteurs: p.compteurs, familiers: p.familiers, familier: p.familier,
     hautsFaits: p.hautsFaits, titre: p.titre, tourMax: p.tourMax, quetes: p.quetes,
     donjons: p.donjons, classe: p.classe, maitrise: p.maitrise, rangs: p.rangs,
+    tourBoss: p.tourBoss,
   };
 }
 
@@ -346,8 +351,8 @@ function debloquerCompetencesClasse(p, annoncer) {
 // Gagne de l'XP ; une montée de niveau soigne entièrement (le fameux « ding »).
 function gagnerXp(p, xp) {
   const avant = p.niveau;
-  // Rythme global de progression : ralenti de 35 % (réglage v9).
-  xp = Math.max(1, Math.round(xp * 0.65));
+  // Rythme global de progression : gains réduits de moitié (réglage v10).
+  xp = Math.max(1, Math.round(xp * 0.5));
   if (p.race === 'humain') xp = Math.round(xp * 1.1); // Ambition
   const familier = familierActif(p);
   if (familier && familier.bonus.xpBonus) xp = Math.round(xp * (1 + familier.bonus.xpBonus));
@@ -641,7 +646,7 @@ function rendreHeros() {
     <span class="avatar-titan">${p.avatar}${familier ? `<span class="familier-avatar" title="${familier.nom}">${familier.emoji}</span>` : ''}</span>
     <div class="heros-identite">
       <h2>${echapper(p.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''} <span class="niveau">${classe.emoji} ${classe.nom} · niveau ${p.niveau}</span>
-        <button id="btn-renommer" class="btn-mini" title="Renommer ce héros">✏️</button></h2>
+        <button id="btn-renommer" class="btn-choix btn-compact btn-renommer" title="Changer le nom de ce héros">✏️ Renommer</button></h2>
       <div id="zone-renommage" class="cache ligne-renommage">
         <input id="champ-renommage" maxlength="16" placeholder="Nouveau nom">
         <button id="btn-valider-renommage" class="btn-choix btn-compact">Valider</button>
@@ -649,7 +654,7 @@ function rendreHeros() {
       <div class="heros-race">${race.emoji} ${race.nom} — <em>${race.passif}</em> : ${race.desc}</div>
       <div class="barre xp"><div class="remplissage" style="width:${pctXp}%"></div>
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
-      <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${p.po} po · 💥 ${Math.round(5 + s.agi + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin</div>
+      <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${p.po} po · 💥 ${Math.round(5 + s.agi + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin${s.blocage ? ` · 🛡️ ${Math.min(40, s.blocage)} % blocage` : ''}${s.esquive ? ` · 💨 ${Math.min(35, s.esquive)} % esquive` : ''}</div>
     </div>`;
   zone.appendChild(entete);
 

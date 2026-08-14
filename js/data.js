@@ -813,7 +813,7 @@ function classeDe(p) {
 
 // Points de maîtrise : un par palier de niveau atteint, à investir dans
 // la compétence signature (chaque rang : +15 % de puissance, rang 5 max).
-const SEUILS_MAITRISE = [3, 6, 9, 12, 15, 18];
+const SEUILS_MAITRISE = [3, 6, 9, 12, 15, 18, 22, 26, 30, 34, 38, 42, 46, 50];
 const RANG_SIGNATURE_MAX = 5;
 
 function pointsMaitrisePourNiveau(niveau) {
@@ -878,7 +878,12 @@ const HAUTS_FAITS = [
   { id: 'donjon-laboratoire', nom: 'Fin de l’expérience', emoji: '🧪', titre: 'l’Alchimiste', desc: 'Terminer « Le Laboratoire de Frivole »', cond: (p) => donjonFini(p, 'laboratoire') },
   { id: 'donjon-brise-brume', nom: 'Brumes dissipées', emoji: '⛵', titre: 'des Brumes', desc: 'Terminer « Le Brise-Brume »', cond: (p) => donjonFini(p, 'brise-brume') },
   { id: 'donjon-volcan',      nom: 'Cœur du Volcan', emoji: '🌋', titre: 'Forgé au Feu', desc: 'Terminer « Le Cœur du Volcan »', cond: (p) => donjonFini(p, 'volcan') },
-  { id: 'donjons-tous',       nom: 'Toutes les histoires', emoji: '📖', titre: 'le Chroniqueur', desc: 'Terminer les 4 donjons d’histoire', cond: (p) => ['crypte', 'laboratoire', 'brise-brume', 'volcan'].every((id) => donjonFini(p, id)) },
+  { id: 'donjons-tous',       nom: 'Toutes les histoires', emoji: '📖', titre: 'le Chroniqueur', desc: 'Terminer les 4 donjons fondateurs', cond: (p) => ['crypte', 'laboratoire', 'brise-brume', 'volcan'].every((id) => donjonFini(p, id)) },
+  { id: 'donjon-sanctuaire',  nom: 'Marées apaisées', emoji: '🌊', titre: 'des Marées', desc: 'Terminer « Le Sanctuaire des Marées »', cond: (p) => donjonFini(p, 'sanctuaire') },
+  { id: 'donjon-couronne',    nom: 'Porteur de la Couronne', emoji: '👑', titre: 'Céleste', desc: 'Terminer « La Couronne Céleste »', cond: (p) => donjonFini(p, 'couronne-celeste') },
+  { id: 'tour-boss-8',        nom: 'Fléau des seigneurs', emoji: '🏯', titre: 'Tueur de Rois', desc: 'Atteindre l’étage 8 de la Tour des Boss', cond: (p) => p.tourBoss && Math.max(p.tourBoss.normal, p.tourBoss.heroique, p.tourBoss.cauchemar) >= 8 },
+  { id: 'niveau-35',          nom: 'Au-delà des Royaumes', emoji: '🌅', titre: 'des Terres lointaines', desc: 'Atteindre le niveau 35', cond: (p) => p.niveau >= 35 },
+  { id: 'niveau-50',          nom: 'Sommet du possible', emoji: '🌟', titre: 'l’Éternel', desc: 'Atteindre le niveau 50', cond: (p) => p.niveau >= 50 },
 ];
 
 function donjonFini(p, idDonjon) {
@@ -896,7 +901,14 @@ const MODELES_QUETES = [
   { type: 'exploration', emoji: '🗺️', min: 4, max: 8,  texte: (n) => `Explorer ${n} fois` },
   { type: 'tour',        emoji: '🗼', min: 2, max: 4,  texte: (n) => `Gravir ${n} étages de la Tour`, niveauMin: 3 },
   { type: 'donjon',      emoji: '📖', min: 1, max: 1,  texte: () => 'Terminer un donjon d’histoire', niveauMin: 4 },
+  { type: 'tourBoss',    emoji: '🏯', min: 1, max: 3,  texte: (n) => `Vaincre ${n} étage${n > 1 ? 's' : ''} de la Tour des Boss`, niveauMin: 10 },
+  { type: 'monstres',    emoji: '💀', min: 18, max: 30, texte: (n) => `Purger les Royaumes : ${n} monstres` },
+  { type: 'recolte',     emoji: '🧺', min: 5, max: 8,  texte: (n) => `Grande cueillette : récolter ${n} fois` },
+  { type: 'craft',       emoji: '🏭', min: 4, max: 6,  texte: (n) => `Production en série : fabriquer ${n} objets`, niveauMin: 6 },
 ];
+
+// Trois récompenses par jour, pas une de plus : il faut choisir.
+const RECLAMATIONS_GUILDE_PAR_JOUR = 3;
 
 // Générateur pseudo-aléatoire déterministe (même jour → mêmes contrats).
 function grainePseudoAleatoire(graine) {
@@ -913,8 +925,10 @@ function genererQuetesDuJour(p) {
   const alea2 = grainePseudoAleatoire(date + '|' + p.id);
   // Pas de contrat inaccessible : la Tour et les donjons demandent un niveau.
   const disponibles = MODELES_QUETES.filter((m) => !m.niveauMin || p.niveau >= m.niveauMin);
+  // Six contrats par jour, tous différents — mais trois récompenses au plus.
+  const nbContrats = Math.min(6, disponibles.length);
   const indices = [];
-  while (indices.length < 3) {
+  while (indices.length < nbContrats) {
     const i = Math.floor(alea2() * disponibles.length);
     if (!indices.includes(i)) indices.push(i);
   }
@@ -927,9 +941,9 @@ function genererQuetesDuJour(p) {
         type: modele.type, emoji: modele.emoji,
         texte: modele.texte(requis), requis, fait: 0, reclamee: false,
         recompense: {
-          po: (25 + p.niveau * 8) * (position + 1),
-          xp: (15 + p.niveau * 9) * (position + 1),
-          coffre: position === 2, // le 3e contrat offre un objet en plus
+          po: Math.round((25 + p.niveau * 8) * (1 + position * 0.5)),
+          xp: Math.round((15 + p.niveau * 9) * (1 + position * 0.5)),
+          coffre: position >= 4, // les deux derniers contrats offrent un objet
         },
       };
     }),
@@ -956,9 +970,9 @@ function difficulteDebloquee(p, zone, cle) {
 // =====================================================================
 // Progression (niveau 1 à 20)
 // =====================================================================
-const NIVEAU_MAX = 20;
+const NIVEAU_MAX = 50;
 const POINTS_PAR_NIVEAU = 2;
-const NIVEAUX_NOUVELLE_COMPETENCE = [4, 8, 12, 16, 20];
+const NIVEAUX_NOUVELLE_COMPETENCE = [4, 8, 12, 16, 20, 25, 30, 35, 40, 45, 50];
 
 // XP cumulée requise pour atteindre le niveau n.
 function seuilXp(n) {
@@ -980,10 +994,10 @@ function statsEffectives(p) {
   // stats effectives déjà calculées sur leur propre appareil.
   if (p.statsEff) return { ...p.statsEff };
   // Combattant reconstruit sans stats (état réseau incomplet) : zéros sûrs.
-  if (!p.stats) return { for: 0, int: 0, agi: 0, vit: 0, cha: 0, pvMax: 0, pmMax: 0, crit: 0 };
+  if (!p.stats) return { for: 0, int: 0, agi: 0, vit: 0, cha: 0, pvMax: 0, pmMax: 0, crit: 0, blocage: 0, esquive: 0 };
   const s = {
     for: p.stats.for, int: p.stats.int, agi: p.stats.agi, vit: p.stats.vit,
-    cha: p.stats.cha || 0, pvMax: 0, pmMax: 0, crit: 0,
+    cha: p.stats.cha || 0, pvMax: 0, pmMax: 0, crit: 0, blocage: 0, esquive: 0,
   };
   Object.values(p.equipement || {}).forEach((idObjet) => {
     if (!idObjet) return;

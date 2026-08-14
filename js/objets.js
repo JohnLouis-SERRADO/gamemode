@@ -13,7 +13,9 @@ const SLOTS_EQUIPEMENT = {
   arme: { nom: 'Arme', emoji: '⚔️' },
   tete: { nom: 'Tête', emoji: '🪖' },
   torse: { nom: 'Torse', emoji: '🥋' },
+  mains: { nom: 'Mains', emoji: '🧤' },
   jambes: { nom: 'Jambes', emoji: '👖' },
+  pieds: { nom: 'Pieds', emoji: '🥾' },
   acc1: { nom: 'Accessoire 1', emoji: '💍' },
   acc2: { nom: 'Accessoire 2', emoji: '📿' },
 };
@@ -150,6 +152,44 @@ const OBJETS = {
   'larme-du-gardien':     { nom: 'Larme du Gardien', emoji: '💧', type: 'equipement', slot: 'accessoire', niveau: 19, rarete: 'legendaire', prixVente: 600, bonus: { for: 4, int: 4, agi: 4, cha: 3 }, desc: 'Trophée du Gardien éternel des Profondeurs.' },
 };
 
+// ----- Matériaux des Terres lointaines (v10, niv. 22-50) -----
+Object.assign(OBJETS, {
+  'liane-tressee':      { nom: 'Liane tressée', emoji: '🌿', type: 'materiau', prixVente: 40, desc: 'Souple comme une corde, solide comme une chaîne.' },
+  'orchidee-lunaire':   { nom: 'Orchidée lunaire', emoji: '🌸', type: 'materiau', prixVente: 65, desc: 'Ne fleurit que sous la pleine lune de la jungle.' },
+  'venin-concentre':    { nom: 'Venin concentré', emoji: '🧪', type: 'materiau', prixVente: 80, desc: 'À manipuler avec des gants. Deux paires.' },
+  'basalte-poli':       { nom: 'Basalte poli', emoji: '🪨', type: 'materiau', prixVente: 40, desc: 'Poli par mille ans de vents hurlants.' },
+  'plume-de-rokh':      { nom: 'Plume de rokh', emoji: '🪶', type: 'materiau', prixVente: 65, desc: 'Plus grande qu’un bouclier, plus légère qu’un souffle.' },
+  'cristal-hurleur':    { nom: 'Cristal hurleur', emoji: '💎', type: 'materiau', prixVente: 85, desc: 'Il siffle quand le vent tourne. Et le vent tourne toujours.' },
+  'nacre-abyssale':     { nom: 'Nacre abyssale', emoji: '🐚', type: 'materiau', prixVente: 70, desc: 'Elle garde la lumière des lanternes englouties.' },
+  'corail-sanglant':    { nom: 'Corail sanglant', emoji: '🪸', type: 'materiau', prixVente: 95, desc: 'Rouge profond. Personne ne demande pourquoi.' },
+  'larme-de-sirene':    { nom: 'Larme de sirène', emoji: '💧', type: 'materiau', prixVente: 150, desc: 'Un chagrin cristallisé, précieux et froid.' },
+  'cendre-fertile':     { nom: 'Cendre fertile', emoji: '🌫️', type: 'materiau', prixVente: 70, desc: 'Tout y repousse — même ce qu’on préférerait éteint.' },
+  'obsidienne-brute':   { nom: 'Obsidienne brute', emoji: '🖤', type: 'materiau', prixVente: 95, desc: 'Un tranchant naturel qui n’attend que la meule.' },
+  'coeur-de-braise':    { nom: 'Cœur de braise', emoji: '❤️‍🔥', type: 'materiau', prixVente: 150, desc: 'Chaud au toucher, des années après.' },
+  'bois-petrifie':      { nom: 'Bois pétrifié', emoji: '🪵', type: 'materiau', prixVente: 110, desc: 'Un arbre devenu pierre — le grain du bois y est encore.' },
+  'ambre-noir':         { nom: 'Ambre noir', emoji: '🟤', type: 'materiau', prixVente: 140, desc: 'Quelque chose est figé dedans. Ne regardez pas trop longtemps.' },
+  'sphere-runique':     { nom: 'Sphère runique', emoji: '🔮', type: 'materiau', prixVente: 220, desc: 'Les runes tournent lentement à l’intérieur.' },
+  'os-de-geant':        { nom: 'Os de géant', emoji: '🦴', type: 'materiau', prixVente: 110, desc: 'Un seul fémur ferait une charpente.' },
+  'peau-de-mammouth':   { nom: 'Peau de mammouth', emoji: '🦣', type: 'materiau', prixVente: 140, desc: 'Assez pour tailler trois manteaux et une tente.' },
+  'relique-antique':    { nom: 'Relique antique', emoji: '⚱️', type: 'materiau', prixVente: 220, desc: 'D’avant les Royaumes. D’avant beaucoup de choses.' },
+  'fragment-de-foudre': { nom: 'Fragment de foudre', emoji: '⚡', type: 'materiau', prixVente: 160, desc: 'Un éclair figé en plein zigzag.' },
+  'acier-celeste':      { nom: 'Acier céleste', emoji: '⚙️', type: 'materiau', prixVente: 210, desc: 'Forgé dans les nuages, trempé dans l’orage.' },
+  'plume-d-archon':     { nom: 'Plume d’Archon', emoji: '🕊️', type: 'materiau', prixVente: 320, desc: 'Elle flotte à deux doigts de votre paume, toujours.' },
+  'etoffe-du-neant':    { nom: 'Étoffe du néant', emoji: '🌌', type: 'materiau', prixVente: 160, desc: 'Un tissu découpé dans l’absence de tout.' },
+  'eclat-d-etoile':     { nom: 'Éclat d’étoile', emoji: '⭐', type: 'materiau', prixVente: 210, desc: 'Encore tiède. Encore un peu vivant.' },
+  'essence-primordiale': { nom: 'Essence primordiale', emoji: '✨', type: 'materiau', prixVente: 350, desc: 'La matière première du monde, en flacon.' },
+
+  // ----- Trophées uniques des boss des Terres lointaines -----
+  'crochet-de-sarpense':  { nom: 'Crochet de Sarpense', emoji: '🐍', type: 'equipement', slot: 'arme', niveau: 28, rarete: 'epique', prixVente: 700, bonus: { agi: 18, for: 6, crit: 4 }, desc: 'Trophée de la Matriarche de Vaï-Sombre.' },
+  'serre-du-rokh':        { nom: 'Serre du Rokh', emoji: '🦅', type: 'equipement', slot: 'accessoire', niveau: 28, rarete: 'epique', prixVente: 700, bonus: { agi: 8, for: 6, esquive: 4 }, desc: 'Trophée du Rokh Tempétueux des Falaises.' },
+  'fanon-du-leviathan':   { nom: 'Fanon du Léviathan', emoji: '🐋', type: 'equipement', slot: 'accessoire', niveau: 36, rarete: 'legendaire', prixVente: 1100, bonus: { int: 10, vit: 8, pmMax: 30 }, desc: 'Trophée du maître des Abysses d’Émeraude.' },
+  'coeur-du-behemoth':    { nom: 'Cœur du Béhémoth', emoji: '🌋', type: 'equipement', slot: 'accessoire', niveau: 36, rarete: 'legendaire', prixVente: 1100, bonus: { for: 10, vit: 8, pvMax: 45, blocage: 4 }, desc: 'Trophée du Béhémoth de la Steppe. Il bat encore, lentement.' },
+  'oeil-de-quartz':       { nom: 'Œil de Quartz', emoji: '💎', type: 'equipement', slot: 'tete', niveau: 44, rarete: 'legendaire', prixVente: 1600, bonus: { int: 14, vit: 8, crit: 6, pmMax: 30 }, desc: 'Trophée de l’Avatar de la Forêt Pétrifiée.' },
+  'couronne-d-ossements': { nom: 'Couronne d’Ossements', emoji: '👑', type: 'equipement', slot: 'tete', niveau: 44, rarete: 'legendaire', prixVente: 1600, bonus: { for: 14, vit: 8, pvMax: 60, blocage: 5 }, desc: 'Trophée du Roi de la Vallée des Géants.' },
+  'aile-de-l-archonte':   { nom: 'Aile de l’Archonte', emoji: '🕊️', type: 'equipement', slot: 'accessoire', niveau: 50, rarete: 'mythique', prixVente: 2400, bonus: { agi: 14, int: 10, crit: 8, esquive: 6 }, desc: 'Trophée de l’Archonte de la Tempête. Elle bat encore la mesure de l’orage.' },
+  'singularite-apprivoisee': { nom: 'Singularité apprivoisée', emoji: '🕳️', type: 'equipement', slot: 'accessoire', niveau: 50, rarete: 'mythique', prixVente: 2400, bonus: { for: 12, int: 12, vit: 8, pvMax: 60 }, desc: 'Trophée du Dévoreur de Mondes. Ne pas secouer.' },
+});
+
 // Objet unique offert par le coffre de chaque boss de zone.
 const COFFRES_BOSS = {
   loupAlpha: 'croc-de-l-alpha',
@@ -160,6 +200,14 @@ const COFFRES_BOSS = {
   verDesSables: 'dent-du-ver',
   elementaireAncien: 'noyau-de-l-ancien',
   gardienEternel: 'larme-du-gardien',
+  matriarcheSarpense: 'crochet-de-sarpense',
+  rokhTempetueux: 'serre-du-rokh',
+  leviathanCorallien: 'fanon-du-leviathan',
+  behemothCendre: 'coeur-du-behemoth',
+  avatarQuartz: 'oeil-de-quartz',
+  roiOssements: 'couronne-d-ossements',
+  archonteTempete: 'aile-de-l-archonte',
+  devoreurMondes: 'singularite-apprivoisee',
 };
 
 // Raretés des objets historiques (tout le reste est « commun »).
@@ -238,7 +286,54 @@ const SETS_CRAFT = [
   { suffixe: 'de l’Aube',    niveau: 19, rarete: 'legendaire', po: 650, materiaux: { 'ecaille-draconique': 2, 'cristal-givre': 2, 'perle-des-sables': 2 } },
 ];
 
-const MULT_RARETE_CRAFT = { commun: 1, inhabituel: 1.12, rare: 1.25, epique: 1.4, legendaire: 1.6 };
+const MULT_RARETE_CRAFT = { commun: 1, inhabituel: 1.12, rare: 1.25, epique: 1.4, legendaire: 1.6, mythique: 1.85, divin: 2.2 };
+
+// ---------------------------------------------------------------------
+// Raffinage (v10) : les grandes séries exigent des matériaux raffinés,
+// eux-mêmes fabriqués à partir de beaucoup de récolte brute. Il va
+// falloir farmer — c'est le but.
+// ---------------------------------------------------------------------
+Object.assign(OBJETS, {
+  'lingot-ferreux':    { nom: 'Lingot ferreux', emoji: '🧱', type: 'materiau', rarete: 'inhabituel', prixVente: 90, desc: 'Fer et cuivre fondus ensemble à l’atelier.' },
+  'cuir-double':       { nom: 'Cuir doublé', emoji: '🟫', type: 'materiau', rarete: 'inhabituel', prixVente: 80, desc: 'Deux peaux, une couture, zéro courant d’air.' },
+  'essence-sylvestre': { nom: 'Essence sylvestre', emoji: '🍃', type: 'materiau', rarete: 'rare', prixVente: 110, desc: 'La forêt distillée goutte à goutte.' },
+  'toile-runique':     { nom: 'Toile runique', emoji: '🕸️', type: 'materiau', rarete: 'rare', prixVente: 150, desc: 'Tissée de poussière de spectre et de givre.' },
+  'alliage-hurlant':   { nom: 'Alliage hurlant', emoji: '🔩', type: 'materiau', rarete: 'rare', prixVente: 260, desc: 'Il vibre encore du chant des falaises.' },
+  'resine-de-jungle':  { nom: 'Résine de jungle', emoji: '🫙', type: 'materiau', rarete: 'rare', prixVente: 260, desc: 'Colle tout. Y compris les doigts. Surtout les doigts.' },
+  'perle-de-magma':    { nom: 'Perle de magma', emoji: '🔴', type: 'materiau', rarete: 'epique', prixVente: 420, desc: 'Une goutte de volcan, ronde et patiente.' },
+  'sel-d-abysse':      { nom: 'Sel d’abysse', emoji: '🧂', type: 'materiau', rarete: 'epique', prixVente: 420, desc: 'Le sel des larmes de sirène. Hors de prix, comme le chagrin.' },
+  'moelle-titanesque': { nom: 'Moelle titanesque', emoji: '🦴', type: 'materiau', rarete: 'legendaire', prixVente: 680, desc: 'La force des géants, réduite en concentré.' },
+  'quartz-eveille':    { nom: 'Quartz éveillé', emoji: '💠', type: 'materiau', rarete: 'legendaire', prixVente: 680, desc: 'Il cligne doucement quand on lui parle.' },
+  'coeur-d-orage':     { nom: 'Cœur d’orage', emoji: '🌩️', type: 'materiau', rarete: 'mythique', prixVente: 1100, desc: 'Un orage entier, plié en huit.' },
+  'fil-du-neant':      { nom: 'Fil du néant', emoji: '🧵', type: 'materiau', rarete: 'mythique', prixVente: 1100, desc: 'On coud avec du rien. Ça tient très bien.' },
+});
+
+// Recettes de raffinage : beaucoup de brut pour un seul raffiné.
+[
+  { resultat: 'lingot-ferreux',    niveau: 12, po: 25,  materiaux: { 'minerai-fer': 5, 'minerai-cuivre': 3 } },
+  { resultat: 'cuir-double',       niveau: 10, po: 20,  materiaux: { 'peau-de-loup': 4, 'soie-araignee': 3 } },
+  { resultat: 'essence-sylvestre', niveau: 12, po: 30,  materiaux: { 'seve-ambree': 4, 'herbe-lunaire': 4, 'lotus-noir': 3 } },
+  { resultat: 'toile-runique',     niveau: 16, po: 45,  materiaux: { 'poussiere-spectre': 3, 'os-ancien': 2, 'cristal-givre': 2 } },
+  { resultat: 'alliage-hurlant',   niveau: 24, po: 80,  materiaux: { 'basalte-poli': 4, 'cristal-hurleur': 2, 'plume-de-rokh': 2 } },
+  { resultat: 'resine-de-jungle',  niveau: 24, po: 80,  materiaux: { 'liane-tressee': 4, 'orchidee-lunaire': 3, 'venin-concentre': 2 } },
+  { resultat: 'perle-de-magma',    niveau: 32, po: 140, materiaux: { 'obsidienne-brute': 4, 'coeur-de-braise': 2, 'cendre-fertile': 3 } },
+  { resultat: 'sel-d-abysse',      niveau: 32, po: 140, materiaux: { 'nacre-abyssale': 4, 'larme-de-sirene': 2, 'corail-sanglant': 3 } },
+  { resultat: 'moelle-titanesque', niveau: 40, po: 240, materiaux: { 'os-de-geant': 4, 'peau-de-mammouth': 3, 'relique-antique': 1 } },
+  { resultat: 'quartz-eveille',    niveau: 40, po: 240, materiaux: { 'bois-petrifie': 4, 'ambre-noir': 3, 'sphere-runique': 1 } },
+  { resultat: 'coeur-d-orage',     niveau: 47, po: 400, materiaux: { 'fragment-de-foudre': 4, 'acier-celeste': 3, 'plume-d-archon': 1 } },
+  { resultat: 'fil-du-neant',      niveau: 47, po: 400, materiaux: { 'etoffe-du-neant': 4, 'eclat-d-etoile': 3, 'essence-primordiale': 1 } },
+].forEach((recette) => RECETTES.push(recette));
+
+// Les grandes séries des Terres lointaines : chaque pièce coûte des
+// matériaux raffinés en quantité — des heures de récolte bien investies.
+SETS_CRAFT.push(
+  { suffixe: 'des Falaises',  niveau: 24, rarete: 'rare',       po: 320,  materiaux: { 'alliage-hurlant': 2, 'lingot-ferreux': 2 } },
+  { suffixe: 'de Vaï-Sombre', niveau: 28, rarete: 'epique',     po: 450,  materiaux: { 'resine-de-jungle': 2, 'cuir-double': 3, 'essence-sylvestre': 1 } },
+  { suffixe: 'des Abysses',   niveau: 33, rarete: 'epique',     po: 620,  materiaux: { 'sel-d-abysse': 2, 'toile-runique': 2 } },
+  { suffixe: 'du Béhémoth',   niveau: 38, rarete: 'legendaire', po: 900,  materiaux: { 'perle-de-magma': 2, 'moelle-titanesque': 1, 'lingot-ferreux': 3 } },
+  { suffixe: 'des Titans',    niveau: 44, rarete: 'mythique',   po: 1400, materiaux: { 'moelle-titanesque': 2, 'quartz-eveille': 2, 'sel-d-abysse': 1 } },
+  { suffixe: 'du Firmament',  niveau: 50, rarete: 'divin',      po: 2200, materiaux: { 'coeur-d-orage': 2, 'fil-du-neant': 2, 'quartz-eveille': 1 } },
+);
 
 // =====================================================================
 // Panoplies : équiper plusieurs pièces d'une même collection active des
@@ -326,6 +421,8 @@ SETS_CRAFT.forEach((serie) => {
     { cle: 'jambieres', nom: `Jambières ${serie.suffixe}`, emoji: '👖', slot: 'jambes',     bonus: { agi: secondaire, vit: secondaire, pvMax: serie.niveau } },
     { cle: 'talisman',  nom: `Talisman ${serie.suffixe}`,  emoji: '🧿', slot: 'accessoire', bonus: { cha: 1 + Math.floor(serie.niveau / 5), vit: secondaire, crit: secondaire } },
     { cle: 'grimoire',  nom: `Grimoire ${serie.suffixe}`,  emoji: '📖', slot: 'accessoire', bonus: { int: secondaire + 1, pmMax: secondaire * 2, cha: Math.max(1, Math.floor(serie.niveau / 7)) } },
+    { cle: 'gants',     nom: `Gants ${serie.suffixe}`,     emoji: '🧤', slot: 'mains',      bonus: { for: secondaire, agi: secondaire, blocage: Math.max(1, Math.floor(serie.niveau / 8)) } },
+    { cle: 'bottes',    nom: `Bottes ${serie.suffixe}`,    emoji: '🥾', slot: 'pieds',      bonus: { agi: secondaire, vit: secondaire, esquive: Math.max(1, Math.floor(serie.niveau / 8)) } },
   ];
   SETS[`craft-${idBase}`] = { nom: `Série ${serie.suffixe}`, rarete: serie.rarete };
   pieces.forEach((piece) => {
@@ -354,7 +451,9 @@ const ARCHETYPES_BUTIN = [
   { cle: 'arc',      noms: ['Arc', 'Dague', 'Arbalète'],         emoji: '🏹', slot: 'arme',       principal: 'agi', secondaire: 'for' },
   { cle: 'heaume',   noms: ['Heaume', 'Capuche', 'Diadème'],     emoji: '🪖', slot: 'tete',       principal: 'vit', secondaire: 'int' },
   { cle: 'plastron', noms: ['Plastron', 'Tunique', 'Cuirasse'],  emoji: '🛡️', slot: 'torse',      principal: 'vit', secondaire: 'for' },
-  { cle: 'jambes',   noms: ['Jambières', 'Bottes', 'Grèves'],    emoji: '👖', slot: 'jambes',     principal: 'agi', secondaire: 'vit' },
+  { cle: 'gants',    noms: ['Gants', 'Gantelets', 'Mitaines'],   emoji: '🧤', slot: 'mains',      principal: 'for', secondaire: 'agi', defensif: 'blocage' },
+  { cle: 'jambes',   noms: ['Jambières', 'Grèves', 'Cuissards'], emoji: '👖', slot: 'jambes',     principal: 'agi', secondaire: 'vit' },
+  { cle: 'bottes',   noms: ['Bottes', 'Sandales', 'Solerets'],   emoji: '🥾', slot: 'pieds',      principal: 'agi', secondaire: 'vit', defensif: 'esquive' },
   { cle: 'anneau',   noms: ['Anneau', 'Sceau', 'Chevalière'],    emoji: '💍', slot: 'accessoire', principal: 'cha', secondaire: 'agi' },
   { cle: 'amulette', noms: ['Amulette', 'Pendentif', 'Relique'], emoji: '📿', slot: 'accessoire', principal: 'int', secondaire: 'cha' },
 ];
@@ -374,11 +473,16 @@ const QUALIFICATIFS_BUTIN = {
 const PALIER_RARETE = { commun: 1, inhabituel: 1, rare: 3, epique: 6, legendaire: 10, mythique: 14, divin: 17 };
 const MULT_RARETE_BUTIN = { commun: 0.8, inhabituel: 0.95, rare: 1.1, epique: 1.3, legendaire: 1.55, mythique: 1.8, divin: 2.15 };
 
+// Jusqu'au niveau 20 : toutes les raretés, deux variantes. Au-delà
+// (niveaux 21 à 50) : une variante, raretés épique et plus seulement —
+// le haut niveau se joue dans les hautes raretés.
 ARCHETYPES_BUTIN.forEach((archetype) => {
-  for (let niveau = 1; niveau <= 20; niveau++) {
+  for (let niveau = 1; niveau <= 50; niveau++) {
+    const variantes = niveau <= 20 ? 2 : 1;
     Object.keys(RARETES).forEach((rarete) => {
       if (niveau < PALIER_RARETE[rarete]) return;
-      for (let variante = 0; variante < 2; variante++) {
+      if (niveau > 20 && !['epique', 'legendaire', 'mythique', 'divin'].includes(rarete)) return;
+      for (let variante = 0; variante < variantes; variante++) {
         const nomBase = archetype.noms[(niveau + variante) % archetype.noms.length];
         const qualificatif = QUALIFICATIFS_BUTIN[rarete][(niveau + variante * 2) % 3];
         const mult = MULT_RARETE_BUTIN[rarete];
@@ -388,6 +492,11 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
         if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = Math.round(niveau * 2 * mult);
         if (archetype.principal === 'int') bonus.pmMax = Math.round(niveau * 1.5 * mult);
         if (rarete === 'mythique' || rarete === 'divin') bonus.crit = Math.round(2 + niveau * 0.25);
+        // Gants et bottes portent les stats défensives (blocage/esquive)
+        // à partir de la rareté rare et du niveau 8.
+        if (archetype.defensif && niveau >= 8 && !['commun', 'inhabituel'].includes(rarete)) {
+          bonus[archetype.defensif] = Math.max(1, Math.round(1 + niveau * 0.12 * mult));
+        }
         // Les objets partageant un même qualificatif forment une panoplie.
         const indexQualificatif = (niveau + variante * 2) % 3;
         const idSet = `butin-${rarete}-${indexQualificatif}`;
@@ -420,15 +529,15 @@ const QUALIFICATIFS_BOUTIQUE = {
   legendaire: ['de la Vitrine Secrète', 'du fond du coffre', 'de collection'],
 };
 
-// Fenêtre de niveaux où le marchand propose chaque rareté.
+// Fenêtre de niveaux où le marchand propose chaque rareté (jusqu'au 50).
 const FENETRES_BOUTIQUE = {
-  commun: [1, 8], inhabituel: [3, 12], rare: [6, 16], epique: [10, 20], legendaire: [14, 20],
+  commun: [1, 8], inhabituel: [3, 14], rare: [6, 26], epique: [10, 40], legendaire: [14, 50],
 };
 const MULT_STAT_BOUTIQUE = { commun: 0.7, inhabituel: 0.85, rare: 1.0, epique: 1.15, legendaire: 1.4 };
 const MULT_PRIX_BOUTIQUE = { commun: 1, inhabituel: 1.6, rare: 2.6, epique: 4.2, legendaire: 7 };
 
 ARCHETYPES_BUTIN.forEach((archetype) => {
-  for (let niveau = 1; niveau <= 20; niveau++) {
+  for (let niveau = 1; niveau <= 50; niveau++) {
     Object.entries(FENETRES_BOUTIQUE).forEach(([rarete, [debut, fin]]) => {
       if (niveau < debut || niveau > fin) return;
       const indexQualificatif = niveau % 3;
@@ -441,6 +550,9 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
       if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = Math.round(niveau * 2 * mult);
       if (archetype.principal === 'int') bonus.pmMax = Math.round(niveau * 1.5 * mult);
       if (rarete === 'legendaire') bonus.crit = Math.round(1 + niveau * 0.2);
+      if (archetype.defensif && niveau >= 8 && ['rare', 'epique', 'legendaire'].includes(rarete)) {
+        bonus[archetype.defensif] = Math.max(1, Math.round(1 + niveau * 0.1 * mult));
+      }
       const idSet = `marchand-${rarete}-${indexQualificatif}`;
       if (!SETS[idSet]) SETS[idSet] = { nom: `Panoplie ${qualificatif}`, rarete };
       OBJETS[`marchand-${archetype.cle}-${rarete}-${niveau}`] = {
@@ -490,8 +602,10 @@ function texteBonus(bonus) {
   const libelles = {
     for: '💪 FOR', int: '🧠 INT', agi: '🏃 AGI', vit: '❤️ VIT', cha: '🍀 CHA',
     pvMax: '❤️ PV max', pmMax: '💧 PM max', crit: '💥 Crit.',
+    blocage: '🛡️ Blocage', esquive: '💨 Esquive',
   };
+  const enPourcent = ['crit', 'blocage', 'esquive'];
   return Object.entries(bonus)
-    .map(([cle, valeur]) => `+${valeur}${cle === 'crit' ? ' %' : ''} ${libelles[cle] || cle}`)
+    .map(([cle, valeur]) => `+${valeur}${enPourcent.includes(cle) ? ' %' : ''} ${libelles[cle] || cle}`)
     .join(' · ');
 }

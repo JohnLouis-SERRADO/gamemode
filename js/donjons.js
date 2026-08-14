@@ -787,6 +787,411 @@ const DONJONS = [
   },
 ];
 
+// =====================================================================
+// Donjons des Terres lointaines (v10) : pensés pour l'équipe.
+// =====================================================================
+Object.assign(OBJETS, {
+  'trident-des-profondeurs': {
+    nom: 'Trident des Profondeurs', emoji: '🔱', type: 'equipement', slot: 'arme', niveau: 28,
+    rarete: 'legendaire', prixVente: 900, bonus: { for: 16, int: 8, crit: 4 },
+    desc: 'L’arme de la Gardienne, rendue à la surface. Récompense du Sanctuaire des Marées.',
+  },
+  'sceptre-de-l-archonte': {
+    nom: 'Sceptre de l’Archonte', emoji: '🌠', type: 'equipement', slot: 'arme', niveau: 46,
+    rarete: 'divin', prixVente: 2600, bonus: { int: 26, pmMax: 40, cha: 6 },
+    desc: 'Le pouvoir de poser une citadelle comme on pose une plume. Récompense de la Couronne Céleste.',
+  },
+  'lame-du-firmament': {
+    nom: 'Lame du Firmament', emoji: '🌌', type: 'equipement', slot: 'arme', niveau: 46,
+    rarete: 'divin', prixVente: 2600, bonus: { agi: 20, for: 12, crit: 10 },
+    desc: 'Forgée dans la pluie d’étoiles d’un trône brisé. Récompense de la Couronne Céleste.',
+  },
+});
+
+Object.assign(MONSTRES_DONJONS, {
+  // ----- Le Sanctuaire des Marées (niv. 25-30) -----
+  'pelerin-noye': {
+    nom: 'Pèlerin noyé', emoji: '🧎', niveau: 26, hp: 443, atk: 42, agi: 8, xp: 230, po: [26, 52],
+    drops: [{ id: 'nacre-abyssale', chance: 0.3 }],
+    attaques: [
+      { nom: 'Étreinte suppliante', emoji: '🙏', mult: 1.0, poids: 3, type: 'mono' },
+      { nom: 'Psaume inversé', emoji: '🌊', mult: 0.8, poids: 1, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+    ],
+  },
+  'garde-corail': {
+    nom: 'Garde de corail', emoji: '🪸', niveau: 28, hp: 510, atk: 45, agi: 9, xp: 265, po: [28, 56],
+    drops: [{ id: 'corail-sanglant', chance: 0.35 }],
+    attaques: [
+      { nom: 'Hallebarde incrustée', emoji: '🔱', mult: 1.15, poids: 3, type: 'mono' },
+      { nom: 'Éclats de récif', emoji: '🪸', mult: 0.85, poids: 1, type: 'aoe' },
+    ],
+  },
+  'oracle-corrompu': {
+    nom: 'Oracle corrompu', emoji: '🐙', niveau: 29, hp: 546, atk: 46, agi: 10, xp: 283, po: [29, 58],
+    drops: [{ id: 'larme-de-sirene', chance: 0.25 }],
+    attaques: [
+      { nom: 'Prophétie amère', emoji: '🔮', mult: 1.05, poids: 2, type: 'mono', effet: { type: 'poison', degats: 14, duree: 2 } },
+      { nom: 'Marée intérieure', emoji: '💙', valeur: 58, poids: 1, type: 'soin' },
+    ],
+  },
+  'gardienne-des-marees': {
+    nom: 'Gardienne des Marées', emoji: '🌊', niveau: 30, boss: true, hp: 2444, atk: 59, agi: 11, xp: 1510, po: [180, 300],
+    drops: [{ id: 'larme-de-sirene', chance: 1 }, { id: 'nacre-abyssale', chance: 0.9 }],
+    attaques: [
+      { nom: 'Trident du jugement', emoji: '🔱', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Lame de fond', emoji: '🌊', mult: 0.85, poids: 1, type: 'aoe' },
+    ],
+    mecaniques: {
+      phases: [
+        {
+          seuil: 0.65,
+          annonce: '🐚 « Venez, mes fidèles ! » — la marée dépose des serviteurs sur le parvis !',
+          invoque: ['pelerin-noye', 'pelerin-noye'],
+        },
+        {
+          seuil: 0.35,
+          annonce: '🌊 La Gardienne devient marée : l’eau frappe de partout !',
+          atkMult: 1.35,
+          attaques: [
+            { nom: 'Déferlante sacrée', emoji: '🌊', mult: 0.95, poids: 2, type: 'aoe' },
+            { nom: 'Trident du jugement', emoji: '🔱', mult: 1.25, poids: 2, type: 'mono' },
+          ],
+        },
+      ],
+      enrage: { manche: 10, atkMult: 1.6, annonce: '⚠️ Le Sanctuaire tout entier se met à gronder : la Gardienne n’attendra plus !' },
+    },
+  },
+
+  // ----- La Couronne Céleste (niv. 42-50, équipe) -----
+  'sentinelle-de-la-couronne': {
+    nom: 'Sentinelle de la Couronne', emoji: '⚙️', niveau: 44, hp: 1836, atk: 68, agi: 9, xp: 634, po: [44, 88],
+    drops: [{ id: 'acier-celeste', chance: 0.35 }],
+    attaques: [
+      { nom: 'Glaive de protocole', emoji: '⚙️', mult: 1.15, poids: 3, type: 'mono' },
+      { nom: 'Balayage de sécurité', emoji: '📡', mult: 0.85, poids: 1, type: 'aoe' },
+    ],
+  },
+  'choeur-d-echos': {
+    nom: 'Chœur d’échos', emoji: '🎭', niveau: 46, hp: 1998, atk: 71, agi: 12, xp: 691, po: [46, 92],
+    drops: [{ id: 'eclat-d-etoile', chance: 0.3 }],
+    attaques: [
+      { nom: 'Dissonance', emoji: '🎭', mult: 1.05, poids: 2, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
+      { nom: 'Hymne restaurateur', emoji: '💙', valeur: 96, poids: 1, type: 'soin' },
+    ],
+  },
+  'executeur-astral': {
+    nom: 'Exécuteur astral', emoji: '⚖️', niveau: 48, hp: 2183, atk: 74, agi: 11, xp: 751, po: [48, 96],
+    drops: [{ id: 'plume-d-archon', chance: 0.15 }],
+    attaques: [
+      { nom: 'Verdict stellaire', emoji: '⚖️', mult: 1.25, poids: 3, type: 'mono' },
+      { nom: 'Sentence collective', emoji: '✨', mult: 0.85, poids: 1, type: 'aoe', effet: { type: 'etourdi', duree: 1, chance: 0.2 } },
+    ],
+  },
+  'eclat-d-archonte': {
+    nom: 'Éclat d’Archonte', emoji: '💫', niveau: 44, hp: 980, atk: 60, agi: 12, xp: 240, po: [15, 30],
+    drops: [],
+    attaques: [
+      { nom: 'Scintillement blessant', emoji: '💫', mult: 1.0, poids: 1, type: 'mono' },
+    ],
+  },
+  'archonte-dechu': {
+    nom: 'L’Archonte Déchu', emoji: '👑', niveau: 50, boss: true, hp: 9916, atk: 96, agi: 12, xp: 4070, po: [350, 550],
+    drops: [{ id: 'plume-d-archon', chance: 1 }, { id: 'essence-primordiale', chance: 0.6 }],
+    attaques: [
+      { nom: 'Sceptre du zénith', emoji: '🌠', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Chute d’étoiles', emoji: '☄️', mult: 0.9, poids: 1, type: 'aoe' },
+    ],
+    mecaniques: {
+      invocations: {
+        toutesLes: 3, max: 4, monstres: ['eclat-d-archonte', 'eclat-d-archonte'],
+        annonce: '👑 L’Archonte arrache des éclats de sa propre couronne — ils prennent vie !',
+      },
+      phases: [
+        {
+          seuil: 0.7,
+          annonce: '🛡️ L’Archonte s’enveloppe du firmament : un rempart d’étoiles l’entoure !',
+          bouclier: 400,
+        },
+        {
+          seuil: 0.4,
+          annonce: '🌌 « ASSEZ. » — la salle du trône bascule dans le vide, les étoiles pleuvent !',
+          atkMult: 1.35,
+          attaques: [
+            { nom: 'Pluie de firmament', emoji: '🌌', mult: 0.95, poids: 2, type: 'aoe' },
+            { nom: 'Sceptre du zénith', emoji: '🌠', mult: 1.3, poids: 2, type: 'mono' },
+          ],
+        },
+        {
+          seuil: 0.15,
+          annonce: '💥 La couronne de l’Archonte se fissure : sa fureur est totale !',
+          atkMult: 1.2,
+        },
+      ],
+      enrage: { manche: 12, atkMult: 1.7, annonce: '⚠️ La citadelle amorce sa chute : l’Archonte frappe comme une fin du monde !' },
+    },
+  },
+});
+
+DONJONS.push(
+  // ============================================================
+  // 5. Le Sanctuaire des Marées — niv. 25+ (équipe conseillée)
+  // ============================================================
+  {
+    id: 'sanctuaire',
+    nom: 'Le Sanctuaire des Marées',
+    emoji: '🌊',
+    niveauMin: 25,
+    resume: 'La cité engloutie d’Azuria se réveille — et sa Gardienne veut rendre la mer à la surface. Toute la mer. Équipe conseillée.',
+    hautFait: 'donjon-sanctuaire',
+    depart: 'intro',
+    recompenses: { xp: 4200, po: 2600, objet: 'trident-des-profondeurs' },
+    etapes: {
+      intro: {
+        type: 'dialogue',
+        scenes: [
+          { qui: 'Narrateur', emoji: '📜', texte: 'Depuis une lune, la marée monte chaque nuit un peu plus haut — et redescend chaque matin un peu moins. Les pêcheurs des Abysses parlent d’une lumière verte sous l’eau, et de cloches qui sonnent à l’envers.' },
+          { qui: 'Nérée', emoji: '🐚', texte: 'Sur la grève vous attend une femme aux cheveux d’algues, un coquillage contre l’oreille. « Je suis Nérée, dernière oracle d’Azuria. Ma cité s’est engloutie il y a un siècle pour échapper à une peste — et ma sœur, la Gardienne, devait nous endormir tous. Elle a veillé seule. Cent ans. »' },
+          { qui: 'Nérée', emoji: '🐚', texte: '« La solitude l’a rongée. Elle a décidé que si Azuria ne pouvait pas remonter… c’est la surface qui descendrait. Le Sanctuaire est réveillé, les marées lui obéissent. Descendez avec moi. Raisonnez-la — ou arrêtez-la. »' },
+        ],
+        suite: 'parvis',
+      },
+      parvis: {
+        type: 'combat',
+        intro: 'Le parvis du Sanctuaire luit d’une clarté verte. Ses gardes de corail n’ont pas dormi non plus.',
+        monstres: ['garde-corail', 'garde-corail', 'pelerin-noye'],
+        suite: 'autel',
+      },
+      autel: {
+        type: 'choix',
+        qui: 'Nérée', emoji: '🐚',
+        texte: 'La grande salle des offrandes. Au centre, l’autel des marées pulse comme un cœur — c’est lui qui aspire l’océan. « On peut le purifier, si l’on connaît les rites, » souffle Nérée. « Ou le briser. C’est moins élégant. C’est aussi plus définitif. »',
+        options: [
+          {
+            texte: '🧠 Purifier l’autel par les rites anciens',
+            detail: 'Intelligence ≥ 20 — la marée s’apaise, la Gardienne s’affaiblit',
+            condition: { stat: 'int', min: 20 },
+            effet: { drapeau: 'autel-purifie' },
+            resultat: 'Vous récitez les rites que Nérée vous souffle. L’autel s’éteint doucement, comme une bougie qu’on borde. Quelque part au-dessous, quelque chose perd la moitié de sa colère.',
+            suite: 'nef',
+          },
+          {
+            texte: '💪 Briser l’autel d’un grand coup',
+            detail: 'Force ≥ 20 — efficace, mais le Sanctuaire va le sentir',
+            condition: { stat: 'for', min: 20 },
+            effet: { drapeau: 'autel-brise', pvPct: -0.1 },
+            resultat: 'L’autel éclate en mille coquillages. Le Sanctuaire entier frémit — et la vague de retour vous roule contre les colonnes. Efficace, oui. Discret, non.',
+            suite: 'nef',
+          },
+          {
+            texte: '🚶 Contourner l’autel sans y toucher',
+            detail: 'Prudent — mais la marée continuera de monter pendant le combat final',
+            resultat: 'Vous laissez l’autel à son battement. Nérée serre son coquillage un peu plus fort.',
+            suite: 'nef',
+          },
+        ],
+      },
+      nef: {
+        type: 'choix',
+        qui: 'Narrateur', emoji: '🌊',
+        texte: 'Dans la nef engloutie, des dizaines de pèlerins flottent entre deux eaux — noyés, mais pas morts : le Sanctuaire les garde en sommeil. Certains ouvrent des yeux suppliants sur votre passage. Les réveiller prendra du temps et fera du bruit.',
+        options: [
+          {
+            texte: '🤲 Réveiller les pèlerins un à un',
+            detail: 'Un combat de plus — mais leur gratitude pèsera face à la Gardienne',
+            effet: { drapeau: 'pelerins-sauves' },
+            suite: 'combat-nef',
+          },
+          {
+            texte: '🤫 Traverser la nef sans les toucher',
+            detail: 'Ils dorment depuis un siècle, ils peuvent attendre une heure de plus',
+            resultat: 'Vous nagez entre les dormeurs comme entre des statues. L’un d’eux vous suit longtemps du regard.',
+            suite: 'fontaine-sacree',
+          },
+        ],
+      },
+      'combat-nef': {
+        type: 'combat',
+        intro: 'Les premiers pèlerins réveillés paniquent — et le Sanctuaire envoie son oracle corrompu rétablir le silence.',
+        monstres: ['oracle-corrompu', 'pelerin-noye', 'pelerin-noye'],
+        suite: 'fontaine-sacree',
+      },
+      'fontaine-sacree': {
+        type: 'tresor',
+        titre: '⛲ La fontaine d’Azuria',
+        texte: 'Une source d’eau douce jaillit encore au cœur de la cité salée — le trésor le mieux gardé d’Azuria. Le groupe s’y refait entièrement.',
+        effet: { pvPct: 0.5, mpPct: 0.6, po: 400, objets: { 'potion-supreme-soin': 2 } },
+        suite: 'avant-boss',
+      },
+      'avant-boss': {
+        type: 'dialogue',
+        scenes: [
+          { qui: 'Nérée', emoji: '🐚', texte: '« Elle est là, derrière les grandes portes. Ma sœur. Cent ans de garde, cent ans de silence — et nous qui dormions, bien au chaud dans nos rêves. Si une partie d’elle peut être sauvée, je la reconnaîtrai. Sinon… » Elle pose son coquillage. « Sinon, frappez juste. »' },
+        ],
+        suite: 'boss',
+      },
+      boss: {
+        type: 'boss',
+        intro: 'La salle du trône marin. La Gardienne des Marées se dresse, trident en main, l’océan entier retenu dans son dos comme une cape. « Vous dormiez. J’ai veillé. Maintenant, TOUT LE MONDE dormira sous la mer. »',
+        monstre: 'gardienne-des-marees',
+        modificateurs: [
+          { drapeau: 'autel-purifie', hpMult: 0.85, annonce: '🕯️ L’autel purifié ne nourrit plus la Gardienne : la marée lui manque, elle paraît déjà entamée !' },
+          { drapeau: 'autel-brise', atkMult: 0.85, annonce: '💥 Sans son autel, les vagues de la Gardienne frappent à contretemps !' },
+          { drapeau: 'pelerins-sauves', atkMult: 0.9, annonce: '🤲 Les pèlerins réveillés chantent depuis la nef : la Gardienne hésite à chaque coup !' },
+        ],
+        suite: 'fin',
+      },
+      fin: {
+        type: 'fin',
+        variantes: [
+          { drapeau: 'pelerins-sauves', cle: 'soeurs-reunies', texte: 'Le trident tombe. La Gardienne s’effondre — et le chant des pèlerins la rattrape avant le fond. Dans la lumière verte, Nérée prend sa sœur dans ses bras. « Tu as veillé. Nous, maintenant. » Azuria se rendort, mais cette fois quelqu’un borde la Gardienne, et les marées de la surface redeviennent de simples marées. Sur la grève, Nérée vous tend le trident : « Elle aurait voulu qu’il serve à protéger. Enfin. »' },
+        ],
+        texte: 'Le trident tombe, et la mer retenue dans le dos de la Gardienne se retire en un long soupir. Nérée reste un moment près du corps de sa sœur, puis remonte avec vous sans un mot. Sur la grève, elle vous met le trident dans les mains. « Cent ans de garde méritaient une meilleure fin. Faites-en une meilleure suite. » Les marées, cette nuit-là, redescendent enfin.',
+      },
+    },
+  },
+
+  // ============================================================
+  // 6. La Couronne Céleste — niv. 42+ (équipe fortement conseillée)
+  // ============================================================
+  {
+    id: 'couronne-celeste',
+    nom: 'La Couronne Céleste',
+    emoji: '👑',
+    niveauMin: 42,
+    resume: 'La citadelle des Archontes tombe du ciel — droit sur Valciel. Il faudra une équipe entière pour atteindre la salle du trône.',
+    hautFait: 'donjon-couronne',
+    depart: 'intro',
+    recompenses: {
+      xp: 11000, po: 7000,
+      objet: 'sceptre-de-l-archonte',
+      objetParDrapeau: { 'trone-brise': 'lame-du-firmament' },
+    },
+    etapes: {
+      intro: {
+        type: 'dialogue',
+        scenes: [
+          { qui: 'Narrateur', emoji: '📜', texte: 'Elle est apparue au-dessus des Royaumes il y a neuf jours : la Couronne Céleste, citadelle des Archontes disparus, sortie des légendes — et de son orbite. Chaque nuit, elle descend. Les astronomes ont cessé de publier leurs calculs. Les gens ont compris pourquoi.' },
+          { qui: 'Céleste-Écho', emoji: '✨', texte: 'Quand vous posez le pied sur le premier escalier de nuage, une voix s’allume autour de vous, polie et fatiguée : « Bienvenue. Je suis l’Écho de la citadelle — sa mémoire, sa voix, son inventaire. Mon dernier maître refuse de mourir avec élégance. Il a débranché tout ce qui nous maintenait en vol. »' },
+          { qui: 'Céleste-Écho', emoji: '✨', texte: '« Impact estimé : le Bourg de Valciel, dans trois jours. Vous voulez monter jusqu’au trône, je suppose ? Ils veulent tous ça. Les autres sont dans l’escalier ouest. Enfin, ce qu’il en reste. Suivez-moi — et soyez nombreux, la citadelle ne fait pas de quartier. »' },
+        ],
+        suite: 'esplanade',
+      },
+      esplanade: {
+        type: 'combat',
+        intro: 'L’esplanade d’embarquement. Les sentinelles de la Couronne appliquent la dernière consigne reçue : « plus aucun visiteur ».',
+        monstres: ['sentinelle-de-la-couronne', 'sentinelle-de-la-couronne', 'choeur-d-echos'],
+        suite: 'archives',
+      },
+      archives: {
+        type: 'choix',
+        qui: 'Céleste-Écho', emoji: '✨',
+        texte: 'Les Archives du firmament : des kilomètres de constellations en bocaux. « Les protocoles de vol sont là-dedans, » indique l’Écho. « Si quelqu’un parmi vous sait lire le ciel, on peut ralentir la chute. Sinon on peut aussi… soulever le plancher. Les Archontes cachaient toujours des choses sous les planchers. »',
+        options: [
+          {
+            texte: '🧠 Recalculer les protocoles de vol',
+            detail: 'Intelligence ≥ 28 — la citadelle ralentit, l’Archonte s’affaiblit',
+            condition: { stat: 'int', min: 28 },
+            effet: { drapeau: 'protocoles-restaures' },
+            resultat: 'Vous réalignez les constellations une à une. Sous vos pieds, la citadelle cesse de trembler — pas sauvée, mais moins pressée de mourir. « Trente heures de gagnées, » souffle l’Écho. « Il va le sentir passer. »',
+            suite: 'grand-escalier',
+          },
+          {
+            texte: '💪 Soulever le plancher des Archives',
+            detail: 'Force ≥ 28 — le trésor caché des Archontes',
+            condition: { stat: 'for', min: 28 },
+            suite: 'cache-archontes',
+          },
+          {
+            texte: '🏃 Filer droit vers le trône',
+            detail: 'Le temps presse — trois jours, dont deux entamés',
+            resultat: 'Vous laissez les bocaux d’étoiles à leur poussière. L’Écho note quelque chose dans un registre invisible : « Pragmatiques. Il détestait ça. Parfait. »',
+            suite: 'grand-escalier',
+          },
+        ],
+      },
+      'cache-archontes': {
+        type: 'tresor',
+        titre: '🗝️ La cache sous les Archives',
+        texte: 'Sous le plancher : la paie de mille ans de serviteurs célestes, jamais réclamée. L’Écho détourne pudiquement ses capteurs.',
+        effet: { po: 1500, objets: { 'acier-celeste': 3, 'potion-supreme-soin': 2, 'elixir-titan': 1 } },
+        suite: 'grand-escalier',
+      },
+      'grand-escalier': {
+        type: 'combat',
+        intro: 'Le Grand Escalier hélicoïdal. L’Exécuteur astral y rend une dernière justice : la sienne.',
+        monstres: ['executeur-astral', 'choeur-d-echos', 'sentinelle-de-la-couronne'],
+        suite: 'antichambre',
+      },
+      antichambre: {
+        type: 'choix',
+        qui: 'Céleste-Écho', emoji: '✨',
+        texte: 'L’antichambre du trône. L’Écho baisse la voix, ce qui, pour une citadelle, est troublant. « Avant d’entrer : je peux couper mes propres défenses dans la salle du trône. Il le saura immédiatement — c’est comme lui arracher un gant. Ou je reste silencieuse, et vous gardez l’effet de surprise. Choisissez pour moi, je n’ai jamais su. »',
+        options: [
+          {
+            texte: '⚙️ « Coupe ses défenses. Assume le bruit. »',
+            detail: 'L’Archonte perd son rempart d’étoiles plus vite',
+            effet: { drapeau: 'defenses-coupees' },
+            resultat: 'Un frisson parcourt les murs — la citadelle retient son souffle. Quelque part au-dessus, une voix immense cesse de fredonner. « Il sait, » dit l’Écho. « Et pour la première fois en mille ans… il a peur. »',
+            suite: 'avant-boss',
+          },
+          {
+            texte: '🤫 « Reste silencieuse. On entre sans prévenir. »',
+            detail: 'Premier sang assuré : l’Archonte frappera à contretemps',
+            effet: { drapeau: 'entree-silencieuse' },
+            resultat: 'L’Écho s’éteint jusqu’à n’être qu’une veilleuse. Vous poussez les portes du trône dans un silence de fin du monde.',
+            suite: 'avant-boss',
+          },
+        ],
+      },
+      'avant-boss': {
+        type: 'dialogue',
+        scenes: [
+          { qui: 'Céleste-Écho', emoji: '✨', texte: '« Une dernière chose. Quand il tombera — et il tombera, vous êtes du genre têtu — le trône vous demandera un ordre. Le briser, et la citadelle se dispersera en pluie d’étoiles, inoffensive et magnifique. Ou s’y asseoir un instant, et la poser en douceur, quelque part où elle ne blessera personne. Les deux sont des fins honorables. J’aimerais juste… être prévenue. »' },
+        ],
+        suite: 'boss',
+      },
+      boss: {
+        type: 'boss',
+        intro: 'La salle du trône est un ciel intérieur. Sur le trône d’aurore, l’Archonte Déchu ouvre des yeux comme des éclipses. « Mille ans que je fais tenir le ciel. Il tombera AVEC moi. »',
+        monstre: 'archonte-dechu',
+        modificateurs: [
+          { drapeau: 'protocoles-restaures', hpMult: 0.85, annonce: '📐 Les protocoles restaurés drainent le pouvoir de l’Archonte : il paraît déjà entamé !' },
+          { drapeau: 'defenses-coupees', hpMult: 0.9, annonce: '⚙️ L’Écho a coupé les défenses : le rempart d’étoiles de l’Archonte est fissuré d’avance !' },
+          { drapeau: 'entree-silencieuse', atkMult: 0.9, annonce: '🤫 L’Archonte ne vous avait pas entendus entrer : il frappe à contretemps !' },
+        ],
+        suite: 'choix-trone',
+      },
+      'choix-trone': {
+        type: 'choix',
+        qui: 'Le Trône d’aurore', emoji: '👑',
+        texte: 'L’Archonte se dissout en poussière d’aube. Le trône, lui, s’illumine — et sa lumière vous cherche. Une voix sans âge, ni la citadelle ni son maître, demande simplement : « QUELLE FIN ? »',
+        options: [
+          {
+            texte: '⚔️ Briser le trône — pluie d’étoiles',
+            detail: 'La Couronne se disperse, inoffensive et sublime. (Récompense : la Lame du Firmament)',
+            effet: { drapeau: 'trone-brise' },
+            suite: 'fin',
+          },
+          {
+            texte: '🪑 S’asseoir un instant — la poser en douceur',
+            detail: 'La citadelle atterrit, vide et paisible. (Récompense : le Sceptre de l’Archonte)',
+            effet: { drapeau: 'trone-pose' },
+            suite: 'fin',
+          },
+        ],
+      },
+      fin: {
+        type: 'fin',
+        variantes: [
+          { drapeau: 'trone-brise', cle: 'pluie-d-etoiles', texte: 'Vous frappez le trône en son cœur. La Couronne Céleste s’ouvre comme une main qui lâche prise — et pendant toute une nuit, il pleut des étoiles sur les Royaumes, lentes et froides, inoffensives. Les enfants de Valciel en garderont des poignées dans des bocaux. Dans la dernière lueur, l’Écho murmure : « C’était la bonne fin. Merci de m’avoir prévenue. » De la pluie d’étoiles, les forgerons tireront une lame — la vôtre.' },
+          { drapeau: 'trone-pose', cle: 'atterrissage', texte: 'Vous vous asseyez. Un instant seulement — mais dans cet instant, vous ÊTES la citadelle : ses mille salles, ses courants d’air, sa fatigue immense. Vous la posez dans le désert d’Ambrezine comme on pose un vieux chien devant la cheminée. L’Écho reste avec elle, veilleuse d’une ruine paisible que les caravanes appelleront bientôt « l’Auberge du Ciel ». Le sceptre, lui, reste dans votre main. Il a choisi.' },
+        ],
+        texte: 'La Couronne Céleste ne menace plus personne, et le ciel des Royaumes a retrouvé son calme.',
+      },
+    },
+  },
+);
+
 const DONJONS_PAR_ID = {};
 DONJONS.forEach((d) => { DONJONS_PAR_ID[d.id] = d; });
 

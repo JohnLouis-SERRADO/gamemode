@@ -73,7 +73,7 @@ function rendreVille() {
 // =====================================================================
 const ONGLETS_BOUTIQUE = [
   { id: 'armes', nom: '⚔️ Armes', filtre: (o) => o.type === 'equipement' && o.slot === 'arme' },
-  { id: 'armures', nom: '🛡️ Armures', filtre: (o) => o.type === 'equipement' && ['tete', 'torse', 'jambes'].includes(o.slot) },
+  { id: 'armures', nom: '🛡️ Armures', filtre: (o) => o.type === 'equipement' && ['tete', 'torse', 'mains', 'jambes', 'pieds'].includes(o.slot) },
   { id: 'accessoires', nom: '💍 Accessoires', filtre: (o) => o.type === 'equipement' && o.slot === 'accessoire' },
   { id: 'potions', nom: '🧪 Potions', filtre: (o) => o.type === 'consommable' },
   { id: 'vendre', nom: '💰 Vendre' },
@@ -94,7 +94,9 @@ const SOUS_TYPES = {
   armures: [
     { id: 'tete', nom: '🪖 Tête', filtre: (o) => o.slot === 'tete' },
     { id: 'torse', nom: '🥋 Torse', filtre: (o) => o.slot === 'torse' },
+    { id: 'mains', nom: '🧤 Mains', filtre: (o) => o.slot === 'mains' },
     { id: 'jambes', nom: '👖 Jambes', filtre: (o) => o.slot === 'jambes' },
+    { id: 'pieds', nom: '🥾 Pieds', filtre: (o) => o.slot === 'pieds' },
   ],
   potions: [
     { id: 'soins', nom: '❤️ Soins', filtre: (o) => ['pv', 'soin-groupe', 'regen'].includes(o.effet.type) },
@@ -394,9 +396,11 @@ function rendreGuilde() {
   const zone = el('guilde-contenu');
   zone.innerHTML = '';
 
+  const dejaReclamees = p.quetes.liste.filter((q) => q.reclamee).length;
+  const quotaAtteint = dejaReclamees >= RECLAMATIONS_GUILDE_PAR_JOUR;
   const intro = document.createElement('p');
   intro.className = 'sous-titre';
-  intro.textContent = '« Trois contrats par jour, aventurier. Le tableau est remis à zéro chaque matin. »';
+  intro.textContent = `« Six contrats au tableau chaque matin, aventurier — mais la caisse ne paie que ${RECLAMATIONS_GUILDE_PAR_JOUR} récompenses par jour. Choisissez bien. » (${dejaReclamees}/${RECLAMATIONS_GUILDE_PAR_JOUR} réclamées aujourd'hui)`;
   zone.appendChild(intro);
 
   p.quetes.liste.forEach((quete) => {
@@ -412,9 +416,11 @@ function rendreGuilde() {
       <div class="objet-bonus">🎁 ${quete.recompense.po} po · ⭐ ${quete.recompense.xp} XP${quete.recompense.coffre ? ' · 🎁 un objet surprise' : ''}</div>`;
     if (!quete.reclamee) {
       const reclamer = document.createElement('button');
-      reclamer.className = complete ? 'btn-principal btn-compact' : 'btn-choix btn-compact';
-      reclamer.textContent = complete ? '🎉 Réclamer la récompense' : 'Contrat en cours…';
-      reclamer.disabled = !complete;
+      reclamer.className = complete && !quotaAtteint ? 'btn-principal btn-compact' : 'btn-choix btn-compact';
+      reclamer.textContent = quotaAtteint
+        ? '🔒 Quota du jour atteint (3/3)'
+        : (complete ? '🎉 Réclamer la récompense' : 'Contrat en cours…');
+      reclamer.disabled = !complete || quotaAtteint;
       reclamer.addEventListener('click', () => reclamerQuete(p, quete));
       carte.appendChild(reclamer);
     }
@@ -429,6 +435,10 @@ function rendreGuilde() {
 
 function reclamerQuete(p, quete) {
   if (quete.reclamee || quete.fait < quete.requis) return;
+  if (p.quetes.liste.filter((q) => q.reclamee).length >= RECLAMATIONS_GUILDE_PAR_JOUR) {
+    afficherToast('🏰 La caisse est fermée : 3 récompenses par jour. Revenez demain !');
+    return;
+  }
   quete.reclamee = true;
   p.compteurs.quetes++;
   const poGagne = Math.round(quete.recompense.po * multiplicateurOr(p));
