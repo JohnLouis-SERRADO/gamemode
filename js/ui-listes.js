@@ -63,6 +63,14 @@ function texteRecherchableObjet(objet) {
     morceaux.push((CARACS[cle] || SOUS_CARACS[cle] || {}).nom || cle);
   });
   if (objet.set && SETS[objet.set]) morceaux.push(SETS[objet.set].nom);
+  // La matière et la famille d'arme sont écrites sur chaque carte
+  // (« 🧵 Tissu », « ⚔️ Lame lourde ») : ce qu'on lit doit se chercher.
+  if (objet.armure && typeof CATEGORIES_ARMURE === 'object' && CATEGORIES_ARMURE[objet.armure]) {
+    morceaux.push(CATEGORIES_ARMURE[objet.armure].nom);
+  }
+  if (objet.familleArme && typeof FAMILLES_ARME === 'object' && FAMILLES_ARME[objet.familleArme]) {
+    morceaux.push(FAMILLES_ARME[objet.familleArme].nom);
+  }
   return morceaux.filter(Boolean).join(' ');
 }
 

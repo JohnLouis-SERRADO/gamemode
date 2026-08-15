@@ -36,6 +36,7 @@ function ouvrirBoutique(idBoutique) {
   boutiqueCourante = idBoutique;
   ongletBoutique = BOUTIQUES[idBoutique].onglets[0];
   sousFiltres = { rarete: 'tous', type: 'tous' };
+  BOUTIQUES[idBoutique].onglets.forEach((o) => reinitialiserListe(`boutique-${idBoutique}-${o}`));
   rendreBoutique();
   montrerEcran('ecran-boutique');
 }
@@ -56,11 +57,11 @@ function rendreVille() {
         })),
         {
           emoji: '🏺', nom: 'Antiquaire', detail: 'Curiosités rares : accessoires anciens et objets tactiques de combat',
-          action: () => { rendreAntiquaire(); montrerEcran('ecran-antiquaire'); },
+          action: () => ouvrirAntiquaire(),
         },
         {
           emoji: '🔮', nom: 'L’Arcanium', detail: 'La magie en échoppe : les grimoires de compétences, chez Dame Sibylle',
-          action: () => { rendreArcanium(); montrerEcran('ecran-arcanium'); },
+          action: () => ouvrirArcanium(),
         },
       ],
     },
@@ -368,7 +369,7 @@ function rendreVente(contenu, p) {
   }
   const note = document.createElement('p');
   note.className = 'aide';
-  note.textContent = 'Les équipements et potions se revendent 40 % de leur prix ; les matériaux, à leur juste valeur.';
+  note.textContent = `Les équipements et potions se revendent ${Math.round(PART_REVENTE * 100)} % de leur prix — un peu moins encore pour les grandes raretés ; les matériaux, à leur juste valeur.`;
   contenu.appendChild(note);
   rendreChipsFiltres(contenu, 'vente', () => rendreBoutique());
 
@@ -446,26 +447,41 @@ function rendreVente(contenu, p) {
 // =====================================================================
 // Antiquaire : curiosités rares
 // =====================================================================
+// L'entrée de l'Antiquaire : filtres remis à zéro, comme les boutiques —
+// il héritait de la rareté cochée ailleurs et son étal semblait vide.
+function ouvrirAntiquaire() {
+  sousFiltres = { rarete: 'tous', type: 'tous' };
+  reinitialiserListe('antiquaire');
+  rendreAntiquaire();
+  montrerEcran('ecran-antiquaire');
+}
+
 function rendreAntiquaire() {
   const p = persoActif();
   el('antiquaire-po').textContent = `💰 ${formatNombre(p.po)} po`;
   const zone = el('antiquaire-contenu');
   zone.innerHTML = '';
   rendreChipsFiltres(zone, 'antiquaire', () => rendreAntiquaire());
-  const grille = document.createElement('div');
-  grille.className = 'grille-inventaire';
   const visibles = Object.entries(OBJETS)
     .filter(([, o]) => o.vendeur === 'antiquaire')
     .filter(([, o]) => !o.niveau || o.niveau <= p.niveau + 8)
     .filter(([, o]) => passeSousFiltres(o, 'antiquaire'))
     .sort((a, b) => (a[1].niveau || 0) - (b[1].niveau || 0) || a[1].prix - b[1].prix);
-  if (visibles.length === 0) {
-    zone.insertAdjacentHTML('beforeend', '<p class="aide">Rien dans cette vitrine-là. « Revenez fouiller une autre étagère », sourit l’antiquaire.</p>');
-  }
-  visibles.forEach(([id, objet]) => {
-    grille.appendChild(carteArticleBoutique(p, id, objet, () => rendreAntiquaire()));
+  // v19.1 : le même composant que partout ailleurs — recherche, tri,
+  // pagination. C'était le seul écran à liste qui en était privé.
+  rendreListeFiltrable({
+    cle: 'antiquaire',
+    conteneur: zone,
+    elements: visibles,
+    texteDe: ([, o]) => texteRecherchableObjet(o),
+    tris: TRIS_OBJETS,
+    trierAvec: ([, o]) => ({ objet: o, prix: o.prix }),
+    classeListe: 'grille-inventaire',
+    placeholder: '🔎 Chercher une curiosité, un effet…',
+    nomListe: 'curiosités',
+    vide: 'Rien dans cette vitrine-là. « Revenez fouiller une autre étagère », sourit l’antiquaire.',
+    rendre: ([id, objet]) => carteArticleBoutique(p, id, objet, () => rendreAntiquaire()),
   });
-  zone.appendChild(grille);
 }
 
 // =====================================================================
@@ -533,6 +549,7 @@ function prixAchatMateriau(id) {
 function ouvrirFournisseur(idFournisseur) {
   fournisseurCourant = idFournisseur;
   sousFiltres = { rarete: 'tous', type: 'tous' };
+  reinitialiserListe(`fournisseur-${idFournisseur}`);
   rendreFournisseur();
   montrerEcran('ecran-fournisseur');
 }
@@ -665,6 +682,22 @@ function prixGrimoire(comp) {
   return 90 + (comp.coutMp || 0) * 25 + recharge * 15;
 }
 
+// Les tris des grimoires : pas de niveau ni de rareté sur un sort — on
+// trie par prix ou par nom, c'est tout ce qui a un sens ici.
+const TRIS_GRIMOIRES = {
+  pertinence: { nom: '↕️ Par défaut', comparer: null },
+  prix: { nom: '💰 Prix', comparer: (a, b) => (a.prix || 0) - (b.prix || 0) },
+  'prix-desc': { nom: '💰 Prix ↓', comparer: (a, b) => (b.prix || 0) - (a.prix || 0) },
+  nom: { nom: '🔤 Nom', comparer: (a, b) => normaliserTexte(a.objet.nom).localeCompare(normaliserTexte(b.objet.nom)) },
+};
+
+function ouvrirArcanium() {
+  filtreArcanium = 'tous';
+  reinitialiserListe('arcanium');
+  rendreArcanium();
+  montrerEcran('ecran-arcanium');
+}
+
 function rendreArcanium() {
   const p = persoActif();
   el('arcanium-po').textContent = `💰 ${formatNombre(p.po)} po`;
@@ -698,6 +731,8 @@ function rendreArcanium() {
     conteneur: zone,
     elements: inconnues,
     texteDe: ([, comp]) => texteRecherchableCompetence(comp),
+    tris: TRIS_GRIMOIRES,
+    trierAvec: ([, comp]) => ({ objet: { nom: comp.nom }, prix: prixGrimoire(comp) }),
     classeListe: 'grille-competences',
     placeholder: '🔎 Chercher un sort, un effet…',
     nomListe: 'grimoires',
@@ -759,6 +794,28 @@ function rendreTourEveil() {
     return;
   }
 
+  // Un tirage d'Éveil mis en attente (« Plus tard ») se reprend ici.
+  if (p.eveil && !p.eveil.id && (p.eveil.propositions || []).length) {
+    const attente = document.createElement('div');
+    attente.className = 'panneau';
+    const natures = p.eveil.propositions.map((id) => EVEILS[id]).filter(Boolean)
+      .map((e) => `${e.emoji} ${e.nom} <span class="rarete rar-${e.rarete === 'cache' ? 'divin' : e.rarete}">${RARETES_EVEIL[e.rarete].nom}</span>`)
+      .join(' · ');
+    attente.innerHTML = `
+      <div class="objet-entete">🎴 <strong>Un tirage d'Éveil vous attend</strong></div>
+      <div class="objet-desc">${natures}</div>`;
+    const reprendre = document.createElement('button');
+    reprendre.className = 'btn-principal btn-compact';
+    reprendre.textContent = '✨ Reprendre le tirage';
+    reprendre.addEventListener('click', () => {
+      p.eveil.reporte = false;
+      sauvegarder(p);
+      naviguer('ville');   // verifierEveil rouvre la modale sur ce même tirage
+    });
+    attente.appendChild(reprendre);
+    zone.appendChild(attente);
+  }
+
   const grille = document.createElement('div');
   grille.className = 'grille-recettes';
   Object.entries(SERVICES_TOUR).forEach(([id, service]) => {
@@ -792,6 +849,9 @@ function rendreTourEveil() {
       bourseVive.majeurs -= service.majeurs;
       if (service.or) p.po -= service.or;
       const message = service.appliquer(p);
+      // Un service employé réveille tout tirage mis en attente : le
+      // joueur qui vient de payer veut voir le résultat.
+      if (p.eveil && p.eveil.reporte) p.eveil.reporte = false;
       bornerVie(p);
       sauvegarder(p);
       afficherToast(`${service.emoji} ${message}`);
@@ -949,6 +1009,10 @@ let atelierCourant = 'forge';
 function ouvrirAtelier(idArtisan) {
   atelierCourant = idArtisan;
   filtresAtelier = { type: 'tous', realisables: false, maClasse: false, armure: 'toutes' };
+  // La recherche et la page de la dernière visite ne doivent pas
+  // survivre : revenir des heures après sur une liste filtrée à
+  // « lingot » fait croire que des recettes ont disparu.
+  reinitialiserListe(`atelier-${idArtisan}`);
   rendreAtelier();
   montrerEcran('ecran-atelier');
 }

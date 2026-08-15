@@ -253,6 +253,7 @@ function montrerEcran(id) {
   // v12.2 : au niveau 5, le choix de la sous-classe de récolteur s'impose.
   if (['ecran-carte', 'ecran-zone', 'ecran-ville', 'ecran-heros'].includes(id)) {
     verifierChoixSpecialite();
+    verifierChoixClasse();     // le rôle d'abord : la spécialité en découle
     verifierChoixSousClasse();
     verifierChoixVoie();
     verifierEveil();
@@ -270,7 +271,7 @@ function montrerEcran(id) {
 // On les fait donc passer l'une après l'autre, dans l'ordre des niveaux.
 // =====================================================================
 function modaleBloquanteOuverte() {
-  return !!document.querySelector('#voile-specialite, #voile-sous-classe, #voile-voie, #voile-eveil');
+  return !!document.querySelector('#voile-specialite, #voile-classe, #voile-sous-classe, #voile-voie, #voile-eveil');
 }
 
 // =====================================================================
@@ -283,10 +284,27 @@ function modaleBloquanteOuverte() {
 function verifierEveil() {
   const p = persoActif();
   if (!p || p.niveau < NIVEAU_EVEIL || (p.eveil && p.eveil.id) || !p.sousClasse) return;
+  if (p.eveil && p.eveil.reporte) return; // le joueur a dit « plus tard »
   if (modaleBloquanteOuverte()) return;
   if (typeof combatEnCours === 'function' && combatEnCours()) return;
 
-  const propositions = tirerEveils(p);
+  // Le tirage est PERSISTANT : tiré une fois, mémorisé, réaffiché tel
+  // quel — naviguer entre les écrans ne relance jamais les dés. C'est
+  // aussi ce qui rend les services de la Tour réels : « verrouiller une
+  // proposition » et « forcer une rareté » agissent sur CE tirage-là.
+  p.eveil = p.eveil || { relances: 0 };
+  if (!p.eveil.propositions || !p.eveil.propositions.length) {
+    const tirage = tirerEveils(p, {
+      garantirLegendaire: !!p.eveil.garantie,
+      verrouillee: p.eveil.verrouillee,
+    });
+    if (!tirage.length) return;
+    p.eveil.propositions = tirage.map((e) => e.id);
+    p.eveil.garantie = false;      // la garantie payée est consommée par CE tirage
+    p.eveil.verrouillee = null;    // le verrou aussi : la proposition est dedans
+    sauvegarder(p);
+  }
+  const propositions = p.eveil.propositions.map((id) => EVEILS[id]).filter(Boolean);
   if (!propositions.length) return;
 
   const voile = document.createElement('div');
@@ -295,11 +313,12 @@ function verifierEveil() {
   modale.className = 'modale-joueur modale-specialite';
   modale.innerHTML = `
     <h2>✨ Niveau ${NIVEAU_EVEIL} : l’Éveil de ${echapper(p.nom)}</h2>
-    <p>Vous ne changez pas de style : vous changez de <strong>nature</strong>. Cinq natures
+    <p>Vous ne changez pas de style : vous changez de <strong>nature</strong>. Trois natures
       se présentent, vous en garderez une. La rareté ne rend pas plus puissant —
       elle rend plus <strong>exigeant</strong>.</p>
     <div id="eveil-choix"></div>
-    <p class="aide">Le choix se relance plus tard à la Tour de l’Éveil, contre des Sceaux.</p>`;
+    <p class="aide">Pas convaincu ? À la Tour de l’Éveil, des Sceaux permettent de relancer le
+      tirage, d’en verrouiller une proposition ou d’y garantir un Légendaire.</p>`;
 
   const zone = modale.querySelector('#eveil-choix');
   propositions.forEach((eveil) => {
@@ -316,6 +335,7 @@ function verifierEveil() {
     choisir.className = 'btn-principal btn-compact';
     choisir.textContent = `${eveil.emoji} Devenir ${eveil.nom}`;
     choisir.addEventListener('click', () => {
+      // Le choix scelle tout : propositions, garantie et verrou s'effacent.
       p.eveil = { id: eveil.id, rarete: eveil.rarete, relances: (p.eveil && p.eveil.relances) || 0 };
       eveil.competences.forEach((c) => apprendreCompetence(p, c, true));
       bornerVie(p);
@@ -332,6 +352,20 @@ function verifierEveil() {
     carte.appendChild(choisir);
     zone.appendChild(carte);
   });
+
+  // « Plus tard » : indispensable pour que la Tour de l'Éveil serve à
+  // quelque chose — verrouiller ou forcer une rareté se paie ENTRE le
+  // tirage et le choix. Le tirage mémorisé revient tel quel.
+  const plusTard = document.createElement('button');
+  plusTard.className = 'btn-choix';
+  plusTard.textContent = '🕰️ Plus tard — le tirage vous attendra';
+  plusTard.addEventListener('click', () => {
+    p.eveil.reporte = true;
+    sauvegarder(p);
+    voile.remove();
+    afficherToast('✨ Le tirage patiente. Reprenez-le depuis la Tour de l’Éveil, au bourg.');
+  });
+  modale.appendChild(plusTard);
 
   voile.appendChild(modale);
   document.body.appendChild(voile);
@@ -408,6 +442,67 @@ function verifierChoixVoie() {
 // perdu d'avance : il apporte un bonus de caractéristiques permanent et
 // huit compétences propres, et il reste changeable plus tard.
 // =====================================================================
+// Le choix (ou re-choix) de CLASSE : offert par la migration d'un très
+// vieux héros Aventurier, et surtout VENDU par la Tour de l'Éveil
+// (« Changer de rôle », 150 Sceaux + 3 Majeurs). Le drapeau
+// p.choixClasseOffert était posé par le service… et lu par personne :
+// le joueur payait le service le plus cher du jeu sans rien recevoir.
+function verifierChoixClasse() {
+  const p = persoActif();
+  if (!p || !p.choixClasseOffert) return;
+  if (modaleBloquanteOuverte()) return;
+  if (document.getElementById('voile-classe')) return;
+  if (typeof combatEnCours === 'function' && combatEnCours()) return;
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-classe';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-specialite';
+  modale.innerHTML = `
+    <h2>🎭 Un nouveau rôle pour ${echapper(p.nom)}</h2>
+    <p>Le niveau, l'or et tout le grimoire restent. Seul change ce que
+      vous êtes au combat : choisissez votre nouvelle classe — la
+      spécialité, la Voie et l'Éveil suivront, aux paliers habituels.</p>
+    <div id="classe-choix"></div>`;
+
+  const zone = modale.querySelector('#classe-choix');
+  Object.entries(CLASSES_BASE).forEach(([id, base]) => {
+    const actuelle = id === p.classe;
+    const categorie = CATEGORIES_ARMURE[base.armure];
+    const carte = document.createElement('div');
+    carte.className = 'panneau carte-specialite';
+    carte.innerHTML = `
+      <div class="objet-entete">${base.emoji} <strong>${base.nom}</strong>
+        ${actuelle ? '<span class="objet-qte">rôle actuel</span>' : ''}</div>
+      <div class="objet-desc">${base.role} · ${categorie ? `${categorie.emoji} ${categorie.nom}` : ''}
+        · attribut clé : ${CARACS[base.stat].emoji} ${CARACS[base.stat].nom}</div>
+      <div class="objet-desc">${base.resume || ''}</div>`;
+    const choisir = document.createElement('button');
+    choisir.className = 'btn-principal btn-compact';
+    choisir.textContent = actuelle ? `${base.emoji} Rester ${base.nom}` : `${base.emoji} Devenir ${base.nom}`;
+    choisir.addEventListener('click', () => {
+      p.classe = id;
+      p.choixClasseOffert = false;
+      debloquerCompetencesClasse(p, true);
+      bornerVie(p);
+      sauvegarder(p);
+      voile.remove();
+      annoncerDeblocage({
+        emoji: base.emoji,
+        titre: `Nouveau rôle : ${base.nom}`,
+        texte: `${base.role}. Vos compétences apprises restent au grimoire — la spécialité de ${base.nom} vous sera proposée dans un instant.`,
+      });
+      if (el('ecran-heros').classList.contains('actif')) rendreHeros();
+      rendreTopbar();
+    });
+    carte.appendChild(choisir);
+    zone.appendChild(carte);
+  });
+
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
 function verifierChoixSousClasse() {
   const p = persoActif();
   if (!p || p.niveau < NIVEAU_SOUS_CLASSE || p.sousClasse) return;
@@ -1120,6 +1215,12 @@ function xpReelle(p, xp) {
   if (familier && familier.bonus.xpBonus) xp = Math.round(xp * (1 + familier.bonus.xpBonus));
   const sets = bonusSetActifs(p);
   if (sets.xpBonus) xp = Math.round(xp * (1 + sets.xpBonus));
+  // Les reliques portent parfois un bonus d'XP : compté ici, comme son
+  // jumeau poBonus l'est dans multiplicateurOr — pas seulement affiché.
+  Object.values(p.equipement || {}).forEach((id) => {
+    const objet = id && OBJETS[id];
+    if (objet && objet.bonus && objet.bonus.xpBonus) xp = Math.round(xp * (1 + objet.bonus.xpBonus));
+  });
   return xp;
 }
 

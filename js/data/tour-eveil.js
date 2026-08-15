@@ -59,8 +59,9 @@ const SERVICES_TOUR = {
     raison: () => `Vous n’avez pas encore de spécialité — elle se choisit au niveau ${NIVEAU_SOUS_CLASSE}.`,
     appliquer: (p) => {
       p.sousClasse = null;
-      p.voie = null;   // la Voie dépend de la spécialité
-      return 'Votre spécialité et votre Voie sont à rechoisir. Votre grimoire est intact.';
+      p.voie = null;    // la Voie dépend de la spécialité
+      p.eveil = null;   // l'Éveil aussi : chaque Éveil appartient à SA spécialité
+      return 'Votre spécialité, votre Voie et votre Éveil sont à rechoisir. Votre grimoire est intact.';
     },
   },
   'changer-classe': {
@@ -79,37 +80,50 @@ const SERVICES_TOUR = {
   'relancer-eveil': {
     nom: 'Relancer l’Éveil', emoji: '🎲',
     sceaux: 40, majeurs: 1, or: 0,
-    desc: 'Un nouveau tirage de cinq propositions. Après cinq relances, la garantie assure au moins un Légendaire.',
-    disponible: (p) => !!(p.eveil && p.eveil.id),
+    desc: 'Un nouveau tirage de trois propositions. Après cinq relances, la garantie assure au moins un Mythique.',
+    disponible: (p) => !!(p.eveil && (p.eveil.id || (p.eveil.propositions || []).length)),
     raison: () => `Vous n’avez pas encore d’Éveil — le premier tirage arrive au niveau ${NIVEAU_EVEIL}.`,
     appliquer: (p) => {
+      // La relance oublie l'Éveil (ou le tirage en attente) mais JAMAIS
+      // ce qui a été payé : la garantie et le verrou survivent jusqu'au
+      // tirage qui les consomme.
       const relances = (p.eveil.relances || 0) + 1;
-      p.eveil = { relances };
+      p.eveil = {
+        relances,
+        garantie: p.eveil.garantie || false,
+        verrouillee: p.eveil.verrouillee || null,
+      };
       const reste = Math.max(0, RELANCES_AVANT_GARANTIE - relances);
-      return reste > 0
-        ? `Éveil oublié. Encore ${reste} relance${reste > 1 ? 's' : ''} avant la garantie Légendaire.`
-        : 'Éveil oublié. Le prochain tirage contiendra au moins un Légendaire — c’est garanti.';
+      const seuil = RARETES_EVEIL[RARETE_GARANTIE].nom;
+      return reste > 0 && !p.eveil.garantie
+        ? `Tirage relancé. Encore ${reste} relance${reste > 1 ? 's' : ''} avant la garantie ${seuil}.`
+        : `Tirage relancé : il contiendra au moins un ${seuil} — c’est garanti.`;
     },
   },
   'verrouiller': {
     nom: 'Verrouiller une proposition', emoji: '🔒',
     sceaux: 25, majeurs: 0, or: 0,
-    desc: 'Garder une proposition du dernier tirage pour le tirage suivant.',
+    desc: 'Garder la meilleure proposition du tirage en attente : elle reviendra d’office au tirage suivant.',
     disponible: (p) => !!(p.eveil && p.eveil.propositions && p.eveil.propositions.length),
-    raison: () => 'Aucun tirage en attente : il faut d’abord ouvrir un tirage d’Éveil.',
+    raison: () => 'Aucun tirage en attente. Reportez un tirage (« Plus tard ») ou relancez-en un, puis revenez.',
     appliquer: (p) => {
-      p.eveil.verrouillee = p.eveil.propositions[0];
-      return 'Proposition verrouillée : elle reviendra au prochain tirage.';
+      // On garde la plus rare : c'est toujours elle qu'on paie pour revoir.
+      const rangs = ORDRE_EVEIL;
+      const meilleure = p.eveil.propositions
+        .map((id) => EVEILS[id]).filter(Boolean)
+        .sort((a, b) => rangs.indexOf(b.rarete) - rangs.indexOf(a.rarete))[0];
+      p.eveil.verrouillee = meilleure.id;
+      return `${meilleure.nom} (${RARETES_EVEIL[meilleure.rarete].nom}) est verrouillé : il reviendra au prochain tirage.`;
     },
   },
   'forcer-rarete': {
     nom: 'Forcer une rareté minimale', emoji: '💠',
     sceaux: 80, majeurs: 0, or: 0,
-    desc: 'Garantir au moins une proposition Légendaire dans le prochain tirage, sans attendre les cinq relances.',
+    desc: 'Garantir au moins une proposition Mythique dans le prochain tirage, sans attendre les cinq relances.',
     disponible: () => true,
     appliquer: (p) => {
-      p.eveil = { ...(p.eveil || {}), garantie: true };
-      return 'Le prochain tirage contiendra au moins un Légendaire.';
+      p.eveil = { ...(p.eveil || { relances: 0 }), garantie: true };
+      return `Le prochain tirage contiendra au moins un ${RARETES_EVEIL[RARETE_GARANTIE].nom}.`;
     },
   },
   'reveler-cache': {

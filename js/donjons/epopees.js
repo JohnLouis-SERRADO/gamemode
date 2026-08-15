@@ -39,17 +39,17 @@ const OBJETS_DONJONS = {
     desc: 'Un reste d’expérience réussie. Récompense du Laboratoire de Frivole.',
   },
   'sabre-du-capitaine': {
-    nom: 'Sabre du capitaine Morvane', emoji: '🗡️', type: 'equipement', slot: 'arme', niveau: 13,
+    nom: 'Sabre du capitaine Morvane', emoji: '🗡️', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 13,
     rarete: 'legendaire', prixVente: 420, bonus: { for: 8, dex: 6, crit: 4 },
     desc: 'Il sent encore le sel et l’orage. Récompense du Brise-Brume.',
   },
   'marteau-de-la-forge-eternelle': {
-    nom: 'Marteau de la Forge éternelle', emoji: '🔨', type: 'equipement', slot: 'arme', niveau: 17,
+    nom: 'Marteau de la Forge éternelle', emoji: '🔨', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 17,
     rarete: 'mythique', prixVente: 700, bonus: { for: 15, vit: 4, pvMax: 25 },
     desc: 'Forgé par Barguzan dans une Forge ravivée. Il chante en frappant.',
   },
   'lame-de-la-derniere-cendre': {
-    nom: 'Lame de la Dernière Cendre', emoji: '🌑', type: 'equipement', slot: 'arme', niveau: 17,
+    nom: 'Lame de la Dernière Cendre', emoji: '🌑', type: 'equipement', slot: 'arme', familleArme: 'arc', niveau: 17,
     rarete: 'mythique', prixVente: 700, bonus: { dex: 12, for: 8, crit: 6 },
     desc: 'Trempée dans le dernier feu du volcan éteint. Froide, et pourtant…',
   },
@@ -942,17 +942,17 @@ const DONJONS = [
 // =====================================================================
 Object.assign(OBJETS, {
   'trident-des-profondeurs': {
-    nom: 'Trident des Profondeurs', emoji: '🔱', type: 'equipement', slot: 'arme', niveau: 28,
+    nom: 'Trident des Profondeurs', emoji: '🔱', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 28,
     rarete: 'legendaire', prixVente: 900, bonus: { for: 16, int: 8, crit: 4 },
     desc: 'L’arme de la Gardienne, rendue à la surface. Récompense du Sanctuaire des Marées.',
   },
   'sceptre-de-l-archonte': {
-    nom: 'Sceptre de l’Archonte', emoji: '🌠', type: 'equipement', slot: 'arme', niveau: 46,
+    nom: 'Sceptre de l’Archonte', emoji: '🌠', type: 'equipement', slot: 'arme', familleArme: 'baton', niveau: 46,
     rarete: 'divin', prixVente: 2600, bonus: { int: 26, pmMax: 40, cha: 6 },
     desc: 'Le pouvoir de poser une citadelle comme on pose une plume. Récompense de la Couronne Céleste.',
   },
   'lame-du-firmament': {
-    nom: 'Lame du Firmament', emoji: '🌌', type: 'equipement', slot: 'arme', niveau: 46,
+    nom: 'Lame du Firmament', emoji: '🌌', type: 'equipement', slot: 'arme', familleArme: 'arc', niveau: 46,
     rarete: 'divin', prixVente: 2600, bonus: { dex: 20, for: 12, crit: 10 },
     desc: 'Forgée dans la pluie d’étoiles d’un trône brisé. Récompense de la Couronne Céleste.',
   },
@@ -1434,7 +1434,7 @@ Object.assign(OBJETS, {
     desc: 'Chaque pointe est une aiguille arrêtée sur un instant parfait. Récompense de la Forteresse du Temps Brisé.',
   },
   'coeur-du-neant': {
-    nom: 'Cœur du Néant', emoji: '🖤', type: 'equipement', slot: 'arme', niveau: 50,
+    nom: 'Cœur du Néant', emoji: '🖤', type: 'equipement', slot: 'arme', familleArme: 'runique', niveau: 50,
     rarete: 'divin', prixVente: 4500, bonus: { for: 26, int: 26, crit: 10 },
     desc: 'Ce qui restait de Celui-qui-Attend, dévoré et forgé. Il bat encore, très lentement.',
   },

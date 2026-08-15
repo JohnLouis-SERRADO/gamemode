@@ -418,21 +418,38 @@ function eveilDe(p) {
 }
 
 // =====================================================================
-// Le tirage : cinq propositions parmi les Éveils de sa sous-classe,
+// Le tirage : TROIS propositions parmi les Éveils de sa sous-classe,
 // pondérées par rareté. Les Cachés ne sortent jamais d'un tirage
 // ordinaire — ils se méritent par une condition, pas par la chance.
+//
+// Pourquoi trois et pas cinq : chaque sous-classe compte exactement
+// cinq Éveils tirables. Un tirage de cinq sans doublon contenait donc
+// TOUJOURS les cinq raretés — la pondération, les relances, la garantie
+// et le verrouillage ne servaient à rien. À trois, chaque tirage est un
+// vrai tirage.
 //
 // Garantie anti-frustration (§5.1) : au bout de cinq relances, le tirage
 // suivant contient obligatoirement une proposition Légendaire ou mieux.
 // =====================================================================
-const PROPOSITIONS_PAR_TIRAGE = 5;
+const PROPOSITIONS_PAR_TIRAGE = 3;
 const RELANCES_AVANT_GARANTIE = 5;
+
+// Le seuil de la garantie : MYTHIQUE, pas Légendaire.
+//
+// Arithmétique, pas préférence : chaque spécialité compte 5 Éveils
+// tirables, dont 3 sont Légendaire ou mieux. En tirer 3 sans remise, il
+// est IMPOSSIBLE de n'en avoir aucun — il n'y a que 2 propositions plus
+// communes à piocher. Une garantie « au moins un Légendaire » serait
+// donc toujours déjà vraie : 80 Sceaux pour du vent. Au Mythique, la
+// garantie mord vraiment (le tirage {Rare, Épique, Légendaire} existe).
+const RARETE_GARANTIE = 'mythique';
 
 function tirerEveils(p, options = {}) {
   const sousClasse = sousClasseDe(p);
   if (!sousClasse) return [];
   const relances = (p.eveil && p.eveil.relances) || 0;
   const garantie = options.garantirLegendaire || relances >= RELANCES_AVANT_GARANTIE;
+  const rangGarantie = ORDRE_EVEIL.indexOf(RARETE_GARANTIE);
 
   const candidats = (sousClasse.eveils || [])
     .map((id) => EVEILS[id])
@@ -463,9 +480,9 @@ function tirerEveils(p, options = {}) {
   // La garantie : si rien d'assez rare n'est sorti, on remplace la
   // proposition la plus commune par la meilleure encore disponible.
   const rangs = ORDRE_EVEIL;
-  if (garantie && !propositions.some((e) => rangs.indexOf(e.rarete) >= rangs.indexOf('legendaire'))) {
+  if (garantie && !propositions.some((e) => rangs.indexOf(e.rarete) >= rangGarantie)) {
     const rares = candidats
-      .filter((e) => rangs.indexOf(e.rarete) >= rangs.indexOf('legendaire'))
+      .filter((e) => rangs.indexOf(e.rarete) >= rangGarantie)
       .filter((e) => !propositions.includes(e));
     if (rares.length) {
       propositions.sort((a, b) => rangs.indexOf(a.rarete) - rangs.indexOf(b.rarete));

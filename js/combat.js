@@ -928,8 +928,10 @@ function lancerInvocation(j, compId) {
   // v16 : les invocations traversent désormais les expéditions en ligne —
   // le chef héberge la simulation, la créature vit sur son écran.
   // v15.2 : l'Invocateur, maître des liens, entretient DEUX créatures à
-  // la fois — tout autre héros n'en contrôle qu'une.
-  const limite = j.classe === 'invocateur' ? 2 : 1;
+  // la fois — tout autre héros n'en contrôle qu'une. (v19 : l'Invocateur
+  // est devenu une SOUS-classe d'Arcaniste — tester p.classe ne matchait
+  // plus jamais, et son passif emblématique était silencieusement mort.)
+  const limite = j.sousClasse === 'invocateur' ? 2 : 1;
   const vivantes = cb.equipe.filter((x) => x.type === 'invocation' && x.maitre === j.bid && !estMort(x));
   if (vivantes.length >= limite) {
     journal(limite > 1

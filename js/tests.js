@@ -1509,14 +1509,40 @@ suite('Éveil', () => {
     aucun(fautives, 'Éveils sur le mauvais attribut');
   });
 
-  test('le tirage propose cinq Éveils de la bonne sous-classe', () => {
+  test('le tirage propose trois Éveils de la bonne sous-classe, sans doublon', () => {
     const p = herosTest({ niveau: 80, classe: 'guerrier', sousClasse: 'berserker' });
     const tirage = tirerEveils(p);
-    egal(tirage.length, 5, 'propositions');
+    egal(tirage.length, PROPOSITIONS_PAR_TIRAGE, 'propositions');
     const etrangers = tirage.filter((e) => e.sousClasse !== 'berserker').map((e) => e.nom);
     aucun(etrangers, 'propositions hors sous-classe');
     const doublons = tirage.length - new Set(tirage.map((e) => e.id)).size;
     egal(doublons, 0, 'propositions en double');
+  });
+
+  test('le tirage VARIE : trois propositions sur cinq possibles, la rareté compte', () => {
+    // Le vice de conception corrigé : à 5 propositions sur 5 candidats,
+    // tout tirage contenait toujours les 5 raretés — relances, garantie
+    // et verrouillage ne servaient à rien.
+    verifier(PROPOSITIONS_PAR_TIRAGE < 5,
+      `le tirage (${PROPOSITIONS_PAR_TIRAGE}) doit proposer moins que les 5 Éveils tirables`);
+    const p = herosTest({ niveau: 80, classe: 'guerrier', sousClasse: 'berserker' });
+    const ensembles = new Set();
+    for (let i = 0; i < 200; i++) {
+      ensembles.add(tirerEveils(p).map((e) => e.id).sort().join('+'));
+    }
+    verifier(ensembles.size > 1, 'deux cents tirages identiques : le tirage ne tire rien');
+  });
+
+  test('une proposition verrouillée revient d\'office dans le tirage suivant', () => {
+    const p = herosTest({ niveau: 80, classe: 'guerrier', sousClasse: 'berserker' });
+    const verrou = SOUS_CLASSES.berserker.eveils
+      .map((id) => EVEILS[id]).find((e) => e.rarete === 'mythique').id;
+    const absents = [];
+    for (let i = 0; i < 100; i++) {
+      const tirage = tirerEveils(p, { verrouillee: verrou });
+      if (!tirage.some((e) => e.id === verrou)) absents.push(String(i));
+    }
+    aucun(absents, 'tirages où le verrou a sauté');
   });
 
   test('les Éveils cachés ne sortent jamais d\'un tirage ordinaire', () => {
@@ -1533,10 +1559,30 @@ suite('Éveil', () => {
     const echecs = [];
     for (let i = 0; i < 200; i++) {
       const tirage = tirerEveils(p);
-      const assezRare = tirage.some((e) => rangs.indexOf(e.rarete) >= rangs.indexOf('legendaire'));
+      const assezRare = tirage.some((e) => rangs.indexOf(e.rarete) >= rangs.indexOf(RARETE_GARANTIE));
       if (!assezRare) echecs.push(i);
     }
-    aucun(echecs.map(String), 'tirages garantis sans Légendaire');
+    aucun(echecs.map(String), `tirages garantis sans ${RARETES_EVEIL[RARETE_GARANTIE].nom}`);
+  });
+
+  test('le seuil de garantie est réellement manquable — sinon elle ne garantit rien', () => {
+    // Garde-fou de conception : si TOUT tirage atteignait déjà le seuil,
+    // la garantie (payée 80 Sceaux, ou méritée en cinq relances) ne
+    // vaudrait rien. C'est ce qui condamnait le seuil « Légendaire » :
+    // 3 des 5 Éveils tirables le sont, et on en tire 3.
+    const p = herosTest({ niveau: 80, classe: 'arcaniste', sousClasse: 'pyromancien' });
+    const rangs = ORDRE_EVEIL;
+    const tirables = SOUS_CLASSES.pyromancien.eveils
+      .map((id) => EVEILS[id]).filter((e) => e.rarete !== 'cache');
+    const sousLeSeuil = tirables.filter((e) => rangs.indexOf(e.rarete) < rangs.indexOf(RARETE_GARANTIE)).length;
+    verifier(sousLeSeuil >= PROPOSITIONS_PAR_TIRAGE,
+      `il faut au moins ${PROPOSITIONS_PAR_TIRAGE} Éveils sous le seuil ${RARETE_GARANTIE} pour qu'un tirage puisse le manquer (il y en a ${sousLeSeuil})`);
+    let manques = 0;
+    for (let i = 0; i < 400; i++) {
+      const tirage = tirerEveils(p);
+      if (!tirage.some((e) => rangs.indexOf(e.rarete) >= rangs.indexOf(RARETE_GARANTIE))) manques++;
+    }
+    verifier(manques > 0, '400 tirages atteignent tous le seuil : la garantie ne garantit rien');
   });
 
   test('chaque Éveil caché porte une condition avec indice et énoncé exact', () => {
@@ -1716,16 +1762,57 @@ suite('Tour de l\'Éveil', () => {
     egal(p.eveil.relances, 3, 'relances');
   });
 
-  test('forcer une rareté garantit vraiment un Légendaire au tirage suivant', () => {
+  test('forcer une rareté garantit vraiment un Mythique au tirage suivant', () => {
     const p = herosTest({ niveau: 85, classe: 'arcaniste', sousClasse: 'pyromancien' });
     SERVICES_TOUR['forcer-rarete'].appliquer(p);
+    verifier(p.eveil.garantie === true, 'la garantie devrait être posée');
     const rangs = ORDRE_EVEIL;
     const echecs = [];
     for (let i = 0; i < 200; i++) {
-      const tirage = tirerEveils(p);
-      if (!tirage.some((e) => rangs.indexOf(e.rarete) >= rangs.indexOf('legendaire'))) echecs.push(String(i));
+      // La chaîne réelle : verifierEveil lit p.eveil.garantie et la passe
+      // au tirage — c'est CE contrat qu'on vérifie.
+      const tirage = tirerEveils(p, { garantirLegendaire: !!p.eveil.garantie });
+      if (!tirage.some((e) => rangs.indexOf(e.rarete) >= rangs.indexOf(RARETE_GARANTIE))) echecs.push(String(i));
     }
-    aucun(echecs, 'tirages sans Légendaire malgré la garantie payée');
+    aucun(echecs, 'tirages sans Mythique malgré la garantie payée');
+    // Et sans la garantie, avec 3 propositions sur 5, le Légendaire doit
+    // parfois MANQUER — sinon le service ne vend que du vent.
+    p.eveil.garantie = false;
+    let manques = 0;
+    for (let i = 0; i < 300; i++) {
+      const tirage = tirerEveils(p);
+      if (!tirage.some((e) => rangs.indexOf(e.rarete) >= rangs.indexOf(RARETE_GARANTIE))) manques++;
+    }
+    verifier(manques > 0, 'sans garantie, 300 tirages atteignent tous le seuil : la garantie ne sert à rien');
+  });
+
+  test('la relance préserve la garantie et le verrou déjà payés', () => {
+    const p = herosTest({ niveau: 85, classe: 'guerrier', sousClasse: 'berserker' });
+    const eveil = EVEILS[SOUS_CLASSES.berserker.eveils[0]];
+    const verrou = SOUS_CLASSES.berserker.eveils[2];
+    p.eveil = { id: eveil.id, rarete: eveil.rarete, relances: 0, garantie: true, verrouillee: verrou };
+    SERVICES_TOUR['relancer-eveil'].appliquer(p);
+    egal(p.eveil.id, undefined, 'l\'Éveil devrait être oublié');
+    verifier(p.eveil.garantie === true, 'la garantie payée a été effacée par la relance');
+    egal(p.eveil.verrouillee, verrou, 'le verrou payé a été effacé par la relance');
+  });
+
+  test('verrouiller retient la proposition la plus rare du tirage en attente', () => {
+    const p = herosTest({ niveau: 85, classe: 'guerrier', sousClasse: 'berserker' });
+    const parRarete = {};
+    SOUS_CLASSES.berserker.eveils.forEach((id) => { parRarete[EVEILS[id].rarete] = id; });
+    p.eveil = { relances: 0, propositions: [parRarete.rare, parRarete.mythique, parRarete.epique] };
+    const message = SERVICES_TOUR['verrouiller'].appliquer(p);
+    egal(p.eveil.verrouillee, parRarete.mythique, 'le verrou devrait retenir la plus rare');
+    verifier(message.includes(EVEILS[parRarete.mythique].nom), `le message devrait la nommer : ${message}`);
+  });
+
+  test('changer de spécialité remet aussi l\'Éveil en jeu — il appartient à la spécialité', () => {
+    const p = herosTest({ niveau: 85, classe: 'guerrier', sousClasse: 'berserker' });
+    const eveil = EVEILS[SOUS_CLASSES.berserker.eveils[0]];
+    p.eveil = { id: eveil.id, rarete: eveil.rarete, relances: 0 };
+    SERVICES_TOUR['changer-sous-classe'].appliquer(p);
+    egal(p.eveil, null, 'l\'Éveil de l\'ancienne spécialité devrait être remis en jeu');
   });
 
   test('révéler un Éveil caché rend son énoncé exact et le mémorise', () => {
@@ -1745,6 +1832,48 @@ suite('Tour de l\'Éveil', () => {
     verifier(!SERVICES_TOUR['changer-sous-classe'].disponible(vierge), 'changer de spécialité sans spécialité');
     verifier(!SERVICES_TOUR['relancer-eveil'].disponible(vierge), 'relancer un Éveil inexistant');
     verifier(SERVICES_TOUR['changer-classe'].disponible(vierge), 'changer de rôle est toujours possible');
+  });
+});
+
+suite('Régressions v19.1', () => {
+  test('la Lame de fer du catalogue n\'est plus écrasée par la série de craft', () => {
+    // La série « de Fer » générait l'id 'lame-de-fer' — celui de l'épée
+    // de boutique, qui disparaissait des rayons et mutait dans les sacs.
+    const epee = OBJETS['lame-de-fer'];
+    verifier(!!epee, 'l\'épée du catalogue doit exister');
+    egal(epee.niveau, 4, 'niveau de l\'épée du catalogue');
+    verifier(epee.prix != null, 'elle doit être en vente en boutique');
+    const piece = OBJETS['craft-lame-de-fer'];
+    verifier(!!piece && piece.set === 'craft-de-fer', 'la pièce de craft doit vivre sous son propre id');
+    const recette = RECETTES.find((r) => r.resultat === 'craft-lame-de-fer');
+    verifier(!!recette, 'la recette doit pointer vers le nouvel id');
+    aucun(RECETTES.filter((r) => !OBJETS[r.resultat]).map((r) => r.resultat), 'recettes orphelines');
+  });
+
+  test('toute arme porte sa famille — le filtre « pour ma classe » ne ment plus', () => {
+    const sansFamille = Object.entries(OBJETS)
+      .filter(([, o]) => o.type === 'equipement' && o.slot === 'arme' && !o.familleArme)
+      .map(([id]) => id);
+    aucun(sansFamille, 'armes sans famille');
+  });
+
+  test('le bonus d\'XP d\'une relique équipée est réellement versé', () => {
+    const [idRelique, relique] = Object.entries(OBJETS)
+      .find(([, o]) => o.bonus && o.bonus.xpBonus) || [];
+    verifier(!!idRelique, 'au moins une relique à bonus d\'XP doit exister');
+    const nu = herosTest({ niveau: 85 });
+    const equipe = herosTest({ niveau: 85 });
+    equipe.equipement = { ...(equipe.equipement || {}), [relique.slot]: idRelique };
+    verifier(xpReelle(equipe, 1000) > xpReelle(nu, 1000),
+      `le +${Math.round(relique.bonus.xpBonus * 100)} % XP de ${relique.nom} devrait compter (${xpReelle(equipe, 1000)} vs ${xpReelle(nu, 1000)})`);
+  });
+
+  test('l\'XP affichée est l\'XP versée : gagnerXp applique exactement xpReelle', () => {
+    const p = herosTest({ niveau: 20 });
+    const attendu = xpReelle(p, 500);
+    const avant = p.xp;
+    gagnerXp(p, 500);
+    egal(p.xp - avant, attendu, 'XP créditée');
   });
 });
 

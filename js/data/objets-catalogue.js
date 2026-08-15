@@ -26,25 +26,25 @@ const SLOTS_EQUIPEMENT = {
 
 const OBJETS = {
   // ----- Armes : Force -----
-  'epee-courte':      { nom: 'Épée courte', emoji: '🗡️', type: 'equipement', slot: 'arme', niveau: 1, prix: 40,  bonus: { for: 2 }, desc: 'Une lame simple et fiable.' },
-  'lame-de-fer':      { nom: 'Lame de fer', emoji: '⚔️', type: 'equipement', slot: 'arme', niveau: 4, prix: 90,  bonus: { for: 4, vit: 1 }, desc: 'Forgée dans le fer des Collines.' },
-  'epee-chevalier':   { nom: 'Épée de chevalier', emoji: '⚔️', type: 'equipement', slot: 'arme', niveau: 8, prix: 260, bonus: { for: 7, vit: 2 }, desc: 'L’arme des défenseurs de Valciel.' },
-  'croc-de-guerre':   { nom: 'Croc de guerre', emoji: '🪓', type: 'equipement', slot: 'arme', niveau: 12, prix: 480, bonus: { for: 10, dex: 2 }, desc: 'Taillée pour les champs de bataille.' },
-  'lame-crepuscule':  { nom: 'Lame du crépuscule', emoji: '🌘', type: 'equipement', slot: 'arme', niveau: 16, prixVente: 350, bonus: { for: 14, dex: 3, crit: 5 }, desc: 'Une lame légendaire, forgée à l’atelier seulement.' },
+  'epee-courte':      { nom: 'Épée courte', emoji: '🗡️', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 1, prix: 40,  bonus: { for: 2 }, desc: 'Une lame simple et fiable.' },
+  'lame-de-fer':      { nom: 'Lame de fer', emoji: '⚔️', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 4, prix: 90,  bonus: { for: 4, vit: 1 }, desc: 'Forgée dans le fer des Collines.' },
+  'epee-chevalier':   { nom: 'Épée de chevalier', emoji: '⚔️', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 8, prix: 260, bonus: { for: 7, vit: 2 }, desc: 'L’arme des défenseurs de Valciel.' },
+  'croc-de-guerre':   { nom: 'Croc de guerre', emoji: '🪓', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 12, prix: 480, bonus: { for: 10, dex: 2 }, desc: 'Taillée pour les champs de bataille.' },
+  'lame-crepuscule':  { nom: 'Lame du crépuscule', emoji: '🌘', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 16, prixVente: 350, bonus: { for: 14, dex: 3, crit: 5 }, desc: 'Une lame légendaire, forgée à l’atelier seulement.' },
 
   // ----- Armes : Intelligence -----
-  'baton-noueux':     { nom: 'Bâton noueux', emoji: '🪄', type: 'equipement', slot: 'arme', niveau: 1, prix: 40,  bonus: { int: 2 }, desc: 'Un bâton de novice, chargé d’une étincelle.' },
-  'baton-sorcier':    { nom: 'Bâton de sorcier', emoji: '🔮', type: 'equipement', slot: 'arme', niveau: 4, prix: 90,  bonus: { int: 4, pmMax: 6 }, desc: 'Canalise le mana avec aisance.' },
-  'sceptre-runique':  { nom: 'Sceptre runique', emoji: '✨', type: 'equipement', slot: 'arme', niveau: 8, prix: 260, bonus: { int: 7, pmMax: 10 }, desc: 'Gravé de runes anciennes.' },
-  'baton-tempetes':   { nom: 'Bâton des tempêtes', emoji: '⚡', type: 'equipement', slot: 'arme', niveau: 12, prix: 480, bonus: { int: 10, pmMax: 14 }, desc: 'L’orage y gronde en permanence.' },
-  'sceptre-neant':    { nom: 'Sceptre du néant', emoji: '🌀', type: 'equipement', slot: 'arme', niveau: 16, prixVente: 350, bonus: { int: 14, pmMax: 20, crit: 5 }, desc: 'Un artefact légendaire, forgé à l’atelier seulement.' },
+  'baton-noueux':     { nom: 'Bâton noueux', emoji: '🪄', type: 'equipement', slot: 'arme', familleArme: 'baton', niveau: 1, prix: 40,  bonus: { int: 2 }, desc: 'Un bâton de novice, chargé d’une étincelle.' },
+  'baton-sorcier':    { nom: 'Bâton de sorcier', emoji: '🔮', type: 'equipement', slot: 'arme', familleArme: 'baton', niveau: 4, prix: 90,  bonus: { int: 4, pmMax: 6 }, desc: 'Canalise le mana avec aisance.' },
+  'sceptre-runique':  { nom: 'Sceptre runique', emoji: '✨', type: 'equipement', slot: 'arme', familleArme: 'baton', niveau: 8, prix: 260, bonus: { int: 7, pmMax: 10 }, desc: 'Gravé de runes anciennes.' },
+  'baton-tempetes':   { nom: 'Bâton des tempêtes', emoji: '⚡', type: 'equipement', slot: 'arme', familleArme: 'baton', niveau: 12, prix: 480, bonus: { int: 10, pmMax: 14 }, desc: 'L’orage y gronde en permanence.' },
+  'sceptre-neant':    { nom: 'Sceptre du néant', emoji: '🌀', type: 'equipement', slot: 'arme', familleArme: 'baton', niveau: 16, prixVente: 350, bonus: { int: 14, pmMax: 20, crit: 5 }, desc: 'Un artefact légendaire, forgé à l’atelier seulement.' },
 
   // ----- Armes : Dextérité -----
-  'arc-court':        { nom: 'Arc court', emoji: '🏹', type: 'equipement', slot: 'arme', niveau: 1, prix: 40,  bonus: { dex: 2 }, desc: 'Léger et maniable.' },
-  'arc-chasse':       { nom: 'Arc de chasse', emoji: '🏹', type: 'equipement', slot: 'arme', niveau: 4, prix: 90,  bonus: { dex: 4, for: 1 }, desc: 'L’allié des pisteurs des Plaines.' },
-  'arc-elfique':      { nom: 'Arc long elfique', emoji: '🏹', type: 'equipement', slot: 'arme', niveau: 8, prix: 260, bonus: { dex: 7, for: 2 }, desc: 'Un bois souple venu de la Forêt des Murmures.' },
-  'arc-precision':    { nom: 'Arc de précision', emoji: '🎯', type: 'equipement', slot: 'arme', niveau: 12, prix: 480, bonus: { dex: 10, crit: 4 }, desc: 'Chaque flèche trouve sa cible.' },
-  'arc-du-vent':      { nom: 'Arc du vent', emoji: '🌪️', type: 'equipement', slot: 'arme', niveau: 16, prixVente: 350, bonus: { dex: 14, crit: 8 }, desc: 'Un arc légendaire, forgé à l’atelier seulement.' },
+  'arc-court':        { nom: 'Arc court', emoji: '🏹', type: 'equipement', slot: 'arme', familleArme: 'arc', niveau: 1, prix: 40,  bonus: { dex: 2 }, desc: 'Léger et maniable.' },
+  'arc-chasse':       { nom: 'Arc de chasse', emoji: '🏹', type: 'equipement', slot: 'arme', familleArme: 'arc', niveau: 4, prix: 90,  bonus: { dex: 4, for: 1 }, desc: 'L’allié des pisteurs des Plaines.' },
+  'arc-elfique':      { nom: 'Arc long elfique', emoji: '🏹', type: 'equipement', slot: 'arme', familleArme: 'arc', niveau: 8, prix: 260, bonus: { dex: 7, for: 2 }, desc: 'Un bois souple venu de la Forêt des Murmures.' },
+  'arc-precision':    { nom: 'Arc de précision', emoji: '🎯', type: 'equipement', slot: 'arme', familleArme: 'arc', niveau: 12, prix: 480, bonus: { dex: 10, crit: 4 }, desc: 'Chaque flèche trouve sa cible.' },
+  'arc-du-vent':      { nom: 'Arc du vent', emoji: '🌪️', type: 'equipement', slot: 'arme', familleArme: 'arc', niveau: 16, prixVente: 350, bonus: { dex: 14, crit: 8 }, desc: 'Un arc légendaire, forgé à l’atelier seulement.' },
 
   // ----- Tête -----
   'capuche-cuir':     { nom: 'Capuche de cuir', emoji: '🧢', type: 'equipement', slot: 'tete', niveau: 2, prix: 45,  bonus: { vit: 1, dex: 1 }, desc: 'Discrète et confortable.' },
@@ -151,7 +151,7 @@ const OBJETS = {
   'pagne-du-chef-orc':    { nom: 'Pagne du chef orc', emoji: '👹', type: 'equipement', slot: 'jambes',     niveau: 9,  rarete: 'epique',     prixVente: 190, bonus: { for: 3, vit: 3, pvMax: 15 }, desc: 'Trophée du Chef de guerre des Collines.' },
   'coeur-de-l-hydre':     { nom: 'Cœur de l’Hydre', emoji: '🐉', type: 'equipement', slot: 'accessoire', niveau: 11, rarete: 'epique',     prixVente: 240, bonus: { int: 4, vit: 2, pmMax: 12 }, desc: 'Trophée de l’Hydre des brumes. Il bat encore.' },
   'sceau-du-roi-dechu':   { nom: 'Sceau du Roi déchu', emoji: '💍', type: 'equipement', slot: 'accessoire', niveau: 13, rarete: 'legendaire', prixVente: 320, bonus: { int: 5, cha: 2, crit: 3 }, desc: 'Trophée du maître des Cryptes Oubliées.' },
-  'dent-du-ver':          { nom: 'Dent du Ver colossal', emoji: '🪱', type: 'equipement', slot: 'arme',       niveau: 16, rarete: 'legendaire', prixVente: 400, bonus: { for: 12, cha: 3, crit: 4 }, desc: 'Trophée du Ver des sables. Encore acérée.' },
+  'dent-du-ver':          { nom: 'Dent du Ver colossal', emoji: '🪱', type: 'equipement', slot: 'arme', familleArme: 'lame',       niveau: 16, rarete: 'legendaire', prixVente: 400, bonus: { for: 12, cha: 3, crit: 4 }, desc: 'Trophée du Ver des sables. Encore acérée.' },
   'noyau-de-l-ancien':    { nom: 'Noyau de l’Ancien', emoji: '🌋', type: 'equipement', slot: 'accessoire', niveau: 17, rarete: 'legendaire', prixVente: 450, bonus: { vit: 5, pvMax: 30, cha: 2 }, desc: 'Trophée de l’Élémentaire ancien des Pics.' },
   'larme-du-gardien':     { nom: 'Larme du Gardien', emoji: '💧', type: 'equipement', slot: 'accessoire', niveau: 19, rarete: 'legendaire', prixVente: 600, bonus: { for: 4, int: 4, dex: 4, cha: 3 }, desc: 'Trophée du Gardien éternel des Profondeurs.' },
 };
@@ -184,7 +184,7 @@ Object.assign(OBJETS, {
   'essence-primordiale': { nom: 'Essence primordiale', emoji: '✨', type: 'materiau', prixVente: 350, desc: 'La matière première du monde, en flacon.' },
 
   // ----- Trophées uniques des boss des Terres lointaines -----
-  'crochet-de-sarpense':  { nom: 'Crochet de Sarpense', emoji: '🐍', type: 'equipement', slot: 'arme', niveau: 28, rarete: 'epique', prixVente: 700, bonus: { dex: 18, for: 6, crit: 4 }, desc: 'Trophée de la Matriarche de Vaï-Sombre.' },
+  'crochet-de-sarpense':  { nom: 'Crochet de Sarpense', emoji: '🐍', type: 'equipement', slot: 'arme', familleArme: 'arc', niveau: 28, rarete: 'epique', prixVente: 700, bonus: { dex: 18, for: 6, crit: 4 }, desc: 'Trophée de la Matriarche de Vaï-Sombre.' },
   'serre-du-rokh':        { nom: 'Serre du Rokh', emoji: '🦅', type: 'equipement', slot: 'accessoire', niveau: 28, rarete: 'epique', prixVente: 700, bonus: { dex: 8, for: 6, celerite: 4 }, desc: 'Trophée du Rokh Tempétueux des Falaises.' },
   'fanon-du-leviathan':   { nom: 'Fanon du Léviathan', emoji: '🐋', type: 'equipement', slot: 'accessoire', niveau: 36, rarete: 'legendaire', prixVente: 1100, bonus: { int: 10, vit: 8, pmMax: 30 }, desc: 'Trophée du maître des Abysses d’Émeraude.' },
   'coeur-du-behemoth':    { nom: 'Cœur du Béhémoth', emoji: '🌋', type: 'equipement', slot: 'accessoire', niveau: 36, rarete: 'legendaire', prixVente: 1100, bonus: { for: 10, vit: 8, pvMax: 45, tenacite: 4 }, desc: 'Trophée du Béhémoth de la Steppe. Il bat encore, lentement.' },
