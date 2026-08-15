@@ -77,6 +77,76 @@ function afficherToast(texte) {
   }, 2600);
 }
 
+// =====================================================================
+// v17 : POPUPS DE DÉBLOCAGE — dès qu'un joueur débloque quelque chose
+// (zone, tour, compétence de classe, haut fait, familier, difficulté…),
+// une fenêtre de célébration s'affiche. Les annonces se suivent une par
+// une, jamais empilées.
+// =====================================================================
+const fileDeblocages = [];
+let deblocageAffiche = false;
+
+function annoncerDeblocage(info) {
+  fileDeblocages.push(info);
+  afficherProchainDeblocage();
+}
+
+function afficherProchainDeblocage() {
+  if (deblocageAffiche || fileDeblocages.length === 0) return;
+  const info = fileDeblocages.shift();
+  deblocageAffiche = true;
+  const voile = document.createElement('div');
+  voile.className = 'voile-deblocage';
+  const modale = document.createElement('div');
+  modale.className = 'modale-deblocage';
+  modale.innerHTML = `
+    <div class="deblocage-eclat">${info.emoji || '🎉'}</div>
+    <div class="deblocage-bandeau">✨ DÉBLOQUÉ ✨</div>
+    <h2>${info.titre}</h2>
+    ${info.texte ? `<p class="deblocage-texte">${info.texte}</p>` : ''}`;
+  const btn = document.createElement('button');
+  btn.className = 'btn-principal btn-deblocage';
+  btn.textContent = info.bouton || '✨ Génial !';
+  btn.addEventListener('click', () => {
+    voile.remove();
+    deblocageAffiche = false;
+    afficherProchainDeblocage();
+  });
+  modale.appendChild(btn);
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
+// Tout ce qu'une montée de niveau peut débloquer, annoncé en popup.
+function annoncerDeblocagesNiveau(p, avant, apres) {
+  if (p.distant) return;
+  ZONES.forEach((z) => {
+    if (z.niveauMin > avant && z.niveauMin <= apres) {
+      annoncerDeblocage({ emoji: z.emoji, titre: `Nouvelle terre : ${z.nom}`, texte: `${z.plage} — ${z.desc}` });
+    }
+    const seuilCauchemar = z.niveauMin + 6;
+    if (seuilCauchemar > avant && seuilCauchemar <= apres && p.bossVaincus.includes(z.id)) {
+      annoncerDeblocage({ emoji: '💀', titre: `Cauchemar débloqué : ${z.nom}`, texte: 'Monstres déchaînés, récompenses ×2,5 — pour les héros qui n’ont peur de rien.' });
+    }
+  });
+  if (avant < 3 && apres >= 3) {
+    annoncerDeblocage({ emoji: '🗼', titre: 'Tour Sans Fin débloquée !', texte: 'Des étages infinis, aucun repos, un butin qui grimpe. Jusqu’où monterez-vous ?' });
+  }
+  if (avant < NIVEAU_SPECIALITE && apres >= NIVEAU_SPECIALITE) {
+    annoncerDeblocage({ emoji: '⭐', titre: 'Sous-classe de récolteur !', texte: 'Mineur, tanneur ou tisseur : votre spécialité vous attend.' });
+  }
+  if (avant < 10 && apres >= 10) {
+    annoncerDeblocage({ emoji: '🏯', titre: 'Tour des Boss débloquée !', texte: 'Un boss par étage, trois difficultés, un record à battre dans chacune.' });
+  }
+  if (typeof DONJONS !== 'undefined') {
+    DONJONS.filter((d) => !d.chronique).forEach((d) => {
+      if (d.niveauMin > avant && d.niveauMin <= apres) {
+        annoncerDeblocage({ emoji: d.emoji, titre: `Histoire débloquée : ${d.nom}`, texte: d.resume || '' });
+      }
+    });
+  }
+}
+
 // Rend un élément non-bouton activable au clic, au clavier (Entrée/Espace)
 // et repérable par les lecteurs d'écran.
 function rendreCliquable(element, action) {
@@ -115,18 +185,30 @@ function boutonConfirmation(libelle, libelleConfirme, action) {
 // =====================================================================
 const ECRANS_AVEC_TOPBAR = ['ecran-carte', 'ecran-equipe', 'ecran-zone', 'ecran-ville',
   'ecran-boutique', 'ecran-antiquaire', 'ecran-arcanium', 'ecran-guilde', 'ecran-atelier',
-  'ecran-heros', 'ecran-sac', 'ecran-taverne', 'ecran-groupe-ligne', 'ecran-donjon'];
+  'ecran-fournisseur', 'ecran-heros', 'ecran-sac', 'ecran-taverne', 'ecran-groupe-ligne', 'ecran-donjon'];
+
+// Quel bouton de la barre du bas s'allume pour chaque écran.
+const NAV_POUR_ECRAN = {
+  'ecran-carte': 'carte', 'ecran-equipe': 'carte', 'ecran-zone': 'carte', 'ecran-donjon': 'carte',
+  'ecran-ville': 'ville', 'ecran-boutique': 'ville', 'ecran-antiquaire': 'ville', 'ecran-arcanium': 'ville',
+  'ecran-guilde': 'ville', 'ecran-atelier': 'ville', 'ecran-fournisseur': 'ville',
+  'ecran-heros': 'heros', 'ecran-sac': 'sac', 'ecran-taverne': 'taverne', 'ecran-groupe-ligne': 'taverne',
+};
 
 function montrerEcran(id) {
   document.querySelectorAll('.ecran').forEach((e) => e.classList.remove('actif'));
   el(id).classList.add('actif');
   const topbar = el('topbar');
-  if (ECRANS_AVEC_TOPBAR.includes(id) && persoActif()) {
-    topbar.classList.remove('cache');
-    rendreTopbar();
-  } else {
-    topbar.classList.add('cache');
+  const navbar = el('navbar-bas');
+  const barresVisibles = ECRANS_AVEC_TOPBAR.includes(id) && persoActif();
+  topbar.classList.toggle('cache', !barresVisibles);
+  if (navbar) {
+    navbar.classList.toggle('cache', !barresVisibles);
+    navbar.querySelectorAll('button').forEach((b) => {
+      b.classList.toggle('actif', b.dataset.nav === NAV_POUR_ECRAN[id]);
+    });
   }
+  if (barresVisibles) rendreTopbar();
   if (id !== 'ecran-taverne' && typeof arreterSondageTaverne === 'function') arreterSondageTaverne();
   // v12.2 : au niveau 5, le choix de la sous-classe de récolteur s'impose.
   if (['ecran-carte', 'ecran-zone', 'ecran-ville', 'ecran-heros'].includes(id)) {
@@ -202,6 +284,7 @@ function verifierChoixSpecialite() {
   document.body.appendChild(voile);
 }
 
+// v17 : le header d'un vrai jeu vidéo — nom, niveau, puissance, PV, mana.
 function rendreTopbar() {
   const p = persoActif();
   if (!p) return;
@@ -211,16 +294,19 @@ function rendreTopbar() {
   zone.innerHTML = `
     <span class="topbar-avatar">${p.avatar}</span>
     <div class="topbar-infos">
-      <div class="topbar-nom">${echapper(p.nom)} <span class="niveau">niv. ${p.niveau}</span></div>
-      <div class="topbar-barres">
-        <div class="barre pv mini"><div class="remplissage" style="width:${pctHp}%"></div></div>
-        <div class="barre pm mini"><div class="remplissage" style="width:${pctMp}%"></div></div>
+      <div class="topbar-nom">${echapper(p.nom)} <span class="niveau">niv. ${p.niveau}</span>
+        <span class="topbar-puissance" title="Puissance (stats + équipement)">⚡ ${puissanceDe(p).toLocaleString('fr-FR')}</span></div>
+      <div class="topbar-vitaux">
+        <span class="topbar-vital" title="Points de vie">❤️ ${p.hp}/${p.maxHp}
+          <span class="barre pv mini"><span class="remplissage" style="width:${pctHp}%"></span></span></span>
+        <span class="topbar-vital" title="Mana">💧 ${p.mp}/${p.maxMp}
+          <span class="barre pm mini"><span class="remplissage" style="width:${pctMp}%"></span></span></span>
       </div>
-    </div>
-    <span class="topbar-po">💰 ${p.po}</span>`;
+    </div>`;
   const badge = el('badge-heros');
-  badge.classList.toggle('cache', !(p.pointsEnAttente > 0 || p.competencesEnAttente > 0 || p.maitrise > 0));
-  el('point-en-ligne').classList.toggle('actif-reseau', etat.enLigne);
+  if (badge) badge.classList.toggle('cache', !(p.pointsEnAttente > 0 || p.competencesEnAttente > 0 || p.maitrise > 0));
+  const point = el('point-en-ligne');
+  if (point) point.classList.toggle('actif-reseau', etat.enLigne);
 }
 
 function naviguer(destination) {
@@ -297,6 +383,8 @@ function normaliserPerso(p) {
   }
   // v13 : records d'Ascension éternelle par épopée.
   if (!p.ascensions || typeof p.ascensions !== 'object') p.ascensions = {};
+  // v17 : histoires uniques découvertes sur chaque carte.
+  if (!p.histoiresVues || typeof p.histoiresVues !== 'object') p.histoiresVues = {};
   if (!p.quetes || p.quetes.date !== new Date().toISOString().slice(0, 10)) {
     p.quetes = genererQuetesDuJour(p);
   }
@@ -504,7 +592,7 @@ function donneesCloud(p) {
     hautsFaits: p.hautsFaits, titre: p.titre, tourMax: p.tourMax, quetes: p.quetes,
     donjons: p.donjons, classe: p.classe, maitrise: p.maitrise, rangs: p.rangs,
     tourBoss: p.tourBoss, metiers: p.metiers, metierPrincipal: p.metierPrincipal,
-    ascensions: p.ascensions,
+    ascensions: p.ascensions, histoiresVues: p.histoiresVues,
   };
 }
 
@@ -516,7 +604,12 @@ function verifierHautsFaits(p) {
     if (p.hautsFaits.includes(hautFait.id)) return;
     if (!hautFait.cond(p)) return;
     p.hautsFaits.push(hautFait.id);
-    afficherToast(`${hautFait.emoji} Haut fait : ${hautFait.nom} ! Titre débloqué : « ${hautFait.titre} »`);
+    if (p.distant) return;
+    annoncerDeblocage({
+      emoji: hautFait.emoji,
+      titre: `Haut fait : ${hautFait.nom}`,
+      texte: `${hautFait.desc} — titre débloqué : « ${hautFait.titre} » (à porter depuis la fiche du héros).`,
+    });
   });
 }
 
@@ -590,7 +683,13 @@ function debloquerCompetencesClasse(p, annoncer) {
     if (comp.classe !== p.classe || p.grimoire.includes(id)) return;
     if ((comp.niveauRequis || 1) > p.niveau) return;
     apprendreCompetence(p, id);
-    if (annoncer) afficherToast(`🏅 Compétence de classe débloquée : ${comp.emoji} ${comp.nom} !`);
+    if (annoncer && !p.distant) {
+      annoncerDeblocage({
+        emoji: comp.emoji,
+        titre: `Compétence de classe : ${comp.nom}`,
+        texte: comp.desc,
+      });
+    }
   });
 }
 
@@ -608,14 +707,24 @@ function gagnerXp(p, xp) {
   const apres = niveauPour(p.xp);
   if (apres > avant) {
     p.pointsEnAttente += POINTS_PAR_NIVEAU * (apres - avant);
+    let nouvellesCompetences = 0;
     NIVEAUX_NOUVELLE_COMPETENCE.forEach((seuil) => {
-      if (avant < seuil && apres >= seuil) p.competencesEnAttente++;
+      if (avant < seuil && apres >= seuil) { p.competencesEnAttente++; nouvellesCompetences++; }
     });
     // Points de maîtrise de la signature (niveaux 3, 6, 9, 12, 15, 18)
     p.maitrise = (p.maitrise || 0) + pointsMaitrisePourNiveau(apres) - pointsMaitrisePourNiveau(avant);
     p.niveau = apres;
     // Nouvelles compétences de classe atteintes (niveaux 5, 10, 15)
     debloquerCompetencesClasse(p, true);
+    // v17 : tout ce que cette montée débloque s'annonce en popup.
+    if (nouvellesCompetences > 0 && !p.distant) {
+      annoncerDeblocage({
+        emoji: '📖',
+        titre: 'Nouvelle compétence à apprendre !',
+        texte: 'Passez par la fiche du héros (onglet Compétences) pour choisir votre nouveau sort.',
+      });
+    }
+    annoncerDeblocagesNiveau(p, avant, apres);
     bornerVie(p);
     p.hp = p.maxHp;
     p.mp = p.maxMp;
@@ -790,7 +899,7 @@ function rendreCreation() {
     ${signature.emoji} <strong>${signature.nom}</strong> — ${signature.desc}
     <br><span class="encart-chiffres">${detailsCompetence(signature, b.stats).join(' · ')}</span>
     ${arbre}
-    <br>4 compétences exclusives par classe, améliorables avec les points de maîtrise (paliers de niveau — +15 % par rang).`;
+    <br><strong>8 compétences exclusives par classe</strong> (5 dès le niveau 1 — signature et bases —, puis niveaux 5, 10 et 15), améliorables avec les points de maîtrise (+15 % par rang) — en plus des compétences communes à choisir page suivante.`;
   zoneModeles.parentElement.appendChild(encartSignature);
 
   const restants = pointsRestants();
@@ -823,8 +932,10 @@ function rendreCreation() {
     zoneComp.appendChild(titre);
     const grille = document.createElement('div');
     grille.className = 'grille-competences';
+    // v17 : le choix ne porte que sur le POOL COMMUN — les compétences de
+    // classe (signature, voies, arbre) arrivent automatiquement avec la classe.
     Object.entries(COMPETENCES)
-      .filter(([, comp]) => comp.categorie === catCle)
+      .filter(([, comp]) => comp.categorie === catCle && !comp.classe)
       .forEach(([id, comp]) => {
         grille.appendChild(carteCompetence(id, comp, {
           selectionnee: b.competences.has(id),
@@ -1092,6 +1203,7 @@ function rendreConsoleAdmin(zone, p) {
 // le choix d'une nouvelle compétence attendent une CONFIRMATION.
 let brouillonRepartition = null; // { persoId, points: { for: 1, ... } }
 let selectionApprentissage = null; // id de la compétence pré-choisie
+let ongletHeros = 'apercu'; // v17 : onglet actif de la fiche du héros
 
 function rendreHeros() {
   const p = persoActif();
@@ -1123,6 +1235,8 @@ function rendreHeros() {
       <div class="heros-race">${race.emoji} ${race.nom} — <em>${race.passif}</em> : ${race.desc}</div>
       <div class="barre xp"><div class="remplissage" style="width:${pctXp}%"></div>
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
+      <div class="heros-puissance">⚡ Puissance : <strong>${puissanceDe(p).toLocaleString('fr-FR')}</strong>
+        <span class="aide-inline">(caractéristiques + équipement + niveau)</span></div>
       <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${p.po} po · 💥 ${Math.round(5 + s.agi + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin${s.blocage ? ` · 🛡️ ${Math.min(40, s.blocage)} % blocage` : ''}${s.esquive ? ` · 💨 ${Math.min(35, s.esquive)} % esquive` : ''}</div>
     </div>`;
   zone.appendChild(entete);
@@ -1149,7 +1263,42 @@ function rendreHeros() {
     rendreTopbar();
   });
 
-  // --- Caractéristiques ---
+  // v17 : la fiche s'organise en ONGLETS clairs — fini le grand déballage.
+  const onglets = [
+    ['apercu', `📊 Aperçu${p.pointsEnAttente > 0 ? ' ❗' : ''}`],
+    ['competences', `⚡ Compétences${p.competencesEnAttente > 0 || p.maitrise > 0 ? ' ❗' : ''}`],
+    ['progression', '🏅 Progression'],
+    ['compte', '☁️ Compte'],
+  ];
+  const barreOnglets = document.createElement('div');
+  barreOnglets.className = 'onglets onglets-heros';
+  onglets.forEach(([id, nom]) => {
+    const btn = document.createElement('button');
+    btn.className = 'onglet' + (ongletHeros === id ? ' actif' : '');
+    btn.textContent = nom;
+    btn.addEventListener('click', () => { ongletHeros = id; rendreHeros(); });
+    barreOnglets.appendChild(btn);
+  });
+  zone.appendChild(barreOnglets);
+
+  if (ongletHeros === 'apercu') {
+    rendreBlocStats(zone, p, s);
+    rendreBlocSets(zone, p);
+  } else if (ongletHeros === 'competences') {
+    rendreBlocApprentissage(zone, p, s);
+    rendreBlocCompetences(zone, p, s);
+  } else if (ongletHeros === 'progression') {
+    rendreBlocMetiers(zone, p);
+    rendreBlocFamiliers(zone, p);
+    rendreBlocFaits(zone, p);
+  } else {
+    rendreBlocCode(zone, p);
+    rendreBlocDeconnexion(zone, p);
+  }
+}
+
+// --- Caractéristiques ---
+function rendreBlocStats(zone, p, s) {
   // v15.1 : la répartition passe par un BROUILLON — on ajuste avec + / −,
   // rien n'est définitif tant qu'on n'a pas confirmé. Fini les points
   // perdus sur un mauvais clic.
@@ -1232,10 +1381,12 @@ function rendreHeros() {
     blocStats.appendChild(aide);
   }
   zone.appendChild(blocStats);
+}
 
-  // --- Nouvelle compétence à apprendre (montée de niveau) ---
-  // v15.1 : on SÉLECTIONNE d'abord, on confirme ensuite — un mauvais clic
-  // ne grave plus rien dans le marbre.
+// --- Nouvelle compétence à apprendre (montée de niveau) ---
+// v15.1 : on SÉLECTIONNE d'abord, on confirme ensuite — un mauvais clic
+// ne grave plus rien dans le marbre.
+function rendreBlocApprentissage(zone, p, s) {
   if (p.competencesEnAttente > 0) {
     if (selectionApprentissage && (!COMPETENCES[selectionApprentissage] || p.grimoire.includes(selectionApprentissage))) {
       selectionApprentissage = null;
@@ -1291,8 +1442,11 @@ function rendreHeros() {
   } else if (selectionApprentissage) {
     selectionApprentissage = null;
   }
+}
 
-  // --- Compétences actives (max 8) et grimoire ---
+// --- Compétences actives (max 8) et grimoire ---
+function rendreBlocCompetences(zone, p, s) {
+  const classe = classeDe(p);
   const blocComp = document.createElement('div');
   blocComp.className = 'panneau';
   blocComp.innerHTML = `<h3>⚡ Compétences actives (${p.competences.length}/${MAX_COMPETENCES_ACTIVES})
@@ -1378,8 +1532,10 @@ function rendreHeros() {
     blocComp.appendChild(grilleArbre);
   }
   zone.appendChild(blocComp);
+}
 
-  // --- Panoplies actives ---
+// --- Panoplies actives ---
+function rendreBlocSets(zone, p) {
   const sets = bonusSetActifs(p);
   if (sets.actifs.length > 0) {
     const blocSets = document.createElement('div');
@@ -1396,8 +1552,10 @@ function rendreHeros() {
     });
     zone.appendChild(blocSets);
   }
+}
 
-  // --- Familiers ---
+// --- Familiers ---
+function rendreBlocFamiliers(zone, p) {
   if (p.familiers.length > 0) {
     const blocFamiliers = document.createElement('div');
     blocFamiliers.className = 'panneau';
@@ -1431,8 +1589,10 @@ function rendreHeros() {
     blocFamiliers.appendChild(grilleFamiliers);
     zone.appendChild(blocFamiliers);
   }
+}
 
-  // --- Métiers de récolte et spécialité (v12) ---
+// --- Métiers de récolte et spécialité (v12) ---
+function rendreBlocMetiers(zone, p) {
   const blocMetiers = document.createElement('div');
   blocMetiers.className = 'panneau';
   blocMetiers.innerHTML = '<h3>🧰 Métiers de récolte</h3>'
@@ -1477,8 +1637,10 @@ function rendreHeros() {
   });
   blocMetiers.appendChild(grilleMetiers);
   zone.appendChild(blocMetiers);
+}
 
-  // --- Hauts faits et titres ---
+// --- Hauts faits et titres ---
+function rendreBlocFaits(zone, p) {
   const blocFaits = document.createElement('div');
   blocFaits.className = 'panneau';
   blocFaits.innerHTML = `<h3>🏅 Hauts faits (${p.hautsFaits.length}/${HAUTS_FAITS.length})</h3>
@@ -1503,8 +1665,10 @@ function rendreHeros() {
   });
   blocFaits.appendChild(grilleFaits);
   zone.appendChild(blocFaits);
+}
 
-  // --- Code de sauvegarde (jouer sur un autre appareil) ---
+// --- Code de sauvegarde (jouer sur un autre appareil) ---
+function rendreBlocCode(zone, p) {
   const blocCode = document.createElement('div');
   blocCode.className = 'panneau';
   blocCode.innerHTML = '<h3>☁️ Code de sauvegarde</h3>';
@@ -1586,10 +1750,31 @@ function rendreHeros() {
   zone.appendChild(blocCode);
 }
 
+// --- Déconnexion : changer de héros ou quitter la partie ---
+function rendreBlocDeconnexion(zone, p) {
+  const bloc = document.createElement('div');
+  bloc.className = 'panneau';
+  bloc.innerHTML = `<h3>🚪 Session</h3>
+    <p class="aide">Votre héros est sauvegardé automatiquement${p.cloud ? ', ici et dans le monde en ligne' : ' sur cet appareil'}.
+    Se déconnecter ramène à l'écran d'accueil pour changer de héros ou en créer un autre.</p>`;
+  const btn = document.createElement('button');
+  btn.className = 'btn-choix btn-danger';
+  btn.textContent = '🚪 Se déconnecter (changer de héros)';
+  btn.addEventListener('click', () => {
+    sauvegarder(p);
+    afficherToast(`👋 À bientôt, ${p.nom} !`);
+    rendreTitre();
+    montrerEcran('ecran-titre');
+  });
+  bloc.appendChild(btn);
+  zone.appendChild(bloc);
+}
+
 // =====================================================================
 // Le Sac : équipement porté + inventaire (écran séparé de la fiche)
 // =====================================================================
 let sousFiltreSac = 'tous';
+let sousFiltreSacRarete = 'tous';
 
 function rendreSac() {
   const p = persoActif();
@@ -1656,11 +1841,23 @@ function rendreSac() {
     chip.addEventListener('click', () => { sousFiltreSac = f.id; rendreSac(); });
     rangeeFiltres.appendChild(chip);
   });
+  // v17 : filtre par rareté, comme dans les boutiques.
+  const sep = document.createElement('span');
+  sep.className = 'separateur-chips';
+  rangeeFiltres.appendChild(sep);
+  [['tous', '✨ Toutes raretés'], ...Object.keys(RARETES).map((r) => [r, RARETES[r].nom])].forEach(([id, nom]) => {
+    const chip = document.createElement('button');
+    chip.className = `chip chip-filtre chip-rar-${id}` + (sousFiltreSacRarete === id ? ' active' : '');
+    chip.textContent = nom;
+    chip.addEventListener('click', () => { sousFiltreSacRarete = id; rendreSac(); });
+    rangeeFiltres.appendChild(chip);
+  });
   blocInv.appendChild(rangeeFiltres);
 
   const entrees = p.inventaire.filter((entree) => {
     const objet = OBJETS[entree.id];
-    return objet && (sousFiltreSac === 'tous' || objet.type === sousFiltreSac);
+    return objet && (sousFiltreSac === 'tous' || objet.type === sousFiltreSac)
+      && (sousFiltreSacRarete === 'tous' || rareteDe(objet) === sousFiltreSacRarete);
   });
   if (entrees.length === 0) {
     const vide = document.createElement('p');
@@ -1865,6 +2062,7 @@ function chargerHerosImporte(donnees, id, token) {
   if (d.metiers && typeof d.metiers === 'object') p.metiers = d.metiers;
   if (d.metierPrincipal !== undefined) p.metierPrincipal = d.metierPrincipal;
   if (d.ascensions && typeof d.ascensions === 'object') p.ascensions = d.ascensions;
+  if (d.histoiresVues && typeof d.histoiresVues === 'object') p.histoiresVues = d.histoiresVues;
   if (d.quetes && d.quetes.date) p.quetes = d.quetes;
   p.cloud = { id, token };
   bornerVie(p);
@@ -1900,7 +2098,7 @@ function initialiser() {
   });
   el('butin-continuer').addEventListener('click', () => continuerApresButin());
 
-  document.querySelectorAll('#topbar-nav button').forEach((btn) => {
+  document.querySelectorAll('#navbar-bas button').forEach((btn) => {
     btn.addEventListener('click', () => naviguer(btn.dataset.nav));
   });
   // Chaque échoppe et atelier propose un retour direct vers le bourg.

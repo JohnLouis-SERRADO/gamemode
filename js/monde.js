@@ -60,9 +60,9 @@ function rendreCarte() {
     carte.className = 'carte-zone' + (verrouillee ? ' verrouillee' : '');
     const bossVaincu = p.bossVaincus.includes(z.id);
     carte.innerHTML = `
-      <div class="zone-emoji">${z.emoji}</div>
+      <div class="zone-emoji">${z.emoji}${verrouillee ? '<span class="cadenas-zone">🔒</span>' : ''}</div>
       <div class="zone-nom">${z.nom} ${bossVaincu ? '🏆' : ''}</div>
-      <div class="zone-plage">${z.plage}</div>
+      <div class="zone-plage">${z.plage} · ${texteRecommandation(p, z.niveauMin)}</div>
       <div class="zone-desc">${verrouillee ? `🔒 Atteignez le niveau ${z.niveauMin} pour entrer.` : z.desc}</div>`;
     if (!verrouillee) {
       rendreCliquable(carte, () => {
@@ -79,9 +79,9 @@ function rendreCarte() {
   const tour = document.createElement('div');
   tour.className = 'carte-zone tour-sans-fin' + (tourVerrouillee ? ' verrouillee' : '');
   tour.innerHTML = `
-    <div class="zone-emoji">🗼</div>
+    <div class="zone-emoji">🗼${tourVerrouillee ? '<span class="cadenas-zone">🔒</span>' : ''}</div>
     <div class="zone-nom">Tour Sans Fin ${p.tourMax > 0 ? `· record : étage ${p.tourMax}` : ''}</div>
-    <div class="zone-plage">défi — expédition solo ou locale</div>
+    <div class="zone-plage">défi — expédition solo ou locale · ${texteRecommandation(p, 3)}</div>
     <div class="zone-desc">${tourVerrouillee
     ? '🔒 Atteignez le niveau 3 pour tenter l’ascension.'
     : 'Des étages infinis, aucun repos entre les combats, un butin qui grimpe à chaque palier. Jusqu’où monterez-vous ?'}</div>`;
@@ -94,9 +94,9 @@ function rendreCarte() {
   const tourBoss = document.createElement('div');
   tourBoss.className = 'carte-zone tour-sans-fin tour-des-boss' + (tourBossVerrouillee ? ' verrouillee' : '');
   tourBoss.innerHTML = `
-    <div class="zone-emoji">🏯</div>
+    <div class="zone-emoji">🏯${tourBossVerrouillee ? '<span class="cadenas-zone">🔒</span>' : ''}</div>
     <div class="zone-nom">Tour des Boss ${meilleurRecord > 0 ? `· record : étage ${meilleurRecord}` : ''}</div>
-    <div class="zone-plage">défi — solo ou équipe · 3 difficultés</div>
+    <div class="zone-plage">défi — solo ou équipe · 3 difficultés · ${texteRecommandation(p, 10)}</div>
     <div class="zone-desc">${tourBossVerrouillee
     ? '🔒 Atteignez le niveau 10 pour défier les seigneurs des Royaumes.'
     : 'Un boss par étage, du premier loup au Dévoreur de Mondes. Normal, Héroïque puis Cauchemar : chaque difficulté a son record.'}</div>`;
@@ -113,18 +113,21 @@ function rendreCarte() {
 function rendreZone(z) {
   const p = persoActif();
   const explorations = p.explorations[z.id] || 0;
-  const bossPret = explorations >= EXPLORATIONS_POUR_BOSS;
+  const bossVaincu = p.bossVaincus.includes(z.id);
   const boss = MONSTRES[z.boss];
+  etat.menaces = etat.menaces || {};
+  const menace = etat.menaces[z.id];
   if (!DIFFICULTES[etat.difficulte] || !difficulteDebloquee(p, z, etat.difficulte)) {
     etat.difficulte = 'normal';
   }
 
   el('zone-entete').innerHTML = `
     <div class="entete-lieu">
-      <h2>${z.emoji} ${z.nom} <span class="badge">${z.plage}</span></h2>
+      <h2>${z.emoji} ${z.nom} <span class="badge">${z.plage}</span> ${texteRecommandation(p, z.niveauMin)}</h2>
       <button class="btn-choix btn-compact" id="zone-retour">🗺️ Carte</button>
     </div>
     <p class="sous-titre gauche">${z.desc}</p>
+    ${menace ? `<p class="bandeau-menace">⚠️ <strong>Un très grand danger vous guette…</strong> ${boss.emoji} ${boss.nom} rôde : il peut surgir à chaque exploration. Restez sur vos gardes — ou repartez tant qu'il est temps.</p>` : ''}
     <div class="rangee-chips" id="zone-difficultes"></div>`;
   el('zone-retour').addEventListener('click', () => naviguer('carte'));
 
@@ -150,36 +153,24 @@ function rendreZone(z) {
   const actions = el('zone-actions-liste');
   actions.innerHTML = '';
 
+  // v17 : UNE seule action d'exploration — combats (avec dépeçage), filons
+  // à miner, herbes à cueillir, histoires uniques, mini-boss… et parfois
+  // le maître des lieux en personne.
   const explorer_ = document.createElement('button');
-  explorer_.className = 'btn-action-zone';
-  explorer_.innerHTML = `<span class="action-zone-emoji">🗡️</span><strong>Explorer</strong>
-    <span class="action-zone-detail">Partir en quête de combats et de découvertes</span>`;
+  explorer_.className = 'btn-action-zone exploration-unifiee';
+  explorer_.innerHTML = `<span class="action-zone-emoji">🧭</span><strong>Explorer${menace ? ' ⚠️' : ''}</strong>
+    <span class="action-zone-detail">Combats (et dépeçage 🔪), filons à miner ⛏️, herbes à cueillir 🌿,
+    histoires uniques 📜, champions ⭐${bossVaincu ? '' : '… et le maître des lieux rôde 👑'}</span>`;
   explorer_.addEventListener('click', () => explorer(z));
   actions.appendChild(explorer_);
 
-  // v12 : trois façons de récolter — chacune nourrit son métier, et la
-  // spécialité du héros (sa sous-classe de récolteur) brille d'une étoile.
-  Object.entries(METIERS).forEach(([idMetier, metier]) => {
-    const m = metierDe(p, idMetier);
-    const specialite = p.metierPrincipal === idMetier;
-    const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
-    const noms = pool.map((e) => `${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}`).join(', ');
-    const btn = document.createElement('button');
-    btn.className = 'btn-action-zone';
-    btn.innerHTML = `<span class="action-zone-emoji">${metier.emoji}</span><strong>${metier.action}${specialite ? ' ⭐' : ''}</strong>
-      <span class="action-zone-detail">${noms || `${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom} (traces à débusquer)`}
-      · ${metier.nom} niv. ${m.niveau}${specialite ? ' · spécialité' : ''}</span>`;
-    btn.addEventListener('click', () => recolter(z, idMetier));
-    actions.appendChild(btn);
-  });
-
   const bossBtn = document.createElement('button');
-  bossBtn.className = 'btn-action-zone boss';
-  bossBtn.disabled = !bossPret;
-  bossBtn.innerHTML = `<span class="action-zone-emoji">${boss.emoji}</span><strong>Défier ${boss.nom}</strong>
-    <span class="action-zone-detail">${bossPret
-      ? 'Le maître des lieux vous attend. Bonne chance.'
-      : `Explorez encore ${EXPLORATIONS_POUR_BOSS - explorations} fois pour le débusquer.`}</span>`;
+  bossBtn.className = 'btn-action-zone boss' + (bossVaincu ? '' : ' action-verrouillee');
+  bossBtn.disabled = !bossVaincu;
+  bossBtn.innerHTML = `<span class="action-zone-emoji">${bossVaincu ? boss.emoji : '🔒'}</span><strong>Défier ${boss.nom}</strong>
+    <span class="action-zone-detail">${bossVaincu
+      ? '🏆 Boss vaincu : re-combattez-le autant que vous voulez !'
+      : '🔒 Vainquez-le une première fois pour débloquer le défi — il rôde quelque part dans la zone…'}</span>`;
   bossBtn.addEventListener('click', () => affronterBoss(z));
   actions.appendChild(bossBtn);
 
@@ -188,22 +179,25 @@ function rendreZone(z) {
     .map((cle) => `<span class="chip">${MONSTRES[cle].emoji} ${MONSTRES[cle].nom}</span>`)
     .join('');
   // Matériaux groupés par métier : on sait tout de suite quoi venir y faire.
-  const chipsMateriaux = Object.values(METIERS).map((metier) => {
+  const chipsMateriaux = Object.entries(METIERS).map(([idMetier, metier]) => {
+    const m = metierDe(p, idMetier);
     const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
     const chips = pool
       .map((e) => `<span class="chip">${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}</span>`)
       .join('');
-    return `<span class="chip chip-metier">${metier.emoji} ${metier.action}</span>${chips
+    return `<span class="chip chip-metier">${metier.emoji} ${metier.action} (niv. ${m.niveau}${p.metierPrincipal === idMetier ? ' ⭐' : ''})</span>${chips
       || `<span class="chip">${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom} (traces)</span>`}`;
   }).join(' ');
+  const histoires = HISTOIRES_ZONES[z.id] || [];
+  const vues = ((p.histoiresVues || {})[z.id] || []).length;
   infos.innerHTML = `
     <div class="panneau">
       <h3>🐾 Créatures de la zone</h3>
       <div class="rangee-chips">${chipsMonstres}
         <span class="chip chip-boss">${boss.emoji} ${boss.nom} (boss)</span></div>
-      <h3>⛏️ Matériaux récoltables <span class="badge">🍀 la Chance enrichit la moisson</span></h3>
+      <h3>⛏️ Matériaux (au fil de l'exploration) <span class="badge">🍀 la Chance enrichit la moisson</span></h3>
       <div class="rangee-chips">${chipsMateriaux}</div>
-      <p class="aide">Explorations dans cette zone : ${explorations}${p.bossVaincus.includes(z.id) ? ' · 🏆 boss déjà vaincu (il peut être défié à nouveau)' : ''}</p>
+      <p class="aide">📜 Histoires découvertes ici : ${vues}/${histoires.length} · Explorations : ${explorations}${bossVaincu ? ' · 🏆 boss vaincu — défi libre débloqué' : ''}</p>
     </div>`;
 }
 
@@ -253,14 +247,32 @@ function composerPack(z, nb) {
   return cles;
 }
 
+// v17 : l'exploration unifiée — UNE action, tous les visages de la carte.
+// Combats (avec dépeçage), filons, herbes, histoires uniques, mini-boss,
+// marchand, trouvailles… et la menace du boss, qui frappe sans prévenir.
 function explorer(z) {
   const p = persoActif();
   p.explorations[z.id] = (p.explorations[z.id] || 0) + 1;
   progresserQuete(p, 'exploration', 1);
   sauvegarder(p);
 
+  // ⚠️ La menace est armée : le boss peut surgir À TOUT MOMENT, au plus
+  // tard 8 explorations après l'avertissement. On ne sait jamais quand.
+  etat.menaces = etat.menaces || {};
+  const menace = etat.menaces[z.id];
+  if (menace) {
+    menace.compteur++;
+    if (menace.compteur >= menace.declencheA) {
+      delete etat.menaces[z.id];
+      const boss = MONSTRES[z.boss];
+      afficherToast(`${boss.emoji} Le danger vous a trouvés !`);
+      affronterBoss(z, true);
+      return;
+    }
+  }
+
   const tirage = Math.random();
-  if (tirage < 0.06) {
+  if (tirage < 0.05) {
     // 🌟 Un monstre doré surgit : redoutable, mais le butin est triplé.
     const cle = z.monstres[alea(0, z.monstres.length - 1)];
     const base = MONSTRES[cle];
@@ -279,14 +291,38 @@ function explorer(z) {
     demarrerCombatZone(z, 'exploration', [], { monstresDef: [dore] });
     return;
   }
-  if (tirage < 0.11) {
+  if (tirage < 0.09) {
     marchandNomade(z);
     return;
   }
-  if (tirage < 0.72) {
+  if (tirage < 0.14) {
+    // ⭐ Un mini-boss : le champion local, plus coriace, mieux garni.
+    const champion = miniBossDe(z);
+    afficherToast(`⭐ ${champion.emoji} ${champion.nom} vous barre la route !`);
+    demarrerCombatZone(z, 'exploration', [], { monstresDef: [champion] });
+    return;
+  }
+  if (tirage < 0.2) {
+    evenementRecolte(z, 'mineur', '⛏️ Un filon affleure !',
+      'La roche s’ouvre sur un filon prometteur. Le temps de sortir la pioche ?');
+    return;
+  }
+  if (tirage < 0.26) {
+    evenementRecolte(z, 'tisseur', '🌿 Un coin d’herboriste !',
+      'Plantes rares, fibres et étoffes sauvages à portée de main. On cueille ?');
+    return;
+  }
+  if (tirage < 0.33 && evenementHistoire(z)) {
+    return;
+  }
+  if (tirage < 0.38 && !p.bossVaincus.includes(z.id) && !etat.menaces[z.id]) {
+    evenementMenaceBoss(z);
+    return;
+  }
+  if (tirage < 0.75) {
     const cles = composerPack(z, tailleDuPack(membresEquipe()));
     demarrerCombatZone(z, 'exploration', cles);
-  } else if (tirage < 0.9) {
+  } else if (tirage < 0.91) {
     // Trouvaille
     const objets = {};
     z.recolte.forEach((entree) => {
@@ -319,6 +355,105 @@ function explorer(z) {
       retour: 'zone',
     });
   }
+}
+
+// L'avertissement : un très grand danger approche. Rester… ou repartir ?
+// S'il reste, le boss frappera au plus tard 8 explorations plus tard —
+// sans prévenir.
+function evenementMenaceBoss(z) {
+  const boss = MONSTRES[z.boss];
+  afficherButin({
+    titre: '⚠️ Un très grand danger vous guette…',
+    texte: `Le sol tremble. Les créatures fuient. ${boss.emoji} ${boss.nom}, le maître des lieux, a senti votre présence — il vous traque désormais. Personne ne sait quand il frappera… mais il frappera.`,
+    lignes: [
+      `${boss.emoji} ${boss.nom} peut surgir à CHAQUE exploration, à tout moment.`,
+      '⏳ Il attaquera au plus tard dans les 8 prochaines explorations.',
+      '🏃 Repartir maintenant vous met à l’abri — mais il faudra bien l’affronter un jour pour débloquer son défi.',
+    ],
+    retour: 'zone',
+    boutons: [
+      {
+        texte: '⚔️ Rester malgré le danger',
+        classe: 'btn-principal',
+        action: () => {
+          etat.menaces = etat.menaces || {};
+          etat.menaces[z.id] = { compteur: 0, declencheA: alea(1, 8) };
+          afficherToast(`⚠️ ${boss.nom} vous traque… Chaque pas peut être le dernier.`);
+          rendreZone(z);
+          montrerEcran('ecran-zone');
+        },
+      },
+      {
+        texte: '🏃 Repartir vers la carte',
+        action: () => {
+          afficherToast('🏃 Vous quittez la zone — le danger reste derrière vous… pour cette fois.');
+          naviguer('carte');
+        },
+      },
+    ],
+  });
+}
+
+// Filon ou coin d'herboriste : on récolte (métier concerné), ou on passe.
+function evenementRecolte(z, idMetier, titre, texte) {
+  const metier = METIERS[idMetier];
+  const m = metierDe(persoActif(), idMetier);
+  const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
+  const noms = pool.map((e) => `${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}`).join(', ')
+    || `${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom} (traces)`;
+  afficherButin({
+    titre,
+    texte,
+    lignes: [`${metier.emoji} ${metier.nom} niv. ${m.niveau} · en vue : ${noms}`, '⚠️ Récolter peut attirer une embuscade…'],
+    retour: 'zone',
+    boutons: [
+      {
+        texte: `${metier.emoji} ${metier.action}`,
+        classe: 'btn-principal',
+        action: () => recolter(z, idMetier),
+      },
+      {
+        texte: '🚶 Passer son chemin',
+        action: () => { rendreZone(z); montrerEcran('ecran-zone'); },
+      },
+    ],
+  });
+}
+
+// 📜 Une histoire unique de la carte : chacune ne se vit qu'une fois.
+function evenementHistoire(z) {
+  const p = persoActif();
+  const histoires = HISTOIRES_ZONES[z.id] || [];
+  if (!histoires.length) return false;
+  p.histoiresVues = p.histoiresVues || {};
+  const vues = p.histoiresVues[z.id] = p.histoiresVues[z.id] || [];
+  const restantes = histoires.map((h, i) => [h, i]).filter(([, i]) => !vues.includes(i));
+  if (!restantes.length) return false;
+  const [histoire, index] = restantes[alea(0, restantes.length - 1)];
+  vues.push(index);
+
+  const lignes = [];
+  const r = histoire.recompense || {};
+  membresEquipe().forEach((m) => {
+    if (r.po) { const gain = Math.round(r.po * multiplicateurOr(m)); m.po += gain; m.compteurs.orTotal += gain; }
+    if (r.xp) gagnerXp(m, r.xp);
+    if (r.soinPct) m.hp = Math.min(m.maxHp, m.hp + Math.round(m.maxHp * r.soinPct));
+    if (r.materiau && OBJETS[r.materiau]) ajouterObjet(m, r.materiau, 1);
+    sauvegarder(m);
+  });
+  if (r.po) lignes.push(`💰 +${r.po} po pour chaque héros`);
+  if (r.xp) lignes.push(`⭐ +${r.xp} XP pour chaque héros`);
+  if (r.soinPct) lignes.push(`❤️ +${Math.round(r.soinPct * 100)} % de PV pour chaque héros`);
+  if (r.materiau && OBJETS[r.materiau]) lignes.push(`${OBJETS[r.materiau].emoji} ${OBJETS[r.materiau].nom} ×1 pour chaque héros`);
+  lignes.push(`📜 Histoire ${vues.length}/${histoires.length} de ${z.nom} — chacune ne se vit qu'une fois.`);
+  afficherButin({
+    titre: `📜 ${histoire.titre}`,
+    texte: histoire.texte,
+    lignes,
+    retour: 'zone',
+  });
+  rendreTopbar();
+  return true;
 }
 
 // v12 : la récolte se fait par métier (miner / dépecer / herboriser).
@@ -386,14 +521,18 @@ function recolter(z, idMetier) {
   }
 }
 
-function affronterBoss(z) {
+// v17 : le boss ne se DÉFIE librement qu'une fois vaincu une première
+// fois — avant ça, c'est lui qui vous trouve (menace d'exploration).
+function affronterBoss(z, embuscadeBoss = false) {
   const p = persoActif();
-  if ((p.explorations[z.id] || 0) < EXPLORATIONS_POUR_BOSS) return;
+  if (!embuscadeBoss && !p.bossVaincus.includes(z.id)) return;
   // Une équipe puissante attire l'attention : le boss vient escorté.
   const escorte = bonusTaillePack(membresEquipe());
   const cles = [z.boss];
   for (let i = 0; i < escorte; i++) cles.push(z.monstres[alea(0, z.monstres.length - 1)]);
-  demarrerCombatZone(z, 'boss', cles);
+  demarrerCombatZone(z, 'boss', cles, embuscadeBoss ? {
+    intro: `${MONSTRES[z.boss].emoji} ${MONSTRES[z.boss].nom} surgit — le grand danger annoncé, c'était lui !`,
+  } : {});
 }
 
 // Le marchand nomade : trois articles au hasard, 30 % de remise.
@@ -453,6 +592,7 @@ function demarrerCombatZone(z, genre, cles, options = {}) {
     difficulte: etat.difficulte,
     monstresDef: defs,
     lootRecolte: options.lootRecolte || null,
+    intro: options.intro || null,
     equipe: membresEquipe(),
   });
 }
@@ -638,6 +778,9 @@ function apresVictoireTour(cb) {
       if (idFamilier && !m.familiers.includes(idFamilier)) {
         m.familiers.push(idFamilier);
         lignes.push(`🐾 ${FAMILIERS[idFamilier].emoji} ${FAMILIERS[idFamilier].nom} vous rejoint — gardien de l'étage ${etage} !`);
+        if (!m.distant) {
+          annoncerDeblocage({ emoji: FAMILIERS[idFamilier].emoji, titre: `Familier adopté : ${FAMILIERS[idFamilier].nom}`, texte: `${FAMILIERS[idFamilier].desc} — gardien de l'étage ${etage} de la Tour.` });
+        }
       }
     }
 
@@ -864,12 +1007,38 @@ function apresVictoire(cb) {
     });
   }
 
+  // ⭐ Un champion (mini-boss) vaincu laisse un petit coffre à chacun.
+  if (cb.genre !== 'boss' && cb.monstres.some((m) => m.miniBoss)) {
+    membres.forEach((m, i) => {
+      const s = statsEffectives(m);
+      const rarete = tirerRarete((s.cha || 0) + 3);
+      const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
+        && (o.type === 'materiau' || o.type === 'consommable'
+          || (o.type === 'equipement' && o.niveau <= m.niveau + 3)));
+      if (pool.length) {
+        const [id, o] = pool[alea(0, pool.length - 1)];
+        partsObjets[i][id] = (partsObjets[i][id] || 0) + 1;
+        lignes.push(`⭐ Coffre du champion : ${o.emoji} ${o.nom}${texteRarete(o)}`);
+      }
+    });
+  }
+
+  // v17 : premier boss de zone vaincu → le défi libre et l'Héroïque s'ouvrent.
+  const premierBossDeZone = cb.genre === 'boss' && cb.zone
+    && membres.some((m) => !m.distant && !m.bossVaincus.includes(cb.zone.id));
+
   membres.forEach((m, i) => {
     if (m.hp <= 0) m.hp = 1; // les héros KO se relèvent après la victoire
     const poGagne = Math.round(poParHeros * multiplicateurOr(m));
     m.po += poGagne;
     Object.entries(partsObjets[i]).forEach(([id, qte]) => ajouterObjet(m, id, qte));
-    if (familiersGagnes[i] && !m.familiers.includes(familiersGagnes[i])) m.familiers.push(familiersGagnes[i]);
+    if (familiersGagnes[i] && !m.familiers.includes(familiersGagnes[i])) {
+      m.familiers.push(familiersGagnes[i]);
+      const compagnon = FAMILIERS[familiersGagnes[i]];
+      if (!m.distant && compagnon) {
+        annoncerDeblocage({ emoji: compagnon.emoji, titre: `Familier adopté : ${compagnon.nom}`, texte: `${compagnon.desc} — équipez-le depuis la fiche du héros.` });
+      }
+    }
     if (cb.genre === 'boss' && !m.bossVaincus.includes(cb.zone.id)) m.bossVaincus.push(cb.zone.id);
     const niveaux = gagnerXp(m, xpParHeros);
     // Progression des compteurs et contrats de guilde
@@ -883,12 +1052,87 @@ function apresVictoire(cb) {
     sauvegarder(m);
   });
 
+  if (premierBossDeZone && typeof annoncerDeblocage === 'function') {
+    const boss = MONSTRES[cb.zone.boss];
+    annoncerDeblocage({
+      emoji: '👑',
+      titre: 'Défi du boss débloqué !',
+      texte: `${boss.emoji} ${boss.nom} est vaincu : vous pouvez désormais le défier à volonté depuis ${cb.zone.nom}, autant de fois que vous le voulez.`,
+    });
+    annoncerDeblocage({
+      emoji: '🔥',
+      titre: 'Difficulté Héroïque débloquée !',
+      texte: `${cb.zone.nom} s'ouvre en Héroïque : monstres renforcés, récompenses accrues.`,
+    });
+  }
+
+  // v17 : après un combat d'exploration, on peut DÉPECER les dépouilles
+  // (récolte du tanneur) avant de reprendre la route.
+  const boutons = [];
+  if ((cb.genre === 'exploration' || cb.genre === 'embuscade') && cb.zone) {
+    boutons.push({
+      texte: '🔪 Dépecer les dépouilles',
+      classe: 'btn-choix',
+      action: (e) => depecerDepouilles(cb, e && e.currentTarget),
+    });
+    boutons.push({
+      texte: 'Continuer ➜',
+      classe: 'btn-principal',
+      action: () => continuerApresButin(),
+    });
+  }
+
   afficherButin({
-    titre: '🏆 Victoire !',
+    titre: cb.monstres.some((m) => m.miniBoss) ? '⭐ Champion vaincu !' : '🏆 Victoire !',
     texte: cb.genre === 'boss' ? 'Un exploit qui restera dans les chroniques de Valciel.' : 'Le champ de bataille vous appartient.',
     lignes,
     retour: 'zone',
+    boutons: boutons.length ? boutons : undefined,
   });
+}
+
+// 🔪 Le dépeçage : la récolte du tanneur, à même les dépouilles du combat.
+function depecerDepouilles(cb, bouton) {
+  if (cb.depece) return;
+  cb.depece = true;
+  const z = cb.zone;
+  const metier = METIERS.tanneur;
+  const pool = (z.recolte || []).filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
+  const nb = cb.monstres.length;
+  const details = el('butin-details');
+  const xpBase = alea(2, 4);
+  cb.equipe.filter((m) => m.type !== 'invocation' && !m.distant).forEach((m) => {
+    const s = statsEffectives(m);
+    const specialiste = m.metierPrincipal === 'tanneur';
+    const niveauM = metierDe(m, 'tanneur').niveau;
+    const multSpec = specialiste ? multSpecialite(s.cha) : 1;
+    const gains = {};
+    for (let i = 0; i < nb; i++) {
+      if (pool.length && Math.random() < Math.min(0.95, 0.55 * multChanceDrop(s.cha) * multSpec)) {
+        const entree = pool[alea(0, pool.length - 1)];
+        gains[entree.id] = (gains[entree.id] || 0) + 1 + Math.floor(niveauM / 4);
+      }
+    }
+    const chanceExclusif = Math.min(0.6, (0.06 + niveauM * 0.03) * multChanceDrop(s.cha) * multSpec);
+    if (!Object.keys(gains).length || Math.random() < chanceExclusif) {
+      gains[metier.exclusif] = (gains[metier.exclusif] || 0) + 1;
+    }
+    gagnerXpMetier(m, 'tanneur', specialiste ? xpBase * 2 : xpBase);
+    progresserQuete(m, 'recolte', 1);
+    Object.entries(gains).forEach(([id, qte]) => ajouterObjet(m, id, qte));
+    sauvegarder(m);
+    if (details) {
+      const div = document.createElement('div');
+      div.className = 'ligne-butin';
+      div.textContent = `🔪 ${m.avatar} ${m.nom} dépèce : ${Object.entries(gains)
+        .map(([id, qte]) => `${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}`).join(', ')}`;
+      details.appendChild(div);
+    }
+  });
+  if (bouton) {
+    bouton.disabled = true;
+    bouton.textContent = '🔪 Dépouilles récupérées ✓';
+  }
 }
 
 // Récompense matérielle du boss du monde, adaptée au niveau du héros :

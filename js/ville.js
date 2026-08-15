@@ -9,8 +9,8 @@
 const BOUTIQUES = {
   armes: {
     emoji: '🗡️', nom: 'À la Bonne Lame', titre: '🗡️ Armurerie « À la Bonne Lame »',
-    detail: 'L’armurerie du bourg : toutes les armes, du gourdin au divin',
-    accueil: '« Une lame pour chaque bras, un prix pour chaque bourse. » — maître Brisefer',
+    detail: 'L’armurerie du bourg : armes du commun à l’épique (l’exceptionnel se gagne ou se forge)',
+    accueil: '« Une lame pour chaque bras, un prix pour chaque bourse. Le légendaire ? Chez les artisans, ou au bout d’une épée. » — maître Brisefer',
     onglets: ['armes', 'vendre'],
   },
   armures: {
@@ -60,7 +60,7 @@ function rendreVille() {
     },
     {
       titre: '⚒️ La cour des artisans',
-      note: 'Quatre maîtres, quatre savoir-faire : apportez vos matériaux, repartez équipés.',
+      note: 'Quatre maîtres, sept raretés (jusqu’au Divin ✨) et les panoplies à bonus passifs : le vrai grand équipement se FABRIQUE ici, selon votre niveau.',
       lieux: Object.entries(ARTISANS).map(([id, a]) => ({
         emoji: a.emoji, nom: a.nom, detail: a.detail,
         action: () => ouvrirAtelier(id),
@@ -68,7 +68,7 @@ function rendreVille() {
     },
     {
       titre: '🧺 La halle aux matières',
-      note: 'Trois fournisseurs au service des artisans — à 4× le prix de rachat : récolter reste la voie du malin.',
+      note: 'Trois fournisseurs : TOUS les matériaux de craft (bruts, raffinés, signatures) selon votre niveau — à prix fournisseur, car récolter reste la voie du malin.',
       lieux: Object.entries(FOURNISSEURS).map(([id, f]) => ({
         emoji: f.emoji, nom: f.nom, detail: f.detail,
         action: () => ouvrirFournisseur(id),
@@ -146,6 +146,7 @@ const ONGLETS_BOUTIQUE = [
 const RARETES_FILTRABLES = ['commun', 'inhabituel', 'rare', 'epique', 'legendaire', 'mythique', 'divin'];
 
 // Sous-types proposés selon l'onglet actif.
+// (le contexte 'vente' est branché plus bas, après sa définition)
 const SOUS_TYPES = {
   armes: [
     { id: 'force', nom: '💪 Force', filtre: (o) => o.bonus && o.bonus.for != null },
@@ -297,6 +298,15 @@ function carteArticleBoutique(p, id, objet, apresAchat) {
   return carte;
 }
 
+// v17 : la vente affiche TOUTES les infos des objets (rareté, bonus,
+// panoplie, niveau) et se filtre comme les rayons d'achat.
+const SOUS_TYPES_VENTE = [
+  { id: 'equipement', nom: '⚔️ Équipements', filtre: (o) => o.type === 'equipement' },
+  { id: 'consommable', nom: '🧪 Consommables', filtre: (o) => o.type === 'consommable' },
+  { id: 'materiau', nom: '⛏️ Matériaux', filtre: (o) => o.type === 'materiau' },
+];
+SOUS_TYPES.vente = SOUS_TYPES_VENTE;
+
 function rendreVente(contenu, p) {
   if (p.inventaire.length === 0) {
     const vide = document.createElement('p');
@@ -309,6 +319,7 @@ function rendreVente(contenu, p) {
   note.className = 'aide';
   note.textContent = 'Les équipements et potions se revendent 40 % de leur prix ; les matériaux, à leur juste valeur.';
   contenu.appendChild(note);
+  rendreChipsFiltres(contenu, 'vente', () => rendreBoutique());
 
   // Vente groupée des matériaux : le petit confort des grandes fortunes.
   const materiaux = p.inventaire.filter((e) => OBJETS[e.id] && OBJETS[e.id].type === 'materiau');
@@ -332,27 +343,43 @@ function rendreVente(contenu, p) {
 
   const grille = document.createElement('div');
   grille.className = 'grille-inventaire';
-  p.inventaire.forEach((entree) => {
+  const visibles = p.inventaire.filter((entree) => {
     const objet = OBJETS[entree.id];
-    if (!objet) return;
+    return objet && passeSousFiltres(objet, 'vente');
+  });
+  if (visibles.length === 0) {
+    contenu.insertAdjacentHTML('beforeend', '<p class="aide">Rien dans le sac ne correspond à ces filtres.</p>');
+  }
+  visibles.forEach((entree) => {
+    const objet = OBJETS[entree.id];
     const prix = prixVenteDe(entree.id);
     const carte = document.createElement('div');
-    carte.className = 'carte-objet';
+    carte.className = `carte-objet bord-rar-${rareteDe(objet)}`;
     carte.innerHTML = `
-      <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> <span class="objet-qte">×${entree.qte}</span></div>
-      <div class="objet-desc">${objet.desc || ''}</div>`;
-    const vendre = document.createElement('button');
-    vendre.className = 'btn-choix btn-compact';
-    vendre.textContent = `Vendre 1 — ${prix} po`;
-    vendre.addEventListener('click', () => {
-      if (!retirerObjet(p, entree.id, 1)) return;
-      p.po += prix;
-      sauvegarder(p);
-      afficherToast(`${objet.emoji} ${objet.nom} vendu (+${prix} po).`);
-      rendreBoutique();
-      rendreTopbar();
+      <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)} <span class="objet-qte">×${entree.qte}</span></div>
+      <div class="objet-desc">${objet.desc || ''}</div>
+      ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
+      ${texteSet(objet)}
+      ${objet.type === 'equipement' ? `<div class="objet-niveau">niv. ${objet.niveau} requis</div>` : ''}`;
+    const rangee = document.createElement('div');
+    rangee.className = 'rangee-boutons';
+    [[1, `Vendre 1 — ${prix} po`], [entree.qte, `Tout — ${formatNombre(prix * entree.qte)} po`]].forEach(([qte, libelle], index) => {
+      if (index === 1 && entree.qte < 2) return;
+      const vendre = document.createElement('button');
+      vendre.className = 'btn-choix btn-compact';
+      vendre.textContent = libelle;
+      vendre.addEventListener('click', () => {
+        const vendu = Math.min(qte, compterObjet(p, entree.id));
+        if (vendu <= 0 || !retirerObjet(p, entree.id, vendu)) return;
+        p.po += prix * vendu;
+        sauvegarder(p);
+        afficherToast(`${objet.emoji} ${objet.nom} ×${vendu} vendu (+${formatNombre(prix * vendu)} po).`);
+        rendreBoutique();
+        rendreTopbar();
+      });
+      rangee.appendChild(vendre);
     });
-    carte.appendChild(vendre);
+    carte.appendChild(rangee);
     grille.appendChild(carte);
   });
   contenu.appendChild(grille);
@@ -415,7 +442,8 @@ let fournisseurCourant = 'mine';
 let NIVEAU_MATERIAU = null;
 
 // À quel niveau de héros un matériau devient-il « de votre monde » ?
-// On prend la zone la plus accessible qui le donne (récolte ou butin).
+// On prend la zone la plus accessible qui le donne (récolte ou butin) —
+// et pour les raffinés, le niveau de leur recette d'atelier.
 function niveauMateriau(id) {
   if (!NIVEAU_MATERIAU) {
     NIVEAU_MATERIAU = {};
@@ -428,16 +456,25 @@ function niveauMateriau(id) {
         ((MONSTRES[cle] || {}).drops || []).forEach((d) => noter(d.id, z.niveauMin));
       });
     });
+    // Les matériaux raffinés (fabriqués à l'atelier) suivent leur recette.
+    RECETTES.forEach((recette) => {
+      const objet = OBJETS[recette.resultat];
+      if (objet && objet.type === 'materiau') noter(recette.resultat, recette.niveau);
+    });
   }
   return NIVEAU_MATERIAU[id] || 1;
 }
 
 function prixAchatMateriau(id) {
-  return Math.max(4, prixVenteDe(id) * 4);
+  // Les matériaux signatures des métiers se paient au prix fort (6×) :
+  // les récolter reste infiniment plus malin.
+  const signature = Object.values(SIGNATURE_FILIERE).includes(id);
+  return Math.max(4, prixVenteDe(id) * (signature ? 6 : 4));
 }
 
 function ouvrirFournisseur(idFournisseur) {
   fournisseurCourant = idFournisseur;
+  sousFiltres = { rarete: 'tous', type: 'tous' };
   rendreFournisseur();
   montrerEcran('ecran-fournisseur');
 }
@@ -451,22 +488,28 @@ function rendreFournisseur() {
   zone.innerHTML = `<p class="sous-titre gauche">${f.accueil}</p>
     <p class="aide">Prix fournisseur : <strong>4× la valeur de rachat</strong> — la récolte reste la voie du malin. Le comptoir reprend aussi vos surplus de la filière, au prix plein.</p>`;
 
+  // v17 : filtre de rareté sur l'étal du fournisseur.
+  rendreChipsFiltres(zone, null, () => rendreFournisseur());
   const grille = document.createElement('div');
   grille.className = 'grille-inventaire';
   const signature = SIGNATURE_FILIERE[f.famille];
+  // v17 : TOUT ce qui sert au craft s'achète — bruts, raffinés et même
+  // les signatures (au prix fort, niveau 20+), selon le niveau du joueur.
   Object.entries(OBJETS)
-    .filter(([id, o]) => o.type === 'materiau' && FAMILLE_MATERIAU[id] === f.famille && id !== signature)
+    .filter(([id, o]) => o.type === 'materiau' && FAMILLE_MATERIAU[id] === f.famille)
+    .filter(([, o]) => passeSousFiltres(o, null))
     .sort((a, b) => niveauMateriau(a[0]) - niveauMateriau(b[0]) || prixVenteDe(a[0]) - prixVenteDe(b[0]))
     .forEach(([id, objet]) => {
-      const niveau = niveauMateriau(id);
+      const estSignature = id === signature;
+      const niveau = estSignature ? Math.max(20, niveauMateriau(id)) : niveauMateriau(id);
       const verrouille = niveau > p.niveau;
       const prix = prixAchatMateriau(id);
       const possede = compterObjet(p, id);
       const carte = document.createElement('div');
-      carte.className = 'carte-objet' + (verrouille ? ' article-verrouille' : '');
+      carte.className = `carte-objet bord-rar-${rareteDe(objet)}` + (verrouille ? ' article-verrouille' : '');
       carte.innerHTML = `
-        <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong>${texteRarete(objet)}</div>
-        <div class="objet-desc">${objet.desc || ''}</div>
+        <div class="objet-entete">${verrouille ? '🔒 ' : ''}${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)}</div>
+        <div class="objet-desc">${objet.desc || ''}${estSignature ? ' <em>(fierté des spécialistes : prix fort, 6× la valeur)</em>' : ''}</div>
         <div class="objet-niveau${verrouille ? ' niveau-insuffisant' : ''}">niv. ${niveau}${verrouille ? ` — revenez au niveau ${niveau}` : ''} · en sac : ${possede}</div>`;
       if (!verrouille) {
         const rangee = document.createElement('div');
@@ -491,18 +534,6 @@ function rendreFournisseur() {
       }
       grille.appendChild(carte);
     });
-
-  // La pièce que l'or n'achète pas : le matériau signature de la filière.
-  const objSignature = OBJETS[signature];
-  if (objSignature) {
-    const carte = document.createElement('div');
-    carte.className = 'carte-objet article-verrouille';
-    carte.innerHTML = `
-      <div class="objet-entete">${objSignature.emoji} <strong>${objSignature.nom}</strong>${texteRarete(objSignature)}</div>
-      <div class="objet-desc">${objSignature.desc || ''}</div>
-      <div class="objet-note">🚫 Ne se vend pas ici — c'est la fierté des spécialistes. Récoltez-le… ou négociez au comptoir des joueurs.</div>`;
-    grille.appendChild(carte);
-  }
   zone.appendChild(grille);
 
   // Rachat : le fournisseur reprend les matériaux de SA filière.
@@ -570,7 +601,7 @@ function rendreArcanium() {
 
   const aide = document.createElement('p');
   aide.className = 'aide';
-  aide.textContent = 'Chaque grimoire enseigne une compétence, ajoutée à votre grimoire personnel (et équipée s’il reste une place parmi vos 8 actives). Les compétences signatures des classes ne s’achètent pas — elles se méritent à la création.';
+  aide.textContent = 'Chaque grimoire enseigne une compétence COMMUNE, ajoutée à votre grimoire personnel (et équipée s’il reste une place parmi vos 8 actives). Les compétences de classe (signature, voies et arbre) ne s’achètent jamais — elles appartiennent à leur classe.';
   zone.appendChild(aide);
 
   // Sous-filtres par école de compétence
@@ -634,20 +665,22 @@ function rendreGuilde() {
   const quotaAtteint = dejaReclamees >= RECLAMATIONS_GUILDE_PAR_JOUR;
   const intro = document.createElement('p');
   intro.className = 'sous-titre';
-  intro.textContent = `« Six contrats au tableau chaque matin, aventurier — mais la caisse ne paie que ${RECLAMATIONS_GUILDE_PAR_JOUR} récompenses par jour. Choisissez bien. » (${dejaReclamees}/${RECLAMATIONS_GUILDE_PAR_JOUR} réclamées aujourd'hui)`;
+  intro.textContent = `« Six contrats au tableau chaque matin, du commun au divin — plus le contrat est rare, plus il exige, plus il paie. Mais la caisse ne règle que ${RECLAMATIONS_GUILDE_PAR_JOUR} récompenses par jour : choisissez bien. » (${dejaReclamees}/${RECLAMATIONS_GUILDE_PAR_JOUR} réclamées aujourd'hui)`;
   zone.appendChild(intro);
 
   p.quetes.liste.forEach((quete) => {
     const complete = quete.fait >= quete.requis;
+    const rarete = quete.rarete || 'commun';
     const carte = document.createElement('div');
-    carte.className = 'panneau carte-contrat' + (quete.reclamee ? ' contrat-reclame' : '');
+    carte.className = `panneau carte-contrat bord-rar-${rarete}` + (quete.reclamee ? ' contrat-reclame' : '');
     const pct = Math.round((quete.fait / quete.requis) * 100);
     carte.innerHTML = `
       <div class="objet-entete">${quete.emoji} <strong>${quete.texte}</strong>
+        <span class="rarete rar-${rarete}">${RARETES[rarete] ? RARETES[rarete].nom : rarete}</span>
         ${quete.reclamee ? '<span class="objet-qte">✔ récompense empochée</span>' : ''}</div>
       <div class="barre contrat"><div class="remplissage" style="width:${pct}%"></div>
         <span>${quete.fait} / ${quete.requis}</span></div>
-      <div class="objet-bonus">🎁 ${quete.recompense.po} po · ⭐ ${quete.recompense.xp} XP${quete.recompense.coffre ? ' · 🎁 un objet surprise' : ''}</div>`;
+      <div class="objet-bonus">🎁 ${quete.recompense.po} po · ⭐ ${quete.recompense.xp} XP${quete.recompense.coffre ? ` · 🎁 un objet surprise${(quete.recompense.bonusCoffre || 0) > 0 ? ' (chance dopée par la rareté du contrat)' : ''}` : ''}</div>`;
     if (!quete.reclamee) {
       const reclamer = document.createElement('button');
       reclamer.className = complete && !quotaAtteint ? 'btn-principal btn-compact' : 'btn-choix btn-compact';
@@ -679,10 +712,11 @@ function reclamerQuete(p, quete) {
   p.po += poGagne;
   p.compteurs.orTotal += poGagne;
   const lignes = [`💰 +${poGagne} po`, `⭐ +${quete.recompense.xp} XP`];
-  // Le grand contrat du jour offre un objet tiré selon la chance.
+  // Le grand contrat du jour offre un objet tiré selon la chance — et la
+  // rareté du contrat dope encore le tirage.
   if (quete.recompense.coffre) {
     const s = statsEffectives(p);
-    const rarete = tirerRarete(s.cha + 5);
+    const rarete = tirerRarete(s.cha + 5 + (quete.recompense.bonusCoffre || 0));
     const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
       && (o.type === 'materiau' || o.type === 'consommable'
         || (o.type === 'equipement' && o.niveau <= p.niveau + 3)));
@@ -816,10 +850,11 @@ function rendreAtelier() {
   rangee.appendChild(chipRealisables);
   zone.appendChild(rangee);
 
-  // L'établi de CET artisan : ses recettes proches du niveau du héros ;
-  // le reste se débloque en progressant.
+  // L'établi de CET artisan : ses recettes jusqu'au niveau du héros +6 —
+  // les prochaines apparaissent grisées avec leur cadenas, pour donner
+  // envie. Le reste attend plus loin sur la route.
   const chezLui = RECETTES.filter((recette) => artisanDeRecette(recette) === atelierCourant);
-  const proches = chezLui.filter((recette) => recette.niveau <= p.niveau + 2);
+  const proches = chezLui.filter((recette) => recette.niveau <= p.niveau + 6);
   const cachees = chezLui.length - proches.length;
   const visibles = proches
     .filter((recette) => filtresAtelier.type === 'tous' || categorieRecette(recette) === filtresAtelier.type)
@@ -832,7 +867,7 @@ function rendreAtelier() {
     const objet = OBJETS[recette.resultat];
     const niveauOk = p.niveau >= recette.niveau;
     const carte = document.createElement('div');
-    carte.className = `carte-recette bord-rar-${rareteDe(objet)}` + (niveauOk ? '' : ' verrouillee');
+    carte.className = `carte-recette bord-rar-${rareteDe(objet)}` + (niveauOk ? '' : ' verrouillee element-verrouille');
 
     let materiauxOk = true;
     const listeMateriaux = Object.entries(recette.materiaux).map(([id, qte]) => {
@@ -844,9 +879,10 @@ function rendreAtelier() {
 
     const orOk = p.po >= recette.po;
     carte.innerHTML = `
-      <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)}</div>
+      <div class="objet-entete">${niveauOk ? '' : '🔒 '}${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)}</div>
       ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : `<div class="objet-desc">${objet.desc || ''}</div>`}
-      ${!niveauOk ? `<div class="objet-niveau niveau-insuffisant">niv. ${recette.niveau} requis</div>` : ''}
+      ${texteSet(objet)}
+      ${!niveauOk ? `<div class="objet-niveau niveau-insuffisant">🔒 se débloque au niveau ${recette.niveau}</div>` : ''}
       <div class="ingredients">${listeMateriaux}
         <span class="ingredient ${orOk ? 'ok' : 'manque'}">💰 ${recette.po} po</span></div>`;
 

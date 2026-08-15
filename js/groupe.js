@@ -702,7 +702,8 @@ function executerActionDistante(j, a) {
   if (action.genre === 'competence') {
     const comp = COMPETENCES[action.compId];
     if (!comp || !j.competences.includes(action.compId)
-      || (j.cooldowns[action.compId] || 0) > 0 || j.mp < comp.coutMp) {
+      || (j.cooldowns[action.compId] || 0) > 0
+      || j.mp < coutMpDe(comp, statsEffectives(j), j.maxMp)) {
       action = { genre: 'defense' };
     }
   }
