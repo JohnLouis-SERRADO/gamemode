@@ -114,7 +114,7 @@ const OBJETS = {
   'cape-mitee':           { nom: 'Cape mitée (mais magique)', emoji: '🧥', type: 'equipement', slot: 'accessoire', niveau: 14, rarete: 'epique', prix: 420, vendeur: 'antiquaire', bonus: { int: 4, vit: 3, pmMax: 12 }, desc: 'Les trous seraient « décoratifs », jure l’antiquaire.' },
   'dent-requin-fossile':  { nom: 'Dent de requin fossile', emoji: '🦈', type: 'equipement', slot: 'accessoire', niveau: 15, rarete: 'epique', prix: 480, vendeur: 'antiquaire', bonus: { for: 5, crit: 3 }, desc: 'Le requin, lui, date d’avant les Royaumes.' },
   'sablier-fele':         { nom: 'Sablier fêlé', emoji: '⏳', type: 'equipement', slot: 'accessoire', niveau: 17, rarete: 'epique', prix: 590, vendeur: 'antiquaire', bonus: { agi: 5, cha: 3, crit: 3 }, desc: 'Son sable remonte, certains soirs.' },
-  'idole-sans-nom':       { nom: 'Idole sans nom', emoji: '🗿', type: 'equipement', slot: 'accessoire', niveau: 19, rarete: 'epique', prix: 750, vendeur: 'antiquaire', bonus: { for: 3, int: 3, agi: 3, vit: 3, cha: 3 }, desc: 'Personne ne sait qui elle représente. Elle, si.' },
+  'idole-sans-nom':       { nom: 'Idole sans nom', emoji: '🗿', type: 'equipement', slot: 'accessoire', niveau: 19, rarete: 'legendaire', prix: 750, vendeur: 'antiquaire', bonus: { for: 3, int: 3, agi: 3, vit: 3, cha: 3 }, desc: 'Personne ne sait qui elle représente. Elle, si.' },
 
   // ----- Consommables -----
   'potion-soin':        { nom: 'Potion de soin', emoji: '🧪', type: 'consommable', prix: 15,  effet: { type: 'pv', valeur: 30 },  desc: 'Rend 30 PV.' },
@@ -605,9 +605,9 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
 
 // =====================================================================
 // Catalogue du marchand : équipements générés, niveaux 1 à 50.
-// v17 : le marchand ne vend QUE du commun → épique (le légendaire, le
-// mythique et le divin se méritent : butin, boss ou artisans), et ses
-// pièces n'ont AUCUN bonus de panoplie ni skill passif — pour ça, il
+// v17.2 : le marchand vend du commun au LÉGENDAIRE — seuls le mythique
+// et le divin restent introuvables en boutique (butin, boss, artisans).
+// Ses pièces n'ont AUCUN bonus de panoplie ni skill passif — pour ça, il
 // faut passer chez les artisans ou partir à l'aventure.
 // =====================================================================
 const QUALIFICATIFS_BOUTIQUE = {
@@ -615,14 +615,15 @@ const QUALIFICATIFS_BOUTIQUE = {
   inhabituel: ['de l’artisan', 'du bourg', 'de bonne facture'],
   rare:       ['de maître', 'du comptoir doré', 'd’exception'],
   epique:     ['de la Grande Foire', 'du maître-marchand', 'de prestige'],
+  legendaire: ['de la Vitrine Secrète', 'du fond du coffre', 'de collection'],
 };
 
 // Fenêtre de niveaux où le marchand propose chaque rareté (jusqu'au 50).
 const FENETRES_BOUTIQUE = {
-  commun: [1, 8], inhabituel: [3, 14], rare: [6, 30], epique: [10, 50],
+  commun: [1, 8], inhabituel: [3, 14], rare: [6, 30], epique: [10, 50], legendaire: [14, 50],
 };
-const MULT_STAT_BOUTIQUE = { commun: 0.7, inhabituel: 0.85, rare: 1.0, epique: 1.15 };
-const MULT_PRIX_BOUTIQUE = { commun: 1, inhabituel: 1.6, rare: 2.6, epique: 4.2 };
+const MULT_STAT_BOUTIQUE = { commun: 0.7, inhabituel: 0.85, rare: 1.0, epique: 1.15, legendaire: 1.4 };
+const MULT_PRIX_BOUTIQUE = { commun: 1, inhabituel: 1.6, rare: 2.6, epique: 4.2, legendaire: 7 };
 
 ARCHETYPES_BUTIN.forEach((archetype) => {
   for (let niveau = 1; niveau <= 50; niveau++) {
@@ -637,7 +638,8 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
       if (niveau >= 4) bonus[archetype.secondaire] = Math.max(1, Math.round(principal * 0.35));
       if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = Math.round(niveau * 2 * mult);
       if (archetype.principal === 'int') bonus.pmMax = Math.round(niveau * 1.5 * mult);
-      if (archetype.defensif && niveau >= 8 && ['rare', 'epique'].includes(rarete)) {
+      if (rarete === 'legendaire') bonus.crit = Math.round(1 + niveau * 0.2);
+      if (archetype.defensif && niveau >= 8 && ['rare', 'epique', 'legendaire'].includes(rarete)) {
         bonus[archetype.defensif] = Math.max(1, Math.round(1 + niveau * 0.1 * mult));
       }
       OBJETS[`marchand-${archetype.cle}-${rarete}-${niveau}`] = {
@@ -646,7 +648,7 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
         niveau, rarete,
         prix: Math.max(8, Math.round((10 + niveau * 8) * MULT_PRIX_BOUTIQUE[rarete])),
         bonus,
-        desc: `Collection du marchand — sans bonus de panoplie : l'exceptionnel se gagne, il ne s'achète pas.`,
+        desc: `Collection du marchand — sans bonus de panoplie : les sets à passifs se forgent chez les artisans.`,
       };
     });
   }
