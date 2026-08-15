@@ -833,7 +833,14 @@ async function ouvrirFichePublique(idJoueur) {
     rangs: d.rangs || {},
   };
   const s = statsEffectives(pp);
+  // La fiche publique affiche le rôle ET la spécialité, comme en local.
   const classe = CLASSES[d.classe] || CLASSES.aventurier;
+  const identiteClasse = typeof nomCompletClasse === 'function'
+    ? nomCompletClasse({ classe: d.classe, sousClasse: d.sousClasse })
+    : classe.nom;
+  const emojiIdentite = typeof emojiClasse === 'function'
+    ? emojiClasse({ classe: d.classe, sousClasse: d.sousClasse })
+    : classe.emoji;
   const race = RACES[pp.race] || RACES.humain;
   const titreActif = d.titre ? HAUTS_FAITS.find((h) => h.id === d.titre) : null;
   const compagnon = pp.familier ? FAMILIERS[pp.familier] : null;
@@ -871,7 +878,7 @@ async function ouvrirFichePublique(idJoueur) {
   modale.innerHTML = `
     <button class="btn-choix btn-compact modale-fermer">✖ Fermer</button>
     <h2>${ligne.avatar || '⚔️'} ${echapper(ligne.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''}</h2>
-    <p class="joueur-detail">${classe.emoji} ${classe.nom} · ${race.emoji} ${race.nom} · niveau ${ligne.niveau} (${formatNombre(ligne.xp)} XP)
+    <p class="joueur-detail">${emojiIdentite} ${identiteClasse} · ${race.emoji} ${race.nom} · niveau ${ligne.niveau} (${formatNombre(ligne.xp)} XP)
       · ⚡ ${formatNombre(puissanceDe(pp))} de puissance · 💰 ${formatNombre(d.po || 0)} po · ⚔️ ${formatNombre(ligne.degats_boss_total || 0)} dégâts au boss du monde</p>
     <div class="panneau"><h3>Caractéristiques effectives</h3>
       <p>${statsTexte}</p>

@@ -252,8 +252,91 @@ function montrerEcran(id) {
   // v12.2 : au niveau 5, le choix de la sous-classe de récolteur s'impose.
   if (['ecran-carte', 'ecran-zone', 'ecran-ville', 'ecran-heros'].includes(id)) {
     verifierChoixSpecialite();
+    verifierChoixSousClasse();
   }
   window.scrollTo(0, 0);
+}
+
+// =====================================================================
+// Une seule fenêtre bloquante à la fois.
+//
+// Le jeu en compte deux qui s'imposent au joueur : le choix de métier au
+// niveau 5, et le choix de spécialité au niveau 10. Un héros qui atteint
+// le niveau 10 sans avoir choisi son métier déclenchait les deux en même
+// temps — et celle du dessous interceptait les clics de celle du dessus.
+// On les fait donc passer l'une après l'autre, dans l'ordre des niveaux.
+// =====================================================================
+function modaleBloquanteOuverte() {
+  return !!document.querySelector('#voile-specialite, #voile-sous-classe');
+}
+
+// =====================================================================
+// v19 — LE CHOIX DE SPÉCIALITÉ, au niveau 10.
+//
+// Les dix premiers niveaux servent à comprendre son rôle ; le dixième
+// demande de choisir sa voie à l'intérieur de ce rôle. Le choix n'est pas
+// perdu d'avance : il apporte un bonus de caractéristiques permanent et
+// huit compétences propres, et il reste changeable plus tard.
+// =====================================================================
+function verifierChoixSousClasse() {
+  const p = persoActif();
+  if (!p || p.niveau < NIVEAU_SOUS_CLASSE || p.sousClasse) return;
+  if (modaleBloquanteOuverte()) return;
+  const base = classeBaseDe(p);
+  if (!base || !base.sousClasses.length) return;
+  if (document.getElementById('voile-sous-classe')) return;
+  // Jamais par-dessus un combat : on attend le retour au calme.
+  if (typeof combatEnCours === 'function' && combatEnCours()) return;
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-sous-classe';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-specialite';
+  modale.innerHTML = `
+    <h2>${base.emoji} Niveau ${NIVEAU_SOUS_CLASSE} : choisissez votre spécialité de ${base.nom}</h2>
+    <p>${echapper(p.nom)} maîtrise les bases. Il est temps de choisir la voie qui fera
+      sa réputation : chacune apporte un <strong>bonus de caractéristiques permanent</strong>,
+      un <strong>passif propre</strong> et <strong>huit compétences exclusives</strong>.</p>
+    <div id="sous-classe-choix"></div>
+    <p class="aide">Vous garderez tout ce que vous avez déjà appris. Le choix se change plus tard,
+      contre une contrepartie.</p>`;
+
+  const zone = modale.querySelector('#sous-classe-choix');
+  base.sousClasses.forEach((id) => {
+    const sc = SOUS_CLASSES[id];
+    const bonus = Object.entries(sc.bonusStats || {})
+      .map(([cle, v]) => `${v > 0 ? '+' : ''}${v} ${CARACS[cle].emoji} ${CARACS[cle].nom}`)
+      .join(' · ');
+    const carte = document.createElement('div');
+    carte.className = 'panneau carte-specialite';
+    carte.innerHTML = `
+      <div class="objet-entete">${sc.emoji} <strong>${sc.nom}</strong></div>
+      <div class="objet-desc">${sc.resume}</div>
+      <div class="objet-bonus">${bonus}</div>
+      <div class="objet-desc"><strong>Passif :</strong> ${sc.passif}</div>`;
+    const choisir = document.createElement('button');
+    choisir.className = 'btn-principal btn-compact';
+    choisir.textContent = `${sc.emoji} Devenir ${sc.nom}`;
+    choisir.addEventListener('click', () => {
+      p.sousClasse = id;
+      debloquerCompetencesClasse(p, true);
+      bornerVie(p);
+      sauvegarder(p);
+      voile.remove();
+      annoncerDeblocage({
+        emoji: sc.emoji,
+        titre: `${base.nom} — ${sc.nom}`,
+        texte: `${sc.passif} Ses huit compétences rejoignent votre grimoire.`,
+      });
+      if (el('ecran-heros').classList.contains('actif')) rendreHeros();
+      rendreTopbar();
+    });
+    carte.appendChild(choisir);
+    zone.appendChild(carte);
+  });
+
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
 }
 
 // =====================================================================
@@ -265,7 +348,9 @@ function montrerEcran(id) {
 function verifierChoixSpecialite() {
   const p = persoActif();
   if (!p || p.admin || p.metierPrincipal || p.niveau < NIVEAU_SPECIALITE) return;
-  if (document.getElementById('voile-specialite')) return;
+  // Jamais par-dessus un combat : la fenêtre s'ouvrait au milieu d'un tour.
+  if (typeof combatEnCours === 'function' && combatEnCours()) return;
+  if (modaleBloquanteOuverte()) return;
 
   const PRESENTATIONS = {
     mineur: 'Pierres, minerais et cristaux — et la fameuse <strong>pierre magique</strong>. C\'est lui qui nourrit la <strong>Forge</strong> : lames, heaumes, cuirasses et jambières. Sans mineur, pas d\'acier — et les guerriers combattent en chemise.',
@@ -308,6 +393,7 @@ function verifierChoixSpecialite() {
       voile.remove();
       afficherToast(`${metier.emoji} ⭐ ${p.nom} est désormais ${metier.nom} : ses récoltes de spécialité seront bien plus riches !`);
       if (el('ecran-heros').classList.contains('actif')) rendreHeros();
+      verifierChoixSousClasse();   // au tour de la spécialité de classe
     });
     carte.appendChild(choisir);
     zoneChoix.appendChild(carte);
@@ -406,6 +492,36 @@ function migrerCaracteristiques(p) {
   if (detenus < dus) p.pointsEnAttente = (p.pointsEnAttente || 0) + (dus - detenus);
 }
 
+// =====================================================================
+// v19 — Migration des classes vers les six rôles.
+//
+// Les 21 classes historiques se répartissent : quatre restent des classes
+// de base, seize deviennent des sous-classes en gardant leurs huit
+// compétences, et l'Aventurier se voit offrir un choix libre.
+//
+// Le marqueur de version est indispensable : sans lui, un héros déjà migré
+// vers « Guerrier — Berserker » repasserait par la table à chaque
+// chargement et y perdrait sa sous-classe.
+// =====================================================================
+const VERSION_CLASSES = 19;
+
+function migrerClasses(p) {
+  if (p.sousClasse === undefined) p.sousClasse = null;
+  if (p.versionClasses >= VERSION_CLASSES) return;
+  const cible = MIGRATION_CLASSES[p.classe];
+  if (cible) {
+    if (cible.choixOffert) {
+      // L'Aventurier n'entre dans aucun rôle : on lui propose de choisir,
+      // sans rien lui retirer en attendant.
+      p.choixClasseOffert = true;
+    } else {
+      p.classe = cible.classe;
+      p.sousClasse = cible.sousClasse;
+    }
+  }
+  p.versionClasses = VERSION_CLASSES;
+}
+
 // Complète les sauvegardes venues d'anciennes versions du jeu.
 function normaliserPerso(p) {
   if (!p.race) p.race = 'humain';
@@ -436,7 +552,9 @@ function normaliserPerso(p) {
   if (p.equipement.mains === undefined) p.equipement.mains = null;
   if (p.equipement.pieds === undefined) p.equipement.pieds = null;
   // v8 : classe, compétences de classe exclusives et points de maîtrise.
-  if (!p.classe || !CLASSES[p.classe]) p.classe = infererClasse(p);
+  if (!p.classe || !(CLASSES[p.classe] || MIGRATION_CLASSES[p.classe])) p.classe = infererClasse(p);
+  migrerClasses(p);
+  if (p.sousClasse && !SOUS_CLASSES[p.sousClasse]) p.sousClasse = null;
   if (!p.rangs || typeof p.rangs !== 'object') p.rangs = {};
   debloquerCompetencesClasse(p, false);
   if (p.maitrise == null) {
@@ -681,6 +799,9 @@ function donneesCloud(p) {
     compteurs: p.compteurs, familiers: p.familiers, familier: p.familier,
     hautsFaits: p.hautsFaits, titre: p.titre, tourMax: p.tourMax, quetes: p.quetes,
     donjons: p.donjons, classe: p.classe, maitrise: p.maitrise, rangs: p.rangs,
+    // v19 : la spécialité voyage avec le héros — code de sauvegarde, taverne,
+    // fiches publiques et expéditions doivent tous la connaître.
+    sousClasse: p.sousClasse, versionClasses: p.versionClasses,
     tourBoss: p.tourBoss, metiers: p.metiers, metierPrincipal: p.metierPrincipal,
     ascensions: p.ascensions, histoiresVues: p.histoiresVues,
   };
@@ -779,7 +900,9 @@ function apprendreCompetence(p, id, prioritaire) {
 // puis une aux niveaux 5, 10 et 15 — 4 par classe au total).
 function debloquerCompetencesClasse(p, annoncer) {
   Object.entries(COMPETENCES).forEach(([id, comp]) => {
-    if (comp.classe !== p.classe || p.grimoire.includes(id)) return;
+    const deMaClasse = comp.classe && comp.classe === p.classe;
+    const deMaSousClasse = comp.sousClasse && comp.sousClasse === p.sousClasse;
+    if ((!deMaClasse && !deMaSousClasse) || p.grimoire.includes(id)) return;
     if ((comp.niveauRequis || 1) > p.niveau) return;
     // Les compétences du niveau 1 (signature et bases) s'imposent dans la
     // barre ; celles des paliers suivants respectent l'agencement choisi
@@ -1562,7 +1685,7 @@ function rendreHeros() {
   entete.innerHTML = `
     <span class="avatar-titan">${p.avatar}${familier ? `<span class="familier-avatar" title="${familier.nom}">${familier.emoji}</span>` : ''}</span>
     <div class="heros-identite">
-      <h2>${echapper(p.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''} <span class="niveau">${classe.emoji} ${classe.nom} · niveau ${p.niveau}</span>
+      <h2>${echapper(p.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''} <span class="niveau">${emojiClasse(p)} ${nomCompletClasse(p)} · niveau ${p.niveau}</span>
         <button id="btn-renommer" class="btn-choix btn-compact btn-renommer" title="Changer le nom de ce héros">✏️ Renommer</button></h2>
       <div id="zone-renommage" class="cache ligne-renommage">
         <input id="champ-renommage" maxlength="16" placeholder="Nouveau nom">
@@ -1797,7 +1920,7 @@ function rendreBlocCompetences(zone, p, s) {
   if (aVenir.length > 0) {
     const titreArbre = document.createElement('h3');
     titreArbre.className = 'titre-grimoire';
-    titreArbre.textContent = `🏅 Arbre de ${classe.nom} — à débloquer`;
+    titreArbre.textContent = `🏅 Arbre de ${nomCompletClasse(p)} — à débloquer`;
     blocComp.appendChild(titreArbre);
     const grilleArbre = document.createElement('div');
     grilleArbre.className = 'grille-competences';
@@ -2338,7 +2461,9 @@ function chargerHerosImporte(donnees, id, token) {
   if (Array.isArray(d.grimoire)) {
     d.grimoire.forEach((id) => { if (!p.grimoire.includes(id)) p.grimoire.push(id); });
   }
-  if (d.classe && CLASSES[d.classe]) p.classe = d.classe;
+  if (d.classe && (CLASSES[d.classe] || MIGRATION_CLASSES[d.classe])) p.classe = d.classe;
+  if (d.sousClasse !== undefined) p.sousClasse = d.sousClasse;
+  if (d.versionClasses != null) p.versionClasses = d.versionClasses;
   if (d.rangs && typeof d.rangs === 'object') p.rangs = d.rangs;
   if (d.maitrise != null) p.maitrise = d.maitrise;
   normaliserPerso(p); // signature de classe, maîtrise et grimoire cohérents

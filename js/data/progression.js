@@ -101,6 +101,15 @@ function statsEffectives(p) {
   const s = statsVides();
   Object.keys(CARACS).forEach((cle) => { s[cle] = p.stats[cle] || 0; });
 
+  // Bonus de sous-classe : calculé, jamais stocké dans p.stats. Changer de
+  // spécialité reste ainsi une opération propre, sans reliquat.
+  const sousClasse = typeof sousClasseDe === 'function' ? sousClasseDe(p) : null;
+  if (sousClasse) {
+    Object.entries(sousClasse.bonusStats || {}).forEach(([cle, valeur]) => {
+      s[cle] = (s[cle] || 0) + valeur;
+    });
+  }
+
   Object.values(p.equipement || {}).forEach((idObjet) => {
     if (!idObjet) return;
     const objet = OBJETS[idObjet];

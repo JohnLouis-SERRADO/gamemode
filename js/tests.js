@@ -757,6 +757,225 @@ suite('Route jusqu\'au niveau 100', () => {
 });
 
 // =====================================================================
+// 8. Les six classes et leurs sous-classes (v19)
+// =====================================================================
+suite('Classes et sous-classes', () => {
+  test('six classes de base, et pas une de plus à la création', () => {
+    egal(Object.keys(CLASSES_BASE).length, 6, 'classes de base');
+    egal(MODELES.length, 6, 'modèles proposés à la création');
+  });
+
+  test('chaque classe couvre un rôle distinct', () => {
+    const roles = Object.values(CLASSES_BASE).map((c) => c.role);
+    egal(new Set(roles).size, roles.length, 'des rôles font doublon');
+    verifier(roles.includes('Tank'), 'aucune classe de tank');
+    verifier(roles.includes('Soigneur'), 'aucune classe de soigneur');
+  });
+
+  test('chaque classe a un attribut porteur et une catégorie d\'armure', () => {
+    const fautives = Object.entries(CLASSES_BASE)
+      .filter(([, c]) => !CARACS[c.stat] || !['plaque', 'maille', 'cuir', 'tissu'].includes(c.armure))
+      .map(([id]) => id);
+    aucun(fautives, 'classes mal définies');
+  });
+
+  test('chaque classe a huit compétences, qui existent toutes', () => {
+    const fautives = [];
+    Object.entries(CLASSES_BASE).forEach(([id, c]) => {
+      if (c.competences.length !== 8) fautives.push(`${id} (${c.competences.length} compétences)`);
+      c.competences.forEach((cle) => { if (!COMPETENCES[cle]) fautives.push(`${id} → ${cle}`); });
+    });
+    aucun(fautives, 'kits de classe incomplets');
+  });
+
+  test('chaque classe a une signature', () => {
+    const fautives = Object.entries(CLASSES_BASE)
+      .filter(([, c]) => !c.signature || !COMPETENCES[c.signature])
+      .map(([id]) => id);
+    aucun(fautives, 'classes sans signature');
+  });
+
+  test('vingt-sept sous-classes, de quatre à six par classe', () => {
+    egal(Object.keys(SOUS_CLASSES).length, 27, 'sous-classes');
+    const horsBornes = Object.entries(CLASSES_BASE)
+      .filter(([, c]) => c.sousClasses.length < 4 || c.sousClasses.length > 6)
+      .map(([id, c]) => `${id} (${c.sousClasses.length})`);
+    aucun(horsBornes, 'classes hors de la fourchette 4-6');
+  });
+
+  test('chaque sous-classe est rattachée à une classe existante', () => {
+    const fautives = Object.entries(SOUS_CLASSES)
+      .filter(([, sc]) => !CLASSES_BASE[sc.classe])
+      .map(([id]) => id);
+    aucun(fautives, 'sous-classes orphelines');
+  });
+
+  test('chaque sous-classe a huit compétences et une signature', () => {
+    const fautives = [];
+    Object.entries(SOUS_CLASSES).forEach(([id, sc]) => {
+      if (sc.competences.length !== 8) fautives.push(`${id} (${sc.competences.length})`);
+      if (!sc.signature) fautives.push(`${id} (sans signature)`);
+    });
+    aucun(fautives, 'sous-classes incomplètes');
+  });
+
+  test('chaque sous-classe annonce un passif et un bonus de caractéristiques', () => {
+    const fautives = Object.entries(SOUS_CLASSES)
+      .filter(([, sc]) => !sc.passif || !sc.resume || !sc.bonusStats || !Object.keys(sc.bonusStats).length)
+      .map(([id]) => id);
+    aucun(fautives, 'sous-classes sans identité');
+  });
+
+  test('les bonus de sous-classe ne portent que des attributs connus', () => {
+    const fautifs = [];
+    Object.entries(SOUS_CLASSES).forEach(([id, sc]) => {
+      Object.keys(sc.bonusStats).forEach((cle) => {
+        if (!CARACS[cle]) fautifs.push(`${id} → ${cle}`);
+      });
+    });
+    aucun(fautifs, 'bonus sur des attributs inconnus');
+  });
+
+  test('les sous-classes d\'une même classe sont équilibrées entre elles', () => {
+    // Un écart de dotation entre deux spécialités d'un même rôle serait un
+    // choix forcé déguisé en choix libre.
+    const ecarts = [];
+    Object.entries(CLASSES_BASE).forEach(([id, c]) => {
+      const totaux = c.sousClasses.map((cle) => Object.values(SOUS_CLASSES[cle].bonusStats)
+        .reduce((somme, v) => somme + v, 0));
+      const min = Math.min(...totaux);
+      const max = Math.max(...totaux);
+      if (max - min > 1) ecarts.push(`${id} (de ${min} à ${max})`);
+    });
+    aucun(ecarts, 'dotations de sous-classe déséquilibrées');
+  });
+
+  test('aucune compétence de classe n\'est orpheline', () => {
+    const classes = new Set(Object.keys(CLASSES_BASE));
+    const sousClasses = new Set(Object.keys(SOUS_CLASSES));
+    const orphelines = Object.entries(COMPETENCES)
+      .filter(([, c]) => !c.heritee)
+      .filter(([, c]) => (c.classe && !classes.has(c.classe)) || (c.sousClasse && !sousClasses.has(c.sousClasse)))
+      .map(([id, c]) => `${id} (${c.classe || c.sousClasse})`);
+    aucun(orphelines, 'compétences rattachées à un néant');
+    // Les compétences héritées de l'Aventurier restent utilisables.
+    const heritees = Object.values(COMPETENCES).filter((c) => c.heritee);
+    verifier(heritees.length === 8, `${heritees.length} compétences héritées au lieu de 8`);
+  });
+
+  test('chaque compétence suit l\'attribut de sa famille', () => {
+    // Un Moine ne doit pas avoir à monter la Dextérité dans une classe de Force.
+    const recalables = ['for', 'dex', 'int', 'esp'];
+    const fautives = [];
+    Object.entries(COMPETENCES).forEach(([id, c]) => {
+      if (!recalables.includes(c.stat)) return;
+      const famille = c.classe ? CLASSES_BASE[c.classe]
+        : (c.sousClasse ? CLASSES_BASE[SOUS_CLASSES[c.sousClasse].classe] : null);
+      if (famille && c.stat !== famille.stat) fautives.push(`${id} : ${c.stat} au lieu de ${famille.stat}`);
+    });
+    aucun(fautives, 'compétences sur le mauvais attribut');
+  });
+
+  test('les vingt et une classes historiques sont toutes prises en charge', () => {
+    const historiques = ['guerrier', 'mage', 'archer', 'clerc', 'paladin', 'necromancien', 'moine',
+      'barde', 'rodeur', 'assassin', 'berserker', 'templier', 'elementaliste', 'druide', 'invocateur',
+      'pyromancien', 'givremage', 'chaman', 'voleur', 'danselame', 'aventurier'];
+    const oubliees = historiques.filter((id) => !MIGRATION_CLASSES[id]);
+    aucun(oubliees, 'classes historiques sans destination');
+    egal(historiques.length, 21, 'nombre de classes historiques');
+  });
+
+  test('les seize classes devenues sous-classes gardent leurs compétences', () => {
+    const fautives = [];
+    Object.entries(MIGRATION_CLASSES).forEach(([ancienne, cible]) => {
+      if (!cible.sousClasse) return;
+      const sc = SOUS_CLASSES[cible.sousClasse];
+      if (!sc) { fautives.push(`${ancienne} → sous-classe inconnue`); return; }
+      if (sc.competences.length !== 8) fautives.push(`${ancienne} (${sc.competences.length} compétences)`);
+    });
+    aucun(fautives, 'classes historiques appauvries');
+  });
+
+  test('un Pyromancien sauvegardé devient Arcaniste — Pyromancien sans rien perdre', () => {
+    const avant = {
+      version: 2, type: 'joueur', id: 'test-pyro', nom: 'Braise', avatar: '🔮',
+      classe: 'pyromancien',
+      stats: { for: 2, int: 24, agi: 5, vit: 9, cha: 4 },
+      niveau: 22, xp: seuilXp(22), pointsEnAttente: 0,
+      competences: ['boule-de-feu', 'eclair', 'pyromancien-etincelle', 'signature-supernova'],
+      po: 8400, inventaire: [{ id: 'potion-soin', qte: 5 }],
+      equipement: { arme: 'baton-tempetes', tete: null, torse: null, jambes: null, acc1: null, acc2: null },
+      explorations: {}, bossVaincus: ['plaines', 'foret'], cloud: null,
+      hp: 100, mp: 40, maxHp: 0, maxMp: 0,
+      statuts: [], cooldowns: {}, defense: false, ko: false,
+    };
+    const p = normaliserPerso(JSON.parse(JSON.stringify(avant)));
+    egal(p.classe, 'arcaniste', 'classe de base');
+    egal(p.sousClasse, 'pyromancien', 'sous-classe');
+    egal(p.po, avant.po, 'or conservé');
+    egal(p.niveau, avant.niveau, 'niveau conservé');
+    egal(p.equipement.arme, 'baton-tempetes', 'équipement conservé');
+    const perdues = avant.competences.filter((id) => !p.grimoire.includes(id));
+    aucun(perdues, 'compétences disparues');
+    // Et il reçoit bien les huit compétences de sa sous-classe.
+    const dues = SOUS_CLASSES.pyromancien.competences.filter((id) => !p.grimoire.includes(id));
+    aucun(dues, 'compétences de sous-classe non attribuées');
+  });
+
+  test('la migration des classes est idempotente', () => {
+    const brut = {
+      version: 2, type: 'joueur', id: 'test-idem', nom: 'Écho', avatar: '⚔️', classe: 'berserker',
+      stats: { for: 20, int: 3, agi: 6, vit: 12, cha: 3 },
+      niveau: 30, xp: seuilXp(30), pointsEnAttente: 0,
+      competences: ['dechainement', 'cri-de-guerre'], po: 500,
+      inventaire: [], equipement: { arme: null, tete: null, torse: null, jambes: null, acc1: null, acc2: null },
+      explorations: {}, bossVaincus: [], cloud: null,
+      hp: 100, mp: 20, maxHp: 0, maxMp: 0, statuts: [], cooldowns: {}, defense: false, ko: false,
+    };
+    const une = normaliserPerso(JSON.parse(JSON.stringify(brut)));
+    egal(une.classe, 'guerrier', 'première migration — classe');
+    egal(une.sousClasse, 'berserker', 'première migration — sous-classe');
+    const deux = normaliserPerso(JSON.parse(JSON.stringify(une)));
+    egal(deux.classe, 'guerrier', 'seconde migration — classe');
+    egal(deux.sousClasse, 'berserker', 'la sous-classe ne doit pas être effacée');
+  });
+
+  test('une classe de base historique garde sa liberté de spécialité', () => {
+    const brut = {
+      version: 2, type: 'joueur', id: 'test-mage', nom: 'Sibylle', avatar: '🔮', classe: 'mage',
+      stats: { for: 2, int: 18, agi: 4, vit: 7, cha: 3 },
+      niveau: 25, xp: seuilXp(25), pointsEnAttente: 0,
+      competences: ['boule-de-feu'], po: 100,
+      inventaire: [], equipement: { arme: null, tete: null, torse: null, jambes: null, acc1: null, acc2: null },
+      explorations: {}, bossVaincus: [], cloud: null,
+      hp: 80, mp: 40, maxHp: 0, maxMp: 0, statuts: [], cooldowns: {}, defense: false, ko: false,
+    };
+    const p = normaliserPerso(brut);
+    egal(p.classe, 'arcaniste', 'classe de base');
+    egal(p.sousClasse, null, 'la spécialité reste à choisir');
+  });
+
+  test('le bonus de sous-classe entre bien dans les statistiques', () => {
+    const sans = herosTest({ niveau: 20, classe: 'guerrier', sousClasse: null });
+    const avec = herosTest({ niveau: 20, classe: 'guerrier', sousClasse: 'berserker' });
+    const bonus = SOUS_CLASSES.berserker.bonusStats.for;
+    egal(statsEffectives(avec).for - statsEffectives(sans).for, bonus, 'bonus de Force du Berserker');
+  });
+
+  test('le nom affiché suit la spécialité', () => {
+    egal(nomCompletClasse({ classe: 'gardien', sousClasse: null }), 'Gardien', 'sans spécialité');
+    egal(nomCompletClasse({ classe: 'gardien', sousClasse: 'templier' }), 'Gardien — Templier', 'avec spécialité');
+  });
+
+  test('les modèles de création couvrent les six classes', () => {
+    const manquants = Object.keys(CLASSES_BASE).filter((id) => !MODELES.some((m) => m.id === id));
+    aucun(manquants, 'classes absentes de la création');
+    const fautifs = MODELES.filter((m) => m.competences.some((cle) => !COMPETENCES[cle])).map((m) => m.nom);
+    aucun(fautifs, 'modèles aux compétences inexistantes');
+  });
+});
+
+// =====================================================================
 // Exécution et rapport
 // =====================================================================
 function lancerTests() {
