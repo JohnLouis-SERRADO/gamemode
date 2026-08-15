@@ -518,10 +518,13 @@ function recolter(z, idMetier) {
   const niveauM = metierDe(p, idMetier).niveau;
   const bonusQte = Math.floor(niveauM / 3) + (specialiste ? 1 : 0); // la spécialité ajoute sa part
 
+  // v19 : l'aube gonfle l'herboristerie et fait affleurer les filons ; la
+  // pluie aide les plantes. Récolter au bon moment devient une décision.
+  const multMonde = multRecolteMonde(metier.famille);
   const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
   const objets = {};
   pool.forEach((entree) => {
-    if (Math.random() < Math.min(0.95, entree.chance * multChance * multSpec)) {
+    if (Math.random() < Math.min(0.95, entree.chance * multChance * multSpec * multMonde)) {
       objets[entree.id] = (objets[entree.id] || 0) + alea(1, 2) + bonusQte;
     }
   });
@@ -692,13 +695,17 @@ function tirerButinCombat(cb) {
     xp += m.xp || 0;
     if (m.po) po += alea(m.po[0], m.po[1]);
     (m.drops || []).forEach((d) => {
-      if (Math.random() < Math.min(1, d.chance * difficulte.drop * evenement.drop * chanceEquipe)) {
+      const chanceMonde = d.chance * difficulte.drop * evenement.drop * chanceEquipe
+        * (monde.effets.butin || 1);
+      if (Math.random() < Math.min(1, chanceMonde)) {
         objets[d.id] = (objets[d.id] || 0) + 1;
       }
     });
   });
+  // v19 : l'heure qu'il est compte. Le jour paie mieux, la nuit donne plus.
+  const monde = mondeMaintenant();
   xp = Math.round(xp * difficulte.xp * evenement.xp);
-  po = Math.round(po * difficulte.po * evenement.po) + (cb.orVole || 0);
+  po = Math.round(po * difficulte.po * evenement.po * (monde.effets.or || 1)) + (cb.orVole || 0);
   if (cb.lootRecolte) {
     Object.entries(cb.lootRecolte).forEach(([id, qte]) => { objets[id] = (objets[id] || 0) + qte; });
   }

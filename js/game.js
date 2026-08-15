@@ -409,6 +409,56 @@ function verifierChoixSpecialite() {
   document.body.appendChild(voile);
 }
 
+// =====================================================================
+// v19 — L'heure et le temps qu'il fait, en haut à droite du header.
+//
+// Deux emojis sur mobile, le détail au toucher : le joueur voit d'un
+// coup d'œil s'il fait nuit (butin +20 %) ou s'il pleut (feu −20 %), et
+// peut décider d'attendre une meilleure fenêtre avant de partir.
+// =====================================================================
+function blocMondeVivant() {
+  const monde = mondeMaintenant();
+  return `<button class="topbar-monde" type="button"
+      title="${monde.phase.nom} · ${monde.meteo.nom} — toucher pour le détail"
+      aria-label="${monde.phase.nom}, ${monde.meteo.nom}. Toucher pour le détail.">
+      <span class="monde-emojis">${monde.phase.emoji}${monde.meteo.emoji}</span>
+      <span class="monde-libelle">${monde.phase.nom} · ${monde.meteo.nom}</span>
+    </button>`;
+}
+
+function ouvrirDetailMonde() {
+  if (document.getElementById('voile-monde')) return;
+  const monde = mondeMaintenant();
+  const minutes = minutesAvantChangementMeteo();
+  const voile = document.createElement('div');
+  voile.id = 'voile-monde';
+  voile.className = 'voile-leger';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-monde';
+  modale.innerHTML = `
+    <h2>${monde.phase.emoji} ${monde.phase.nom} · ${monde.meteo.emoji} ${monde.meteo.nom}</h2>
+    <div class="bloc-monde">
+      <div class="monde-titre">${monde.phase.emoji} ${monde.phase.nom}</div>
+      <p class="objet-desc">${monde.phase.resume}</p>
+      <div class="objet-bonus">${monde.phase.detail}</div>
+    </div>
+    <div class="bloc-monde">
+      <div class="monde-titre">${monde.meteo.emoji} ${monde.meteo.nom}</div>
+      <p class="objet-desc">${monde.meteo.resume}</p>
+      <div class="objet-bonus">${monde.meteo.detail}</div>
+    </div>
+    <p class="aide">Le ciel change dans ${minutes} minute${minutes > 1 ? 's' : ''} — il est le même
+      pour tous les joueurs de Valciel, en ligne comme hors ligne.</p>`;
+  const fermer = document.createElement('button');
+  fermer.className = 'btn-principal btn-compact';
+  fermer.textContent = 'Fermer';
+  fermer.addEventListener('click', () => voile.remove());
+  modale.appendChild(fermer);
+  voile.appendChild(modale);
+  voile.addEventListener('click', (e) => { if (e.target === voile) voile.remove(); });
+  document.body.appendChild(voile);
+}
+
 // v17 : le header d'un vrai jeu vidéo — nom, niveau, puissance, PV, mana.
 function rendreTopbar() {
   const p = persoActif();
@@ -427,7 +477,10 @@ function rendreTopbar() {
         <span class="topbar-vital" title="Mana">💧 ${p.mp}/${p.maxMp}
           <span class="barre pm mini"><span class="remplissage" style="width:${pctMp}%"></span></span></span>
       </div>
-    </div>`;
+    </div>
+    ${blocMondeVivant()}`;
+  const zoneMonde = zone.querySelector('.topbar-monde');
+  if (zoneMonde) zoneMonde.addEventListener('click', ouvrirDetailMonde);
   const badge = el('badge-heros');
   if (badge) badge.classList.toggle('cache', !(p.pointsEnAttente > 0 || p.maitrise > 0));
   const point = el('point-en-ligne');

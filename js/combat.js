@@ -408,6 +408,10 @@ function verifierFin() {
 function infligerDegats(source, cible, brut, options = {}) {
   const cb = etat.combat;
   let d = varie(brut);
+  // v19 : le ciel entre dans l'équation. Sous la pluie le feu prend mal,
+  // sous l'orage la foudre porte. Le physique reste neutre — le temps
+  // qu'il fait ne change rien à un coup d'épée.
+  if (options.element) d *= multElementMonde(options.element);
   if (source.statuts.some((s) => s.type === 'benediction')) d *= 1.3;
   if (source.statuts.some((s) => s.type === 'affaibli')) d *= 0.7;
   // Sang de guerre (orc) : +15 % de dégâts sous 40 % de PV.
@@ -455,6 +459,10 @@ function infligerDegats(source, cible, brut, options = {}) {
       reduit = true;
       d *= 1 - tenacite;
     }
+  }
+  // La nuit, ce qui rôde frappe plus fort — c'est le prix du butin majoré.
+  if (source.type === 'monstre' && cible.type === 'joueur') {
+    d *= (mondeMaintenant().effets.degatsSubis || 1);
   }
   if (cible.defense) d *= 0.5;
   if (cible.race === 'nain') d *= 0.9; // Peau de pierre

@@ -1109,6 +1109,103 @@ suite('Équipement et économie', () => {
 });
 
 // =====================================================================
+// 10. Le monde vivant : heure et météo (v19)
+// =====================================================================
+suite('Monde vivant', () => {
+  test('les trois phases couvrent les vingt-quatre heures', () => {
+    const trous = [];
+    for (let h = 0; h < 24; h++) {
+      const phase = phaseCourante(new Date(2026, 5, 12, h, 30));
+      if (!phase || !PHASES_JOUR.includes(phase)) trous.push(`${h} h`);
+    }
+    aucun(trous, 'heures sans phase');
+    egal(phaseCourante(new Date(2026, 5, 12, 3)).id, 'nuit', '3 h du matin');
+    egal(phaseCourante(new Date(2026, 5, 12, 9)).id, 'aube', '9 h');
+    egal(phaseCourante(new Date(2026, 5, 12, 15)).id, 'jour', '15 h');
+    egal(phaseCourante(new Date(2026, 5, 12, 22)).id, 'nuit', '22 h');
+  });
+
+  test('la météo est déterministe : même instant, même ciel', () => {
+    // C'est ce qui permet à tous les joueurs d'avoir la même météo sans
+    // qu'aucun serveur n'ait à la leur dire — et de jouer hors ligne.
+    const instant = new Date(Date.UTC(2026, 3, 20, 14, 7));
+    const premier = meteoCourante(instant).id;
+    for (let i = 0; i < 50; i++) {
+      if (meteoCourante(new Date(instant.getTime())).id !== premier) {
+        throw new Error('la météo change alors que l\'instant est le même');
+      }
+    }
+  });
+
+  test('la météo change bien toutes les trois heures', () => {
+    const base = Date.UTC(2026, 3, 20, 0, 0);
+    const tranches = [];
+    for (let h = 0; h < 24; h += HEURES_PAR_METEO) {
+      tranches.push(meteoCourante(new Date(base + h * 3600000)).id);
+    }
+    egal(tranches.length, 8, 'tranches de météo dans la journée');
+    // Dans la même tranche, le ciel ne bouge pas.
+    egal(meteoCourante(new Date(base + 30 * 60000)).id,
+      meteoCourante(new Date(base + 100 * 60000)).id, 'stabilité dans la tranche');
+  });
+
+  test('les six météos apparaissent toutes sur deux semaines', () => {
+    const vues = new Set();
+    for (let h = 0; h < 24 * 14; h += HEURES_PAR_METEO) {
+      vues.add(meteoCourante(new Date(Date.UTC(2026, 0, 1) + h * 3600000)).id);
+    }
+    const absentes = Object.keys(METEOS).filter((id) => !vues.has(id));
+    aucun(absentes, 'météos qui n\'arrivent jamais');
+  });
+
+  test('chaque phase et chaque météo annonce ses effets en clair', () => {
+    const fautifs = [];
+    PHASES_JOUR.forEach((p) => {
+      if (!p.emoji || !p.resume || !p.detail) fautifs.push(`phase ${p.id}`);
+    });
+    Object.entries(METEOS).forEach(([id, m]) => {
+      if (!m.emoji || !m.resume || !m.detail || !(m.poids > 0)) fautifs.push(`météo ${id}`);
+    });
+    aucun(fautifs, 'entrées incomplètes');
+  });
+
+  test('les effets du monde restent dans des bornes raisonnables', () => {
+    // Un monde vivant ne doit pas devenir un monde capricieux : aucun
+    // effet ne doit doubler ni annuler quoi que ce soit.
+    const exces = [];
+    for (let h = 0; h < 24 * 7; h++) {
+      const monde = mondeMaintenant(new Date(Date.UTC(2026, 0, 1) + h * 3600000));
+      Object.entries(monde.effets).forEach(([cle, v]) => {
+        if (typeof v !== 'number') return;
+        // Deux effets ne sont pas des multiplicateurs : ils se lisent
+        // autrement, et n'ont donc pas à tenir dans la même fourchette.
+        if (cle === 'manaParTour') { if (v < -0.1) exces.push(`${cle} = ${v}`); return; }
+        if (cle === 'gelPeriodique') { if (v < 2) exces.push(`${cle} = ${v}`); return; }
+        if (v < 0.7 || v > 1.6) exces.push(`${cle} = ${v.toFixed(2)}`);
+      });
+    }
+    aucun([...new Set(exces)], 'effets hors bornes');
+  });
+
+  test('le physique ignore le temps qu\'il fait', () => {
+    const ciels = [];
+    for (let h = 0; h < 24 * 3; h += HEURES_PAR_METEO) {
+      ciels.push(multElementMonde(null, mondeMaintenant(new Date(Date.UTC(2026, 0, 1) + h * 3600000))));
+    }
+    aucun(ciels.filter((m) => m !== 1).map(String), 'le physique subit la météo');
+  });
+
+  test('le prochain changement de ciel est toujours annonçable', () => {
+    const fautifs = [];
+    for (let h = 0; h < 24; h++) {
+      const minutes = minutesAvantChangementMeteo(new Date(Date.UTC(2026, 0, 1, h, 17)));
+      if (!(minutes >= 1 && minutes <= HEURES_PAR_METEO * 60)) fautifs.push(`${h} h → ${minutes} min`);
+    }
+    aucun(fautifs, 'délais aberrants');
+  });
+});
+
+// =====================================================================
 // Exécution et rapport
 // =====================================================================
 function lancerTests() {
