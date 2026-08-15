@@ -61,7 +61,7 @@ function creerJoueurDistant(m) {
     id: 'distant-' + m.id, bid: m.id,
     nom: m.nom, avatar: m.avatar, race: m.race || 'humain', niveau: m.niveau,
     classe: m.classe || 'aventurier',
-    stats: { for: m.statsEff.for, int: m.statsEff.int, agi: m.statsEff.agi, vit: m.statsEff.vit, cha: m.statsEff.cha || 0 },
+    stats: { for: m.statsEff.for, int: m.statsEff.int, dex: m.statsEff.dex, vit: m.statsEff.vit, cha: m.statsEff.cha || 0 },
     statsEff: m.statsEff,
     maxHp: m.maxHp, maxMp: m.maxMp, hp: m.hp, mp: m.mp,
     competences: m.competences || [],
@@ -589,7 +589,7 @@ async function lancerEtageAscensionGroupe(idDonjon, etage, equipePrecedente) {
   // AVANT le combat : le plus doué s'y colle, le sort de tous en dépend.
   if (etage % 5 !== 0 && etage % 3 === 0) {
     const cb = etat.combat;
-    const statsPossibles = ['for', 'int', 'agi', 'vit', 'cha'];
+    const statsPossibles = ['for', 'int', 'dex', 'vit', 'cha'];
     const stat = statsPossibles[Math.floor(etage / 3) % statsPossibles.length];
     const difficulteJet = 12 + Math.round(donjon.niveauMin * 0.6) + etage;
     let champion = equipe[0];

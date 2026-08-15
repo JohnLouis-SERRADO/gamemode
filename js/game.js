@@ -224,13 +224,14 @@ function boutonConfirmation(libelle, libelleConfirme, action) {
 // =====================================================================
 const ECRANS_AVEC_TOPBAR = ['ecran-carte', 'ecran-equipe', 'ecran-zone', 'ecran-ville',
   'ecran-boutique', 'ecran-antiquaire', 'ecran-arcanium', 'ecran-guilde', 'ecran-atelier',
-  'ecran-fournisseur', 'ecran-heros', 'ecran-sac', 'ecran-taverne', 'ecran-groupe-ligne', 'ecran-donjon'];
+  'ecran-fournisseur', 'ecran-tour-eveil', 'ecran-heros', 'ecran-sac', 'ecran-taverne', 'ecran-groupe-ligne', 'ecran-donjon'];
 
 // Quel bouton de la barre du bas s'allume pour chaque écran.
 const NAV_POUR_ECRAN = {
   'ecran-carte': 'carte', 'ecran-equipe': 'carte', 'ecran-zone': 'carte', 'ecran-donjon': 'carte',
   'ecran-ville': 'ville', 'ecran-boutique': 'ville', 'ecran-antiquaire': 'ville', 'ecran-arcanium': 'ville',
   'ecran-guilde': 'ville', 'ecran-atelier': 'ville', 'ecran-fournisseur': 'ville',
+  'ecran-tour-eveil': 'ville',
   'ecran-heros': 'heros', 'ecran-sac': 'sac', 'ecran-taverne': 'taverne', 'ecran-groupe-ligne': 'taverne',
 };
 
@@ -252,8 +253,220 @@ function montrerEcran(id) {
   // v12.2 : au niveau 5, le choix de la sous-classe de récolteur s'impose.
   if (['ecran-carte', 'ecran-zone', 'ecran-ville', 'ecran-heros'].includes(id)) {
     verifierChoixSpecialite();
+    verifierChoixSousClasse();
+    verifierChoixVoie();
+    verifierEveil();
   }
   window.scrollTo(0, 0);
+}
+
+// =====================================================================
+// Une seule fenêtre bloquante à la fois.
+//
+// Le jeu en compte deux qui s'imposent au joueur : le choix de métier au
+// niveau 5, et le choix de spécialité au niveau 10. Un héros qui atteint
+// le niveau 10 sans avoir choisi son métier déclenchait les deux en même
+// temps — et celle du dessous interceptait les clics de celle du dessus.
+// On les fait donc passer l'une après l'autre, dans l'ordre des niveaux.
+// =====================================================================
+function modaleBloquanteOuverte() {
+  return !!document.querySelector('#voile-specialite, #voile-sous-classe, #voile-voie, #voile-eveil');
+}
+
+// =====================================================================
+// v19 — L'ÉVEIL, au niveau 80.
+//
+// Cinq propositions tirées parmi les Éveils de sa sous-classe, une seule
+// gardée. La rareté change la contrainte et la complexité, jamais la
+// puissance : c'est écrit dans les données, et le harnais le vérifie.
+// =====================================================================
+function verifierEveil() {
+  const p = persoActif();
+  if (!p || p.niveau < NIVEAU_EVEIL || (p.eveil && p.eveil.id) || !p.sousClasse) return;
+  if (modaleBloquanteOuverte()) return;
+  if (typeof combatEnCours === 'function' && combatEnCours()) return;
+
+  const propositions = tirerEveils(p);
+  if (!propositions.length) return;
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-eveil';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-specialite';
+  modale.innerHTML = `
+    <h2>✨ Niveau ${NIVEAU_EVEIL} : l’Éveil de ${echapper(p.nom)}</h2>
+    <p>Vous ne changez pas de style : vous changez de <strong>nature</strong>. Cinq natures
+      se présentent, vous en garderez une. La rareté ne rend pas plus puissant —
+      elle rend plus <strong>exigeant</strong>.</p>
+    <div id="eveil-choix"></div>
+    <p class="aide">Le choix se relance plus tard à la Tour de l’Éveil, contre des Sceaux.</p>`;
+
+  const zone = modale.querySelector('#eveil-choix');
+  propositions.forEach((eveil) => {
+    const rarete = RARETES_EVEIL[eveil.rarete];
+    const carte = document.createElement('div');
+    carte.className = `panneau carte-specialite bord-rar-${eveil.rarete === 'cache' ? 'divin' : eveil.rarete}`;
+    carte.innerHTML = `
+      <div class="objet-entete">${eveil.emoji} <strong>${eveil.nom}</strong>
+        <span class="rarete rar-${eveil.rarete === 'cache' ? 'divin' : eveil.rarete}">${rarete.nom}</span></div>
+      <div class="objet-desc">${eveil.effet}</div>
+      <div class="objet-bonus">${eveil.competences.map((c) => `${COMPETENCES[c].emoji} ${COMPETENCES[c].nom}`).join(' · ')}</div>
+      ${eveil.contrainte ? `<div class="objet-niveau niveau-insuffisant">⚠️ ${eveil.contrainte}</div>` : '<div class="objet-desc">Aucune contrainte.</div>'}`;
+    const choisir = document.createElement('button');
+    choisir.className = 'btn-principal btn-compact';
+    choisir.textContent = `${eveil.emoji} Devenir ${eveil.nom}`;
+    choisir.addEventListener('click', () => {
+      p.eveil = { id: eveil.id, rarete: eveil.rarete, relances: (p.eveil && p.eveil.relances) || 0 };
+      eveil.competences.forEach((c) => apprendreCompetence(p, c, true));
+      bornerVie(p);
+      sauvegarder(p);
+      voile.remove();
+      annoncerDeblocage({
+        emoji: eveil.emoji,
+        titre: eveil.nom,
+        texte: `${eveil.effet}${eveil.contrainte ? ` — en échange : ${eveil.contrainte}` : ''}`,
+      });
+      if (el('ecran-heros').classList.contains('actif')) rendreHeros();
+      rendreTopbar();
+    });
+    carte.appendChild(choisir);
+    zone.appendChild(carte);
+  });
+
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
+// =====================================================================
+// v19 — LE CHOIX DE VOIE, au niveau 50.
+//
+// La Voie ne change pas la classe : elle pousse la spécialité dans une
+// direction, donne un passif fort, une compétence, et le titre qui
+// s'affiche ensuite partout — « Templier du Bastion ».
+// =====================================================================
+function verifierChoixVoie() {
+  const p = persoActif();
+  if (!p || p.niveau < NIVEAU_VOIE || p.voie || !p.sousClasse) return;
+  if (modaleBloquanteOuverte()) return;
+  if (typeof combatEnCours === 'function' && combatEnCours()) return;
+  const sousClasse = sousClasseDe(p);
+  if (!sousClasse || !(sousClasse.voies || []).length) return;
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-voie';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-specialite';
+  modale.innerHTML = `
+    <h2>${sousClasse.emoji} Niveau ${NIVEAU_VOIE} : choisissez votre Voie de ${sousClasse.nom}</h2>
+    <p>${echapper(p.nom)} a poussé sa spécialité aussi loin qu'elle allait. La Voie décide
+      de ce qu'elle devient : un <strong>passif majeur</strong>, une <strong>compétence
+      propre</strong>, et un <strong>titre</strong> qui vous suivra partout.</p>
+    <div id="voie-choix"></div>
+    <p class="aide">Le choix se change plus tard, contre une contrepartie.</p>`;
+
+  const zone = modale.querySelector('#voie-choix');
+  sousClasse.voies.forEach((idVoie) => {
+    const voie = VOIES[idVoie];
+    const comp = COMPETENCES[voie.competence];
+    const carte = document.createElement('div');
+    carte.className = 'panneau carte-specialite';
+    carte.innerHTML = `
+      <div class="objet-entete">${voie.emoji} <strong>${voie.nom}</strong></div>
+      <div class="objet-desc">${voie.passif}</div>
+      <div class="objet-bonus">${comp.emoji} ${comp.nom} — nouvelle compétence</div>
+      <div class="objet-desc">Titre porté : <strong>${voie.titre}</strong></div>`;
+    const choisir = document.createElement('button');
+    choisir.className = 'btn-principal btn-compact';
+    choisir.textContent = `${voie.emoji} Suivre la ${voie.nom}`;
+    choisir.addEventListener('click', () => {
+      p.voie = idVoie;
+      apprendreCompetence(p, voie.competence, true);
+      bornerVie(p);
+      sauvegarder(p);
+      voile.remove();
+      annoncerDeblocage({
+        emoji: voie.emoji,
+        titre: voie.titre,
+        texte: `${voie.passif} ${comp.nom} rejoint votre grimoire.`,
+      });
+      if (el('ecran-heros').classList.contains('actif')) rendreHeros();
+      rendreTopbar();
+    });
+    carte.appendChild(choisir);
+    zone.appendChild(carte);
+  });
+
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
+// =====================================================================
+// v19 — LE CHOIX DE SPÉCIALITÉ, au niveau 10.
+//
+// Les dix premiers niveaux servent à comprendre son rôle ; le dixième
+// demande de choisir sa voie à l'intérieur de ce rôle. Le choix n'est pas
+// perdu d'avance : il apporte un bonus de caractéristiques permanent et
+// huit compétences propres, et il reste changeable plus tard.
+// =====================================================================
+function verifierChoixSousClasse() {
+  const p = persoActif();
+  if (!p || p.niveau < NIVEAU_SOUS_CLASSE || p.sousClasse) return;
+  if (modaleBloquanteOuverte()) return;
+  const base = classeBaseDe(p);
+  if (!base || !base.sousClasses.length) return;
+  if (document.getElementById('voile-sous-classe')) return;
+  // Jamais par-dessus un combat : on attend le retour au calme.
+  if (typeof combatEnCours === 'function' && combatEnCours()) return;
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-sous-classe';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-specialite';
+  modale.innerHTML = `
+    <h2>${base.emoji} Niveau ${NIVEAU_SOUS_CLASSE} : choisissez votre spécialité de ${base.nom}</h2>
+    <p>${echapper(p.nom)} maîtrise les bases. Il est temps de choisir la voie qui fera
+      sa réputation : chacune apporte un <strong>bonus de caractéristiques permanent</strong>,
+      un <strong>passif propre</strong> et <strong>huit compétences exclusives</strong>.</p>
+    <div id="sous-classe-choix"></div>
+    <p class="aide">Vous garderez tout ce que vous avez déjà appris. Le choix se change plus tard,
+      contre une contrepartie.</p>`;
+
+  const zone = modale.querySelector('#sous-classe-choix');
+  base.sousClasses.forEach((id) => {
+    const sc = SOUS_CLASSES[id];
+    const bonus = Object.entries(sc.bonusStats || {})
+      .map(([cle, v]) => `${v > 0 ? '+' : ''}${v} ${CARACS[cle].emoji} ${CARACS[cle].nom}`)
+      .join(' · ');
+    const carte = document.createElement('div');
+    carte.className = 'panneau carte-specialite';
+    carte.innerHTML = `
+      <div class="objet-entete">${sc.emoji} <strong>${sc.nom}</strong></div>
+      <div class="objet-desc">${sc.resume}</div>
+      <div class="objet-bonus">${bonus}</div>
+      <div class="objet-desc"><strong>Passif :</strong> ${sc.passif}</div>`;
+    const choisir = document.createElement('button');
+    choisir.className = 'btn-principal btn-compact';
+    choisir.textContent = `${sc.emoji} Devenir ${sc.nom}`;
+    choisir.addEventListener('click', () => {
+      p.sousClasse = id;
+      debloquerCompetencesClasse(p, true);
+      bornerVie(p);
+      sauvegarder(p);
+      voile.remove();
+      annoncerDeblocage({
+        emoji: sc.emoji,
+        titre: `${base.nom} — ${sc.nom}`,
+        texte: `${sc.passif} Ses huit compétences rejoignent votre grimoire.`,
+      });
+      if (el('ecran-heros').classList.contains('actif')) rendreHeros();
+      rendreTopbar();
+    });
+    carte.appendChild(choisir);
+    zone.appendChild(carte);
+  });
+
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
 }
 
 // =====================================================================
@@ -265,11 +478,13 @@ function montrerEcran(id) {
 function verifierChoixSpecialite() {
   const p = persoActif();
   if (!p || p.admin || p.metierPrincipal || p.niveau < NIVEAU_SPECIALITE) return;
-  if (document.getElementById('voile-specialite')) return;
+  // Jamais par-dessus un combat : la fenêtre s'ouvrait au milieu d'un tour.
+  if (typeof combatEnCours === 'function' && combatEnCours()) return;
+  if (modaleBloquanteOuverte()) return;
 
   const PRESENTATIONS = {
     mineur: 'Pierres, minerais et cristaux — et la fameuse <strong>pierre magique</strong>. C\'est lui qui nourrit la <strong>Forge</strong> : lames, heaumes, cuirasses et jambières. Sans mineur, pas d\'acier — et les guerriers combattent en chemise.',
-    tanneur: 'Cuirs, os et dépouilles de bêtes — jusqu\'au précieux <strong>cuir primal</strong>. C\'est lui qui nourrit la <strong>Tannerie</strong> : gants et bottes, blocage et esquive. Sans tanneur, les aventuriers marchent pieds nus.',
+    tanneur: 'Cuirs, os et dépouilles de bêtes — jusqu\'au précieux <strong>cuir primal</strong>. C\'est lui qui nourrit la <strong>Tannerie</strong> : gants et bottes, Ténacité et Célérité. Sans tanneur, les aventuriers marchent pieds nus.',
     tisseur: 'Plantes, fibres et étoffes — dont le <strong>tissu magique</strong>. C\'est lui qui nourrit le <strong>Tisserand</strong> (talismans et grimoires des mages) et l\'<strong>Alchimiste</strong> (potions, bombes, philtres). Sans tisseur, personne ne boit ni ne lance rien.',
   };
 
@@ -290,7 +505,7 @@ function verifierChoixSpecialite() {
     </div>
     <div id="specialite-choix"></div>
     <p class="aide">Le choix est obligatoire pour continuer l'aventure — mais pas définitif :
-      changer coûtera ${COUT_CHANGEMENT_SPECIALITE} po depuis votre fiche de héros.</p>`;
+      changer coûtera ${formatNombre(COUT_CHANGEMENT_SPECIALITE)} po depuis votre fiche de héros.</p>`;
 
   const zoneChoix = modale.querySelector('#specialite-choix');
   Object.entries(METIERS).forEach(([idMetier, metier]) => {
@@ -308,6 +523,7 @@ function verifierChoixSpecialite() {
       voile.remove();
       afficherToast(`${metier.emoji} ⭐ ${p.nom} est désormais ${metier.nom} : ses récoltes de spécialité seront bien plus riches !`);
       if (el('ecran-heros').classList.contains('actif')) rendreHeros();
+      verifierChoixSousClasse();   // au tour de la spécialité de classe
     });
     carte.appendChild(choisir);
     zoneChoix.appendChild(carte);
@@ -320,6 +536,56 @@ function verifierChoixSpecialite() {
   });
 
   voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
+// =====================================================================
+// v19 — L'heure et le temps qu'il fait, en haut à droite du header.
+//
+// Deux emojis sur mobile, le détail au toucher : le joueur voit d'un
+// coup d'œil s'il fait nuit (butin +20 %) ou s'il pleut (feu −20 %), et
+// peut décider d'attendre une meilleure fenêtre avant de partir.
+// =====================================================================
+function blocMondeVivant() {
+  const monde = mondeMaintenant();
+  return `<button class="topbar-monde" type="button"
+      title="${monde.phase.nom} · ${monde.meteo.nom} — toucher pour le détail"
+      aria-label="${monde.phase.nom}, ${monde.meteo.nom}. Toucher pour le détail.">
+      <span class="monde-emojis">${monde.phase.emoji}${monde.meteo.emoji}</span>
+      <span class="monde-libelle">${monde.phase.nom} · ${monde.meteo.nom}</span>
+    </button>`;
+}
+
+function ouvrirDetailMonde() {
+  if (document.getElementById('voile-monde')) return;
+  const monde = mondeMaintenant();
+  const minutes = minutesAvantChangementMeteo();
+  const voile = document.createElement('div');
+  voile.id = 'voile-monde';
+  voile.className = 'voile-leger';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-monde';
+  modale.innerHTML = `
+    <h2>${monde.phase.emoji} ${monde.phase.nom} · ${monde.meteo.emoji} ${monde.meteo.nom}</h2>
+    <div class="bloc-monde">
+      <div class="monde-titre">${monde.phase.emoji} ${monde.phase.nom}</div>
+      <p class="objet-desc">${monde.phase.resume}</p>
+      <div class="objet-bonus">${monde.phase.detail}</div>
+    </div>
+    <div class="bloc-monde">
+      <div class="monde-titre">${monde.meteo.emoji} ${monde.meteo.nom}</div>
+      <p class="objet-desc">${monde.meteo.resume}</p>
+      <div class="objet-bonus">${monde.meteo.detail}</div>
+    </div>
+    <p class="aide">Le ciel change dans ${minutes} minute${minutes > 1 ? 's' : ''} — il est le même
+      pour tous les joueurs de Valciel, en ligne comme hors ligne.</p>`;
+  const fermer = document.createElement('button');
+  fermer.className = 'btn-principal btn-compact';
+  fermer.textContent = 'Fermer';
+  fermer.addEventListener('click', () => voile.remove());
+  modale.appendChild(fermer);
+  voile.appendChild(modale);
+  voile.addEventListener('click', (e) => { if (e.target === voile) voile.remove(); });
   document.body.appendChild(voile);
 }
 
@@ -341,7 +607,10 @@ function rendreTopbar() {
         <span class="topbar-vital" title="Mana">💧 ${p.mp}/${p.maxMp}
           <span class="barre pm mini"><span class="remplissage" style="width:${pctMp}%"></span></span></span>
       </div>
-    </div>`;
+    </div>
+    ${blocMondeVivant()}`;
+  const zoneMonde = zone.querySelector('.topbar-monde');
+  if (zoneMonde) zoneMonde.addEventListener('click', ouvrirDetailMonde);
   const badge = el('badge-heros');
   if (badge) badge.classList.toggle('cache', !(p.pointsEnAttente > 0 || p.maitrise > 0));
   const point = el('point-en-ligne');
@@ -379,10 +648,68 @@ function chargerProfils() {
   }
 }
 
+// =====================================================================
+// v19 — Migration des caractéristiques vers le modèle Final Fantasy XIV.
+//
+// Deux changements, et une règle qui prime sur les deux : personne ne perd
+// quoi que ce soit.
+//
+//  • l'Agilité devient la DEXTÉRITÉ — un simple renommage, la valeur suit ;
+//  • l'ESPRIT fait son entrée, à sa valeur de base, offerte.
+//
+// Le héros garde exactement la répartition qu'il s'était choisie. On
+// recompte ensuite ce que la nouvelle courbe lui doit vraiment, et on lui
+// rend la différence en points à placer — jamais l'inverse : si l'ancien
+// modèle avait été plus généreux, il conserve son avance.
+// =====================================================================
+function migrerCaracteristiques(p) {
+  if (p.stats.agi != null && p.stats.dex == null) p.stats.dex = p.stats.agi;
+  delete p.stats.agi;
+  Object.keys(CARACS).forEach((cle) => {
+    if (p.stats[cle] == null) p.stats[cle] = STAT_BASE;
+  });
+  // Points réellement dus à ce niveau, création et bases comprises.
+  const dus = POINTS_CREATION + Object.keys(CARACS).length * STAT_BASE + pointsCumules(p.niveau || 1);
+  const detenus = Object.keys(CARACS).reduce((somme, cle) => somme + p.stats[cle], 0)
+    + (p.pointsEnAttente || 0);
+  if (detenus < dus) p.pointsEnAttente = (p.pointsEnAttente || 0) + (dus - detenus);
+}
+
+// =====================================================================
+// v19 — Migration des classes vers les six rôles.
+//
+// Les 21 classes historiques se répartissent : quatre restent des classes
+// de base, seize deviennent des sous-classes en gardant leurs huit
+// compétences, et l'Aventurier se voit offrir un choix libre.
+//
+// Le marqueur de version est indispensable : sans lui, un héros déjà migré
+// vers « Guerrier — Berserker » repasserait par la table à chaque
+// chargement et y perdrait sa sous-classe.
+// =====================================================================
+const VERSION_CLASSES = 19;
+
+function migrerClasses(p) {
+  if (p.sousClasse === undefined) p.sousClasse = null;
+  if (p.versionClasses >= VERSION_CLASSES) return;
+  const cible = MIGRATION_CLASSES[p.classe];
+  if (cible) {
+    if (cible.choixOffert) {
+      // L'Aventurier n'entre dans aucun rôle : on lui propose de choisir,
+      // sans rien lui retirer en attendant.
+      p.choixClasseOffert = true;
+    } else {
+      p.classe = cible.classe;
+      p.sousClasse = cible.sousClasse;
+    }
+  }
+  p.versionClasses = VERSION_CLASSES;
+}
+
 // Complète les sauvegardes venues d'anciennes versions du jeu.
 function normaliserPerso(p) {
   if (!p.race) p.race = 'humain';
-  if (p.stats.cha == null) p.stats.cha = 2;
+  if (!p.stats) p.stats = {};
+  migrerCaracteristiques(p);
   if (!p.compteurs) p.compteurs = {};
   ['monstres', 'orTotal', 'crafts', 'quetes', 'legendaires', 'divins'].forEach((cle) => {
     if (p.compteurs[cle] == null) p.compteurs[cle] = 0;
@@ -408,7 +735,11 @@ function normaliserPerso(p) {
   if (p.equipement.mains === undefined) p.equipement.mains = null;
   if (p.equipement.pieds === undefined) p.equipement.pieds = null;
   // v8 : classe, compétences de classe exclusives et points de maîtrise.
-  if (!p.classe || !CLASSES[p.classe]) p.classe = infererClasse(p);
+  if (!p.classe || !(CLASSES[p.classe] || MIGRATION_CLASSES[p.classe])) p.classe = infererClasse(p);
+  migrerClasses(p);
+  if (p.sousClasse && !SOUS_CLASSES[p.sousClasse]) p.sousClasse = null;
+  if (p.voie && !VOIES[p.voie]) p.voie = null;
+  if (p.eveil && !EVEILS[p.eveil.id]) p.eveil = null;
   if (!p.rangs || typeof p.rangs !== 'object') p.rangs = {};
   debloquerCompetencesClasse(p, false);
   if (p.maitrise == null) {
@@ -492,7 +823,7 @@ function appliquerMortHeros(m) {
   const apres = Math.max(1, m.niveau - 1);
   const niveauxPerdus = m.niveau - apres;
   if (niveauxPerdus > 0) {
-    let aRetirer = POINTS_PAR_NIVEAU * niveauxPerdus;
+    let aRetirer = pointsCumules(m.niveau) - pointsCumules(apres);
     const surAttente = Math.min(m.pointsEnAttente || 0, aRetirer);
     m.pointsEnAttente -= surAttente;
     aRetirer -= surAttente;
@@ -653,6 +984,10 @@ function donneesCloud(p) {
     compteurs: p.compteurs, familiers: p.familiers, familier: p.familier,
     hautsFaits: p.hautsFaits, titre: p.titre, tourMax: p.tourMax, quetes: p.quetes,
     donjons: p.donjons, classe: p.classe, maitrise: p.maitrise, rangs: p.rangs,
+    // v19 : la spécialité voyage avec le héros — code de sauvegarde, taverne,
+    // fiches publiques et expéditions doivent tous la connaître.
+    sousClasse: p.sousClasse, voie: p.voie, eveil: p.eveil, sceaux: p.sceaux,
+    versionClasses: p.versionClasses,
     tourBoss: p.tourBoss, metiers: p.metiers, metierPrincipal: p.metierPrincipal,
     ascensions: p.ascensions, histoiresVues: p.histoiresVues,
   };
@@ -751,7 +1086,11 @@ function apprendreCompetence(p, id, prioritaire) {
 // puis une aux niveaux 5, 10 et 15 — 4 par classe au total).
 function debloquerCompetencesClasse(p, annoncer) {
   Object.entries(COMPETENCES).forEach(([id, comp]) => {
-    if (comp.classe !== p.classe || p.grimoire.includes(id)) return;
+    const deMaClasse = comp.classe && comp.classe === p.classe;
+    const deMaSousClasse = comp.sousClasse && comp.sousClasse === p.sousClasse;
+    const deMaVoie = comp.voie && comp.voie === p.voie;
+    const deMonEveil = comp.eveil && p.eveil && comp.eveil === p.eveil.id;
+    if ((!deMaClasse && !deMaSousClasse && !deMaVoie && !deMonEveil) || p.grimoire.includes(id)) return;
     if ((comp.niveauRequis || 1) > p.niveau) return;
     // Les compétences du niveau 1 (signature et bases) s'imposent dans la
     // barre ; celles des paliers suivants respectent l'agencement choisi
@@ -782,7 +1121,7 @@ function gagnerXp(p, xp) {
   p.xp += xp;
   const apres = niveauPour(p.xp);
   if (apres > avant) {
-    p.pointsEnAttente += POINTS_PAR_NIVEAU * (apres - avant);
+    p.pointsEnAttente += pointsCumules(apres) - pointsCumules(avant);
     // Points de maîtrise de la signature (niveaux 3, 6, 9, 12, 15, 18)
     p.maitrise = (p.maitrise || 0) + pointsMaitrisePourNiveau(apres) - pointsMaitrisePourNiveau(avant);
     p.niveau = apres;
@@ -816,7 +1155,7 @@ function rendreTitre() {
     carte.innerHTML = `
       <div class="recap-entete"><span class="avatar-grand">${p.avatar}</span>
         <div><strong>${echapper(p.nom)}</strong><br>
-        <span class="niveau">Niveau ${p.niveau} · 💰 ${p.po} po${p.cloud ? ' · ☁️ relié au monde' : ''}</span></div>
+        <span class="niveau">Niveau ${p.niveau} · 💰 ${formatNombre(p.po)} po${p.cloud ? ' · ☁️ relié au monde' : ''}</span></div>
       </div>`;
     const boutons = document.createElement('div');
     boutons.className = 'rangee-boutons';
@@ -1195,7 +1534,7 @@ function adminFixerNiveau(p, n) {
   p.xp = seuilXp(n);
   p.niveau = n;
   if (n > avant) {
-    p.pointsEnAttente += POINTS_PAR_NIVEAU * (n - avant);
+    p.pointsEnAttente += pointsCumules(n) - pointsCumules(avant);
     p.maitrise = (p.maitrise || 0) + pointsMaitrisePourNiveau(n) - pointsMaitrisePourNiveau(avant);
     debloquerCompetencesClasse(p, false);
   }
@@ -1314,7 +1653,7 @@ function rendreConsoleAdmin(zone, p) {
     }],
     ['↺ Caracs au minimum', () => {
       Object.keys(CARACS).forEach((cle) => { p.stats[cle] = STAT_BASE; });
-      p.pointsEnAttente = POINTS_CREATION + POINTS_PAR_NIVEAU * (p.niveau - 1);
+      p.pointsEnAttente = POINTS_CREATION + pointsCumules(p.niveau);
     }, true],
   ]);
   ligneValeur(blocNiveau, 'admin-niveau', '📈 Fixer le niveau', `Niveau exact (1-${NIVEAU_MAX})`,
@@ -1534,7 +1873,7 @@ function rendreHeros() {
   entete.innerHTML = `
     <span class="avatar-titan">${p.avatar}${familier ? `<span class="familier-avatar" title="${familier.nom}">${familier.emoji}</span>` : ''}</span>
     <div class="heros-identite">
-      <h2>${echapper(p.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''} <span class="niveau">${classe.emoji} ${classe.nom} · niveau ${p.niveau}</span>
+      <h2>${echapper(p.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''} <span class="niveau">${emojiClasse(p)} ${titreCompletHeros(p)} · niveau ${p.niveau}</span>
         <button id="btn-renommer" class="btn-choix btn-compact btn-renommer" title="Changer le nom de ce héros">✏️ Renommer</button></h2>
       <div id="zone-renommage" class="cache ligne-renommage">
         <input id="champ-renommage" maxlength="16" placeholder="Nouveau nom">
@@ -1545,7 +1884,7 @@ function rendreHeros() {
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
       <div class="heros-puissance">⚡ Puissance : <strong>${puissanceDe(p).toLocaleString('fr-FR')}</strong>
         <span class="aide-inline">(caractéristiques + équipement + niveau)</span></div>
-      <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${p.po} po · 💥 ${Math.round(5 + s.agi + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin${s.blocage ? ` · 🛡️ ${Math.min(40, s.blocage)} % blocage` : ''}${s.esquive ? ` · 💨 ${Math.min(35, s.esquive)} % esquive` : ''}</div>
+      <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${formatNombre(p.po)} po · 💥 ${Math.round(5 + s.dex + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin${s.tenacite ? ` · 🛡️ ${Math.min(40, s.tenacite)} % tenacite` : ''}${s.celerite ? ` · 💨 ${Math.min(35, s.celerite)} % celerite` : ''}</div>
     </div>`;
   zone.appendChild(entete);
 
@@ -1769,7 +2108,7 @@ function rendreBlocCompetences(zone, p, s) {
   if (aVenir.length > 0) {
     const titreArbre = document.createElement('h3');
     titreArbre.className = 'titre-grimoire';
-    titreArbre.textContent = `🏅 Arbre de ${classe.nom} — à débloquer`;
+    titreArbre.textContent = `🏅 Arbre de ${nomCompletClasse(p)} — à débloquer`;
     blocComp.appendChild(titreArbre);
     const grilleArbre = document.createElement('div');
     grilleArbre.className = 'grille-competences';
@@ -1853,7 +2192,7 @@ function rendreBlocMetiers(zone, p) {
     + 'La <strong>spécialité</strong> ⭐ — votre sous-classe de récolteur — se choisit au '
     + `niveau ${NIVEAU_SPECIALITE} : le spécialiste récolte plus (quantités, matériaux signatures) `
     + 'et progresse deux fois plus vite dans son métier — et plus sa Chance est haute, plus l’écart se creuse. '
-    + `En changer coûte ${COUT_CHANGEMENT_SPECIALITE} po.</p>`;
+    + `En changer coûte ${formatNombre(COUT_CHANGEMENT_SPECIALITE)} po.</p>`;
   const grilleMetiers = document.createElement('div');
   grilleMetiers.className = 'rangee-chips';
   Object.entries(METIERS).forEach(([idMetier, metier]) => {
@@ -1864,7 +2203,7 @@ function rendreBlocMetiers(zone, p) {
     chip.title = specialite
       ? `${metier.detail} — votre spécialité : récolte et progression améliorées`
       : `${metier.detail} — matériau signature : ${OBJETS[metier.exclusif].nom}. `
-        + (p.metierPrincipal ? `Changer de spécialité coûte ${COUT_CHANGEMENT_SPECIALITE} po.` : 'Cliquez pour en faire votre spécialité (gratuit).');
+        + (p.metierPrincipal ? `Changer de spécialité coûte ${formatNombre(COUT_CHANGEMENT_SPECIALITE)} po.` : 'Cliquez pour en faire votre spécialité (gratuit).');
     const progression = m.niveau >= NIVEAU_MAX_METIER
       ? 'maître'
       : `niv. ${m.niveau} (${m.xp}/${seuilXpMetier(m.niveau)} XP)`;
@@ -1876,7 +2215,7 @@ function rendreBlocMetiers(zone, p) {
         return;
       }
       if (p.metierPrincipal && p.po < COUT_CHANGEMENT_SPECIALITE) {
-        afficherToast(`💰 Changer de spécialité coûte ${COUT_CHANGEMENT_SPECIALITE} po.`);
+        afficherToast(`💰 Changer de spécialité coûte ${formatNombre(COUT_CHANGEMENT_SPECIALITE)} po.`);
         return;
       }
       if (p.metierPrincipal) p.po -= COUT_CHANGEMENT_SPECIALITE;
@@ -2130,17 +2469,20 @@ function rendreSac() {
     return objet && (sousFiltreSac === 'tous' || objet.type === sousFiltreSac)
       && (sousFiltreSacRarete === 'tous' || rareteDe(objet) === sousFiltreSacRarete);
   });
-  if (entrees.length === 0) {
-    const vide = document.createElement('p');
-    vide.className = 'aide';
-    vide.textContent = p.inventaire.length === 0
+  rendreListeFiltrable({
+    cle: 'sac',
+    conteneur: blocInv,
+    elements: entrees,
+    texteDe: (entree) => texteRecherchableObjet(OBJETS[entree.id]),
+    tris: TRIS_OBJETS,
+    trierAvec: (entree) => ({ objet: OBJETS[entree.id], prix: prixVenteDe(entree.id) }),
+    classeListe: 'grille-inventaire',
+    placeholder: '🔎 Chercher dans le sac…',
+    nomListe: 'lots',
+    vide: p.inventaire.length === 0
       ? 'Votre sac est vide. Le monde regorge de trésors !'
-      : 'Rien dans cette catégorie.';
-    blocInv.appendChild(vide);
-  } else {
-    const grille = document.createElement('div');
-    grille.className = 'grille-inventaire';
-    entrees.forEach((entree) => {
+      : 'Rien dans cette catégorie.',
+    rendre: (entree) => {
       const objet = OBJETS[entree.id];
       const carte = document.createElement('div');
       carte.className = `carte-objet bord-rar-${rareteDe(objet)}`;
@@ -2149,12 +2491,20 @@ function rendreSac() {
         <div class="objet-desc">${objet.desc || ''}</div>
         ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
         ${texteSet(objet)}
-        ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}`;
+        ${texteTypeEquipement(objet)}
+        ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}
+        ${texteComparaison(p, objet)}`;
       if (objet.type === 'equipement') {
+        const interdit = !peutPorter(p, objet);
+        if (interdit) {
+          carte.classList.add('article-verrouille');
+          carte.insertAdjacentHTML('beforeend',
+            `<div class="objet-niveau niveau-insuffisant">🚫 ${raisonRefusEquipement(p, objet)}</div>`);
+        }
         const equiperBtn = document.createElement('button');
         equiperBtn.className = 'btn-choix btn-compact';
-        equiperBtn.textContent = 'Équiper';
-        equiperBtn.disabled = p.niveau < objet.niveau;
+        equiperBtn.textContent = interdit ? '🚫 Pas pour cette classe' : 'Équiper';
+        equiperBtn.disabled = interdit || p.niveau < objet.niveau;
         equiperBtn.addEventListener('click', () => {
           equiper(p, entree.id);
           rendreSac();
@@ -2177,16 +2527,22 @@ function rendreSac() {
         note.textContent = 'Matériau d’artisanat';
         carte.appendChild(note);
       }
-      grille.appendChild(carte);
-    });
-    blocInv.appendChild(grille);
-  }
+      return carte;
+    },
+  });
   zone.appendChild(blocInv);
 }
 
 function equiper(p, idObjet) {
   const objet = OBJETS[idObjet];
   if (!objet || objet.type !== 'equipement' || p.niveau < objet.niveau) return;
+  // v19 : une armure de plaque ne se porte pas en robe, et inversement.
+  // La vérification n'intervient qu'ici, au moment d'équiper : ce qui est
+  // déjà porté le reste, on ne déshabille personne rétroactivement.
+  if (!peutPorter(p, objet)) {
+    afficherToast(`🚫 ${raisonRefusEquipement(p, objet)}`);
+    return;
+  }
   let slot = objet.slot;
   if (slot === 'accessoire') {
     slot = !p.equipement.acc1 ? 'acc1' : (!p.equipement.acc2 ? 'acc2' : 'acc1');
@@ -2304,13 +2660,18 @@ function chargerHerosImporte(donnees, id, token) {
   const d = donnees.donnees || {};
   const p = nouveauPersonnage({
     nom: donnees.nom, avatar: donnees.avatar || '⚔️',
-    stats: d.stats || { for: 4, int: 4, agi: 4, vit: 4 },
+    stats: d.stats || { for: 4, int: 4, dex: 4, vit: 4 },
     competences: d.competences || [],
   });
   if (Array.isArray(d.grimoire)) {
     d.grimoire.forEach((id) => { if (!p.grimoire.includes(id)) p.grimoire.push(id); });
   }
-  if (d.classe && CLASSES[d.classe]) p.classe = d.classe;
+  if (d.classe && (CLASSES[d.classe] || MIGRATION_CLASSES[d.classe])) p.classe = d.classe;
+  if (d.sousClasse !== undefined) p.sousClasse = d.sousClasse;
+  if (d.voie !== undefined) p.voie = d.voie;
+  if (d.eveil !== undefined) p.eveil = d.eveil;
+  if (d.sceaux) p.sceaux = d.sceaux;
+  if (d.versionClasses != null) p.versionClasses = d.versionClasses;
   if (d.rangs && typeof d.rangs === 'object') p.rangs = d.rangs;
   if (d.maitrise != null) p.maitrise = d.maitrise;
   normaliserPerso(p); // signature de classe, maîtrise et grimoire cohérents
@@ -2384,8 +2745,15 @@ function initialiser() {
   if (typeof demarrerReseau === 'function') demarrerReseau();
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initialiser);
-} else {
+// La page de tests (tests.html) charge les mêmes scripts que le jeu, mais
+// sans ses écrans : on ne démarre l'interface que si elle est bien là.
+function demarrerSiInterface() {
+  if (!document.getElementById('ecran-titre')) return;
   initialiser();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', demarrerSiInterface);
+} else {
+  demarrerSiInterface();
 }

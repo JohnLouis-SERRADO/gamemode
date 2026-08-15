@@ -27,6 +27,11 @@ const BOUTIQUES = {
   },
 };
 
+function ouvrirTourEveil() {
+  rendreTourEveil();
+  montrerEcran('ecran-tour-eveil');
+}
+
 function ouvrirBoutique(idBoutique) {
   boutiqueCourante = idBoutique;
   ongletBoutique = BOUTIQUES[idBoutique].onglets[0];
@@ -36,6 +41,7 @@ function ouvrirBoutique(idBoutique) {
 }
 
 function rendreVille() {
+  const p = persoActif();
   const zone = el('ville-lieux');
   zone.innerHTML = '';
 
@@ -98,6 +104,13 @@ function rendreVille() {
           emoji: '🍻', nom: 'Taverne', detail: 'Chat, classement et boss du monde — avec tous les joueurs',
           action: () => naviguer('taverne'),
         },
+        // La Tour de l'Éveil n'apparaît qu'une fois le niveau atteint :
+        // avant, ses services n'auraient rien à corriger.
+        ...(p.niveau >= NIVEAU_TOUR_EVEIL ? [{
+          emoji: '🗝️', nom: 'Tour de l’Éveil',
+          detail: 'Défaire ses choix : rechoisir sa Voie, sa spécialité, son rôle, relancer son Éveil — contre des Sceaux',
+          action: () => ouvrirTourEveil(),
+        }] : []),
       ],
     },
   ];
@@ -150,8 +163,8 @@ const RARETES_FILTRABLES = ['commun', 'inhabituel', 'rare', 'epique', 'legendair
 const SOUS_TYPES = {
   armes: [
     { id: 'force', nom: '💪 Force', filtre: (o) => o.bonus && o.bonus.for != null },
-    { id: 'magie', nom: '🧠 Magie', filtre: (o) => o.bonus && o.bonus.int != null },
-    { id: 'agilite', nom: '🏃 Agilité', filtre: (o) => o.bonus && o.bonus.agi != null && o.bonus.for == null && o.bonus.int == null },
+    { id: 'magie', nom: '🧠 Intelligence', filtre: (o) => o.bonus && o.bonus.int != null },
+    { id: 'dexterite', nom: '🎯 Dextérité', filtre: (o) => o.bonus && o.bonus.dex != null && o.bonus.for == null && o.bonus.int == null },
   ],
   armures: [
     { id: 'tete', nom: '🪖 Tête', filtre: (o) => o.slot === 'tete' },
@@ -171,9 +184,22 @@ const SOUS_TYPES = {
   ],
 };
 
-let sousFiltres = { rarete: 'tous', type: 'tous' };
+let sousFiltres = { rarete: 'tous', type: 'tous', maClasse: false };
 
 function rendreChipsFiltres(conteneur, contexte, surChangement) {
+  // Les puces de rareté débordaient sur trois lignes avant même qu'on
+  // voie un objet. Elles se replient, et le résumé dit ce qui est actif.
+  const repli = document.createElement('details');
+  repli.className = 'affiner';
+  const actifs = [];
+  if (sousFiltres.type !== 'tous') actifs.push(sousFiltres.type);
+  if (sousFiltres.rarete !== 'tous') actifs.push(RARETES[sousFiltres.rarete].nom);
+  if (actifs.length) repli.open = true;
+  const resume = document.createElement('summary');
+  resume.textContent = actifs.length ? `⚙️ Filtres — ${actifs.join(' · ')}` : '⚙️ Filtres';
+  repli.appendChild(resume);
+  const conteneurReel = conteneur;
+  conteneur = repli;
   const rangee = document.createElement('div');
   rangee.className = 'rangee-chips rangee-sous-filtres';
   const types = SOUS_TYPES[contexte] || [];
@@ -196,10 +222,26 @@ function rendreChipsFiltres(conteneur, contexte, surChangement) {
     chip.addEventListener('click', () => { sousFiltres.rarete = id; surChangement(); });
     rangee.appendChild(chip);
   });
+  // v19 : le filtre le plus utile de tous — ne montrer que ce que le héros
+  // peut réellement porter. Il tombe hors du repli : c'est celui qu'on veut
+  // sous la main en permanence.
+  const rangeeClasse = document.createElement('div');
+  rangeeClasse.className = 'rangee-chips rangee-ma-classe';
+  const chipClasse = document.createElement('button');
+  chipClasse.type = 'button';
+  chipClasse.className = 'chip chip-filtre chip-ma-classe' + (sousFiltres.maClasse ? ' active' : '');
+  chipClasse.textContent = '🎯 Pour ma classe';
+  chipClasse.title = 'N’afficher que ce que votre classe sait porter';
+  chipClasse.addEventListener('click', () => { sousFiltres.maClasse = !sousFiltres.maClasse; surChangement(); });
+  rangeeClasse.appendChild(chipClasse);
+
   conteneur.appendChild(rangee);
+  conteneurReel.appendChild(rangeeClasse);
+  conteneurReel.appendChild(repli);
 }
 
 function passeSousFiltres(objet, contexte) {
+  if (sousFiltres.maClasse && !peutPorter(persoActif(), objet)) return false;
   if (sousFiltres.rarete !== 'tous' && rareteDe(objet) !== sousFiltres.rarete) return false;
   if (sousFiltres.type !== 'tous') {
     const type = (SOUS_TYPES[contexte] || []).find((t) => t.id === sousFiltres.type);
@@ -216,7 +258,7 @@ function rendreBoutique() {
   const config = BOUTIQUES[boutiqueCourante];
   el('boutique-titre').textContent = config.titre;
   el('boutique-accueil').textContent = config.accueil;
-  el('boutique-po').textContent = `💰 ${p.po} po`;
+  el('boutique-po').textContent = `💰 ${formatNombre(p.po)} po`;
 
   const zoneOnglets = el('boutique-onglets');
   zoneOnglets.innerHTML = '';
@@ -226,7 +268,8 @@ function rendreBoutique() {
     btn.textContent = onglet.nom;
     btn.addEventListener('click', () => {
       ongletBoutique = onglet.id;
-      sousFiltres = { rarete: 'tous', type: 'tous' }; // chaque onglet repart à neuf
+      sousFiltres = { rarete: 'tous', type: 'tous', maClasse: false }; // chaque onglet repart à neuf
+      reinitialiserListe(`boutique-${boutiqueCourante}-${onglet.id}`);
       rendreBoutique();
     });
     zoneOnglets.appendChild(btn);
@@ -242,8 +285,6 @@ function rendreBoutique() {
 
   const onglet = ONGLETS_BOUTIQUE.find((o) => o.id === ongletBoutique);
   rendreChipsFiltres(contenu, ongletBoutique, () => rendreBoutique());
-  const grille = document.createElement('div');
-  grille.className = 'grille-inventaire';
   // Le stock s'étoffe avec le niveau : articles jusqu'à niveau+2, aperçus
   // verrouillés jusqu'à niveau+8 pour donner envie de progresser.
   const visibles = Object.entries(OBJETS)
@@ -251,13 +292,20 @@ function rendreBoutique() {
     .filter(([, o]) => !o.niveau || o.niveau <= p.niveau + 8)
     .filter(([, o]) => passeSousFiltres(o, ongletBoutique))
     .sort((a, b) => (a[1].niveau || 0) - (b[1].niveau || 0) || a[1].prix - b[1].prix);
-  if (visibles.length === 0) {
-    contenu.insertAdjacentHTML('beforeend', '<p class="aide">Rien en rayon avec ces filtres — le marchand hausse les épaules.</p>');
-  }
-  visibles.forEach(([id, objet]) => {
-    grille.appendChild(carteArticleBoutique(p, id, objet, () => rendreBoutique()));
+
+  rendreListeFiltrable({
+    cle: `boutique-${boutiqueCourante}-${ongletBoutique}`,
+    conteneur: contenu,
+    elements: visibles,
+    texteDe: ([, o]) => texteRecherchableObjet(o),
+    tris: TRIS_OBJETS,
+    trierAvec: ([, o]) => ({ objet: o, prix: o.prix }),
+    classeListe: 'grille-inventaire',
+    placeholder: '🔎 Chercher une arme, un bonus, un niveau…',
+    nomListe: 'articles',
+    vide: 'Rien en rayon avec ces filtres — le marchand hausse les épaules.',
+    rendre: ([id, objet]) => carteArticleBoutique(p, id, objet, () => rendreBoutique()),
   });
-  contenu.appendChild(grille);
 }
 
 // Carte d'article (boutique et antiquaire) : rareté colorée, verrouillage
@@ -280,10 +328,13 @@ function carteArticleBoutique(p, id, objet, apresAchat) {
     <div class="objet-desc">${objet.desc || ''}</div>
     ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
     ${texteSet(objet)}
-    ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}`;
+    ${texteTypeEquipement(objet)}
+    ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}
+    ${peutPorter(p, objet) ? '' : `<div class="objet-niveau niveau-insuffisant">🚫 ${raisonRefusEquipement(p, objet)}</div>`}
+    ${texteComparaison(p, objet)}`;
   const acheter = document.createElement('button');
   acheter.className = 'btn-choix btn-compact btn-achat';
-  acheter.textContent = `Acheter — ${objet.prix} po`;
+  acheter.textContent = `Acheter — ${formatNombre(objet.prix)} po`;
   acheter.disabled = p.po < objet.prix;
   acheter.addEventListener('click', () => {
     if (p.po < objet.prix) return;
@@ -327,30 +378,37 @@ function rendreVente(contenu, p) {
     const total = materiaux.reduce((somme, e) => somme + prixVenteDe(e.id) * e.qte, 0);
     const toutVendre = document.createElement('button');
     toutVendre.className = 'btn-choix';
-    toutVendre.textContent = `💰 Vendre tous les matériaux — ${total} po`;
+    toutVendre.textContent = `💰 Vendre tous les matériaux — ${formatNombre(total)} po`;
     toutVendre.addEventListener('click', () => {
       materiaux.forEach((e) => {
         const gain = prixVenteDe(e.id) * e.qte;
         if (retirerObjet(p, e.id, e.qte)) p.po += gain;
       });
       sauvegarder(p);
-      afficherToast(`💰 Matériaux vendus : +${total} po !`);
+      afficherToast(`💰 Matériaux vendus : +${formatNombre(total)} po !`);
       rendreBoutique();
       rendreTopbar();
     });
     contenu.appendChild(toutVendre);
   }
 
-  const grille = document.createElement('div');
-  grille.className = 'grille-inventaire';
   const visibles = p.inventaire.filter((entree) => {
     const objet = OBJETS[entree.id];
     return objet && passeSousFiltres(objet, 'vente');
   });
-  if (visibles.length === 0) {
-    contenu.insertAdjacentHTML('beforeend', '<p class="aide">Rien dans le sac ne correspond à ces filtres.</p>');
-  }
-  visibles.forEach((entree) => {
+
+  rendreListeFiltrable({
+    cle: 'boutique-vente',
+    conteneur: contenu,
+    elements: visibles,
+    texteDe: (entree) => texteRecherchableObjet(OBJETS[entree.id]),
+    tris: TRIS_OBJETS,
+    trierAvec: (entree) => ({ objet: OBJETS[entree.id], prix: prixVenteDe(entree.id) }),
+    classeListe: 'grille-inventaire',
+    placeholder: '🔎 Chercher dans votre sac…',
+    nomListe: 'lots à vendre',
+    vide: 'Rien dans le sac ne correspond à ces filtres.',
+    rendre: (entree) => {
     const objet = OBJETS[entree.id];
     const prix = prixVenteDe(entree.id);
     const carte = document.createElement('div');
@@ -363,7 +421,7 @@ function rendreVente(contenu, p) {
       ${objet.type === 'equipement' ? `<div class="objet-niveau">niv. ${objet.niveau} requis</div>` : ''}`;
     const rangee = document.createElement('div');
     rangee.className = 'rangee-boutons';
-    [[1, `Vendre 1 — ${prix} po`], [entree.qte, `Tout — ${formatNombre(prix * entree.qte)} po`]].forEach(([qte, libelle], index) => {
+    [[1, `Vendre 1 — ${formatNombre(prix)} po`], [entree.qte, `Tout — ${formatNombre(prix * entree.qte)} po`]].forEach(([qte, libelle], index) => {
       if (index === 1 && entree.qte < 2) return;
       const vendre = document.createElement('button');
       vendre.className = 'btn-choix btn-compact';
@@ -380,9 +438,9 @@ function rendreVente(contenu, p) {
       rangee.appendChild(vendre);
     });
     carte.appendChild(rangee);
-    grille.appendChild(carte);
+    return carte;
+    },
   });
-  contenu.appendChild(grille);
 }
 
 // =====================================================================
@@ -390,7 +448,7 @@ function rendreVente(contenu, p) {
 // =====================================================================
 function rendreAntiquaire() {
   const p = persoActif();
-  el('antiquaire-po').textContent = `💰 ${p.po} po`;
+  el('antiquaire-po').textContent = `💰 ${formatNombre(p.po)} po`;
   const zone = el('antiquaire-contenu');
   zone.innerHTML = '';
   rendreChipsFiltres(zone, 'antiquaire', () => rendreAntiquaire());
@@ -490,16 +548,26 @@ function rendreFournisseur() {
 
   // v17 : filtre de rareté sur l'étal du fournisseur.
   rendreChipsFiltres(zone, null, () => rendreFournisseur());
-  const grille = document.createElement('div');
-  grille.className = 'grille-inventaire';
   const signature = SIGNATURE_FILIERE[f.famille];
   // v17 : TOUT ce qui sert au craft s'achète — bruts, raffinés et même
   // les signatures (au prix fort, niveau 20+), selon le niveau du joueur.
-  Object.entries(OBJETS)
+  const matieres = Object.entries(OBJETS)
     .filter(([id, o]) => o.type === 'materiau' && FAMILLE_MATERIAU[id] === f.famille)
     .filter(([, o]) => passeSousFiltres(o, null))
-    .sort((a, b) => niveauMateriau(a[0]) - niveauMateriau(b[0]) || prixVenteDe(a[0]) - prixVenteDe(b[0]))
-    .forEach(([id, objet]) => {
+    .sort((a, b) => niveauMateriau(a[0]) - niveauMateriau(b[0]) || prixVenteDe(a[0]) - prixVenteDe(b[0]));
+
+  rendreListeFiltrable({
+    cle: `fournisseur-${fournisseurCourant}`,
+    conteneur: zone,
+    elements: matieres,
+    texteDe: ([, o]) => texteRecherchableObjet(o),
+    tris: TRIS_OBJETS,
+    trierAvec: ([id, o]) => ({ objet: o, prix: prixAchatMateriau(id) }),
+    classeListe: 'grille-inventaire',
+    placeholder: '🔎 Chercher un matériau…',
+    nomListe: 'matériaux',
+    vide: 'Aucun matériau de cette filière ne correspond.',
+    rendre: ([id, objet]) => {
       const estSignature = id === signature;
       const niveau = estSignature ? Math.max(20, niveauMateriau(id)) : niveauMateriau(id);
       const verrouille = niveau > p.niveau;
@@ -532,9 +600,9 @@ function rendreFournisseur() {
         });
         carte.appendChild(rangee);
       }
-      grille.appendChild(carte);
-    });
-  zone.appendChild(grille);
+      return carte;
+    },
+  });
 
   // Rachat : le fournisseur reprend les matériaux de SA filière.
   const aRacheter = p.inventaire
@@ -599,7 +667,7 @@ function prixGrimoire(comp) {
 
 function rendreArcanium() {
   const p = persoActif();
-  el('arcanium-po').textContent = `💰 ${p.po} po`;
+  el('arcanium-po').textContent = `💰 ${formatNombre(p.po)} po`;
   const zone = el('arcanium-contenu');
   zone.innerHTML = '';
 
@@ -625,21 +693,21 @@ function rendreArcanium() {
     .filter(([id, comp]) => !p.grimoire.includes(id) && !comp.classe)
     .filter(([, comp]) => filtreArcanium === 'tous' || comp.categorie === filtreArcanium)
     .sort((a, b) => prixGrimoire(a[1]) - prixGrimoire(b[1]));
-  if (inconnues.length === 0) {
-    const fini = document.createElement('p');
-    fini.className = 'aide';
-    fini.textContent = '📚 Plus rien à apprendre dans cette école : Dame Sibylle s’incline bien bas.';
-    zone.appendChild(fini);
-    return;
-  }
-  const grille = document.createElement('div');
-  grille.className = 'grille-competences';
-  inconnues.forEach(([id, comp]) => {
+  rendreListeFiltrable({
+    cle: 'arcanium',
+    conteneur: zone,
+    elements: inconnues,
+    texteDe: ([, comp]) => texteRecherchableCompetence(comp),
+    classeListe: 'grille-competences',
+    placeholder: '🔎 Chercher un sort, un effet…',
+    nomListe: 'grimoires',
+    vide: '📚 Plus rien à apprendre dans cette école : Dame Sibylle s’incline bien bas.',
+    rendre: ([id, comp]) => {
     const carte = carteCompetence(id, comp, { stats });
     const prix = prixGrimoire(comp);
     const acheter = document.createElement('button');
     acheter.className = 'btn-choix btn-compact btn-achat';
-    acheter.textContent = `📖 Étudier — ${prix} po`;
+    acheter.textContent = `📖 Étudier — ${formatNombre(prix)} po`;
     acheter.disabled = p.po < prix;
     acheter.addEventListener('click', () => {
       if (p.po < prix || p.grimoire.includes(id)) return;
@@ -651,6 +719,86 @@ function rendreArcanium() {
       rendreTopbar();
     });
     carte.appendChild(acheter);
+    return carte;
+    },
+  });
+}
+
+// =====================================================================
+// v19 — LA TOUR DE L'ÉVEIL : la porte de sortie payante.
+//
+// Règle 10 du document de conception : « tout choix définitif doit avoir
+// une porte de sortie payante ». Un joueur qui s'est trompé de spécialité
+// au niveau 10 ne doit pas être condamné à refaire un héros.
+//
+// Les Sceaux se gagnent en grimpant les tours existantes — la Tour de
+// l'Éveil ne construit pas son propre escalier, elle se nourrit de tout
+// ce qu'on escalade déjà.
+// =====================================================================
+function rendreTourEveil() {
+  const p = persoActif();
+  const zone = el('tour-eveil-contenu');
+  zone.innerHTML = '';
+  const bourse = sceauxDe(p);
+
+  const entete = document.createElement('div');
+  entete.className = 'panneau';
+  entete.innerHTML = `
+    <p class="sous-titre">« On monte ici pour changer ce qu’on est. Cent étages, et au sommet,
+      la seule question qui vaille : et si vous aviez choisi autrement ? » — la Gardienne des Sceaux</p>
+    <div class="objet-bonus">🔹 ${bourse.normaux} Sceau${bourse.normaux > 1 ? 'x' : ''} ·
+      💠 ${bourse.majeurs} Sceau${bourse.majeurs > 1 ? 'x' : ''} Majeur${bourse.majeurs > 1 ? 's' : ''}</div>
+    <p class="aide">Les Sceaux se gagnent en grimpant la Tour Sans Fin et la Tour des Boss :
+      ${sceauxDeLEtage(10)} par étage au début, jusqu’à ${sceauxDeLEtage(100)} au sommet, et un Sceau Majeur
+      à chaque étage multiple de dix.</p>`;
+  zone.appendChild(entete);
+
+  if (p.niveau < NIVEAU_TOUR_EVEIL) {
+    zone.insertAdjacentHTML('beforeend',
+      `<p class="aide">🔒 La Tour n’ouvre ses portes qu’au niveau ${NIVEAU_TOUR_EVEIL}.</p>`);
+    return;
+  }
+
+  const grille = document.createElement('div');
+  grille.className = 'grille-recettes';
+  Object.entries(SERVICES_TOUR).forEach(([id, service]) => {
+    const dispo = service.disponible(p);
+    const payable = peutPayerService(p, service);
+    const carte = document.createElement('div');
+    carte.className = 'carte-recette' + (dispo ? '' : ' verrouillee element-verrouille');
+    // Le coût d'abord, la bourse ensuite : « 15 Sceaux » se lit,
+    // « 300/15 » se déchiffre.
+    const manqueNormaux = Math.max(0, service.sceaux - bourse.normaux);
+    const manqueMajeurs = Math.max(0, service.majeurs - bourse.majeurs);
+    const raison = dispo ? '' : (service.raison ? service.raison(p) : 'Rien à changer pour l’instant.');
+    carte.innerHTML = `
+      <div class="objet-entete">${service.emoji} <strong>${service.nom}</strong></div>
+      <div class="objet-desc">${service.desc}</div>
+      <div class="ingredients">
+        <span class="ingredient ${manqueNormaux ? 'manque' : 'ok'}">🔹 ${service.sceaux} Sceaux${manqueNormaux ? ` — il vous en manque ${manqueNormaux}` : ''}</span>
+        ${service.majeurs ? `<span class="ingredient ${manqueMajeurs ? 'manque' : 'ok'}">💠 ${service.majeurs} Majeur${service.majeurs > 1 ? 's' : ''}${manqueMajeurs ? ` — il vous en manque ${manqueMajeurs}` : ''}</span>` : ''}
+      </div>
+      ${dispo ? '' : `<div class="objet-niveau niveau-insuffisant">🔒 ${raison}</div>`}`;
+    const bouton = document.createElement('button');
+    bouton.className = 'btn-choix btn-compact';
+    bouton.textContent = dispo
+      ? (payable ? '✔ Employer ce service' : '🔹 Sceaux insuffisants')
+      : '🔒 Indisponible';
+    bouton.disabled = !dispo || !payable;
+    bouton.addEventListener('click', () => {
+      if (!service.disponible(p) || !peutPayerService(p, service)) return;
+      const bourseVive = sceauxDe(p);
+      bourseVive.normaux -= service.sceaux;
+      bourseVive.majeurs -= service.majeurs;
+      if (service.or) p.po -= service.or;
+      const message = service.appliquer(p);
+      bornerVie(p);
+      sauvegarder(p);
+      afficherToast(`${service.emoji} ${message}`);
+      rendreTourEveil();
+      rendreTopbar();
+    });
+    carte.appendChild(bouton);
     grille.appendChild(carte);
   });
   zone.appendChild(grille);
@@ -684,7 +832,7 @@ function rendreGuilde() {
         ${quete.reclamee ? '<span class="objet-qte">✔ récompense empochée</span>' : ''}</div>
       <div class="barre contrat"><div class="remplissage" style="width:${pct}%"></div>
         <span>${quete.fait} / ${quete.requis}</span></div>
-      <div class="objet-bonus">🎁 ${quete.recompense.po} po · ⭐ ${quete.recompense.xp} XP${quete.recompense.coffre ? ` · 🎁 un objet surprise${(quete.recompense.bonusCoffre || 0) > 0 ? ' (chance dopée par la rareté du contrat)' : ''}` : ''}</div>`;
+      <div class="objet-bonus">🎁 ${formatNombre(quete.recompense.po)} po · ⭐ ${quete.recompense.xp} XP${quete.recompense.coffre ? ` · 🎁 un objet surprise${(quete.recompense.bonusCoffre || 0) > 0 ? ' (chance dopée par la rareté du contrat)' : ''}` : ''}</div>`;
     if (!quete.reclamee) {
       const reclamer = document.createElement('button');
       reclamer.className = complete && !quotaAtteint ? 'btn-principal btn-compact' : 'btn-choix btn-compact';
@@ -715,7 +863,7 @@ function reclamerQuete(p, quete) {
   const poGagne = Math.round(quete.recompense.po * multiplicateurOr(p));
   p.po += poGagne;
   p.compteurs.orTotal += poGagne;
-  const lignes = [`💰 +${poGagne} po`, `⭐ +${quete.recompense.xp} XP`];
+  const lignes = [`💰 +${formatNombre(poGagne)} po`, `⭐ +${quete.recompense.xp} XP`];
   // Le grand contrat du jour offre un objet tiré selon la chance — et la
   // rareté du contrat dope encore le tirage.
   if (quete.recompense.coffre) {
@@ -795,12 +943,12 @@ function artisanDeRecette(recette) {
   return 'tisserand';
 }
 
-let filtresAtelier = { type: 'tous', realisables: false };
+let filtresAtelier = { type: 'tous', realisables: false, maClasse: false, armure: 'toutes' };
 let atelierCourant = 'forge';
 
 function ouvrirAtelier(idArtisan) {
   atelierCourant = idArtisan;
-  filtresAtelier = { type: 'tous', realisables: false };
+  filtresAtelier = { type: 'tous', realisables: false, maClasse: false, armure: 'toutes' };
   rendreAtelier();
   montrerEcran('ecran-atelier');
 }
@@ -827,7 +975,7 @@ function rendreAtelier() {
   const config = ARTISANS[atelierCourant];
   el('atelier-titre').textContent = config.titre;
   el('atelier-accueil').textContent = config.accueil;
-  el('atelier-po').textContent = `💰 ${p.po} po`;
+  el('atelier-po').textContent = `💰 ${formatNombre(p.po)} po`;
   const zone = el('atelier-recettes');
   zone.innerHTML = '';
 
@@ -852,7 +1000,33 @@ function rendreAtelier() {
     rendreAtelier();
   });
   rangee.appendChild(chipRealisables);
+
+  // v19 : « pour ma classe » et le filtre de matière, réclamés au même
+  // titre que la recherche — devant un établi, la question est toujours
+  // « qu'est-ce que je peux porter, moi ? ».
+  const chipClasse = document.createElement('button');
+  chipClasse.type = 'button';
+  chipClasse.className = 'chip chip-filtre chip-ma-classe' + (filtresAtelier.maClasse ? ' active' : '');
+  chipClasse.textContent = '🎯 Pour ma classe';
+  chipClasse.addEventListener('click', () => {
+    filtresAtelier.maClasse = !filtresAtelier.maClasse;
+    rendreAtelier();
+  });
+  rangee.appendChild(chipClasse);
   zone.appendChild(rangee);
+
+  const rangeeMatiere = document.createElement('div');
+  rangeeMatiere.className = 'rangee-chips rangee-sous-filtres';
+  [['toutes', '🧺 Toutes matières'], ...Object.entries(CATEGORIES_ARMURE).map(([id, c]) => [id, `${c.emoji} ${c.nom}`])]
+    .forEach(([id, nom]) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip chip-filtre' + (filtresAtelier.armure === id ? ' active' : '');
+      chip.textContent = nom;
+      chip.addEventListener('click', () => { filtresAtelier.armure = id; rendreAtelier(); });
+      rangeeMatiere.appendChild(chip);
+    });
+  zone.appendChild(rangeeMatiere);
 
   // L'établi de CET artisan : ses recettes jusqu'au niveau du héros +6 —
   // les prochaines apparaissent grisées avec leur cadenas, pour donner
@@ -862,12 +1036,26 @@ function rendreAtelier() {
   const cachees = chezLui.length - proches.length;
   const visibles = proches
     .filter((recette) => filtresAtelier.type === 'tous' || categorieRecette(recette) === filtresAtelier.type)
-    .filter((recette) => !filtresAtelier.realisables || recetteRealisable(p, recette));
-  if (visibles.length === 0) {
-    zone.insertAdjacentHTML('beforeend', '<p class="aide">Aucune recette ne correspond à ces filtres pour l’instant.</p>');
-  }
+    .filter((recette) => !filtresAtelier.realisables || recetteRealisable(p, recette))
+    .filter((recette) => !filtresAtelier.maClasse || peutPorter(p, OBJETS[recette.resultat]))
+    .filter((recette) => filtresAtelier.armure === 'toutes'
+      || (OBJETS[recette.resultat].armure || 'toutes') === filtresAtelier.armure);
 
-  visibles.forEach((recette) => {
+  rendreListeFiltrable({
+    cle: `atelier-${atelierCourant}`,
+    conteneur: zone,
+    elements: visibles,
+    // On cherche aussi dans les MATÉRIAUX : taper « cristal » sort toutes
+    // les recettes qui en demandent, ce qui répond à « j'ai ça, j'en fais quoi ? »
+    texteDe: (recette) => `${texteRecherchableObjet(OBJETS[recette.resultat])} `
+      + Object.keys(recette.materiaux).map((id) => (OBJETS[id] || {}).nom || '').join(' '),
+    tris: TRIS_OBJETS,
+    trierAvec: (recette) => ({ objet: OBJETS[recette.resultat], prix: recette.po }),
+    classeListe: 'grille-recettes',
+    placeholder: '🔎 Chercher une recette, un matériau…',
+    nomListe: 'recettes',
+    vide: 'Aucune recette ne correspond à ces filtres pour l’instant.',
+    rendre: (recette) => {
     const objet = OBJETS[recette.resultat];
     const niveauOk = p.niveau >= recette.niveau;
     const carte = document.createElement('div');
@@ -886,9 +1074,12 @@ function rendreAtelier() {
       <div class="objet-entete">${niveauOk ? '' : '🔒 '}${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)}</div>
       ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : `<div class="objet-desc">${objet.desc || ''}</div>`}
       ${texteSet(objet)}
+      ${texteTypeEquipement(objet)}
+      ${peutPorter(p, objet) ? '' : `<div class="objet-niveau niveau-insuffisant">🚫 ${raisonRefusEquipement(p, objet)}</div>`}
+      ${texteComparaison(p, objet)}
       ${!niveauOk ? `<div class="objet-niveau niveau-insuffisant">🔒 se débloque au niveau ${recette.niveau}</div>` : ''}
       <div class="ingredients">${listeMateriaux}
-        <span class="ingredient ${orOk ? 'ok' : 'manque'}">💰 ${recette.po} po</span></div>`;
+        <span class="ingredient ${orOk ? 'ok' : 'manque'}">💰 ${formatNombre(recette.po)} po</span></div>`;
 
     const fabriquer = document.createElement('button');
     fabriquer.className = 'btn-choix btn-compact';
@@ -910,7 +1101,8 @@ function rendreAtelier() {
       rendreTopbar();
     });
     carte.appendChild(fabriquer);
-    zone.appendChild(carte);
+    return carte;
+    },
   });
 
   if (cachees > 0) {

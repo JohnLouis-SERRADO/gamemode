@@ -308,7 +308,7 @@ async function supprimerPersonnageCloud(p) {
 function puissancePublique(j) {
   if (!j.dstats) return 0;
   return puissanceDe({
-    stats: { for: 4, int: 4, agi: 4, vit: 4, cha: 2, ...j.dstats },
+    stats: { for: 4, int: 4, dex: 4, vit: 4, cha: 2, ...j.dstats },
     equipement: j.dequip || {},
     familier: j.dfam || null,
     niveau: j.niveau || 1,
@@ -517,13 +517,27 @@ function rendreTaverne() {
     const selectObjet = document.createElement('select');
     selectObjet.id = 'comptoir-objet';
     selectObjet.className = 'select-groupe';
-    vendables.forEach((entree) => {
-      const objet = OBJETS[entree.id];
-      const option = document.createElement('option');
-      option.value = entree.id;
-      option.textContent = `${objet.emoji} ${objet.nom} (×${entree.qte})`;
-      selectObjet.appendChild(option);
-    });
+    // v19 : la liste déroulante annonçait un nom et rien d'autre — ni la
+    // rareté, ni les effets. On y met tout, et un aperçu complet s'affiche
+    // sous le formulaire dès qu'un objet est choisi.
+    vendables
+      .slice()
+      .sort((a, b) => {
+        const oa = OBJETS[a.id]; const ob = OBJETS[b.id];
+        const ordre = ['divin', 'mythique', 'legendaire', 'epique', 'rare', 'inhabituel', 'commun'];
+        return ordre.indexOf(rareteDe(oa)) - ordre.indexOf(rareteDe(ob))
+          || (ob.niveau || 0) - (oa.niveau || 0);
+      })
+      .forEach((entree) => {
+        const objet = OBJETS[entree.id];
+        const option = document.createElement('option');
+        option.value = entree.id;
+        const rarete = rareteDe(objet);
+        const etiquette = rarete === 'commun' ? '' : ` 〔${RARETES[rarete].nom}〕`;
+        const niveau = objet.type === 'equipement' && objet.niveau ? ` · niv. ${objet.niveau}` : '';
+        option.textContent = `${objet.emoji} ${objet.nom}${etiquette}${niveau} (×${entree.qte})`;
+        selectObjet.appendChild(option);
+      });
     const champQte = document.createElement('input');
     champQte.id = 'comptoir-qte';
     champQte.type = 'number';
@@ -548,6 +562,27 @@ function rendreTaverne() {
     formulaire.appendChild(champPrix);
     formulaire.appendChild(vendre);
     blocComptoir.appendChild(formulaire);
+
+    // L'aperçu : la même carte que partout ailleurs, pour qu'on sache
+    // exactement ce qu'on met en vente avant de fixer son prix.
+    const apercu = document.createElement('div');
+    apercu.className = 'apercu-vente';
+    const majApercu = () => {
+      const objet = OBJETS[selectObjet.value];
+      if (!objet) { apercu.innerHTML = ''; return; }
+      apercu.innerHTML = `
+        <div class="carte-objet bord-rar-${rareteDe(objet)}">
+          <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)}</div>
+          <div class="objet-desc">${objet.desc || ''}</div>
+          ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
+          ${texteSet(objet)}
+          ${objet.type === 'equipement' && objet.niveau ? `<div class="objet-niveau">niv. ${objet.niveau} requis</div>` : ''}
+          <div class="annonce-detail">Valeur de rachat en boutique : ${formatNombre(prixVenteDe(selectObjet.value))} po</div>
+        </div>`;
+    };
+    selectObjet.addEventListener('change', majApercu);
+    majApercu();
+    blocComptoir.appendChild(apercu);
   }
   // v17 : filtres du comptoir (type + rareté), comme dans les boutiques.
   const rangeeFiltresComptoir = document.createElement('div');
@@ -757,7 +792,7 @@ function rendreSectionsTaverne() {
       const total = donneesTaverne.mesVentes.reduce((somme, vente) => somme + vente.prix, 0);
       const encaisser = document.createElement('button');
       encaisser.className = 'btn-principal btn-compact';
-      encaisser.textContent = `💰 Encaisser ${donneesTaverne.mesVentes.length} vente${donneesTaverne.mesVentes.length > 1 ? 's' : ''} — ${total} po`;
+      encaisser.textContent = `💰 Encaisser ${donneesTaverne.mesVentes.length} vente${donneesTaverne.mesVentes.length > 1 ? 's' : ''} — ${formatNombre(total)} po`;
       encaisser.addEventListener('click', () => reclamerVentes());
       zoneReclamer.appendChild(encaisser);
     }
@@ -772,35 +807,45 @@ function rendreSectionsTaverne() {
       if (filtresComptoir.rarete !== 'tous' && rareteDe(objet) !== filtresComptoir.rarete) return false;
       return true;
     });
-    if (annoncesVisibles.length === 0) {
-      zoneComptoir.innerHTML = donneesTaverne.echanges.length === 0
-        ? '<p class="aide">Aucune annonce au comptoir. Soyez le premier marchand !</p>'
-        : '<p class="aide">Aucune annonce ne correspond à ces filtres.</p>';
-    }
-    annoncesVisibles.forEach((annonce) => {
-      const objet = OBJETS[annonce.objet_id];
-      const estMoi = p && p.cloud && annonce.vendeur_id === p.cloud.id;
-      const ligne = document.createElement('div');
-      ligne.className = `ligne-annonce bord-rar-${rareteDe(objet)}`;
-      ligne.innerHTML = `<span class="annonce-objet">${objet.emoji} <strong>${objet.nom}</strong>
-        ${etiquetteRarete(objet)}${annonce.qte > 1 ? ` ×${annonce.qte}` : ''}
-        ${objet.bonus ? `<span class="annonce-bonus">${texteBonus(objet.bonus)}</span>` : ''}
-        ${objet.type === 'equipement' && objet.niveau ? `<span class="annonce-bonus">niv. ${objet.niveau} requis</span>` : ''}
-        ${objet.type === 'consommable' && objet.desc ? `<span class="annonce-bonus">${objet.desc}</span>` : ''}
-        ${texteSet(objet)}</span>
-        <span class="annonce-detail">${annonce.prix} po · par ${estMoi ? 'vous' : echapper(annonce.vendeur_nom)} · valeur revente : ${prixVenteDe(annonce.objet_id)} po</span>`;
-      const bouton = document.createElement('button');
-      bouton.className = 'btn-choix btn-compact';
-      if (estMoi) {
-        bouton.textContent = '↩️ Retirer';
-        bouton.addEventListener('click', () => annulerEchange(annonce));
-      } else {
-        bouton.textContent = `Acheter — ${annonce.prix} po`;
-        bouton.disabled = !p || p.po < annonce.prix;
-        bouton.addEventListener('click', () => acheterEchange(annonce));
-      }
-      ligne.appendChild(bouton);
-      zoneComptoir.appendChild(ligne);
+    // v19 : le comptoir adopte les CARTES de la boutique — on y voit enfin
+    // la rareté, les effets, la panoplie et ce que la pièce changerait.
+    rendreListeFiltrable({
+      cle: 'comptoir',
+      conteneur: zoneComptoir,
+      elements: annoncesVisibles,
+      texteDe: (annonce) => `${texteRecherchableObjet(OBJETS[annonce.objet_id])} ${annonce.vendeur_nom || ''}`,
+      tris: TRIS_OBJETS,
+      trierAvec: (annonce) => ({ objet: OBJETS[annonce.objet_id], prix: annonce.prix }),
+      classeListe: 'grille-inventaire',
+      placeholder: '🔎 Chercher une annonce, un vendeur…',
+      nomListe: 'annonces',
+      vide: 'Aucune annonce au comptoir. Soyez le premier marchand !',
+      rendre: (annonce) => {
+        const objet = OBJETS[annonce.objet_id];
+        const estMoi = p && p.cloud && annonce.vendeur_id === p.cloud.id;
+        const carte = document.createElement('div');
+        carte.className = `carte-objet bord-rar-${rareteDe(objet)}`;
+        carte.innerHTML = `
+          <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)}${annonce.qte > 1 ? ` <span class="objet-qte">×${annonce.qte}</span>` : ''}</div>
+          <div class="objet-desc">${objet.desc || ''}</div>
+          ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
+          ${texteSet(objet)}
+          ${objet.type === 'equipement' && objet.niveau ? `<div class="objet-niveau ${p && p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}
+          ${p ? texteComparaison(p, objet) : ''}
+          <div class="annonce-detail">Vendu par ${estMoi ? '<strong>vous</strong>' : echapper(annonce.vendeur_nom)} · valeur de rachat : ${formatNombre(prixVenteDe(annonce.objet_id))} po</div>`;
+        const bouton = document.createElement('button');
+        bouton.className = 'btn-choix btn-compact btn-achat';
+        if (estMoi) {
+          bouton.textContent = '↩️ Retirer';
+          bouton.addEventListener('click', () => annulerEchange(annonce));
+        } else {
+          bouton.textContent = `Acheter — ${formatNombre(annonce.prix)} po`;
+          bouton.disabled = !p || p.po < annonce.prix;
+          bouton.addEventListener('click', () => acheterEchange(annonce));
+        }
+        carte.appendChild(bouton);
+        return carte;
+      },
     });
   }
 }
@@ -824,7 +869,7 @@ async function ouvrirFichePublique(idJoueur) {
 
   // Pseudo-héros reconstruit pour réutiliser les calculs du jeu.
   const pp = {
-    stats: d.stats || { for: 4, int: 4, agi: 4, vit: 4, cha: 2 },
+    stats: d.stats || { for: 4, int: 4, dex: 4, vit: 4, cha: 2 },
     equipement: d.equipement || {},
     familier: d.familier || null,
     familiers: d.familiers || [],
@@ -833,7 +878,14 @@ async function ouvrirFichePublique(idJoueur) {
     rangs: d.rangs || {},
   };
   const s = statsEffectives(pp);
+  // La fiche publique affiche le rôle ET la spécialité, comme en local.
   const classe = CLASSES[d.classe] || CLASSES.aventurier;
+  const identiteClasse = typeof nomCompletClasse === 'function'
+    ? nomCompletClasse({ classe: d.classe, sousClasse: d.sousClasse })
+    : classe.nom;
+  const emojiIdentite = typeof emojiClasse === 'function'
+    ? emojiClasse({ classe: d.classe, sousClasse: d.sousClasse })
+    : classe.emoji;
   const race = RACES[pp.race] || RACES.humain;
   const titreActif = d.titre ? HAUTS_FAITS.find((h) => h.id === d.titre) : null;
   const compagnon = pp.familier ? FAMILIERS[pp.familier] : null;
@@ -871,11 +923,11 @@ async function ouvrirFichePublique(idJoueur) {
   modale.innerHTML = `
     <button class="btn-choix btn-compact modale-fermer">✖ Fermer</button>
     <h2>${ligne.avatar || '⚔️'} ${echapper(ligne.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''}</h2>
-    <p class="joueur-detail">${classe.emoji} ${classe.nom} · ${race.emoji} ${race.nom} · niveau ${ligne.niveau} (${formatNombre(ligne.xp)} XP)
+    <p class="joueur-detail">${emojiIdentite} ${identiteClasse} · ${race.emoji} ${race.nom} · niveau ${ligne.niveau} (${formatNombre(ligne.xp)} XP)
       · ⚡ ${formatNombre(puissanceDe(pp))} de puissance · 💰 ${formatNombre(d.po || 0)} po · ⚔️ ${formatNombre(ligne.degats_boss_total || 0)} dégâts au boss du monde</p>
     <div class="panneau"><h3>Caractéristiques effectives</h3>
       <p>${statsTexte}</p>
-      <p class="joueur-detail">❤️ ${maxHpDe(pp)} PV max · 💧 ${maxMpDe(pp)} PM max${s.blocage ? ` · 🛡️ ${Math.min(40, s.blocage)} % blocage` : ''}${s.esquive ? ` · 💨 ${Math.min(35, s.esquive)} % esquive` : ''}</p>
+      <p class="joueur-detail">❤️ ${maxHpDe(pp)} PV max · 💧 ${maxMpDe(pp)} PM max${s.tenacite ? ` · 🛡️ ${Math.min(40, s.tenacite)} % tenacite` : ''}${s.celerite ? ` · 💨 ${Math.min(35, s.celerite)} % celerite` : ''}</p>
       <p class="joueur-detail">⚙️ ${panoplies}${compagnon ? ` · 🐾 ${compagnon.emoji} ${compagnon.nom}` : ''} · 🏅 ${(d.hautsFaits || []).length}/${HAUTS_FAITS.length} hauts faits</p>
       <p class="joueur-detail">${Object.entries(METIERS).map(([idMetier, metier]) => {
         const m = (d.metiers && d.metiers[idMetier]) || { niveau: 1 };
@@ -915,7 +967,7 @@ async function vendreAuComptoir() {
   }
   retirerObjet(p, idObjet, qte);
   sauvegarder(p);
-  afficherToast(`📤 ${objet.emoji} ${objet.nom} ×${qte} en vente pour ${prix} po.`);
+  afficherToast(`📤 ${objet.emoji} ${objet.nom} ×${qte} en vente pour ${formatNombre(prix)} po.`);
   rendreTaverne(); // reconstruit le formulaire avec l'inventaire à jour
 }
 
@@ -973,7 +1025,7 @@ async function reclamerVentes() {
   p.compteurs.orTotal += resultat.total;
   verifierHautsFaits(p);
   sauvegarder(p);
-  afficherToast(`💰 ${resultat.nb} vente${resultat.nb > 1 ? 's' : ''} encaissée${resultat.nb > 1 ? 's' : ''} : +${resultat.total} po !`);
+  afficherToast(`💰 ${resultat.nb} vente${resultat.nb > 1 ? 's' : ''} encaissée${resultat.nb > 1 ? 's' : ''} : +${formatNombre(resultat.total)} po !`);
   rendreTopbar();
   rafraichirComptoir();
 }

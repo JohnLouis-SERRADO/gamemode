@@ -35,7 +35,16 @@ function statDe(source, cle) {
 // dominante) partent naturellement à l'arrière, les autres à l'avant.
 function ligneParDefaut(c) {
   const s = c.type === 'invocation' ? c.stats : statsEffectives(c);
-  return (s.int || 0) > (s.for || 0) && (s.int || 0) > (s.agi || 0) ? 'arriere' : 'avant';
+  return (s.int || 0) > (s.for || 0) && (s.int || 0) > (s.dex || 0) ? 'arriere' : 'avant';
+}
+
+// v19 : l'initiative se lit sur la Dextérité, à laquelle la Célérité
+// ajoute son bonus — c'est elle qui décide qui frappe en premier.
+function initiativeDe(c) {
+  if (c.type === 'monstre') return (c.dex || 0) * 2 + alea(1, 10);
+  const base = statDe(c, 'dex') * 2 + alea(1, 10);
+  if (c.type !== 'joueur') return base;
+  return Math.round(base * (1 + sousCarac(statsEffectives(c), 'celerite')));
 }
 
 function tirageAuPoids(liste) {
@@ -57,7 +66,7 @@ function creerMonstreCombat(def, id, nom) {
     emoji: def.emoji,
     niveau: def.niveau,
     atk: def.atk,
-    agi: def.agi,
+    dex: def.dex,
     xp: def.xp,
     po: def.po,
     drops: def.drops,
@@ -237,7 +246,7 @@ async function boucleTour() {
         break;
       }
       cb.file = [...cb.equipe.filter((j) => !j.ko), ...cb.monstres.filter((m) => !m.mort)]
-        .map((c) => ({ c, init: (c.type === 'monstre' ? c.agi : statDe(c, 'agi')) * 2 + alea(1, 10) }))
+        .map((c) => ({ c, init: initiativeDe(c) }))
         .sort((a, b) => b.init - a.init)
         .map((x) => x.c);
       el('combat-manche').textContent = cb.manchesMax
@@ -399,31 +408,61 @@ function verifierFin() {
 function infligerDegats(source, cible, brut, options = {}) {
   const cb = etat.combat;
   let d = varie(brut);
+  // v19 : le ciel entre dans l'équation. Sous la pluie le feu prend mal,
+  // sous l'orage la foudre porte. Le physique reste neutre — le temps
+  // qu'il fait ne change rien à un coup d'épée.
+  if (options.element) d *= multElementMonde(options.element);
   if (source.statuts.some((s) => s.type === 'benediction')) d *= 1.3;
   if (source.statuts.some((s) => s.type === 'affaibli')) d *= 0.7;
   // Sang de guerre (orc) : +15 % de dégâts sous 40 % de PV.
   if (source.race === 'orc' && source.hp < source.maxHp * 0.4) d *= 1.15;
 
+  // v19 — Les trois sous-caractéristiques offensives du modèle FF XIV.
+  //
+  //  • Détermination : un bonus SÛR, appliqué à chaque coup. Elle ne fait
+  //    jamais rêver, mais elle ne déçoit jamais non plus.
+  //  • Critique      : ×1,5, au hasard. Le pic de dégâts.
+  //  • Coup direct   : +25 %, au hasard aussi — mais il ne se cumule PAS
+  //    avec le critique. Un coup est critique, ou direct, ou ordinaire.
+  //
+  // Les deux hasards s'excluent volontairement : c'est ce qui empêche les
+  // pointes de dégâts absurdes et garde les combats lisibles.
   let chanceCrit = 0.05 + (options.critBonus || 0);
+  let chanceDirect = 0;
   if (source.type === 'joueur') {
     const s = statsEffectives(source);
-    chanceCrit += s.agi * 0.01 + (s.crit || 0) / 100;
+    chanceCrit += sousCarac(s, 'crit');
+    chanceDirect = sousCarac(s, 'direct');
+    d *= 1 + sousCarac(s, 'deter');
+    // Un porteur de plaque frappe un peu plus fort : la Ténacité récompense
+    // celui qui tient la ligne au lieu de la fuir.
+    d *= 1 + sousCarac(s, 'tenacite') * 0.5;
     if (source.race === 'elfe') chanceCrit += 0.05; // Précision millénaire
   }
   const crit = Math.random() < chanceCrit;
-  if (crit) d *= 1.5;
+  let direct = false;
+  if (crit) {
+    d *= 1.5;
+  } else if (Math.random() < chanceDirect) {
+    direct = true;
+    d *= 1.25;
+  }
 
-  // Esquive et blocage (stats d'équipement des joueurs, plafonnées).
-  let bloque = false;
+  // Ténacité en défense : une réduction franche et constante des dégâts
+  // subis. Elle remplace l'ancien jet de blocage — un tank encaisse parce
+  // qu'il est un tank, pas parce qu'il a eu de la chance.
+  let reduit = false;
   if (cible.type === 'joueur') {
     const defensif = statsEffectives(cible);
-    if (Math.random() < Math.min(35, defensif.esquive || 0) / 100) {
-      return { degats: 0, crit: false, absorbe: 0, esquive: true };
+    const tenacite = sousCarac(defensif, 'tenacite');
+    if (tenacite > 0) {
+      reduit = true;
+      d *= 1 - tenacite;
     }
-    if (Math.random() < Math.min(40, defensif.blocage || 0) / 100) {
-      bloque = true;
-      d *= 0.5;
-    }
+  }
+  // La nuit, ce qui rôde frappe plus fort — c'est le prix du butin majoré.
+  if (source.type === 'monstre' && cible.type === 'joueur') {
+    d *= (mondeMaintenant().effets.degatsSubis || 1);
   }
   if (cible.defense) d *= 0.5;
   if (cible.race === 'nain') d *= 0.9; // Peau de pierre
@@ -455,14 +494,14 @@ function infligerDegats(source, cible, brut, options = {}) {
     cible.hp = 1;
     journal(`🐱 ${cible.nom} retombe sur ses pattes : Neuf vies le laisse à 1 PV !`);
   }
-  return { degats: d, crit, absorbe, bloque };
+  return { degats: d, crit, direct, absorbe, reduit };
 }
 
 function texteDegats(r) {
-  if (r.esquive) return 'esquivé ! 💨';
   let t = `${r.degats} dégâts`;
   if (r.crit) t += ' 💥 CRITIQUE !';
-  if (r.bloque) t += ' 🛡️ (bloqué : −50 %)';
+  else if (r.direct) t += ' 🎲 coup direct !';
+  if (r.reduit) t += ' 🛡️ (Ténacité)';
   if (r.absorbe > 0) t += ` (${r.absorbe} absorbés par le bouclier)`;
   return t;
 }
@@ -500,7 +539,7 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
     case 'poison': {
       const valeur = effet.degats != null
         ? effet.degats
-        : Math.round(3 + statDe(source, effet.stat || 'agi') * (effet.stat === 'int' ? 0.5 : 0.6));
+        : Math.round(3 + statDe(source, effet.stat || 'dex') * (effet.stat === 'int' ? 0.5 : 0.6));
       poserStatut(cible, { type: 'poison', duree: effet.duree, valeur });
       journal(`🧪 ${cible.nom} est empoisonné (${valeur} dégâts par tour, ${effet.duree} tours).`);
       break;
@@ -565,9 +604,9 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
     }
     case 'vol-or': {
       const cb2 = etat.combat;
-      const butin = Math.max(1, Math.round(varie(4 + statDe(source, 'agi') * 1.2)));
+      const butin = Math.max(1, Math.round(varie(4 + statDe(source, 'dex') * 1.2)));
       cb2.orVole = (cb2.orVole || 0) + butin;
-      journal(`💰 ${source.nom} fait les poches de ${cible.nom} : +${butin} po au butin !`);
+      journal(`💰 ${source.nom} fait les poches de ${cible.nom} : +${formatNombre(butin)} po au butin !`);
       break;
     }
   }
@@ -774,7 +813,7 @@ function executerActionCoeur(j, action, cible) {
   const cb = etat.combat;
   if (action.genre === 'attaque') {
     const s = statsEffectives(j);
-    const brut = 3 + Math.max(s.for, s.agi);
+    const brut = 3 + Math.max(s.for, s.dex);
     const r = infligerDegats(j, cible, brut);
     journal(`⚔️ ${j.nom} attaque ${cible.nom} : ${texteDegats(r)}`);
     gererMort(cible);
@@ -851,7 +890,7 @@ function lancerCompetence(j, compId, cible) {
       // Certaines compétences frappent plusieurs fois (rafale de coups).
       for (let coup = 0; coup < (comp.coups || 1); coup++) {
         if (estMort(c)) break;
-        const brut = (comp.puissance + s[comp.stat] * comp.ratio) * multRang;
+        const brut = (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang;
         const r = infligerDegats(j, c, brut, { critBonus: comp.critBonus || 0, magique: comp.stat === 'int' });
         journal(`→ ${c.nom} subit ${texteDegats(r)}`);
         gererMort(c);
@@ -865,7 +904,7 @@ function lancerCompetence(j, compId, cible) {
   } else if (comp.type === 'soin') {
     const cibles = comp.cible === 'allies' ? cb.equipe.filter((x) => !x.ko) : [cible];
     cibles.forEach((c) => {
-      const soin = soigner(c, (comp.puissance + s[comp.stat] * comp.ratio) * multRang);
+      const soin = soigner(c, (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang);
       journal(`${comp.emoji} ${j.nom} rend ${soin} PV à ${c === j ? 'lui-même' : c.nom}.`);
       if (comp.effet) appliquerEffet(j, c, comp.effet, null);
     });
@@ -922,7 +961,7 @@ function lancerInvocation(j, compId) {
     avatar: modele.emoji,
     niveau: j.niveau,
     stats,
-    agi: stats.agi,
+    dex: stats.dex,
     hp: maxHp, maxHp,
     mp: maxMp, maxMp,
     competences: [...modele.competences],
@@ -960,7 +999,7 @@ function tourInvocation(c) {
   if (!choix) {
     // À sec et sans rien de prêt : un coup de griffe basique.
     const cible = monstresVivants[alea(0, monstresVivants.length - 1)];
-    const r = infligerDegats(c, cible, 4 + (s.for + s.agi) * 0.8);
+    const r = infligerDegats(c, cible, 4 + (s.for + s.dex) * 0.8);
     journal(`🐾 ${c.nom} attaque ${cible.nom} : ${texteDegats(r)}`);
     gererMort(cible);
     return;
@@ -985,7 +1024,7 @@ function tourInvocation(c) {
     cibles.forEach((m) => {
       for (let coup = 0; coup < (comp.coups || 1); coup++) {
         if (estMort(m)) break;
-        const brut = comp.puissance + (s[comp.stat] || 0) * comp.ratio;
+        const brut = comp.puissance + statDeCompetence(comp, s) * comp.ratio;
         const r = infligerDegats(c, m, brut, { critBonus: comp.critBonus || 0, magique: comp.stat === 'int' });
         journal(`→ ${m.nom} subit ${texteDegats(r)}`);
         gererMort(m);
@@ -998,7 +1037,7 @@ function tourInvocation(c) {
       ? vivants
       : (comp.cible === 'soi' ? [c] : [[...vivants].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0]]);
     cibles.forEach((x) => {
-      const soin = soigner(x, comp.puissance + (s[comp.stat] || 0) * comp.ratio);
+      const soin = soigner(x, comp.puissance + statDeCompetence(comp, s) * comp.ratio);
       journal(`${comp.emoji} ${c.nom} rend ${soin} PV à ${x === c ? 'lui-même' : x.nom}.`);
       if (comp.effet) appliquerEffet(c, x, comp.effet, null);
     });

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tests — Les Royaumes de Valciel</title>
+  <style>
+    :root {
+      --fond: #12100f;
+      --panneau: #1b1817;
+      --bord: #2e2926;
+      --texte: #e8e2da;
+      --doux: #a2968a;
+      --vert: #5fbf8f;
+      --rouge: #e0736a;
+      --or: #d9a441;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 2rem 1rem 4rem;
+      background: var(--fond);
+      color: var(--texte);
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .page { max-width: 60rem; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
+    h1 { margin: 0; font-size: 1.4rem; letter-spacing: -0.01em; }
+    h1 .sous { color: var(--doux); font-weight: 400; font-size: 0.95rem; }
+    button {
+      background: var(--panneau); color: var(--texte); border: 1px solid var(--bord);
+      padding: 0.4rem 0.9rem; border-radius: 4px; cursor: pointer; font: inherit;
+    }
+    button:hover { border-color: var(--or); }
+    button:focus-visible { outline: 2px solid var(--or); outline-offset: 2px; }
+    .resume {
+      padding: 0.7rem 1rem; border-radius: 4px; font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .resume-ok { background: rgba(95, 191, 143, 0.14); color: var(--vert); border: 1px solid rgba(95, 191, 143, 0.35); }
+    .resume-ko { background: rgba(224, 115, 106, 0.14); color: var(--rouge); border: 1px solid rgba(224, 115, 106, 0.35); }
+    .suite {
+      background: var(--panneau); border: 1px solid var(--bord); border-radius: 6px;
+      padding: 1rem 1.15rem; display: flex; flex-direction: column; gap: 0.3rem;
+    }
+    .suite h2 {
+      margin: 0 0 0.5rem; font-size: 0.78rem; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--doux); display: flex; gap: 0.6rem; align-items: center;
+    }
+    .compte { font-variant-numeric: tabular-nums; letter-spacing: 0; }
+    .compte-ok { color: var(--vert); }
+    .compte-ko { color: var(--rouge); }
+    .cas { display: flex; gap: 0.6rem; align-items: baseline; padding: 0.15rem 0; }
+    .pastille { width: 1rem; flex: none; font-weight: 700; }
+    .cas.ok .pastille { color: var(--vert); }
+    .cas.ko .pastille { color: var(--rouge); }
+    .cas.ko .libelle { color: var(--rouge); }
+    .detail {
+      display: block; color: var(--doux); font-size: 0.85rem;
+      font-family: ui-monospace, Menlo, Consolas, monospace; margin-top: 0.15rem;
+      word-break: break-word;
+    }
+    .aide { color: var(--doux); font-size: 0.88rem; margin: 0; max-width: 65ch; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>⚗️ Tests de Valciel <span class="sous">— les mêmes données que le jeu, passées au banc d'essai</span></h1>
+      <button id="relancer">↻ Relancer</button>
+    </header>
+    <p class="aide">Cette page charge exactement les fichiers de données du jeu et vérifie leur cohérence :
+      catalogue, progression, formules de combat, tirages de butin, et surtout que les sauvegardes
+      existantes se chargent sans rien perdre. Tout doit être vert avant de livrer un lot.</p>
+    <div id="resume" class="resume">Chargement…</div>
+    <div id="resultats"></div>
+  </div>
+
+  <!-- Les mêmes données que le jeu, dans le même ordre -->
+  <script src="js/data/base.js"></script>
+  <script src="js/data/competences.js"></script>
+  <script src="js/data/classes.js"></script>
+  <script src="js/data/sous-classes.js"></script>
+  <script src="js/data/voies.js"></script>
+  <script src="js/data/eveils.js"></script>
+  <script src="js/data/tour-eveil.js"></script>
+  <script src="js/data/meta.js"></script>
+  <script src="js/data/progression.js"></script>
+  <script src="js/data/equipement-types.js"></script>
+  <script src="js/data/objets-catalogue.js"></script>
+  <script src="js/data/objets-craft.js"></script>
+  <script src="js/data/objets-generes.js"></script>
+  <script src="js/data/monde-vivant.js"></script>
+  <script src="js/data/monstres.js"></script>
+  <script src="js/data/zones.js"></script>
+  <script src="js/data/zones-marches.js"></script>
+  <script src="js/donjons/epopees.js"></script>
+  <script src="js/donjons/chroniques.js"></script>
+  <script src="js/donjons/chroniques-marches.js"></script>
+  <script src="js/donjons/moteur.js"></script>
+  <!-- game.js apporte la création et la migration des héros ; il ne démarre
+       pas l'interface, faute d'écrans de jeu dans cette page. -->
+  <script src="js/ui-listes.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/tests.js"></script>
+</body>
+</html>

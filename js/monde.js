@@ -5,10 +5,6 @@
 // récompenses de combat et écran de butin.
 // =====================================================================
 
-function formatNombre(n) {
-  return Number(n).toLocaleString('fr-FR');
-}
-
 // =====================================================================
 // Carte du monde
 // =====================================================================
@@ -54,7 +50,15 @@ function rendreCarte() {
   rendreCliquable(ville, () => naviguer('ville'));
   zone.appendChild(ville);
 
-  ZONES.forEach((z) => {
+  // v19 : les cartes se regroupent par acte du fil conducteur. Tout était
+  // empilé dans un seul défilement de dix écrans, verrouillé compris.
+  const groupes = [];
+  ACTES_MONDE.forEach((acte) => {
+    const zones = ZONES.filter((z) => z.niveauMin >= acte.de && z.niveauMin <= acte.a);
+    if (zones.length) groupes.push({ acte, zones });
+  });
+
+  const carteDeZone = (z) => {
     const verrouillee = p.niveau < z.niveauMin;
     const carte = document.createElement('div');
     carte.className = 'carte-zone' + (verrouillee ? ' verrouillee' : '');
@@ -71,7 +75,43 @@ function rendreCarte() {
         montrerEcran('ecran-zone');
       });
     }
-    zone.appendChild(carte);
+    return carte;
+  };
+
+  groupes.forEach(({ acte, zones }) => {
+    const ouvertes = zones.filter((z) => p.niveau >= z.niveauMin);
+    const fermees = zones.filter((z) => p.niveau < z.niveauMin);
+    // Un acte dont aucune carte n'est accessible reste replié : inutile de
+    // faire défiler dix cartes verrouillées avant d'atteindre les siennes.
+    const toutFerme = ouvertes.length === 0;
+
+    const bloc = document.createElement('section');
+    bloc.className = 'acte-monde' + (toutFerme ? ' acte-verrouille' : '');
+
+    const entete = document.createElement('button');
+    entete.type = 'button';
+    entete.className = 'acte-entete';
+    entete.setAttribute('aria-expanded', String(!toutFerme));
+    entete.innerHTML = `
+      <span class="acte-titre">${acte.emoji} ${acte.nom}</span>
+      <span class="acte-plage">niv. ${acte.de}-${acte.a} · ${zones.length} carte${zones.length > 1 ? 's' : ''}${
+        fermees.length ? ` · ${fermees.length} 🔒` : ''}</span>
+      <span class="acte-chevron">${toutFerme ? '▸' : '▾'}</span>`;
+
+    const contenu = document.createElement('div');
+    contenu.className = 'acte-cartes grille-zones';
+    if (toutFerme) contenu.classList.add('cache');
+    zones.forEach((z) => contenu.appendChild(carteDeZone(z)));
+
+    entete.addEventListener('click', () => {
+      const replie = contenu.classList.toggle('cache');
+      entete.setAttribute('aria-expanded', String(!replie));
+      entete.querySelector('.acte-chevron').textContent = replie ? '▸' : '▾';
+    });
+
+    bloc.appendChild(entete);
+    bloc.appendChild(contenu);
+    zone.appendChild(bloc);
   });
 
   // La Tour Sans Fin : combats enchaînés sans repos, de plus en plus durs.
@@ -211,7 +251,7 @@ function scorePuissance(membres) {
   if (!membres.length) return 0;
   return membres.reduce((somme, m) => {
     const s = statsEffectives(m);
-    return somme + s.for + s.int + s.agi + s.vit + (s.cha || 0);
+    return somme + s.for + s.int + s.dex + s.vit + (s.cha || 0);
   }, 0) / membres.length;
 }
 
@@ -441,7 +481,7 @@ function evenementHistoire(z) {
     if (r.materiau && OBJETS[r.materiau]) ajouterObjet(m, r.materiau, 1);
     sauvegarder(m);
   });
-  if (r.po) lignes.push(`💰 +${r.po} po pour chaque héros`);
+  if (r.po) lignes.push(`💰 +${formatNombre(r.po)} po pour chaque héros`);
   if (r.xp) lignes.push(`⭐ +${r.xp} XP pour chaque héros`);
   if (r.soinPct) lignes.push(`❤️ +${Math.round(r.soinPct * 100)} % de PV pour chaque héros`);
   if (r.materiau && OBJETS[r.materiau]) lignes.push(`${OBJETS[r.materiau].emoji} ${OBJETS[r.materiau].nom} ×1 pour chaque héros`);
@@ -474,10 +514,13 @@ function recolter(z, idMetier) {
   const niveauM = metierDe(p, idMetier).niveau;
   const bonusQte = Math.floor(niveauM / 3) + (specialiste ? 1 : 0); // la spécialité ajoute sa part
 
+  // v19 : l'aube gonfle l'herboristerie et fait affleurer les filons ; la
+  // pluie aide les plantes. Récolter au bon moment devient une décision.
+  const multMonde = multRecolteMonde(metier.famille);
   const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
   const objets = {};
   pool.forEach((entree) => {
-    if (Math.random() < Math.min(0.95, entree.chance * multChance * multSpec)) {
+    if (Math.random() < Math.min(0.95, entree.chance * multChance * multSpec * multMonde)) {
       objets[entree.id] = (objets[entree.id] || 0) + alea(1, 2) + bonusQte;
     }
   });
@@ -561,7 +604,7 @@ function marchandNomade(z) {
       ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}`;
     const acheter = document.createElement('button');
     acheter.className = 'btn-choix btn-compact btn-achat';
-    acheter.textContent = `Acheter — ${prixReduit} po (au lieu de ${objet.prix})`;
+    acheter.textContent = `Acheter — ${formatNombre(prixReduit)} po (au lieu de ${formatNombre(objet.prix)})`;
     acheter.disabled = p.po < prixReduit;
     acheter.addEventListener('click', () => {
       if (p.po < prixReduit) return;
@@ -608,7 +651,7 @@ function demarrerCombatBossMonde(boss) {
     nom: boss.nom, emoji: boss.emoji, niveau,
     hp: 80 + niveau * 55,
     atk: Math.round(7 + niveau * 2.1),
-    agi: 8,
+    dex: 8,
     xp: 0, po: [0, 0], drops: [],
     boss: true,
     attaques: [
@@ -648,13 +691,17 @@ function tirerButinCombat(cb) {
     xp += m.xp || 0;
     if (m.po) po += alea(m.po[0], m.po[1]);
     (m.drops || []).forEach((d) => {
-      if (Math.random() < Math.min(1, d.chance * difficulte.drop * evenement.drop * chanceEquipe)) {
+      const chanceMonde = d.chance * difficulte.drop * evenement.drop * chanceEquipe
+        * (monde.effets.butin || 1);
+      if (Math.random() < Math.min(1, chanceMonde)) {
         objets[d.id] = (objets[d.id] || 0) + 1;
       }
     });
   });
+  // v19 : l'heure qu'il est compte. Le jour paie mieux, la nuit donne plus.
+  const monde = mondeMaintenant();
   xp = Math.round(xp * difficulte.xp * evenement.xp);
-  po = Math.round(po * difficulte.po * evenement.po) + (cb.orVole || 0);
+  po = Math.round(po * difficulte.po * evenement.po * (monde.effets.or || 1)) + (cb.orVole || 0);
   if (cb.lootRecolte) {
     Object.entries(cb.lootRecolte).forEach(([id, qte]) => { objets[id] = (objets[id] || 0) + qte; });
   }
@@ -733,6 +780,17 @@ function demarrerCombatTourEtage(etage) {
   });
 }
 
+// Les deux Tours alimentent la même bourse de Sceaux : monter n'importe
+// quel escalier finance la Tour de l'Éveil. On ne récolte qu'à partir du
+// niveau requis, sinon les Sceaux s'accumuleraient sans rien à en faire.
+function recolterSceaux(m, etage, lignes) {
+  if (m.niveau < NIVEAU_TOUR_EVEIL) return;
+  const gain = gagnerSceaux(m, etage);
+  if (m.distant) return;
+  const majeur = gain.majeurs > 0 ? ' et 💠 1 Sceau Majeur' : '';
+  lignes.push(`🔹 +${gain.normaux} Sceau${gain.normaux > 1 ? 'x' : ''}${majeur} — à dépenser à la Tour de l'Éveil`);
+}
+
 function apresVictoireTour(cb) {
   const etage = cb.tourEtage;
   const membres = cb.equipe;
@@ -744,7 +802,7 @@ function apresVictoireTour(cb) {
   const multTour = 1 + etage * 0.12;
   const xpParHeros = Math.max(1, Math.round((butin.xp * multTour) / partage));
   const poParHeros = Math.max(0, Math.round((butin.po * multTour) / partage));
-  lignes.push(`⭐ +${xpParHeros} XP et 💰 +${poParHeros} po par héros (prime d'étage +${Math.round(etage * 12)} %)`);
+  lignes.push(`⭐ +${xpParHeros} XP et 💰 +${formatNombre(poParHeros)} po par héros (prime d'étage +${Math.round(etage * 12)} %)`);
   Object.entries(butin.objets).forEach(([id, qte]) => {
     lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
   });
@@ -759,6 +817,7 @@ function apresVictoireTour(cb) {
     progresserQuete(m, 'tour', 1);
     Object.entries(butin.objets).forEach(([id, qte]) => ajouterObjet(m, id, qte));
     if (m.tourMax < etage) m.tourMax = etage;
+    recolterSceaux(m, etage, lignes);
 
     // Palier (étages 5, 10, 15…) : coffre de la Tour + familier éventuel
     if (estPalier) {
@@ -889,7 +948,7 @@ function apresVictoireTourBoss(cb) {
   const multEtage = 1 + etage * 0.15;
   const xpParHeros = Math.max(1, Math.round((butin.xp * multEtage) / partage));
   const poParHeros = Math.max(0, Math.round((butin.po * multEtage) / partage));
-  const lignes = [`⭐ +${xpParHeros} XP et 💰 +${poParHeros} po par héros (prime d'étage +${Math.round(etage * 15)} %)`];
+  const lignes = [`⭐ +${xpParHeros} XP et 💰 +${formatNombre(poParHeros)} po par héros (prime d'étage +${Math.round(etage * 15)} %)`];
   Object.entries(butin.objets).forEach(([id, qte]) => {
     lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
   });
@@ -918,6 +977,7 @@ function apresVictoireTourBoss(cb) {
       }
     }
     if (m.tourBoss[difficulte] < etage) m.tourBoss[difficulte] = etage;
+    recolterSceaux(m, etage, lignes);
     const niveaux = gagnerXp(m, xpParHeros);
     verifierHautsFaits(m);
     nettoyerApresCombat(m); // pas de soin entre les étages

@@ -220,6 +220,15 @@
       <div id="arcanium-contenu"></div>
     </section>
 
+    <!-- ===== Tour de l'Éveil : refaire son build ===== -->
+    <section id="ecran-tour-eveil" class="ecran">
+      <div class="entete-lieu">
+        <h2>🗝️ La Tour de l'Éveil</h2>
+        <button class="btn-choix btn-compact btn-retour-ville">↩️ Retour au bourg</button>
+      </div>
+      <div id="tour-eveil-contenu"></div>
+    </section>
+
     <!-- ===== Taverne (multijoueur) ===== -->
     <section id="ecran-taverne" class="ecran">
       <h2>🍻 Taverne du Monde</h2>
@@ -249,10 +258,30 @@
     <button data-nav="heros" title="Profil du héros"><span class="nav-icone">🧙</span><span class="nav-libelle">Profil</span><span id="badge-heros" class="pastille cache">!</span></button>
   </nav>
 
-  <script src="js/data.js"></script>
-  <script src="js/objets.js"></script>
-  <script src="js/zones.js"></script>
-  <script src="js/donjons.js"></script>
+  <!-- Données : chargées dans l'ordre de leurs dépendances -->
+  <script src="js/data/base.js"></script>
+  <script src="js/data/competences.js"></script>
+  <script src="js/data/classes.js"></script>
+  <script src="js/data/sous-classes.js"></script>
+  <script src="js/data/voies.js"></script>
+  <script src="js/data/eveils.js"></script>
+  <script src="js/data/tour-eveil.js"></script>
+  <script src="js/data/meta.js"></script>
+  <script src="js/data/progression.js"></script>
+  <script src="js/data/equipement-types.js"></script>
+  <script src="js/data/objets-catalogue.js"></script>
+  <script src="js/data/objets-craft.js"></script>
+  <script src="js/data/objets-generes.js"></script>
+  <script src="js/data/monde-vivant.js"></script>
+  <script src="js/data/monstres.js"></script>
+  <script src="js/data/zones.js"></script>
+  <script src="js/data/zones-marches.js"></script>
+  <script src="js/donjons/epopees.js"></script>
+  <script src="js/donjons/chroniques.js"></script>
+  <script src="js/donjons/chroniques-marches.js"></script>
+  <script src="js/donjons/moteur.js"></script>
+  <!-- Systèmes -->
+  <script src="js/ui-listes.js"></script>
   <script src="js/reseau.js"></script>
   <script src="js/game.js"></script>
   <script src="js/monde.js"></script>
