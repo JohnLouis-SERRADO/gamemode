@@ -1565,6 +1565,61 @@ suite('Éveil', () => {
   });
 });
 
+suite('Fin de combat', () => {
+  // La page de tests ne charge pas reseau.js : on remplace le multiplicateur
+  // d'événement mondial par sa valeur neutre (1 partout), comme hors ligne.
+  if (typeof multiplicateursEvenement === 'undefined') {
+    window.multiplicateursEvenement = () => ({ xp: 1, po: 1, drop: 1 });
+  }
+
+  function combatFactice(surcharges = {}) {
+    const heros = herosTest({ niveau: 10 });
+    return {
+      genre: 'exploration',
+      difficulte: 'normal',
+      equipe: [heros],
+      monstres: [{
+        nom: 'Cobaye', xp: 40, po: [5, 9],
+        drops: [{ id: Object.keys(OBJETS).find((id) => OBJETS[id].type === 'materiau'), chance: 1 }],
+      }],
+      ...surcharges,
+    };
+  }
+
+  test('la victoire distribue XP, or et butin sans planter (régression du gel)', () => {
+    // Le bug : « monde » déclaré APRÈS la boucle des drops qui le lisait —
+    // tout combat dont un monstre avait un drop à tirer figeait l'écran.
+    // Ce test exécute précisément ce chemin : un drop à 100 %.
+    const butin = tirerButinCombat(combatFactice());
+    verifier(butin.xp > 0, `l'XP du butin devrait être positive (${butin.xp})`);
+    verifier(butin.po >= 5, `l'or du butin devrait suivre la fourchette (${butin.po})`);
+    verifier(Object.keys(butin.objets).length >= 1, 'le drop garanti devrait tomber');
+  });
+
+  test('le butin traverse les trois moments du monde vivant', () => {
+    // Aube, jour et nuit modulent l'or et le butin : aucun des trois ne doit
+    // faire planter le tirage ni produire de NaN.
+    const butin = tirerButinCombat(combatFactice());
+    verifier(Number.isFinite(butin.xp) && Number.isFinite(butin.po),
+      `XP et or doivent être des nombres finis (${butin.xp}, ${butin.po})`);
+    const monde = mondeMaintenant();
+    verifier(Number.isFinite(monde.effets.or || 1) && Number.isFinite(monde.effets.butin || 1),
+      'les effets du monde doivent être des nombres');
+  });
+
+  test('un monstre sans drops ni bourse ne casse rien', () => {
+    const butin = tirerButinCombat(combatFactice({ monstres: [{ nom: 'Spectre', xp: 10 }] }));
+    egal(Object.keys(butin.objets).length, 0, 'objets');
+    egal(butin.po, 0, 'or');
+  });
+
+  test('la récolte embarquée rejoint le butin', () => {
+    const idMateriau = Object.keys(OBJETS).find((id) => OBJETS[id].type === 'materiau');
+    const butin = tirerButinCombat(combatFactice({ lootRecolte: { [idMateriau]: 3 } }));
+    verifier((butin.objets[idMateriau] || 0) >= 3, 'les 3 unités récoltées devraient être là');
+  });
+});
+
 suite('Tour de l\'Éveil', () => {
   test('les sept services annoncent un nom, un coût et une description', () => {
     const ids = Object.keys(SERVICES_TOUR);

@@ -684,6 +684,10 @@ function tirerButinCombat(cb) {
   cb.equipe.forEach((j) => {
     if ((j.statuts || []).some((s) => s.type === 'fortune')) chanceEquipe *= 1.3;
   });
+  // v19 : l'heure qu'il est compte. Le jour paie mieux, la nuit donne plus.
+  // (déclaré AVANT la boucle des drops, qui s'en sert : le déclarer après
+  // figeait tout écran de victoire — zone morte temporelle.)
+  const monde = mondeMaintenant();
   let xp = 0;
   let po = 0;
   const objets = {};
@@ -698,8 +702,6 @@ function tirerButinCombat(cb) {
       }
     });
   });
-  // v19 : l'heure qu'il est compte. Le jour paie mieux, la nuit donne plus.
-  const monde = mondeMaintenant();
   xp = Math.round(xp * difficulte.xp * evenement.xp);
   po = Math.round(po * difficulte.po * evenement.po * (monde.effets.or || 1)) + (cb.orVole || 0);
   if (cb.lootRecolte) {
