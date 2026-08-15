@@ -229,13 +229,30 @@ Object.entries(RARETES_EXISTANTES).forEach(([rarete, ids]) => {
   ids.forEach((id) => { if (OBJETS[id]) OBJETS[id].rarete = rarete; });
 });
 
-const PART_REVENTE = 0.4; // un équipement/consommable se revend 40 % de son prix
+// =====================================================================
+// v19 — La revente, revue à la baisse.
+//
+// Un équipement se revendait 40 % de son prix d'achat. Combiné au butin
+// de coffre (trois à cinq pièces par boss), cela faisait du sac une
+// machine à or : il suffisait de tout ramasser et de tout revendre.
+//
+// La part descend à 22 %, et elle est DÉGRESSIVE avec la rareté : plus
+// une pièce est précieuse, moins la revente en rend — pour qu'un objet
+// légendaire se garde, s'échange ou se démonte, plutôt qu'il ne finisse
+// systématiquement au comptoir du premier marchand venu.
+// =====================================================================
+const PART_REVENTE = 0.22;
+const REVENTE_PAR_RARETE = {
+  commun: 1, inhabituel: 0.95, rare: 0.85, epique: 0.75,
+  legendaire: 0.65, mythique: 0.55, divin: 0.45,
+};
 
 function prixVenteDe(idObjet) {
   const objet = OBJETS[idObjet];
   if (!objet) return 0;
-  // Les objets sans prix de boutique (matériaux, légendaires d'atelier)
-  // portent leur propre valeur de revente.
+  // Les matériaux portent leur propre valeur : elle vient de la récolte,
+  // pas d'un prix de boutique, et le rééquilibrage ne les concerne pas.
   if (objet.prixVente != null) return objet.prixVente;
-  return Math.max(1, Math.round((objet.prix || 0) * PART_REVENTE));
+  const part = PART_REVENTE * (REVENTE_PAR_RARETE[rareteDe(objet)] || 1);
+  return Math.max(1, Math.round((objet.prix || 0) * part));
 }

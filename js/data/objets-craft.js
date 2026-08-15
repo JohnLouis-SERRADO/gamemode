@@ -38,20 +38,20 @@ const RECETTES = [
 // Chaque série a son niveau, sa rareté, ses matériaux et son coût.
 // =====================================================================
 const SETS_CRAFT = [
-  { suffixe: 'du Loup',      niveau: 3,  rarete: 'commun',     po: 18,  materiaux: { 'peau-de-loup': 2, 'fibre-sauvage': 2 } },
-  { suffixe: 'du Sanglier',  niveau: 4,  rarete: 'commun',     po: 26,  materiaux: { 'defense-sanglier': 2, 'peau-de-loup': 1 } },
-  { suffixe: 'des Murmures', niveau: 6,  rarete: 'inhabituel', po: 50,  materiaux: { 'bois-chene': 2, 'seve-ambree': 2 } },
-  { suffixe: 'de la Veuve',  niveau: 7,  rarete: 'inhabituel', po: 65,  materiaux: { 'soie-araignee': 3, 'fibre-sauvage': 2 } },
-  { suffixe: 'du Cuivre',    niveau: 8,  rarete: 'inhabituel', po: 80,  materiaux: { 'minerai-cuivre': 3, 'defense-sanglier': 1 } },
-  { suffixe: 'du Marais',    niveau: 9,  rarete: 'rare',       po: 110, materiaux: { 'lotus-noir': 2, 'herbe-lunaire': 2, 'seve-ambree': 1 } },
-  { suffixe: 'de Fer',       niveau: 11, rarete: 'rare',       po: 150, materiaux: { 'minerai-fer': 3, 'minerai-cuivre': 2 } },
-  { suffixe: 'des Cryptes',  niveau: 12, rarete: 'rare',       po: 190, materiaux: { 'os-ancien': 2, 'poussiere-spectre': 2 } },
-  { suffixe: 'des Dunes',    niveau: 13, rarete: 'rare',       po: 230, materiaux: { 'perle-des-sables': 2, 'minerai-fer': 2 } },
-  { suffixe: 'du Spectre',   niveau: 14, rarete: 'epique',     po: 280, materiaux: { 'poussiere-spectre': 3, 'os-ancien': 2 } },
-  { suffixe: 'des Glaces',   niveau: 15, rarete: 'epique',     po: 330, materiaux: { 'cristal-givre': 2, 'minerai-fer': 2 } },
-  { suffixe: 'du Golem',     niveau: 16, rarete: 'epique',     po: 390, materiaux: { 'noyau-golem': 2, 'minerai-fer': 3 } },
-  { suffixe: 'du Dragon',    niveau: 17, rarete: 'legendaire', po: 500, materiaux: { 'ecaille-draconique': 2, 'noyau-golem': 1, 'minerai-fer': 2 } },
-  { suffixe: 'de l’Aube',    niveau: 19, rarete: 'legendaire', po: 650, materiaux: { 'ecaille-draconique': 2, 'cristal-givre': 2, 'perle-des-sables': 2 } },
+  { suffixe: 'du Loup', armure: 'cuir',      niveau: 3,  rarete: 'commun',     po: 18,  materiaux: { 'peau-de-loup': 2, 'fibre-sauvage': 2 } },
+  { suffixe: 'du Sanglier', armure: 'cuir',  niveau: 4,  rarete: 'commun',     po: 26,  materiaux: { 'defense-sanglier': 2, 'peau-de-loup': 1 } },
+  { suffixe: 'des Murmures', armure: 'tissu', niveau: 6,  rarete: 'inhabituel', po: 50,  materiaux: { 'bois-chene': 2, 'seve-ambree': 2 } },
+  { suffixe: 'de la Veuve', armure: 'tissu',  niveau: 7,  rarete: 'inhabituel', po: 65,  materiaux: { 'soie-araignee': 3, 'fibre-sauvage': 2 } },
+  { suffixe: 'du Cuivre', armure: 'maille',    niveau: 8,  rarete: 'inhabituel', po: 80,  materiaux: { 'minerai-cuivre': 3, 'defense-sanglier': 1 } },
+  { suffixe: 'du Marais', armure: 'tissu',    niveau: 9,  rarete: 'rare',       po: 110, materiaux: { 'lotus-noir': 2, 'herbe-lunaire': 2, 'seve-ambree': 1 } },
+  { suffixe: 'de Fer', armure: 'plaque',       niveau: 11, rarete: 'rare',       po: 150, materiaux: { 'minerai-fer': 3, 'minerai-cuivre': 2 } },
+  { suffixe: 'des Cryptes', armure: 'maille',  niveau: 12, rarete: 'rare',       po: 190, materiaux: { 'os-ancien': 2, 'poussiere-spectre': 2 } },
+  { suffixe: 'des Dunes', armure: 'cuir',    niveau: 13, rarete: 'rare',       po: 230, materiaux: { 'perle-des-sables': 2, 'minerai-fer': 2 } },
+  { suffixe: 'du Spectre', armure: 'tissu',   niveau: 14, rarete: 'epique',     po: 280, materiaux: { 'poussiere-spectre': 3, 'os-ancien': 2 } },
+  { suffixe: 'des Glaces', armure: 'maille',   niveau: 15, rarete: 'epique',     po: 330, materiaux: { 'cristal-givre': 2, 'minerai-fer': 2 } },
+  { suffixe: 'du Golem', armure: 'plaque',     niveau: 16, rarete: 'epique',     po: 390, materiaux: { 'noyau-golem': 2, 'minerai-fer': 3 } },
+  { suffixe: 'du Dragon', armure: 'plaque',    niveau: 17, rarete: 'legendaire', po: 500, materiaux: { 'ecaille-draconique': 2, 'noyau-golem': 1, 'minerai-fer': 2 } },
+  { suffixe: 'de l’Aube', armure: 'tissu',    niveau: 19, rarete: 'legendaire', po: 650, materiaux: { 'ecaille-draconique': 2, 'cristal-givre': 2, 'perle-des-sables': 2 } },
 ];
 
 const MULT_RARETE_CRAFT = { commun: 1, inhabituel: 1.12, rare: 1.25, epique: 1.4, legendaire: 1.6, mythique: 1.85, divin: 2.2 };
@@ -95,12 +95,12 @@ Object.assign(OBJETS, {
 // Les grandes séries des Terres lointaines : chaque pièce coûte des
 // matériaux raffinés en quantité — des heures de récolte bien investies.
 SETS_CRAFT.push(
-  { suffixe: 'des Falaises',  niveau: 24, rarete: 'rare',       po: 320,  materiaux: { 'alliage-hurlant': 2, 'lingot-ferreux': 2 } },
-  { suffixe: 'de Vaï-Sombre', niveau: 28, rarete: 'epique',     po: 450,  materiaux: { 'resine-de-jungle': 2, 'cuir-double': 3, 'essence-sylvestre': 1 } },
-  { suffixe: 'des Abysses',   niveau: 33, rarete: 'epique',     po: 620,  materiaux: { 'sel-d-abysse': 2, 'toile-runique': 2 } },
-  { suffixe: 'du Béhémoth',   niveau: 38, rarete: 'legendaire', po: 900,  materiaux: { 'perle-de-magma': 2, 'moelle-titanesque': 1, 'lingot-ferreux': 3 } },
-  { suffixe: 'des Titans',    niveau: 44, rarete: 'mythique',   po: 1400, materiaux: { 'moelle-titanesque': 2, 'quartz-eveille': 2, 'sel-d-abysse': 1 } },
-  { suffixe: 'du Firmament',  niveau: 50, rarete: 'divin',      po: 2200, materiaux: { 'coeur-d-orage': 2, 'fil-du-neant': 2, 'quartz-eveille': 1 } },
+  { suffixe: 'des Falaises', armure: 'cuir',  niveau: 24, rarete: 'rare',       po: 320,  materiaux: { 'alliage-hurlant': 2, 'lingot-ferreux': 2 } },
+  { suffixe: 'de Vaï-Sombre', armure: 'cuir', niveau: 28, rarete: 'epique',     po: 450,  materiaux: { 'resine-de-jungle': 2, 'cuir-double': 3, 'essence-sylvestre': 1 } },
+  { suffixe: 'des Abysses', armure: 'maille',   niveau: 33, rarete: 'epique',     po: 620,  materiaux: { 'sel-d-abysse': 2, 'toile-runique': 2 } },
+  { suffixe: 'du Béhémoth', armure: 'plaque',   niveau: 38, rarete: 'legendaire', po: 900,  materiaux: { 'perle-de-magma': 2, 'moelle-titanesque': 1, 'lingot-ferreux': 3 } },
+  { suffixe: 'des Titans', armure: 'plaque',    niveau: 44, rarete: 'mythique',   po: 1400, materiaux: { 'moelle-titanesque': 2, 'quartz-eveille': 2, 'sel-d-abysse': 1 } },
+  { suffixe: 'du Firmament', armure: 'tissu',  niveau: 50, rarete: 'divin',      po: 2200, materiaux: { 'coeur-d-orage': 2, 'fil-du-neant': 2, 'quartz-eveille': 1 } },
 );
 
 // ---------------------------------------------------------------------
@@ -137,7 +137,7 @@ Object.assign(FAMILLE_MATERIAU, {
 
 // Le grand œuvre des artisans : une série qui exige les trois métiers.
 SETS_CRAFT.push(
-  { suffixe: 'des Trois Maîtres', niveau: 36, rarete: 'mythique', po: 1600, materiaux: { 'lingot-arcanique': 1, 'cuir-de-legende': 1, 'etoffe-enchantee': 1 } },
+  { suffixe: 'des Trois Maîtres', armure: 'maille', niveau: 36, rarete: 'mythique', po: 1600, materiaux: { 'lingot-arcanique': 1, 'cuir-de-legende': 1, 'etoffe-enchantee': 1 } },
 );
 
 // L'alchimiste apprend à fabriquer les objets tactiques : potions,
@@ -275,9 +275,12 @@ SETS_CRAFT.forEach((serie) => {
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const pieces = [
-    { cle: 'lame',      nom: `Lame ${serie.suffixe}`,      emoji: '⚔️', slot: 'arme',       bonus: { for: principal, vit: secondaire } },
-    { cle: 'focus',     nom: `Focus ${serie.suffixe}`,     emoji: '🔮', slot: 'arme',       bonus: { int: principal, pmMax: secondaire * 3 } },
-    { cle: 'arc',       nom: `Arc ${serie.suffixe}`,       emoji: '🏹', slot: 'arme',       bonus: { dex: principal, crit: secondaire } },
+    { cle: 'lame',      nom: `Lame ${serie.suffixe}`,      emoji: '⚔️', slot: 'arme', familleArme: 'lame',    bonus: { for: principal, vit: secondaire } },
+    { cle: 'focus',     nom: `Focus ${serie.suffixe}`,     emoji: '🔮', slot: 'arme', familleArme: 'baton',   bonus: { int: principal, pmMax: secondaire * 3 } },
+    { cle: 'arc',       nom: `Arc ${serie.suffixe}`,       emoji: '🏹', slot: 'arme', familleArme: 'arc',     bonus: { dex: principal, crit: secondaire } },
+    { cle: 'calice',    nom: `Calice ${serie.suffixe}`,    emoji: '🕊️', slot: 'arme', familleArme: 'calice',  bonus: { esp: principal, pmMax: secondaire * 3 } },
+    { cle: 'faux',      nom: `Faux ${serie.suffixe}`,      emoji: '🌑', slot: 'arme', familleArme: 'runique', bonus: { int: principal, vit: secondaire } },
+    { cle: 'pavois',    nom: `Pavois ${serie.suffixe}`,    emoji: '🛡️', slot: 'arme', familleArme: 'pavois',  bonus: { vit: principal, tenacite: Math.max(1, Math.floor(serie.niveau / 9)) } },
     { cle: 'armure',    nom: `Armure ${serie.suffixe}`,    emoji: '🛡️', slot: 'torse',      bonus: { vit: Math.max(1, Math.round(principal * 0.7)), pvMax: serie.niveau * 3 } },
     { cle: 'heaume',    nom: `Heaume ${serie.suffixe}`,    emoji: '🪖', slot: 'tete',       bonus: { vit: secondaire, pvMax: serie.niveau * 2 } },
     { cle: 'jambieres', nom: `Jambières ${serie.suffixe}`, emoji: '👖', slot: 'jambes',     bonus: { dex: secondaire, vit: secondaire, pvMax: serie.niveau } },
@@ -291,6 +294,9 @@ SETS_CRAFT.forEach((serie) => {
     const id = `${piece.cle}-${idBase}`;
     OBJETS[id] = {
       nom: piece.nom, emoji: piece.emoji, type: 'equipement', slot: piece.slot,
+      // Une pièce d'armure porte la matière de sa série ; une arme, sa famille.
+      armure: piece.familleArme ? null : (SLOTS_ARMURE.includes(piece.slot) ? serie.armure : null),
+      familleArme: piece.familleArme || null,
       niveau: serie.niveau, rarete: serie.rarete,
       prixVente: Math.round(serie.po * 0.6),
       bonus: piece.bonus,

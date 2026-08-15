@@ -171,7 +171,7 @@ const SOUS_TYPES = {
   ],
 };
 
-let sousFiltres = { rarete: 'tous', type: 'tous' };
+let sousFiltres = { rarete: 'tous', type: 'tous', maClasse: false };
 
 function rendreChipsFiltres(conteneur, contexte, surChangement) {
   // Les puces de rareté débordaient sur trois lignes avant même qu'on
@@ -209,11 +209,26 @@ function rendreChipsFiltres(conteneur, contexte, surChangement) {
     chip.addEventListener('click', () => { sousFiltres.rarete = id; surChangement(); });
     rangee.appendChild(chip);
   });
+  // v19 : le filtre le plus utile de tous — ne montrer que ce que le héros
+  // peut réellement porter. Il tombe hors du repli : c'est celui qu'on veut
+  // sous la main en permanence.
+  const rangeeClasse = document.createElement('div');
+  rangeeClasse.className = 'rangee-chips rangee-ma-classe';
+  const chipClasse = document.createElement('button');
+  chipClasse.type = 'button';
+  chipClasse.className = 'chip chip-filtre chip-ma-classe' + (sousFiltres.maClasse ? ' active' : '');
+  chipClasse.textContent = '🎯 Pour ma classe';
+  chipClasse.title = 'N’afficher que ce que votre classe sait porter';
+  chipClasse.addEventListener('click', () => { sousFiltres.maClasse = !sousFiltres.maClasse; surChangement(); });
+  rangeeClasse.appendChild(chipClasse);
+
   conteneur.appendChild(rangee);
+  conteneurReel.appendChild(rangeeClasse);
   conteneurReel.appendChild(repli);
 }
 
 function passeSousFiltres(objet, contexte) {
+  if (sousFiltres.maClasse && !peutPorter(persoActif(), objet)) return false;
   if (sousFiltres.rarete !== 'tous' && rareteDe(objet) !== sousFiltres.rarete) return false;
   if (sousFiltres.type !== 'tous') {
     const type = (SOUS_TYPES[contexte] || []).find((t) => t.id === sousFiltres.type);
@@ -240,7 +255,7 @@ function rendreBoutique() {
     btn.textContent = onglet.nom;
     btn.addEventListener('click', () => {
       ongletBoutique = onglet.id;
-      sousFiltres = { rarete: 'tous', type: 'tous' }; // chaque onglet repart à neuf
+      sousFiltres = { rarete: 'tous', type: 'tous', maClasse: false }; // chaque onglet repart à neuf
       reinitialiserListe(`boutique-${boutiqueCourante}-${onglet.id}`);
       rendreBoutique();
     });
@@ -300,7 +315,9 @@ function carteArticleBoutique(p, id, objet, apresAchat) {
     <div class="objet-desc">${objet.desc || ''}</div>
     ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
     ${texteSet(objet)}
+    ${texteTypeEquipement(objet)}
     ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}
+    ${peutPorter(p, objet) ? '' : `<div class="objet-niveau niveau-insuffisant">🚫 ${raisonRefusEquipement(p, objet)}</div>`}
     ${texteComparaison(p, objet)}`;
   const acheter = document.createElement('button');
   acheter.className = 'btn-choix btn-compact btn-achat';
@@ -833,12 +850,12 @@ function artisanDeRecette(recette) {
   return 'tisserand';
 }
 
-let filtresAtelier = { type: 'tous', realisables: false };
+let filtresAtelier = { type: 'tous', realisables: false, maClasse: false, armure: 'toutes' };
 let atelierCourant = 'forge';
 
 function ouvrirAtelier(idArtisan) {
   atelierCourant = idArtisan;
-  filtresAtelier = { type: 'tous', realisables: false };
+  filtresAtelier = { type: 'tous', realisables: false, maClasse: false, armure: 'toutes' };
   rendreAtelier();
   montrerEcran('ecran-atelier');
 }
@@ -890,7 +907,33 @@ function rendreAtelier() {
     rendreAtelier();
   });
   rangee.appendChild(chipRealisables);
+
+  // v19 : « pour ma classe » et le filtre de matière, réclamés au même
+  // titre que la recherche — devant un établi, la question est toujours
+  // « qu'est-ce que je peux porter, moi ? ».
+  const chipClasse = document.createElement('button');
+  chipClasse.type = 'button';
+  chipClasse.className = 'chip chip-filtre chip-ma-classe' + (filtresAtelier.maClasse ? ' active' : '');
+  chipClasse.textContent = '🎯 Pour ma classe';
+  chipClasse.addEventListener('click', () => {
+    filtresAtelier.maClasse = !filtresAtelier.maClasse;
+    rendreAtelier();
+  });
+  rangee.appendChild(chipClasse);
   zone.appendChild(rangee);
+
+  const rangeeMatiere = document.createElement('div');
+  rangeeMatiere.className = 'rangee-chips rangee-sous-filtres';
+  [['toutes', '🧺 Toutes matières'], ...Object.entries(CATEGORIES_ARMURE).map(([id, c]) => [id, `${c.emoji} ${c.nom}`])]
+    .forEach(([id, nom]) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip chip-filtre' + (filtresAtelier.armure === id ? ' active' : '');
+      chip.textContent = nom;
+      chip.addEventListener('click', () => { filtresAtelier.armure = id; rendreAtelier(); });
+      rangeeMatiere.appendChild(chip);
+    });
+  zone.appendChild(rangeeMatiere);
 
   // L'établi de CET artisan : ses recettes jusqu'au niveau du héros +6 —
   // les prochaines apparaissent grisées avec leur cadenas, pour donner
@@ -900,7 +943,10 @@ function rendreAtelier() {
   const cachees = chezLui.length - proches.length;
   const visibles = proches
     .filter((recette) => filtresAtelier.type === 'tous' || categorieRecette(recette) === filtresAtelier.type)
-    .filter((recette) => !filtresAtelier.realisables || recetteRealisable(p, recette));
+    .filter((recette) => !filtresAtelier.realisables || recetteRealisable(p, recette))
+    .filter((recette) => !filtresAtelier.maClasse || peutPorter(p, OBJETS[recette.resultat]))
+    .filter((recette) => filtresAtelier.armure === 'toutes'
+      || (OBJETS[recette.resultat].armure || 'toutes') === filtresAtelier.armure);
 
   rendreListeFiltrable({
     cle: `atelier-${atelierCourant}`,
@@ -935,6 +981,8 @@ function rendreAtelier() {
       <div class="objet-entete">${niveauOk ? '' : '🔒 '}${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)}</div>
       ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : `<div class="objet-desc">${objet.desc || ''}</div>`}
       ${texteSet(objet)}
+      ${texteTypeEquipement(objet)}
+      ${peutPorter(p, objet) ? '' : `<div class="objet-niveau niveau-insuffisant">🚫 ${raisonRefusEquipement(p, objet)}</div>`}
       ${texteComparaison(p, objet)}
       ${!niveauOk ? `<div class="objet-niveau niveau-insuffisant">🔒 se débloque au niveau ${recette.niveau}</div>` : ''}
       <div class="ingredients">${listeMateriaux}

@@ -9,20 +9,56 @@
 // Ils tombent des coffres de boss, de la Tour et des contrats de guilde.
 // Pour chaque archétype × niveau × rareté disponible, deux variantes.
 // =====================================================================
-const ARCHETYPES_BUTIN = [
-  { cle: 'epee',     noms: ['Épée', 'Hache', 'Masse'],           emoji: '⚔️', slot: 'arme',       principal: 'for', secondaire: 'vit' },
-  { cle: 'baton',    noms: ['Bâton', 'Sceptre', 'Orbe'],         emoji: '🪄', slot: 'arme',       principal: 'int', secondaire: 'cha' },
-  { cle: 'arc',      noms: ['Arc', 'Dague', 'Arbalète'],         emoji: '🏹', slot: 'arme',       principal: 'dex', secondaire: 'for' },
-  { cle: 'heaume',   noms: ['Heaume', 'Capuche', 'Diadème'],     emoji: '🪖', slot: 'tete',       principal: 'vit', secondaire: 'int' },
-  { cle: 'plastron', noms: ['Plastron', 'Tunique', 'Cuirasse'],  emoji: '🛡️', slot: 'torse',      principal: 'vit', secondaire: 'for' },
-  { cle: 'gants',    noms: ['Gants', 'Gantelets', 'Mitaines'],   emoji: '🧤', slot: 'mains',      principal: 'for', secondaire: 'dex', defensif: 'tenacite' },
-  { cle: 'jambes',   noms: ['Jambières', 'Grèves', 'Cuissards'], emoji: '👖', slot: 'jambes',     principal: 'dex', secondaire: 'vit' },
-  { cle: 'bottes',   noms: ['Bottes', 'Sandales', 'Solerets'],   emoji: '🥾', slot: 'pieds',      principal: 'dex', secondaire: 'vit', defensif: 'celerite' },
+// --- Les armes : une famille par manière de se battre ----------------
+const ARCHETYPES_ARMES = [
+  { cle: 'epee',     noms: ['Épée', 'Hache', 'Masse'],            emoji: '⚔️', familleArme: 'lame',    principal: 'for', secondaire: 'vit' },
+  { cle: 'pavois',   noms: ['Pavois', 'Écu', 'Targe'],            emoji: '🛡️', familleArme: 'pavois',  principal: 'vit', secondaire: 'for' },
+  { cle: 'arc',      noms: ['Arc', 'Dague', 'Arbalète'],          emoji: '🏹', familleArme: 'arc',     principal: 'dex', secondaire: 'for' },
+  { cle: 'baton',    noms: ['Bâton', 'Sceptre', 'Orbe'],          emoji: '🪄', familleArme: 'baton',   principal: 'int', secondaire: 'cha' },
+  { cle: 'calice',   noms: ['Calice', 'Canne', 'Crosse'],         emoji: '🕊️', familleArme: 'calice',  principal: 'esp', secondaire: 'int' },
+  { cle: 'runique',  noms: ['Lame runique', 'Faux', 'Estoc gravé'], emoji: '🌑', familleArme: 'runique', principal: 'int', secondaire: 'vit' },
+];
+
+// --- Les armures : chaque emplacement décliné en quatre matières ------
+//
+// C'est le cœur de la correction : le même emplacement existe désormais
+// en tissu, cuir, maille et plaque, avec des noms et des statistiques qui
+// disent tout de suite à qui la pièce est destinée.
+const PIECES_ARMURE = [
+  { cle: 'tete',   slot: 'tete',   emoji: '🪖', noms: { tissu: ['Capuche', 'Chapeau', 'Diadème'], cuir: ['Bandeau', 'Capuchon', 'Serre-tête'], maille: ['Coiffe', 'Camail', 'Cervelière'], plaque: ['Heaume', 'Casque', 'Armet'] } },
+  { cle: 'torse',  slot: 'torse',  emoji: '👕', noms: { tissu: ['Tunique', 'Robe', 'Chasuble'], cuir: ['Justaucorps', 'Brigandine', 'Veste'], maille: ['Haubert', 'Cotte', 'Broigne'], plaque: ['Cuirasse', 'Plastron', 'Harnois'] } },
+  { cle: 'mains',  slot: 'mains',  emoji: '🧤', noms: { tissu: ['Mitaines', 'Manchettes', 'Bandes'], cuir: ['Gants', 'Poignets', 'Brassards'], maille: ['Gantelets gravés', 'Mailles de main', 'Serres'], plaque: ['Gantelets', 'Canons d’avant-bras', 'Poings d’acier'] } },
+  { cle: 'jambes', slot: 'jambes', emoji: '👖', noms: { tissu: ['Chausses', 'Pantalon', 'Jupe'], cuir: ['Braies', 'Cuissardes', 'Culotte'], maille: ['Chausses de mailles', 'Jambières tressées', 'Cuissots'], plaque: ['Grèves', 'Cuissards', 'Tassettes'] } },
+  { cle: 'pieds',  slot: 'pieds',  emoji: '🥾', noms: { tissu: ['Sandales', 'Chaussons', 'Escarpins'], cuir: ['Bottes', 'Souliers', 'Mocassins'], maille: ['Solerets', 'Bottes cloutées', 'Chausses ferrées'], plaque: ['Solerets d’acier', 'Sabatons', 'Bottes de plates'] } },
+];
+
+// Statistique dominante et défensive de chaque matière.
+const PROFIL_ARMURE = {
+  tissu:  { principal: 'int', secondaire: 'esp', defensif: 'piete' },
+  cuir:   { principal: 'dex', secondaire: 'vit', defensif: 'celerite' },
+  maille: { principal: 'int', secondaire: 'vit', defensif: 'deter' },
+  plaque: { principal: 'vit', secondaire: 'for', defensif: 'tenacite' },
+};
+
+// --- Les accessoires : sans matière, ils vont à tout le monde ---------
+const ARCHETYPES_ACCESSOIRES = [
   { cle: 'anneau',   noms: ['Anneau', 'Sceau', 'Chevalière'],    emoji: '💍', slot: 'accessoire', principal: 'cha', secondaire: 'dex' },
   { cle: 'amulette', noms: ['Amulette', 'Pendentif', 'Relique'], emoji: '📿', slot: 'accessoire', principal: 'int', secondaire: 'cha' },
-  // v19 : l'Esprit a besoin de ses armes — sans quoi l'attribut du soigneur
-  // n'aurait nulle part où vivre.
-  { cle: 'calice',   noms: ['Calice', 'Canne', 'Crosse'],        emoji: '🕊️', slot: 'arme',       principal: 'esp', secondaire: 'int' },
+  { cle: 'talisman', noms: ['Talisman', 'Fétiche', 'Gri-gri'],   emoji: '🧿', slot: 'accessoire', principal: 'esp', secondaire: 'vit' },
+];
+
+// La liste complète, à plat : armes + armures typées + accessoires.
+const ARCHETYPES_BUTIN = [
+  ...ARCHETYPES_ARMES.map((a) => ({ ...a, slot: 'arme' })),
+  ...PIECES_ARMURE.flatMap((piece) => Object.keys(CATEGORIES_ARMURE).map((matiere) => ({
+    cle: `${piece.cle}-${matiere}`,
+    noms: piece.noms[matiere],
+    emoji: CATEGORIES_ARMURE[matiere].emoji,
+    slot: piece.slot,
+    armure: matiere,
+    ...PROFIL_ARMURE[matiere],
+  }))),
+  ...ARCHETYPES_ACCESSOIRES,
 ];
 
 // =====================================================================
@@ -80,7 +116,10 @@ const MULT_RARETE_BUTIN = { commun: 0.8, inhabituel: 0.95, rare: 1.1, epique: 1.
 // (niveaux 21 à 50) : une variante, raretés épique et plus seulement —
 // le haut niveau se joue dans les hautes raretés.
 ARCHETYPES_BUTIN.forEach((archetype) => {
-  for (let niveau = 1; niveau <= 50; niveau++) {
+  for (let niveau = 1; niveau <= NIVEAU_MAX; niveau++) {
+    // Au-delà du niveau 60, un palier sur deux suffit : le butin se joue
+    // dans les hautes raretés, pas dans le nombre de lignes du catalogue.
+    if (niveau > 60 && niveau % 2 !== 0) continue;
     const variantes = niveau <= 20 ? 2 : 1;
     Object.keys(RARETES).forEach((rarete) => {
       if (niveau < PALIER_RARETE[rarete]) return;
@@ -108,6 +147,7 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
         OBJETS[`butin-${archetype.cle}-${rarete}-${niveau}-${variante}`] = {
           nom: `${nomBase} ${qualificatif}`,
           emoji: archetype.emoji, type: 'equipement', slot: archetype.slot,
+          armure: archetype.armure || null, familleArme: archetype.familleArme || null,
           niveau, rarete,
           prixVente: Math.max(5, Math.round(niveau * 6 * mult)),
           bonus,
@@ -135,14 +175,30 @@ const QUALIFICATIFS_BOUTIQUE = {
 };
 
 // Fenêtre de niveaux où le marchand propose chaque rareté (jusqu'au 50).
+// v19 : l'étal accompagne le héros jusqu'au niveau 100. Au-delà de 60,
+// un palier sur deux — sans quoi le catalogue double sans rien apporter.
 const FENETRES_BOUTIQUE = {
-  commun: [1, 8], inhabituel: [3, 14], rare: [6, 30], epique: [10, 50], legendaire: [14, 50],
+  commun: [1, 10], inhabituel: [3, 18], rare: [6, 38], epique: [10, 70], legendaire: [14, 100],
 };
 const MULT_STAT_BOUTIQUE = { commun: 0.7, inhabituel: 0.85, rare: 1.0, epique: 1.15, legendaire: 1.4 };
 const MULT_PRIX_BOUTIQUE = { commun: 1, inhabituel: 1.6, rare: 2.6, epique: 4.2, legendaire: 7 };
 
+// =====================================================================
+// v19 — La courbe des prix.
+//
+// L'ancienne était linéaire : 10 + niveau × 8. Au niveau 50, une pièce
+// légendaire coûtait 2 870 po, soit le quart d'un seul contrat de guilde.
+// La nouvelle est quadratique — l'écart se creuse là où l'or afflue, et
+// un équipement de son niveau redevient un achat qui se prépare.
+// =====================================================================
+function prixBoutique(niveau, rarete) {
+  const base = 24 + niveau * 14 + niveau * niveau * 1.6;
+  return Math.max(12, Math.round(base * MULT_PRIX_BOUTIQUE[rarete]));
+}
+
 ARCHETYPES_BUTIN.forEach((archetype) => {
-  for (let niveau = 1; niveau <= 50; niveau++) {
+  for (let niveau = 1; niveau <= NIVEAU_MAX; niveau++) {
+    if (niveau > 60 && niveau % 2 !== 0) continue;
     Object.entries(FENETRES_BOUTIQUE).forEach(([rarete, [debut, fin]]) => {
       if (niveau < debut || niveau > fin) return;
       const indexQualificatif = niveau % 3;
@@ -166,8 +222,9 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
       OBJETS[`marchand-${archetype.cle}-${rarete}-${niveau}`] = {
         nom: `${nomBase} ${qualificatif}`,
         emoji: archetype.emoji, type: 'equipement', slot: archetype.slot,
+        armure: archetype.armure || null, familleArme: archetype.familleArme || null,
         niveau, rarete,
-        prix: Math.max(8, Math.round((10 + niveau * 8) * MULT_PRIX_BOUTIQUE[rarete])),
+        prix: prixBoutique(niveau, rarete),
         bonus,
         desc: `Collection du marchand — sans bonus de panoplie : les sets à passifs se forgent chez les artisans.`,
       };

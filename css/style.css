@@ -2110,3 +2110,21 @@ button:focus-visible,
 .affiner > summary:hover { color: var(--texte); }
 .affiner[open] > summary { color: var(--accent); }
 .bloc-liste { display: block; }
+
+/* Le type d'équipement, lisible d'un coup d'œil sur chaque carte. */
+.type-equipement {
+  display: inline-block;
+  font-size: var(--txt-xs);
+  padding: 0.12em 0.5em;
+  border-radius: var(--rayon-s);
+  border: 1px solid var(--bordure);
+  color: var(--texte-doux);
+  margin-top: var(--esp-1);
+}
+.type-plaque { border-color: #6d7a8c; color: #b7c2d1; }
+.type-maille { border-color: #7a6d8c; color: #c3b7d1; }
+.type-cuir   { border-color: #8c7a5a; color: #d6c39c; }
+.type-tissu  { border-color: #5a7f8c; color: #a6cdd6; }
+.type-arme   { border-color: var(--accent); color: var(--accent-clair); }
+.chip-ma-classe.active { background: var(--accent); color: #1a1408; font-weight: 700; }
+.rangee-ma-classe { margin: var(--esp-2) 0 0; }

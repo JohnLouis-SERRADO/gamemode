@@ -2303,13 +2303,20 @@ function rendreSac() {
         <div class="objet-desc">${objet.desc || ''}</div>
         ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
         ${texteSet(objet)}
+        ${texteTypeEquipement(objet)}
         ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}
         ${texteComparaison(p, objet)}`;
       if (objet.type === 'equipement') {
+        const interdit = !peutPorter(p, objet);
+        if (interdit) {
+          carte.classList.add('article-verrouille');
+          carte.insertAdjacentHTML('beforeend',
+            `<div class="objet-niveau niveau-insuffisant">🚫 ${raisonRefusEquipement(p, objet)}</div>`);
+        }
         const equiperBtn = document.createElement('button');
         equiperBtn.className = 'btn-choix btn-compact';
-        equiperBtn.textContent = 'Équiper';
-        equiperBtn.disabled = p.niveau < objet.niveau;
+        equiperBtn.textContent = interdit ? '🚫 Pas pour cette classe' : 'Équiper';
+        equiperBtn.disabled = interdit || p.niveau < objet.niveau;
         equiperBtn.addEventListener('click', () => {
           equiper(p, entree.id);
           rendreSac();
@@ -2341,6 +2348,13 @@ function rendreSac() {
 function equiper(p, idObjet) {
   const objet = OBJETS[idObjet];
   if (!objet || objet.type !== 'equipement' || p.niveau < objet.niveau) return;
+  // v19 : une armure de plaque ne se porte pas en robe, et inversement.
+  // La vérification n'intervient qu'ici, au moment d'équiper : ce qui est
+  // déjà porté le reste, on ne déshabille personne rétroactivement.
+  if (!peutPorter(p, objet)) {
+    afficherToast(`🚫 ${raisonRefusEquipement(p, objet)}`);
+    return;
+  }
   let slot = objet.slot;
   if (slot === 'accessoire') {
     slot = !p.equipement.acc1 ? 'acc1' : (!p.equipement.acc2 ? 'acc2' : 'acc1');

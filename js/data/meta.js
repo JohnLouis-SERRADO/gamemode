@@ -153,7 +153,11 @@ function genererQuetesDuJour(p) {
         rarete: rarete.cle,
         texte: modele.texte(requis), requis, fait: 0, reclamee: false,
         recompense: {
-          po: Math.round((25 + p.niveau * 8) * (1 + position * 0.5) * rarete.multRecompense),
+          // v19 : un contrat divin de niveau 50 rapportait ~11 100 po, et la
+          // Guilde en paie trois par jour — soit 30 000 po sans combattre,
+          // quand une pièce légendaire en coûtait 2 870. L'or est divisé par
+          // 2,5 ; l'XP, elle, ne bouge pas : le problème n'a jamais été là.
+          po: Math.round((25 + p.niveau * 8) * (1 + position * 0.5) * rarete.multRecompense / 2.5),
           xp: Math.round((15 + p.niveau * 9) * (1 + position * 0.5) * rarete.multRecompense),
           coffre: position >= 4 || rarete.bonusCoffre > 0,
           bonusCoffre: rarete.bonusCoffre,

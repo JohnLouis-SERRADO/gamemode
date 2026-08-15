@@ -976,6 +976,139 @@ suite('Classes et sous-classes', () => {
 });
 
 // =====================================================================
+// 9. Typage de l'équipement et économie (v19)
+// =====================================================================
+suite('Équipement et économie', () => {
+  test('les quatre catégories d\'armure et les six familles d\'arme existent', () => {
+    egal(Object.keys(CATEGORIES_ARMURE).length, 4, 'catégories d\'armure');
+    egal(Object.keys(FAMILLES_ARME).length, 6, 'familles d\'arme');
+  });
+
+  test('chaque classe déclare ce qu\'elle sait porter', () => {
+    const fautives = Object.keys(CLASSES_BASE).filter((id) => {
+      const r = EQUIPEMENT_PAR_CLASSE[id];
+      return !r || !CATEGORIES_ARMURE[r.armure] || !r.armes.length
+        || r.armes.some((a) => !FAMILLES_ARME[a]);
+    });
+    aucun(fautives, 'classes sans règles d\'équipement');
+  });
+
+  test('chaque catégorie d\'armure a des porteurs, et chaque famille d\'arme aussi', () => {
+    const armuresPortees = new Set(Object.values(EQUIPEMENT_PAR_CLASSE).map((r) => r.armure));
+    const armesManiees = new Set(Object.values(EQUIPEMENT_PAR_CLASSE).flatMap((r) => r.armes));
+    aucun(Object.keys(CATEGORIES_ARMURE).filter((a) => !armuresPortees.has(a)), 'armures que personne ne porte');
+    aucun(Object.keys(FAMILLES_ARME).filter((a) => !armesManiees.has(a)), 'armes que personne ne manie');
+  });
+
+  test('toute pièce d\'armure porte une matière, toute arme une famille', () => {
+    const fautifs = Object.entries(OBJETS)
+      .filter(([, o]) => o.type === 'equipement')
+      .filter(([, o]) => {
+        if (SLOTS_ARMURE.includes(o.slot)) return o.armure && !CATEGORIES_ARMURE[o.armure];
+        if (o.slot === 'arme') return o.familleArme && !FAMILLES_ARME[o.familleArme];
+        return false;
+      })
+      .map(([id]) => id);
+    aucun(fautifs, 'pièces au type inconnu');
+  });
+
+  test('une armure de plaque n\'est pas portable par un Arcaniste', () => {
+    const mage = herosTest({ classe: 'arcaniste', sousClasse: null });
+    const plaque = Object.values(OBJETS).find((o) => o.armure === 'plaque');
+    const tissu = Object.values(OBJETS).find((o) => o.armure === 'tissu');
+    verifier(!peutPorter(mage, plaque), 'l\'Arcaniste ne devrait pas porter la plaque');
+    verifier(peutPorter(mage, tissu), 'l\'Arcaniste devrait porter le tissu');
+    verifier(raisonRefusEquipement(mage, plaque).length > 10, 'le refus devrait être expliqué');
+  });
+
+  test('un Gardien porte la plaque mais pas la robe', () => {
+    const tank = herosTest({ classe: 'gardien', sousClasse: 'templier' });
+    const plaque = Object.values(OBJETS).find((o) => o.armure === 'plaque');
+    const tissu = Object.values(OBJETS).find((o) => o.armure === 'tissu');
+    verifier(peutPorter(tank, plaque), 'le Gardien devrait porter la plaque');
+    verifier(!peutPorter(tank, tissu), 'le Gardien ne devrait pas porter le tissu');
+  });
+
+  test('les accessoires restent ouverts à tout le monde', () => {
+    const anneau = Object.values(OBJETS).find((o) => o.slot === 'accessoire' && o.type === 'equipement');
+    const fautives = Object.keys(CLASSES_BASE)
+      .filter((id) => !peutPorter({ classe: id }, anneau));
+    aucun(fautives, 'classes privées d\'accessoires');
+  });
+
+  test('chaque classe trouve de quoi s\'équiper à tous ses emplacements', () => {
+    const trous = [];
+    Object.keys(CLASSES_BASE).forEach((id) => {
+      const heros = { classe: id };
+      ['arme', ...SLOTS_ARMURE].forEach((slot) => {
+        const dispo = Object.values(OBJETS).some((o) => o.type === 'equipement'
+          && o.slot === slot && peutPorter(heros, o));
+        if (!dispo) trous.push(`${id} → ${slot}`);
+      });
+    });
+    aucun(trous, 'classes sans équipement disponible');
+  });
+
+  test('la boutique a bien grandi d\'au moins mille articles', () => {
+    const enBoutique = Object.values(OBJETS).filter((o) => o.prix).length;
+    verifier(enBoutique >= 2295, `seulement ${enBoutique} articles en boutique (1 295 avant, +1 000 demandés)`);
+  });
+
+  test('l\'étal et le butin accompagnent le héros jusqu\'au niveau 100', () => {
+    const hauts = Object.values(OBJETS).filter((o) => o.type === 'equipement' && o.niveau > 50);
+    verifier(hauts.length > 500, `seulement ${hauts.length} pièces au-delà du niveau 50`);
+    const boutiqueHaute = Object.values(OBJETS).filter((o) => o.prix && o.niveau >= 90);
+    verifier(boutiqueHaute.length > 0, 'rien en boutique au niveau 90+');
+  });
+
+  test('la revente est dégressive avec la rareté', () => {
+    // Deux pièces de même prix ne se revendent pas pareil : plus c'est rare,
+    // moins la revente en rend, pour que ça se garde ou s'échange.
+    const parts = ['commun', 'rare', 'legendaire', 'divin'].map((r) => REVENTE_PAR_RARETE[r]);
+    for (let i = 1; i < parts.length; i++) {
+      verifier(parts[i] < parts[i - 1], 'la revente devrait décroître avec la rareté');
+    }
+    verifier(PART_REVENTE <= 0.25, `la part de revente reste à ${PART_REVENTE}`);
+  });
+
+  test('un équipement de son niveau coûte plus qu\'un contrat de guilde', () => {
+    // C'est tout l'objet du rééquilibrage : l'or ne doit plus tomber du ciel.
+    const p = herosTest({ niveau: 50 });
+    const contrats = genererQuetesDuJour(p).liste;
+    const meilleur = Math.max(...contrats.map((q) => q.recompense.po));
+    const piece = prixBoutique(50, 'legendaire');
+    verifier(piece > meilleur * 2,
+      `une pièce légendaire niv. 50 coûte ${piece} po, le meilleur contrat en rapporte ${meilleur}`);
+  });
+
+  test('les prix croissent franchement avec le niveau', () => {
+    const ruptures = [];
+    for (let n = 2; n <= NIVEAU_MAX; n++) {
+      if (prixBoutique(n, 'rare') <= prixBoutique(n - 1, 'rare')) ruptures.push(`niv. ${n}`);
+    }
+    aucun(ruptures, 'prix non croissants');
+  });
+
+  test('chaque série d\'artisan vise une matière', () => {
+    const fautives = SETS_CRAFT.filter((s) => !CATEGORIES_ARMURE[s.armure]).map((s) => s.suffixe);
+    aucun(fautives, 'séries sans matière');
+  });
+
+  test('chaque série propose une arme pour chaque famille', () => {
+    const manquantes = [];
+    SETS_CRAFT.slice(0, 3).forEach((serie) => {
+      const idBase = serie.suffixe.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      Object.keys(FAMILLES_ARME).forEach((famille) => {
+        const trouvee = Object.values(OBJETS).some((o) => o.set === `craft-${idBase}` && o.familleArme === famille);
+        if (!trouvee) manquantes.push(`${serie.suffixe} → ${famille}`);
+      });
+    });
+    aucun(manquantes, 'familles d\'arme absentes des séries');
+  });
+});
+
+// =====================================================================
 // Exécution et rapport
 // =====================================================================
 function lancerTests() {
