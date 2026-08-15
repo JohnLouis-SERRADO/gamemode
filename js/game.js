@@ -2384,8 +2384,15 @@ function initialiser() {
   if (typeof demarrerReseau === 'function') demarrerReseau();
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initialiser);
-} else {
+// La page de tests (tests.html) charge les mêmes scripts que le jeu, mais
+// sans ses écrans : on ne démarre l'interface que si elle est bien là.
+function demarrerSiInterface() {
+  if (!document.getElementById('ecran-titre')) return;
   initialiser();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', demarrerSiInterface);
+} else {
+  demarrerSiInterface();
 }
