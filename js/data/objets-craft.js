@@ -294,7 +294,12 @@ function construireSeriesCraft(series) {
   ];
   SETS[`craft-${idBase}`] = { nom: `Série ${serie.suffixe}`, rarete: serie.rarete };
   pieces.forEach((piece) => {
-    const id = `${piece.cle}-${idBase}`;
+    // Un id généré ne doit JAMAIS écraser un objet écrit à la main : la
+    // série « de Fer » produisait 'lame-de-fer'… l'id exact de l'épée du
+    // catalogue, qui disparaissait alors des rayons de l'armurerie (et
+    // mutait dans les sacs des joueurs qui la possédaient).
+    let id = `${piece.cle}-${idBase}`;
+    if (OBJETS[id]) id = `craft-${id}`;
     OBJETS[id] = {
       nom: piece.nom, emoji: piece.emoji, type: 'equipement', slot: piece.slot,
       // Une pièce d'armure porte la matière de sa série ; une arme, sa famille.
