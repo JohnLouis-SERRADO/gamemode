@@ -222,7 +222,7 @@ function texteEffetCompetence(effet, s) {
 
 // Renvoie des lignes chiffrées (dégâts, soins, effets, coût) calculées
 // avec les stats effectives fournies.
-function detailsCompetence(comp, s, rang = 0) {
+function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
   const parts = [];
   const multRang = 1 + 0.15 * rang;
   if (comp.type === 'degats') {
@@ -243,9 +243,27 @@ function detailsCompetence(comp, s, rang = 0) {
     if (texte) parts.push(texte);
   }
   parts.push(`🎯 ${TEXTE_CIBLE[comp.cible]}`);
-  parts.push(comp.coutMp > 0 ? `💧 ${comp.coutMp} PM` : '💧 gratuit');
+  const cout = coutMpDe(comp, s, maxMp);
+  parts.push(cout > 0 ? `💧 ${cout} PM${cout > (comp.coutMp || 0) ? ` (${comp.coutMp} +${cout - comp.coutMp} lié aux stats)` : ''}` : '💧 gratuit');
   if (comp.cooldown) parts.push(`⏳ ${comp.cooldown} t.`);
   return parts;
+}
+
+// =====================================================================
+// v17 : coût en mana ÉVOLUTIF. Plus la stat qui porte la compétence est
+// haute (donc plus elle frappe/soigne fort), plus elle coûte un peu de
+// mana. Garde-fou : le coût ne dépasse jamais 30 % du mana maximum —
+// aucune compétence ne vide la réserve d'un coup.
+// =====================================================================
+function coutMpDe(comp, s, maxMp) {
+  let cout = comp.coutMp || 0;
+  if (cout > 0 && comp.stat && comp.ratio && (comp.type === 'degats' || comp.type === 'soin')) {
+    cout += Math.floor(((s && s[comp.stat]) || 0) * comp.ratio * 0.08);
+  }
+  if (maxMp > 0 && cout > (comp.coutMp || 0)) {
+    cout = Math.min(cout, Math.max(comp.coutMp || 0, Math.round(maxMp * 0.3)));
+  }
+  return cout;
 }
 
 // cible : 'ennemi' | 'ennemis' | 'allie' | 'allies' | 'soi'
@@ -691,82 +709,82 @@ const MODELES = [
   {
     nom: 'Paladin', emoji: '⚖️',
     stats: { for: 5, int: 4, agi: 2, vit: 7, cha: 2 },
-    competences: ['chatiment-sacre', 'jugement', 'aura-protection', 'imposition-mains'],
+    competences: ['frappe-heroique', 'soin', 'bouclier-magique', 'provocation'],
   },
   {
     nom: 'Nécromancien', emoji: '💀',
     stats: { for: 2, int: 8, agi: 3, vit: 5, cha: 2 },
-    competences: ['faux-spectrale', 'peste', 'pacte-sombre', 'drain-de-vie'],
+    competences: ['drain-de-vie', 'boule-de-feu', 'lame-empoisonnee', 'concentration'],
   },
   {
     nom: 'Moine', emoji: '🥋',
     stats: { for: 4, int: 2, agi: 7, vit: 5, cha: 2 },
-    competences: ['rafale-de-coups', 'paume-zephyr', 'meditation-profonde', 'second-souffle'],
+    competences: ['second-souffle', 'tir-precis', 'coup-etourdissant', 'concentration'],
   },
   {
     nom: 'Barde', emoji: '🎵',
     stats: { for: 3, int: 6, agi: 5, vit: 4, cha: 2 },
-    competences: ['chant-heroique', 'melodie-apaisante', 'fausse-note', 'soin'],
+    competences: ['soin', 'benediction', 'regeneration', 'concentration'],
   },
   {
     nom: 'Rôdeur', emoji: '🐺',
     stats: { for: 4, int: 2, agi: 7, vit: 4, cha: 3 },
-    competences: ['morsure-du-loup', 'tir-precis', 'ronces-etrangleuses', 'instinct-sauvage'],
+    competences: ['tir-precis', 'pluie-de-fleches', 'lame-empoisonnee', 'second-souffle'],
   },
   {
     nom: 'Assassin', emoji: '🗡️',
     stats: { for: 3, int: 2, agi: 8, vit: 3, cha: 4 },
-    competences: ['lame-dans-l-ombre', 'lame-empoisonnee', 'voile-de-fumee', 'mise-a-mort'],
+    competences: ['lame-empoisonnee', 'tir-precis', 'concentration', 'second-souffle'],
   },
   {
     nom: 'Berserker', emoji: '🪓',
     stats: { for: 8, int: 1, agi: 4, vit: 5, cha: 2 },
-    competences: ['dechainement', 'cri-de-guerre', 'tourbillon', 'fureur-sanglante'],
+    competences: ['tourbillon', 'frappe-heroique', 'coup-etourdissant', 'second-souffle'],
   },
   {
     nom: 'Templier', emoji: '🛡️',
     stats: { for: 6, int: 3, agi: 1, vit: 8, cha: 2 },
-    competences: ['frappe-heroique', 'provocation', 'bouclier-magique', 'verdict-de-fer'],
+    competences: ['frappe-heroique', 'provocation', 'bouclier-magique', 'soin'],
   },
   {
     nom: 'Élémentaliste', emoji: '🌪️',
     stats: { for: 1, int: 8, agi: 3, vit: 4, cha: 4 },
-    competences: ['orage-elementaire', 'boule-de-feu', 'lance-de-glace', 'bouclier-de-lave'],
+    competences: ['boule-de-feu', 'eclair', 'nova-de-givre', 'concentration'],
   },
   {
     nom: 'Druide', emoji: '🐻',
     stats: { for: 3, int: 6, agi: 2, vit: 6, cha: 3 },
-    competences: ['griffes-d-ours', 'essaim-piqueur', 'seve-regeneratrice', 'soin'],
+    competences: ['soin', 'cercle-de-soin', 'regeneration', 'drain-de-vie'],
   },
   {
     nom: 'Invocateur', emoji: '🐉',
     stats: { for: 2, int: 7, agi: 3, vit: 4, cha: 4 },
-    competences: ['familier-flamboyant', 'horde-spectrale', 'pacte-du-golem', 'drain-de-vie'],
+    competences: ['invoquer-feu-follet', 'drain-de-vie', 'eclair', 'concentration'],
   },
   {
     nom: 'Pyromancien', emoji: '🔥',
     stats: { for: 2, int: 8, agi: 2, vit: 4, cha: 4 },
-    competences: ['deflagration', 'mur-de-flammes', 'boule-de-feu', 'combustion'],
+    competences: ['boule-de-feu', 'eclair', 'drain-de-vie', 'concentration'],
   },
   {
     nom: 'Givremage', emoji: '❄️',
     stats: { for: 1, int: 8, agi: 3, vit: 5, cha: 3 },
-    competences: ['fleche-de-givre', 'nova-de-givre', 'blizzard', 'armure-de-glace'],
+    competences: ['nova-de-givre', 'eclair', 'bouclier-magique', 'concentration'],
   },
   {
     nom: 'Chaman', emoji: '🌩️',
     stats: { for: 3, int: 6, agi: 2, vit: 5, cha: 4 },
-    competences: ['totem-tonnerre', 'chaine-d-eclairs', 'totem-gardien', 'esprits-ancetres'],
+    competences: ['eclair', 'cercle-de-soin', 'benediction', 'regeneration'],
   },
   {
     nom: 'Voleur', emoji: '💰',
     stats: { for: 3, int: 2, agi: 7, vit: 3, cha: 5 },
-    competences: ['vol-a-la-tire', 'coup-bas', 'poussiere-aveuglante', 'lame-empoisonnee'],
+    competences: ['lame-empoisonnee', 'coup-etourdissant', 'tir-precis', 'concentration'],
   },
   {
     nom: 'Danselame', emoji: '🌸',
     stats: { for: 4, int: 2, agi: 7, vit: 4, cha: 3 },
-    competences: ['valse-des-lames', 'estocade-gracieuse', 'danse-du-vent', 'rafale-de-coups'],
+    competences: ['tir-precis', 'pluie-de-fleches', 'second-souffle', 'concentration'],
   },
 ];
 
@@ -931,8 +949,84 @@ const COMPETENCES_CLASSE = {
   'aventurier-systeme-d':     { classe: 'aventurier', niveauRequis: 5, nom: 'Système D', emoji: '🧰', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'mana', valeur: 10 }, coutMp: 0, cooldown: 4, desc: 'On fait avec ce qu’on a — et ça marche.' },
   'aventurier-opportuniste':  { classe: 'aventurier', niveauRequis: 10, nom: 'Coup opportuniste', emoji: '🎯', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 8, ratio: 1.2, critBonus: 0.15, coutMp: 7, cooldown: 3, desc: 'Frapper exactement quand il ne faut pas — pour l’autre.' },
   'aventurier-grand-numero':  { classe: 'aventurier', niveauRequis: 15, nom: 'Le Grand Numéro', emoji: '🎪', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'for', puissance: 8, ratio: 1.1, coutMp: 12, cooldown: 5, desc: 'Un peu de tout, beaucoup de panache, dégâts pour tous.' },
+
+  // ----- v17 : compétences de BASE de classe (niveau 1) -----
+  // Chaque classe possède désormais exactement 8 compétences exclusives :
+  // 4 de base (niv. 1), la signature (niv. 1) et l'arbre (niv. 5/10/15).
+  // Guerrier
+  'guerrier-taillade':        { classe: 'guerrier', niveauRequis: 1, nom: 'Taillade', emoji: '🗡️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 6, ratio: 1.2, coutMp: 4, cooldown: 2, desc: 'Le coup d’école des maîtres d’armes : simple, propre, efficace.' },
+  'guerrier-coup-de-bouclier': { classe: 'guerrier', niveauRequis: 1, nom: 'Coup de bouclier', emoji: '🛡️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 5, ratio: 0.9, effet: { type: 'etourdi', duree: 1, chance: 0.4 }, coutMp: 6, cooldown: 4, desc: 'Le bouclier aussi sait frapper : 40 % de chances d’étourdir.' },
+  'guerrier-cri-de-ralliement': { classe: 'guerrier', niveauRequis: 1, nom: 'Cri de ralliement', emoji: '📣', categorie: 'signature', type: 'utilitaire', cible: 'allies', effet: { type: 'benediction', duree: 2 }, coutMp: 8, cooldown: 5, desc: 'Un cri qui redresse les échines : +30 % de dégâts pour tous.' },
+  'guerrier-endurance':       { classe: 'guerrier', niveauRequis: 1, nom: 'Endurance du vétéran', emoji: '🏋️', categorie: 'signature', type: 'soin', cible: 'soi', stat: 'vit', puissance: 6, ratio: 1.2, coutMp: 4, cooldown: 4, desc: 'Serrer les dents, souffler, repartir.' },
+  // Mage
+  'mage-trait-arcanique':     { classe: 'mage', niveauRequis: 1, nom: 'Trait arcanique', emoji: '✨', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 5, ratio: 1.1, coutMp: 3, cooldown: 0, desc: 'Le b.a.-ba du mage : un trait de mana pur, à volonté.' },
+  'mage-explosion-runique':   { classe: 'mage', niveauRequis: 1, nom: 'Explosion runique', emoji: '💥', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 4, ratio: 0.85, coutMp: 8, cooldown: 3, desc: 'Une rune tracée, un mot, et tout le monde recule.' },
+  'mage-barriere':            { classe: 'mage', niveauRequis: 1, nom: 'Barrière arcanique', emoji: '🔷', categorie: 'signature', type: 'utilitaire', cible: 'allie', stat: 'int', effet: { type: 'bouclier', duree: 3 }, coutMp: 6, cooldown: 4, desc: 'Un mur de mana entre un allié et les ennuis.' },
+  'mage-siphon-de-mana':      { classe: 'mage', niveauRequis: 1, nom: 'Siphon de mana', emoji: '🌀', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'mana', valeur: 8 }, coutMp: 0, cooldown: 3, desc: 'Aspirer le mana ambiant, comme on reprend son souffle.' },
+  // Archer
+  'archer-fleche-perforante': { classe: 'archer', niveauRequis: 1, nom: 'Flèche perforante', emoji: '🏹', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 7, ratio: 1.3, critBonus: 0.15, coutMp: 4, cooldown: 2, desc: 'Une flèche qui ne demande pas la permission aux armures.' },
+  'archer-tir-double':        { classe: 'archer', niveauRequis: 1, nom: 'Tir double', emoji: '🎯', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 3, ratio: 0.7, coups: 2, coutMp: 6, cooldown: 3, desc: 'Deux flèches, un seul geste.' },
+  'archer-fleche-trempee':    { classe: 'archer', niveauRequis: 1, nom: 'Flèche trempée', emoji: '🧪', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 4, ratio: 0.9, effet: { type: 'poison', duree: 2 }, coutMp: 6, cooldown: 3, desc: 'La pointe a mariné toute la nuit. La cible s’en souviendra.' },
+  'archer-oeil-de-lynx':      { classe: 'archer', niveauRequis: 1, nom: 'Œil de lynx', emoji: '👁️', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'benediction', duree: 2 }, coutMp: 5, cooldown: 5, desc: 'Le monde ralentit, la cible grossit : +30 % de dégâts.' },
+  // Clerc
+  'clerc-mot-de-soin':        { classe: 'clerc', niveauRequis: 1, nom: 'Mot de soin', emoji: '💞', categorie: 'signature', type: 'soin', cible: 'allie', stat: 'int', puissance: 8, ratio: 1.3, coutMp: 4, cooldown: 2, desc: 'Un seul mot, bien choisi — et la plaie se referme.' },
+  'clerc-eclat-sacre':        { classe: 'clerc', niveauRequis: 1, nom: 'Éclat sacré', emoji: '🌟', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 6, ratio: 1.1, coutMp: 5, cooldown: 2, desc: 'La lumière n’est pas toujours douce.' },
+  'clerc-priere-protection':  { classe: 'clerc', niveauRequis: 1, nom: 'Prière de protection', emoji: '🙏', categorie: 'signature', type: 'utilitaire', cible: 'allie', stat: 'int', effet: { type: 'bouclier', duree: 3 }, coutMp: 6, cooldown: 4, desc: 'Une prière murmurée qui pèse comme un bouclier.' },
+  'clerc-souffle-vital':      { classe: 'clerc', niveauRequis: 1, nom: 'Souffle vital', emoji: '🍃', categorie: 'signature', type: 'utilitaire', cible: 'allie', stat: 'int', effet: { type: 'regen', duree: 3 }, coutMp: 6, cooldown: 4, desc: 'La vie revient par petites vagues, trois tours durant.' },
+  // Templier (complète ses voies)
+  'templier-garde-sacree':    { classe: 'templier', niveauRequis: 1, nom: 'Garde sacrée', emoji: '⛨', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'provocation', duree: 2 }, coutMp: 4, cooldown: 4, desc: 'Tous les coups pour lui — c’est exactement le plan.' },
+  'templier-lame-de-lumiere': { classe: 'templier', niveauRequis: 1, nom: 'Lame de lumière', emoji: '🌅', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 7, ratio: 1.2, coutMp: 5, cooldown: 2, desc: 'L’acier béni tranche plus droit.' },
+  'templier-serment-protecteur': { classe: 'templier', niveauRequis: 1, nom: 'Serment protecteur', emoji: '📜', categorie: 'signature', type: 'utilitaire', cible: 'allie', stat: 'for', effet: { type: 'bouclier', duree: 3, stat: 'for' }, coutMp: 6, cooldown: 4, desc: 'Un serment gravé dans le fer, offert à un allié.' },
+  // Aventurier
+  'aventurier-coup-improvise': { classe: 'aventurier', niveauRequis: 1, nom: 'Coup improvisé', emoji: '🪵', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'for', puissance: 6, ratio: 1.1, coutMp: 4, cooldown: 2, desc: 'Une chaise, un tabouret, un coude — tout fait arme.' },
+  'aventurier-botte-secrete': { classe: 'aventurier', niveauRequis: 1, nom: 'Botte secrète', emoji: '🤺', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 6, ratio: 1.1, critBonus: 0.2, coutMp: 5, cooldown: 3, desc: 'Apprise dans une taverne, jamais oubliée.' },
+  'aventurier-trousse-de-secours': { classe: 'aventurier', niveauRequis: 1, nom: 'Trousse de secours', emoji: '🩹', categorie: 'signature', type: 'soin', cible: 'allie', stat: 'vit', puissance: 8, ratio: 1.2, coutMp: 5, cooldown: 4, desc: 'Bandages, aiguille, gnôle : la médecine du terrain.' },
+  'aventurier-poudre-d-escampette': { classe: 'aventurier', niveauRequis: 1, nom: 'Poudre d’escampette', emoji: '💨', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'bouclier', duree: 2 }, coutMp: 4, cooldown: 4, desc: 'Un nuage de poussière, et les coups passent à côté.' },
+  // Compléments (1 base pour les classes à 3 voies)
+  'barde-note-percante':      { classe: 'barde', niveauRequis: 1, nom: 'Note perçante', emoji: '🎶', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 6, ratio: 1.1, coutMp: 5, cooldown: 2, desc: 'Un contre-ut qui fait saigner les oreilles.' },
+  'rodeur-fleche-traqueuse':  { classe: 'rodeur', niveauRequis: 1, nom: 'Flèche traqueuse', emoji: '🪶', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 6, ratio: 1.15, critBonus: 0.15, coutMp: 5, cooldown: 2, desc: 'Elle suit la proie comme un chien de chasse.' },
+  'assassin-lame-vive':       { classe: 'assassin', niveauRequis: 1, nom: 'Lame vive', emoji: '🔪', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 4, ratio: 0.9, coutMp: 4, cooldown: 0, desc: 'Vite sortie, vite rentrée — personne n’a rien vu.' },
+  'berserker-defi-sauvage':   { classe: 'berserker', niveauRequis: 1, nom: 'Défi sauvage', emoji: '🗯️', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'provocation', duree: 2 }, coutMp: 4, cooldown: 4, desc: '« Par ici, les ennuis ! » — et les ennuis obéissent.' },
+  'elementaliste-etincelle':  { classe: 'elementaliste', niveauRequis: 1, nom: 'Étincelle élémentaire', emoji: '⚡', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 5, ratio: 1.0, coutMp: 4, cooldown: 0, desc: 'Un peu de feu, un peu de foudre — à volonté.' },
+  'druide-rosee-vivifiante':  { classe: 'druide', niveauRequis: 1, nom: 'Rosée vivifiante', emoji: '💧', categorie: 'signature', type: 'soin', cible: 'allie', stat: 'int', puissance: 8, ratio: 1.3, coutMp: 5, cooldown: 2, desc: 'La forêt soigne les siens à l’aube.' },
+  'invocateur-etreinte-d-ether': { classe: 'invocateur', niveauRequis: 1, nom: 'Étreinte d’éther', emoji: '🫧', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'mana', valeur: 8 }, coutMp: 0, cooldown: 3, desc: 'Puiser dans l’éther le mana des prochains liens.' },
+  'pyromancien-onde-de-chaleur': { classe: 'pyromancien', niveauRequis: 1, nom: 'Onde de chaleur', emoji: '🌡️', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'benediction', duree: 2 }, coutMp: 5, cooldown: 5, desc: 'L’air tremble autour du pyromancien : +30 % de dégâts.' },
+  'givremage-eclat-de-givre': { classe: 'givremage', niveauRequis: 1, nom: 'Éclat de givre', emoji: '🌨️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 4, ratio: 0.9, coutMp: 3, cooldown: 0, desc: 'Un éclat froid, lancé sans y penser.' },
+  'voleur-lancer-de-couteau': { classe: 'voleur', niveauRequis: 1, nom: 'Lancer de couteau', emoji: '🗡️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 5, ratio: 1.0, critBonus: 0.1, coutMp: 4, cooldown: 0, desc: 'Il en a toujours un de plus dans la manche.' },
+  'danselame-arabesque':      { classe: 'danselame', niveauRequis: 1, nom: 'Arabesque', emoji: '🩰', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'agi', puissance: 5, ratio: 1.0, coutMp: 4, cooldown: 2, desc: 'Un pas tourné, une lame tendue — le duel devient danse.' },
 };
 Object.assign(COMPETENCES, COMPETENCES_CLASSE);
+
+// ---------------------------------------------------------------------
+// v17 : les « Voies » (Paladin, Nécromancien, Moine…) quittent le pool
+// commun : elles deviennent des compétences DE CLASSE exclusives, apprises
+// dès le niveau 1 par leur classe. Le pool commun (Arcanium, création,
+// montées de niveau) ne garde que les vraies bases universelles — fini le
+// mélange entre compétences de classe et compétences de tout le monde.
+// ---------------------------------------------------------------------
+const VOIES_CLASSES = {
+  paladin: ['chatiment-sacre', 'jugement', 'aura-protection', 'imposition-mains'],
+  necromancien: ['faux-spectrale', 'peste', 'terreur', 'pacte-sombre'],
+  moine: ['rafale-de-coups', 'paume-zephyr', 'meditation-profonde', 'poing-dragon'],
+  barde: ['chant-heroique', 'melodie-apaisante', 'fausse-note'],
+  rodeur: ['morsure-du-loup', 'ronces-etrangleuses', 'instinct-sauvage'],
+  assassin: ['lame-dans-l-ombre', 'voile-de-fumee', 'mise-a-mort'],
+  berserker: ['dechainement', 'cri-de-guerre', 'fureur-sanglante'],
+  templier: ['verdict-de-fer'],
+  elementaliste: ['orage-elementaire', 'lance-de-glace', 'bouclier-de-lave'],
+  druide: ['griffes-d-ours', 'essaim-piqueur', 'seve-regeneratrice'],
+  invocateur: ['familier-flamboyant', 'horde-spectrale', 'pacte-du-golem'],
+  pyromancien: ['deflagration', 'mur-de-flammes', 'combustion'],
+  givremage: ['fleche-de-givre', 'blizzard', 'armure-de-glace'],
+  chaman: ['totem-tonnerre', 'chaine-d-eclairs', 'totem-gardien', 'esprits-ancetres'],
+  voleur: ['vol-a-la-tire', 'coup-bas', 'poussiere-aveuglante'],
+  danselame: ['valse-des-lames', 'estocade-gracieuse', 'danse-du-vent'],
+};
+Object.entries(VOIES_CLASSES).forEach(([classe, ids]) => {
+  ids.forEach((id) => {
+    if (COMPETENCES[id]) Object.assign(COMPETENCES[id], { classe, niveauRequis: 1 });
+  });
+});
 
 const CLASSES = {
   aventurier: { nom: 'Aventurier', emoji: '🎒', signature: 'signature-panache' },
@@ -1054,6 +1148,29 @@ const MODELES_QUETES = [
 // Trois récompenses par jour, pas une de plus : il faut choisir.
 const RECLAMATIONS_GUILDE_PAR_JOUR = 3;
 
+// v17 : chaque contrat a désormais une RARETÉ, tirée au sort — plus le
+// contrat est rare, plus il exige… et plus il paie. Les contrats rares et
+// au-delà offrent toujours un objet, tiré avec un bonus de chance.
+const RARETES_QUETES = [
+  { cle: 'commun',     poids: 38, multRequis: 1,   multRecompense: 1,   bonusCoffre: 0 },
+  { cle: 'inhabituel', poids: 26, multRequis: 1.2, multRecompense: 1.4, bonusCoffre: 0 },
+  { cle: 'rare',       poids: 18, multRequis: 1.5, multRecompense: 2,   bonusCoffre: 4 },
+  { cle: 'epique',     poids: 10, multRequis: 1.9, multRecompense: 2.8, bonusCoffre: 8 },
+  { cle: 'legendaire', poids: 5,  multRequis: 2.4, multRecompense: 4,   bonusCoffre: 14 },
+  { cle: 'mythique',   poids: 2,  multRequis: 3,   multRecompense: 5.5, bonusCoffre: 20 },
+  { cle: 'divin',      poids: 1,  multRequis: 3.6, multRecompense: 7.5, bonusCoffre: 28 },
+];
+
+function tirerRareteQuete(alea2) {
+  const total = RARETES_QUETES.reduce((somme, r) => somme + r.poids, 0);
+  let tirage = alea2() * total;
+  for (const r of RARETES_QUETES) {
+    tirage -= r.poids;
+    if (tirage <= 0) return r;
+  }
+  return RARETES_QUETES[0];
+}
+
 // Générateur pseudo-aléatoire déterministe (même jour → mêmes contrats).
 function grainePseudoAleatoire(graine) {
   let h = 0;
@@ -1080,14 +1197,18 @@ function genererQuetesDuJour(p) {
     date,
     liste: indices.map((i, position) => {
       const modele = disponibles[i];
-      const requis = modele.min + Math.floor(alea2() * (modele.max - modele.min + 1));
+      const rarete = tirerRareteQuete(alea2);
+      const base = modele.min + Math.floor(alea2() * (modele.max - modele.min + 1));
+      const requis = Math.max(modele.min, Math.round(base * rarete.multRequis));
       return {
         type: modele.type, emoji: modele.emoji,
+        rarete: rarete.cle,
         texte: modele.texte(requis), requis, fait: 0, reclamee: false,
         recompense: {
-          po: Math.round((25 + p.niveau * 8) * (1 + position * 0.5)),
-          xp: Math.round((15 + p.niveau * 9) * (1 + position * 0.5)),
-          coffre: position >= 4, // les deux derniers contrats offrent un objet
+          po: Math.round((25 + p.niveau * 8) * (1 + position * 0.5) * rarete.multRecompense),
+          xp: Math.round((15 + p.niveau * 9) * (1 + position * 0.5) * rarete.multRecompense),
+          coffre: position >= 4 || rarete.bonusCoffre > 0,
+          bonusCoffre: rarete.bonusCoffre,
         },
       };
     }),
@@ -1179,4 +1300,41 @@ function maxMpDe(p) {
 function bornerVie(p) {
   p.hp = Math.max(0, Math.min(maxHpDe(p), p.hp));
   p.mp = Math.max(0, Math.min(maxMpDe(p), p.mp));
+}
+
+// =====================================================================
+// v17 : la PUISSANCE — un score unique qui résume un héros : ses
+// caractéristiques effectives, ses PV/PM, ses stats secondaires et la
+// qualité de son équipement (niveau × rareté). Affichée partout, et
+// comparée aux recommandations des cartes.
+// =====================================================================
+function puissanceDe(p) {
+  if (!p) return 0;
+  const s = statsEffectives(p);
+  let score = (s.for + s.int + s.agi + s.vit + (s.cha || 0)) * 6;
+  score += Math.round((p.maxHp || maxHpDe(p)) * 0.8);
+  score += Math.round((p.maxMp || maxMpDe(p)) * 0.6);
+  score += ((s.crit || 0) + (s.blocage || 0) + (s.esquive || 0)) * 8;
+  Object.values(p.equipement || {}).forEach((idObjet) => {
+    const objet = idObjet && OBJETS[idObjet];
+    if (!objet) return;
+    const mult = (typeof MULT_RARETE_CRAFT !== 'undefined' && MULT_RARETE_CRAFT[rareteDe(objet)]) || 1;
+    score += Math.round((objet.niveau || 1) * mult * 4);
+  });
+  score += (p.niveau || 1) * 10;
+  return Math.round(score);
+}
+
+// Puissance conseillée pour aborder un contenu de niveau n (calibrée sur
+// un héros correctement équipé de son niveau).
+function puissanceRecommandee(niveau) {
+  const n = Math.max(1, niveau || 1);
+  return Math.round(150 + n * 55 + n * n * 1.1);
+}
+
+// Étiquette HTML « puissance conseillée » colorée selon le héros.
+function texteRecommandation(p, niveau) {
+  const requis = puissanceRecommandee(niveau);
+  const ok = puissanceDe(p) >= requis;
+  return `<span class="reco-puissance ${ok ? 'reco-ok' : 'reco-risque'}" title="Votre puissance : ${puissanceDe(p)}">⚡ ${requis} conseillé${ok ? ' ✓' : ' ⚠️'}</span>`;
 }

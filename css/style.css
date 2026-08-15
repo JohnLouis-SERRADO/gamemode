@@ -775,7 +775,7 @@ button:focus-visible,
 .barre.xp { background: var(--xp-fond); height: 16px; max-width: 340px; }
 .barre.xp .remplissage { background: linear-gradient(180deg, #c895e6, var(--xp)); }
 
-.barre span {
+.barre span:not(.remplissage) {
   position: absolute;
   inset: 0;
   display: flex;
@@ -1580,15 +1580,225 @@ button:focus-visible,
 .annonce-objet { flex: 1; min-width: 150px; }
 .annonce-detail { color: var(--texte-doux); font-size: 0.85rem; }
 
+/* =====================================================================
+   v17 — LE VRAI JEU VIDÉO : header d'état en haut, navigation en bas,
+   popups de déblocage, cadenas et recommandations de puissance.
+   ===================================================================== */
+
+/* ----- Header du haut : nom, niveau, puissance, PV, mana ----- */
+.topbar-nom { display: flex; align-items: center; gap: 8px; max-width: none; }
+
+.topbar-puissance {
+  color: var(--accent-clair);
+  font-size: 0.82rem;
+  font-weight: bold;
+  background: rgba(217, 164, 65, 0.12);
+  border: 1px solid rgba(217, 164, 65, 0.45);
+  border-radius: 999px;
+  padding: 1px 9px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.topbar-vitaux {
+  display: flex;
+  gap: 12px;
+  margin-top: 3px;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.topbar-vital { display: inline-flex; align-items: center; gap: 5px; }
+.topbar-vital .barre.mini { display: inline-block; }
+.barre.mini .remplissage { display: block; height: 100%; }
+
+/* ----- Barre de navigation basse ----- */
+#navbar-bas {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  background: rgba(16, 19, 26, 0.97);
+  border-top: 1px solid var(--bordure);
+  backdrop-filter: blur(8px);
+  padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
+}
+
+#navbar-bas button {
+  position: relative;
+  flex: 1;
+  max-width: 120px;
+  background: none;
+  border: none;
+  border-radius: 12px;
+  color: var(--texte-doux);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 4px;
+  min-height: 52px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, transform 0.1s;
+}
+
+#navbar-bas button:active { transform: scale(0.94); }
+#navbar-bas button:hover { background: var(--panneau-clair); }
+
+#navbar-bas button.actif {
+  color: var(--accent-clair);
+  background: rgba(217, 164, 65, 0.1);
+}
+
+#navbar-bas .nav-icone { font-size: 1.35rem; line-height: 1.2; }
+#navbar-bas .nav-libelle { font-size: 0.68rem; color: inherit; }
+#navbar-bas .pastille { top: 2px; right: calc(50% - 20px); }
+#navbar-bas .point-reseau { top: 4px; right: calc(50% - 18px); }
+
+/* Le contenu ne passe jamais sous la barre basse. */
+#app { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+
+/* ----- Popup de déblocage ----- */
+.voile-deblocage {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(8, 10, 16, 0.75);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  animation: apparition 0.25s ease;
+}
+
+.modale-deblocage {
+  background: linear-gradient(160deg, #232a3a 0%, var(--panneau) 65%);
+  border: 1px solid var(--accent);
+  border-radius: 18px;
+  box-shadow: 0 0 40px rgba(217, 164, 65, 0.35), 0 18px 50px rgba(0, 0, 0, 0.6);
+  padding: 26px 24px 22px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  animation: deblocage-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes deblocage-pop {
+  from { opacity: 0; transform: scale(0.7) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.deblocage-eclat {
+  font-size: 3.4rem;
+  line-height: 1.1;
+  filter: drop-shadow(0 0 18px rgba(217, 164, 65, 0.6));
+  animation: deblocage-brille 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes deblocage-brille {
+  from { transform: scale(1); }
+  to { transform: scale(1.12); }
+}
+
+.deblocage-bandeau {
+  color: var(--accent-clair);
+  letter-spacing: 3px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin: 8px 0 4px;
+}
+
+.modale-deblocage h2 { margin-bottom: 8px; }
+.deblocage-texte { color: var(--texte-doux); margin-bottom: 4px; }
+.btn-deblocage { margin-top: 14px; width: 100%; }
+
+/* ----- Verrouillé : grisé + cadenas ----- */
+.cadenas-zone {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  font-size: 1rem;
+  filter: none;
+}
+
+.carte-zone .zone-emoji { position: relative; display: inline-block; }
+
+.carte-zone.verrouillee,
+.element-verrouille,
+.article-verrouille {
+  opacity: 0.55;
+  filter: grayscale(0.85);
+}
+
+.carte-zone.verrouillee .cadenas-zone,
+.element-verrouille .cadenas-zone { filter: grayscale(0) drop-shadow(0 0 6px rgba(0, 0, 0, 0.8)); opacity: 1; }
+
+.btn-action-zone.action-verrouillee {
+  opacity: 0.55;
+  filter: grayscale(0.85);
+  cursor: not-allowed;
+}
+
+/* ----- Menace du boss ----- */
+.bandeau-menace {
+  background: linear-gradient(90deg, rgba(212, 80, 80, 0.18), rgba(212, 80, 80, 0.05));
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  animation: menace-pulse 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes menace-pulse {
+  from { box-shadow: 0 0 0 rgba(212, 80, 80, 0); }
+  to { box-shadow: 0 0 16px rgba(212, 80, 80, 0.4); }
+}
+
+/* ----- Recommandation de puissance ----- */
+.reco-puissance {
+  display: inline-block;
+  font-size: 0.74rem;
+  border-radius: 999px;
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.reco-ok { color: var(--ok); }
+.reco-risque { color: var(--danger); }
+
+.heros-puissance {
+  margin: 6px 0 2px;
+  color: var(--accent-clair);
+  font-size: 0.95rem;
+}
+
+/* ----- Fiche du héros en onglets ----- */
+.onglets-heros { margin-bottom: 14px; position: sticky; top: 56px; z-index: 40; background: var(--fond); padding: 6px 0; }
+
+/* ----- Comptoir : infos d'objets ----- */
+.annonce-bonus {
+  display: block;
+  color: var(--texte-doux);
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
 /* ----- Adaptation aux petits écrans ----- */
 @media (max-width: 680px) {
-  #app { padding: 10px 8px 60px; }
+  #app { padding: 10px 8px calc(78px + env(safe-area-inset-bottom, 0px)); }
 
-  .nav-libelle { display: none; }
-  #topbar-nav button { font-size: 1.25rem; padding: 8px; }
-  .topbar-nom { max-width: 110px; }
-  .topbar-po { display: none; }
+  .topbar-nom { max-width: none; font-size: 0.88rem; flex-wrap: wrap; gap: 6px; }
   .barre.mini { width: 46px; }
+  .topbar-vitaux { gap: 8px; font-size: 0.76rem; }
+  .onglets-heros { top: 52px; }
 
   .colonnes-taverne { grid-template-columns: 1fr; }
 
@@ -1633,10 +1843,11 @@ button:focus-visible,
   .grille-equipement { grid-template-columns: 1fr; }
 
   /* topbar très étroite : tout doit tenir sans chevauchement */
-  #topbar { padding: 6px 6px; gap: 4px; }
-  #topbar-nav { gap: 0; }
-  #topbar-nav button { min-width: 40px; padding: 8px 5px; font-size: 1.15rem; }
-  .topbar-avatar { font-size: 1.4rem; }
-  .topbar-nom { max-width: 80px; }
+  #topbar { padding: 6px 8px; gap: 4px; }
+  .topbar-avatar { font-size: 1.5rem; }
+  .topbar-nom { font-size: 0.82rem; }
+  .topbar-puissance { font-size: 0.74rem; padding: 1px 7px; }
   .barre.mini { width: 34px; }
+  #navbar-bas .nav-libelle { font-size: 0.62rem; }
+  #navbar-bas .nav-icone { font-size: 1.25rem; }
 }

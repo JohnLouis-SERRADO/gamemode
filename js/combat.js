@@ -63,6 +63,7 @@ function creerMonstreCombat(def, id, nom) {
     drops: def.drops,
     attaques: def.attaques,
     boss: !!def.boss,
+    miniBoss: !!def.miniBoss,
     mecaniques: def.mecaniques || null,
     phaseIndex: 0,
     enrageActif: false,
@@ -668,13 +669,14 @@ function rendreActions(j) {
     const btn = document.createElement('button');
     btn.className = 'btn-action competence';
     const cd = j.cooldowns[compId] || 0;
+    const cout = coutMpDe(comp, statsJoueur, j.maxMp);
     // Détails chiffrés : dégâts/soins estimés, effets, coût, recharge.
-    let detail = detailsCompetence(comp, statsJoueur, rangDe(j, compId)).join(' · ');
+    let detail = detailsCompetence(comp, statsJoueur, rangDe(j, compId), j.maxMp).join(' · ');
     if (cd > 0) detail = `⏳ Encore ${cd} tour${cd > 1 ? 's' : ''}`;
-    else if (j.mp < comp.coutMp) detail = `${comp.coutMp} PM — pas assez de mana`;
+    else if (j.mp < cout) detail = `${cout} PM — pas assez de mana`;
     btn.innerHTML = `${comp.emoji} <strong>${comp.nom}</strong><span class="action-detail">${detail}</span>`;
     btn.title = comp.desc;
-    btn.disabled = cd > 0 || j.mp < comp.coutMp;
+    btn.disabled = cd > 0 || j.mp < cout;
     btn.addEventListener('click', () => surActionChoisie(j, { genre: 'competence', compId }));
     barre.appendChild(btn);
   });
@@ -836,7 +838,7 @@ function lancerCompetence(j, compId, cible) {
   const comp = COMPETENCES[compId];
   if (comp.type === 'invocation') { lancerInvocation(j, compId); return; }
   const s = statsEffectives(j);
-  j.mp -= comp.coutMp;
+  j.mp = Math.max(0, j.mp - coutMpDe(comp, s, j.maxMp));
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
 
   // Rang de maîtrise (compétences signatures) : +15 % par rang.
@@ -896,7 +898,7 @@ function lancerInvocation(j, compId) {
       : `🐾 ${j.nom} a déjà ${vivantes[0].nom} au combat — une seule invocation par héros !`);
     return;
   }
-  j.mp -= comp.coutMp;
+  j.mp = Math.max(0, j.mp - coutMpDe(comp, statsEffectives(j), j.maxMp));
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
 
   const modele = INVOCATIONS[comp.invocation];
@@ -950,7 +952,8 @@ function tourInvocation(c) {
     const comp = COMPETENCES[id];
     // Ne soigne que si quelqu'un en a besoin.
     if (comp.type === 'soin' && !cb.equipe.some((x) => !estMort(x) && x.hp < x.maxHp * 0.85)) return false;
-    return c.mp >= comp.coutMp || c.hp > comp.coutMp * 2;
+    const cout = coutMpDe(comp, s, c.maxMp);
+    return c.mp >= cout || c.hp > cout * 2;
   });
   const choix = utilisables.length ? utilisables[alea(0, utilisables.length - 1)] : null;
 
@@ -965,10 +968,11 @@ function tourInvocation(c) {
 
   const comp = COMPETENCES[choix];
   if (comp.cooldown) c.cooldowns[choix] = comp.cooldown;
-  if (c.mp >= comp.coutMp) {
-    c.mp -= comp.coutMp;
+  const coutInv = coutMpDe(comp, s, c.maxMp);
+  if (c.mp >= coutInv) {
+    c.mp -= coutInv;
   } else {
-    const sang = Math.max(1, comp.coutMp * 2);
+    const sang = Math.max(1, coutInv * 2);
     c.hp = Math.max(1, c.hp - sang);
     journal(`🩸 ${c.nom} n'a plus de mana : la créature paie ${sang} PV de sa propre essence.`);
   }

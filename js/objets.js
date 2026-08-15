@@ -114,7 +114,7 @@ const OBJETS = {
   'cape-mitee':           { nom: 'Cape mitée (mais magique)', emoji: '🧥', type: 'equipement', slot: 'accessoire', niveau: 14, rarete: 'epique', prix: 420, vendeur: 'antiquaire', bonus: { int: 4, vit: 3, pmMax: 12 }, desc: 'Les trous seraient « décoratifs », jure l’antiquaire.' },
   'dent-requin-fossile':  { nom: 'Dent de requin fossile', emoji: '🦈', type: 'equipement', slot: 'accessoire', niveau: 15, rarete: 'epique', prix: 480, vendeur: 'antiquaire', bonus: { for: 5, crit: 3 }, desc: 'Le requin, lui, date d’avant les Royaumes.' },
   'sablier-fele':         { nom: 'Sablier fêlé', emoji: '⏳', type: 'equipement', slot: 'accessoire', niveau: 17, rarete: 'epique', prix: 590, vendeur: 'antiquaire', bonus: { agi: 5, cha: 3, crit: 3 }, desc: 'Son sable remonte, certains soirs.' },
-  'idole-sans-nom':       { nom: 'Idole sans nom', emoji: '🗿', type: 'equipement', slot: 'accessoire', niveau: 19, rarete: 'legendaire', prix: 750, vendeur: 'antiquaire', bonus: { for: 3, int: 3, agi: 3, vit: 3, cha: 3 }, desc: 'Personne ne sait qui elle représente. Elle, si.' },
+  'idole-sans-nom':       { nom: 'Idole sans nom', emoji: '🗿', type: 'equipement', slot: 'accessoire', niveau: 19, rarete: 'epique', prix: 750, vendeur: 'antiquaire', bonus: { for: 3, int: 3, agi: 3, vit: 3, cha: 3 }, desc: 'Personne ne sait qui elle représente. Elle, si.' },
 
   // ----- Consommables -----
   'potion-soin':        { nom: 'Potion de soin', emoji: '🧪', type: 'consommable', prix: 15,  effet: { type: 'pv', valeur: 30 },  desc: 'Rend 30 PV.' },
@@ -355,6 +355,18 @@ Object.assign(OBJETS, {
   { resultat: 'etoffe-enchantee', niveau: 30, po: 200, materiaux: { 'tissu-magique': 4, 'toile-runique': 2 } },
 ].forEach((recette) => RECETTES.push(recette));
 
+// v17 : les matériaux RAFFINÉS rejoignent les familles de la halle aux
+// matières — tout ce qui sert au craft peut désormais s'acheter (cher),
+// selon le niveau du joueur.
+Object.assign(FAMILLE_MATERIAU, {
+  'lingot-ferreux': 'mine', 'alliage-hurlant': 'mine', 'perle-de-magma': 'mine',
+  'quartz-eveille': 'mine', 'coeur-d-orage': 'mine', 'lingot-arcanique': 'mine',
+  'cuir-double': 'peau', 'resine-de-jungle': 'peau', 'moelle-titanesque': 'peau',
+  'cuir-de-legende': 'peau',
+  'toile-runique': 'plante', 'fil-du-neant': 'plante', 'etoffe-enchantee': 'plante',
+  'essence-sylvestre': 'plante', 'sel-d-abysse': 'plante',
+});
+
 // Le grand œuvre des artisans : une série qui exige les trois métiers.
 SETS_CRAFT.push(
   { suffixe: 'des Trois Maîtres', niveau: 36, rarete: 'mythique', po: 1600, materiaux: { 'lingot-arcanique': 1, 'cuir-de-legende': 1, 'etoffe-enchantee': 1 } },
@@ -592,25 +604,25 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
 });
 
 // =====================================================================
-// Catalogue du marchand : ~376 équipements générés, niveaux 1 à 20.
-// Cinq raretés maximum (commun → légendaire) : le mythique et le divin
-// restent introuvables en boutique. Chaque rareté n'est proposée que
-// dans sa fenêtre de niveaux, et chaque qualificatif forme une panoplie.
+// Catalogue du marchand : équipements générés, niveaux 1 à 50.
+// v17 : le marchand ne vend QUE du commun → épique (le légendaire, le
+// mythique et le divin se méritent : butin, boss ou artisans), et ses
+// pièces n'ont AUCUN bonus de panoplie ni skill passif — pour ça, il
+// faut passer chez les artisans ou partir à l'aventure.
 // =====================================================================
 const QUALIFICATIFS_BOUTIQUE = {
   commun:     ['de l’échoppe', 'du colporteur', 'de série'],
   inhabituel: ['de l’artisan', 'du bourg', 'de bonne facture'],
   rare:       ['de maître', 'du comptoir doré', 'd’exception'],
   epique:     ['de la Grande Foire', 'du maître-marchand', 'de prestige'],
-  legendaire: ['de la Vitrine Secrète', 'du fond du coffre', 'de collection'],
 };
 
 // Fenêtre de niveaux où le marchand propose chaque rareté (jusqu'au 50).
 const FENETRES_BOUTIQUE = {
-  commun: [1, 8], inhabituel: [3, 14], rare: [6, 26], epique: [10, 40], legendaire: [14, 50],
+  commun: [1, 8], inhabituel: [3, 14], rare: [6, 30], epique: [10, 50],
 };
-const MULT_STAT_BOUTIQUE = { commun: 0.7, inhabituel: 0.85, rare: 1.0, epique: 1.15, legendaire: 1.4 };
-const MULT_PRIX_BOUTIQUE = { commun: 1, inhabituel: 1.6, rare: 2.6, epique: 4.2, legendaire: 7 };
+const MULT_STAT_BOUTIQUE = { commun: 0.7, inhabituel: 0.85, rare: 1.0, epique: 1.15 };
+const MULT_PRIX_BOUTIQUE = { commun: 1, inhabituel: 1.6, rare: 2.6, epique: 4.2 };
 
 ARCHETYPES_BUTIN.forEach((archetype) => {
   for (let niveau = 1; niveau <= 50; niveau++) {
@@ -625,20 +637,16 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
       if (niveau >= 4) bonus[archetype.secondaire] = Math.max(1, Math.round(principal * 0.35));
       if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = Math.round(niveau * 2 * mult);
       if (archetype.principal === 'int') bonus.pmMax = Math.round(niveau * 1.5 * mult);
-      if (rarete === 'legendaire') bonus.crit = Math.round(1 + niveau * 0.2);
-      if (archetype.defensif && niveau >= 8 && ['rare', 'epique', 'legendaire'].includes(rarete)) {
+      if (archetype.defensif && niveau >= 8 && ['rare', 'epique'].includes(rarete)) {
         bonus[archetype.defensif] = Math.max(1, Math.round(1 + niveau * 0.1 * mult));
       }
-      const idSet = `marchand-${rarete}-${indexQualificatif}`;
-      if (!SETS[idSet]) SETS[idSet] = { nom: `Panoplie ${qualificatif}`, rarete };
       OBJETS[`marchand-${archetype.cle}-${rarete}-${niveau}`] = {
         nom: `${nomBase} ${qualificatif}`,
         emoji: archetype.emoji, type: 'equipement', slot: archetype.slot,
         niveau, rarete,
         prix: Math.max(8, Math.round((10 + niveau * 8) * MULT_PRIX_BOUTIQUE[rarete])),
         bonus,
-        set: idSet,
-        desc: `Collection du marchand — pièce de la panoplie ${qualificatif}.`,
+        desc: `Collection du marchand — sans bonus de panoplie : l'exceptionnel se gagne, il ne s'achète pas.`,
       };
     });
   }

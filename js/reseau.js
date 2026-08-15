@@ -289,6 +289,31 @@ async function supprimerPersonnageCloud(p) {
 // =====================================================================
 // Taverne : chat, joueurs, boss du monde, classement
 // =====================================================================
+// v17 : plusieurs classements logiques, calculés depuis les sauvegardes
+// publiques des meilleurs héros.
+function puissancePublique(j) {
+  if (!j.dstats) return 0;
+  return puissanceDe({
+    stats: { for: 4, int: 4, agi: 4, vit: 4, cha: 2, ...j.dstats },
+    equipement: j.dequip || {},
+    familier: j.dfam || null,
+    niveau: j.niveau || 1,
+  });
+}
+
+const CLASSEMENTS_TAVERNE = [
+  { id: 'niveau', nom: '🏆 Niveau', valeur: (j) => (j.niveau || 0) * 1e9 + (j.xp || 0), texte: (v, j) => `niv. ${j.niveau} (${formatNombre(j.xp)} XP)` },
+  { id: 'puissance', nom: '⚡ Puissance', valeur: (j) => puissancePublique(j), texte: (v) => `⚡ ${formatNombre(v)} de puissance` },
+  { id: 'fortune', nom: '💰 Fortune', valeur: (j) => j.dpo || 0, texte: (v) => `${formatNombre(v)} po en bourse` },
+  { id: 'bossmonde', nom: '🌍 Boss du monde', valeur: (j) => j.degats_boss_total || 0, texte: (v) => `${formatNombre(v)} dégâts au boss du monde` },
+  { id: 'tour', nom: '🗼 Tour Sans Fin', valeur: (j) => j.dtour || 0, texte: (v) => `étage ${v} de la Tour Sans Fin` },
+  { id: 'tourboss', nom: '🏯 Tour des Boss', valeur: (j) => (j.dtb ? Math.max(j.dtb.normal || 0, j.dtb.heroique || 0, j.dtb.cauchemar || 0) : 0), texte: (v) => `étage ${v} de la Tour des Boss` },
+  { id: 'hautsfaits', nom: '🏅 Hauts faits', valeur: (j) => (Array.isArray(j.dhf) ? j.dhf.length : 0), texte: (v) => `${v} haut${v > 1 ? 's' : ''} fait${v > 1 ? 's' : ''} accompli${v > 1 ? 's' : ''}` },
+];
+let classementTaverneActif = 'niveau';
+// Filtres du comptoir d'échange (v17).
+const filtresComptoir = { type: 'tous', rarete: 'tous' };
+
 let minuterieTaverne = null;
 let donneesTaverne = {
   boss: null, contributions: [], messages: [], joueurs: [], classement: [],
@@ -310,7 +335,12 @@ async function chargerDonneesTaverne() {
       apiRequete('/rest/v1/boss_monde?actif=eq.true&select=*&order=id.desc&limit=1'),
       apiRequete('/rest/v1/messages?select=nom,avatar,texte,cree_le&order=id.desc&limit=40'),
       apiRequete('/rest/v1/personnages?select=id,nom,avatar,niveau,xp,degats_boss_total,derniere_activite&order=derniere_activite.desc&limit=30'),
-      apiRequete('/rest/v1/personnages?select=id,nom,avatar,niveau,xp&order=niveau.desc,xp.desc&limit=10'),
+      // v17 : on ramène de quoi construire PLUSIEURS classements (puissance,
+      // fortune, tours, hauts faits…) — champs ciblés du JSON de sauvegarde.
+      apiRequete('/rest/v1/personnages?select=id,nom,avatar,niveau,xp,degats_boss_total,'
+        + 'dstats:donnees->stats,dequip:donnees->equipement,dfam:donnees->familier,'
+        + 'dpo:donnees->po,dhf:donnees->hautsFaits,dtb:donnees->tourBoss,dtour:donnees->tourMax'
+        + '&order=niveau.desc,xp.desc&limit=20'),
       apiRequete('/rest/v1/echanges?statut=eq.ouvert&select=*&order=maj.desc&limit=30'),
       p && p.cloud
         ? apiRequete(`/rest/v1/echanges?vendeur_id=eq.${p.cloud.id}&statut=eq.vendu&reclame=eq.false&select=id,prix,objet_id,acheteur_nom`)
@@ -505,6 +535,35 @@ function rendreTaverne() {
     formulaire.appendChild(vendre);
     blocComptoir.appendChild(formulaire);
   }
+  // v17 : filtres du comptoir (type + rareté), comme dans les boutiques.
+  const rangeeFiltresComptoir = document.createElement('div');
+  rangeeFiltresComptoir.className = 'rangee-chips rangee-sous-filtres';
+  const majChipsComptoir = () => {
+    rangeeFiltresComptoir.querySelectorAll('.chip').forEach((c) => {
+      c.classList.toggle('active', c.dataset.type === filtresComptoir.type || c.dataset.rarete === filtresComptoir.rarete);
+    });
+    rendreSectionsTaverne();
+  };
+  [['tous', 'Tout'], ['equipement', '⚔️ Équipements'], ['consommable', '🧪 Consommables'], ['materiau', '⛏️ Matériaux']].forEach(([id, nom]) => {
+    const chip = document.createElement('button');
+    chip.className = 'chip chip-filtre' + (filtresComptoir.type === id ? ' active' : '');
+    chip.dataset.type = id;
+    chip.textContent = nom;
+    chip.addEventListener('click', () => { filtresComptoir.type = id; majChipsComptoir(); });
+    rangeeFiltresComptoir.appendChild(chip);
+  });
+  const sepComptoir = document.createElement('span');
+  sepComptoir.className = 'separateur-chips';
+  rangeeFiltresComptoir.appendChild(sepComptoir);
+  [['tous', '✨ Toutes raretés'], ...Object.keys(RARETES).map((r) => [r, RARETES[r].nom])].forEach(([id, nom]) => {
+    const chip = document.createElement('button');
+    chip.className = `chip chip-filtre chip-rar-${id}` + (filtresComptoir.rarete === id ? ' active' : '');
+    chip.dataset.rarete = id;
+    chip.textContent = nom;
+    chip.addEventListener('click', () => { filtresComptoir.rarete = id; majChipsComptoir(); });
+    rangeeFiltresComptoir.appendChild(chip);
+  });
+  blocComptoir.appendChild(rangeeFiltresComptoir);
   blocComptoir.insertAdjacentHTML('beforeend', '<div id="comptoir-liste"><p class="aide">Chargement des annonces…</p></div>');
   zone.appendChild(blocComptoir);
 
@@ -515,7 +574,22 @@ function rendreTaverne() {
   blocJoueurs.innerHTML = '<h3>🧑‍🤝‍🧑 Aventuriers</h3><div id="taverne-joueurs"></div>';
   const blocClassement = document.createElement('div');
   blocClassement.className = 'panneau';
-  blocClassement.innerHTML = '<h3>🏆 Classement</h3><div id="taverne-classement"></div>';
+  blocClassement.innerHTML = `<h3>🏆 Classements</h3>
+    <div class="rangee-chips" id="taverne-classement-choix"></div>
+    <div id="taverne-classement"></div>
+    <p class="aide">Parmi les 20 héros les plus avancés du monde.</p>`;
+  const choixClassement = blocClassement.querySelector('#taverne-classement-choix');
+  CLASSEMENTS_TAVERNE.forEach((c) => {
+    const chip = document.createElement('button');
+    chip.className = 'chip chip-filtre' + (classementTaverneActif === c.id ? ' active' : '');
+    chip.textContent = c.nom;
+    chip.addEventListener('click', () => {
+      classementTaverneActif = c.id;
+      choixClassement.querySelectorAll('.chip').forEach((x) => x.classList.toggle('active', x.textContent === c.nom));
+      rendreSectionsTaverne();
+    });
+    choixClassement.appendChild(chip);
+  });
   colonnes.appendChild(blocJoueurs);
   colonnes.appendChild(blocClassement);
   zone.appendChild(colonnes);
@@ -642,15 +716,20 @@ function rendreSectionsTaverne() {
     });
   }
 
-  // --- Classement ---
+  // --- Classements (v17 : plusieurs vues logiques) ---
   const zoneClassement = el('taverne-classement');
   if (zoneClassement) {
     zoneClassement.innerHTML = '';
-    donneesTaverne.classement.forEach((j, i) => {
+    const config = CLASSEMENTS_TAVERNE.find((c) => c.id === classementTaverneActif) || CLASSEMENTS_TAVERNE[0];
+    const lignes = donneesTaverne.classement
+      .map((j) => ({ joueur: j, valeur: config.valeur(j) }))
+      .sort((a, b) => b.valeur - a.valeur)
+      .slice(0, 10);
+    lignes.forEach(({ joueur: j, valeur }, i) => {
       const ligne = document.createElement('div');
       ligne.className = 'ligne-classement';
       const medaille = ['🥇', '🥈', '🥉'][i] || `${i + 1}.`;
-      ligne.textContent = `${medaille} ${j.avatar || '⚔️'} ${j.nom} — niv. ${j.niveau} (${formatNombre(j.xp)} XP) 👁️`;
+      ligne.textContent = `${medaille} ${j.avatar || '⚔️'} ${j.nom} — ${config.texte(valeur, j)} 👁️`;
       rendreCliquable(ligne, () => ouvrirFichePublique(j.id));
       zoneClassement.appendChild(ligne);
     });
@@ -672,18 +751,30 @@ function rendreSectionsTaverne() {
   const zoneComptoir = el('comptoir-liste');
   if (zoneComptoir) {
     zoneComptoir.innerHTML = '';
-    if (donneesTaverne.echanges.length === 0) {
-      zoneComptoir.innerHTML = '<p class="aide">Aucune annonce au comptoir. Soyez le premier marchand !</p>';
-    }
-    donneesTaverne.echanges.forEach((annonce) => {
+    const annoncesVisibles = donneesTaverne.echanges.filter((annonce) => {
       const objet = OBJETS[annonce.objet_id];
-      if (!objet) return; // annonce d'une version plus récente du jeu
+      if (!objet) return false;
+      if (filtresComptoir.type !== 'tous' && objet.type !== filtresComptoir.type) return false;
+      if (filtresComptoir.rarete !== 'tous' && rareteDe(objet) !== filtresComptoir.rarete) return false;
+      return true;
+    });
+    if (annoncesVisibles.length === 0) {
+      zoneComptoir.innerHTML = donneesTaverne.echanges.length === 0
+        ? '<p class="aide">Aucune annonce au comptoir. Soyez le premier marchand !</p>'
+        : '<p class="aide">Aucune annonce ne correspond à ces filtres.</p>';
+    }
+    annoncesVisibles.forEach((annonce) => {
+      const objet = OBJETS[annonce.objet_id];
       const estMoi = p && p.cloud && annonce.vendeur_id === p.cloud.id;
       const ligne = document.createElement('div');
       ligne.className = `ligne-annonce bord-rar-${rareteDe(objet)}`;
       ligne.innerHTML = `<span class="annonce-objet">${objet.emoji} <strong>${objet.nom}</strong>
-        ${etiquetteRarete(objet)}${annonce.qte > 1 ? ` ×${annonce.qte}` : ''}</span>
-        <span class="annonce-detail">${annonce.prix} po · par ${estMoi ? 'vous' : echapper(annonce.vendeur_nom)}</span>`;
+        ${etiquetteRarete(objet)}${annonce.qte > 1 ? ` ×${annonce.qte}` : ''}
+        ${objet.bonus ? `<span class="annonce-bonus">${texteBonus(objet.bonus)}</span>` : ''}
+        ${objet.type === 'equipement' && objet.niveau ? `<span class="annonce-bonus">niv. ${objet.niveau} requis</span>` : ''}
+        ${objet.type === 'consommable' && objet.desc ? `<span class="annonce-bonus">${objet.desc}</span>` : ''}
+        ${texteSet(objet)}</span>
+        <span class="annonce-detail">${annonce.prix} po · par ${estMoi ? 'vous' : echapper(annonce.vendeur_nom)} · valeur revente : ${prixVenteDe(annonce.objet_id)} po</span>`;
       const bouton = document.createElement('button');
       bouton.className = 'btn-choix btn-compact';
       if (estMoi) {
@@ -767,7 +858,7 @@ async function ouvrirFichePublique(idJoueur) {
     <button class="btn-choix btn-compact modale-fermer">✖ Fermer</button>
     <h2>${ligne.avatar || '⚔️'} ${echapper(ligne.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''}</h2>
     <p class="joueur-detail">${classe.emoji} ${classe.nom} · ${race.emoji} ${race.nom} · niveau ${ligne.niveau} (${formatNombre(ligne.xp)} XP)
-      · 💰 ${formatNombre(d.po || 0)} po · ⚔️ ${formatNombre(ligne.degats_boss_total || 0)} dégâts au boss du monde</p>
+      · ⚡ ${formatNombre(puissanceDe(pp))} de puissance · 💰 ${formatNombre(d.po || 0)} po · ⚔️ ${formatNombre(ligne.degats_boss_total || 0)} dégâts au boss du monde</p>
     <div class="panneau"><h3>Caractéristiques effectives</h3>
       <p>${statsTexte}</p>
       <p class="joueur-detail">❤️ ${maxHpDe(pp)} PV max · 💧 ${maxMpDe(pp)} PM max${s.blocage ? ` · 🛡️ ${Math.min(40, s.blocage)} % blocage` : ''}${s.esquive ? ` · 💨 ${Math.min(35, s.esquive)} % esquive` : ''}</p>

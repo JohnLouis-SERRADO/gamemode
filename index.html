@@ -9,14 +9,6 @@
 <body>
   <header id="topbar" class="cache">
     <div id="topbar-perso"></div>
-    <nav id="topbar-nav">
-      <button data-nav="carte" title="Carte du monde">🗺️<span class="nav-libelle">Carte</span></button>
-      <button data-nav="ville" title="Bourg de Valciel">🏘️<span class="nav-libelle">Ville</span></button>
-      <button data-nav="heros" title="Fiche du héros">🧙<span class="nav-libelle">Héros</span><span id="badge-heros" class="pastille cache">!</span></button>
-      <button data-nav="sac" title="Sac : équipement et inventaire">🎒<span class="nav-libelle">Sac</span></button>
-      <button data-nav="taverne" title="Taverne (multijoueur)">🍻<span class="nav-libelle">Taverne</span><span id="point-en-ligne" class="point-reseau"></span></button>
-      <button data-nav="titre" title="Changer de personnage">⇄<span class="nav-libelle">Profils</span></button>
-    </nav>
   </header>
   <div id="bandeau-evenement" class="cache"></div>
 
@@ -247,6 +239,15 @@
     </section>
 
   </main>
+
+  <!-- ===== Barre de navigation basse (façon jeu mobile) ===== -->
+  <nav id="navbar-bas" class="cache">
+    <button data-nav="carte" title="Carte du monde"><span class="nav-icone">🗺️</span><span class="nav-libelle">Carte</span></button>
+    <button data-nav="ville" title="Bourg de Valciel"><span class="nav-icone">🏘️</span><span class="nav-libelle">Ville</span></button>
+    <button data-nav="sac" title="Inventaire : équipement et objets"><span class="nav-icone">🎒</span><span class="nav-libelle">Inventaire</span></button>
+    <button data-nav="taverne" title="Taverne (multijoueur)"><span class="nav-icone">🍻</span><span class="nav-libelle">Taverne</span><span id="point-en-ligne" class="point-reseau"></span></button>
+    <button data-nav="heros" title="Profil du héros"><span class="nav-icone">🧙</span><span class="nav-libelle">Profil</span><span id="badge-heros" class="pastille cache">!</span></button>
+  </nav>
 
   <script src="js/data.js"></script>
   <script src="js/objets.js"></script>

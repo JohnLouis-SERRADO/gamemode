@@ -2847,9 +2847,9 @@ function rendreCartesDonjons(conteneur, p) {
       else etiquette = `📖 épopée · niv. ${donjon.niveauMin}+`;
       const record = !donjon.chronique ? recordAscension(p, donjon.id) : 0;
       carte.innerHTML = `
-        <div class="zone-emoji">${donjon.emoji}</div>
+        <div class="zone-emoji">${donjon.emoji}${verrouille ? '<span class="cadenas-zone">🔒</span>' : ''}</div>
         <div class="zone-nom">${donjon.nom}${statut}</div>
-        <div class="zone-plage">${etiquette}${record > 0 ? ` · ⛰️ record : étage ${record}` : ''}</div>
+        <div class="zone-plage">${etiquette}${record > 0 ? ` · ⛰️ record : étage ${record}` : ''} · ${texteRecommandation(p, donjon.defi || donjon.niveauMin)}</div>
         <div class="zone-desc">${verrouille ? action : `${donjon.resume}<br><em>${action}</em>`}</div>`;
       if (!verrouille) rendreCliquable(carte, () => ouvrirDonjon(donjon));
       conteneur.appendChild(carte);
