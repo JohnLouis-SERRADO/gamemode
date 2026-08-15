@@ -253,6 +253,7 @@ function montrerEcran(id) {
   if (['ecran-carte', 'ecran-zone', 'ecran-ville', 'ecran-heros'].includes(id)) {
     verifierChoixSpecialite();
     verifierChoixSousClasse();
+    verifierChoixVoie();
   }
   window.scrollTo(0, 0);
 }
@@ -267,7 +268,70 @@ function montrerEcran(id) {
 // On les fait donc passer l'une après l'autre, dans l'ordre des niveaux.
 // =====================================================================
 function modaleBloquanteOuverte() {
-  return !!document.querySelector('#voile-specialite, #voile-sous-classe');
+  return !!document.querySelector('#voile-specialite, #voile-sous-classe, #voile-voie');
+}
+
+// =====================================================================
+// v19 — LE CHOIX DE VOIE, au niveau 50.
+//
+// La Voie ne change pas la classe : elle pousse la spécialité dans une
+// direction, donne un passif fort, une compétence, et le titre qui
+// s'affiche ensuite partout — « Templier du Bastion ».
+// =====================================================================
+function verifierChoixVoie() {
+  const p = persoActif();
+  if (!p || p.niveau < NIVEAU_VOIE || p.voie || !p.sousClasse) return;
+  if (modaleBloquanteOuverte()) return;
+  if (typeof combatEnCours === 'function' && combatEnCours()) return;
+  const sousClasse = sousClasseDe(p);
+  if (!sousClasse || !(sousClasse.voies || []).length) return;
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-voie';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-specialite';
+  modale.innerHTML = `
+    <h2>${sousClasse.emoji} Niveau ${NIVEAU_VOIE} : choisissez votre Voie de ${sousClasse.nom}</h2>
+    <p>${echapper(p.nom)} a poussé sa spécialité aussi loin qu'elle allait. La Voie décide
+      de ce qu'elle devient : un <strong>passif majeur</strong>, une <strong>compétence
+      propre</strong>, et un <strong>titre</strong> qui vous suivra partout.</p>
+    <div id="voie-choix"></div>
+    <p class="aide">Le choix se change plus tard, contre une contrepartie.</p>`;
+
+  const zone = modale.querySelector('#voie-choix');
+  sousClasse.voies.forEach((idVoie) => {
+    const voie = VOIES[idVoie];
+    const comp = COMPETENCES[voie.competence];
+    const carte = document.createElement('div');
+    carte.className = 'panneau carte-specialite';
+    carte.innerHTML = `
+      <div class="objet-entete">${voie.emoji} <strong>${voie.nom}</strong></div>
+      <div class="objet-desc">${voie.passif}</div>
+      <div class="objet-bonus">${comp.emoji} ${comp.nom} — nouvelle compétence</div>
+      <div class="objet-desc">Titre porté : <strong>${voie.titre}</strong></div>`;
+    const choisir = document.createElement('button');
+    choisir.className = 'btn-principal btn-compact';
+    choisir.textContent = `${voie.emoji} Suivre la ${voie.nom}`;
+    choisir.addEventListener('click', () => {
+      p.voie = idVoie;
+      apprendreCompetence(p, voie.competence, true);
+      bornerVie(p);
+      sauvegarder(p);
+      voile.remove();
+      annoncerDeblocage({
+        emoji: voie.emoji,
+        titre: voie.titre,
+        texte: `${voie.passif} ${comp.nom} rejoint votre grimoire.`,
+      });
+      if (el('ecran-heros').classList.contains('actif')) rendreHeros();
+      rendreTopbar();
+    });
+    carte.appendChild(choisir);
+    zone.appendChild(carte);
+  });
+
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
 }
 
 // =====================================================================
@@ -608,6 +672,7 @@ function normaliserPerso(p) {
   if (!p.classe || !(CLASSES[p.classe] || MIGRATION_CLASSES[p.classe])) p.classe = infererClasse(p);
   migrerClasses(p);
   if (p.sousClasse && !SOUS_CLASSES[p.sousClasse]) p.sousClasse = null;
+  if (p.voie && !VOIES[p.voie]) p.voie = null;
   if (!p.rangs || typeof p.rangs !== 'object') p.rangs = {};
   debloquerCompetencesClasse(p, false);
   if (p.maitrise == null) {
@@ -854,7 +919,7 @@ function donneesCloud(p) {
     donjons: p.donjons, classe: p.classe, maitrise: p.maitrise, rangs: p.rangs,
     // v19 : la spécialité voyage avec le héros — code de sauvegarde, taverne,
     // fiches publiques et expéditions doivent tous la connaître.
-    sousClasse: p.sousClasse, versionClasses: p.versionClasses,
+    sousClasse: p.sousClasse, voie: p.voie, versionClasses: p.versionClasses,
     tourBoss: p.tourBoss, metiers: p.metiers, metierPrincipal: p.metierPrincipal,
     ascensions: p.ascensions, histoiresVues: p.histoiresVues,
   };
@@ -955,7 +1020,8 @@ function debloquerCompetencesClasse(p, annoncer) {
   Object.entries(COMPETENCES).forEach(([id, comp]) => {
     const deMaClasse = comp.classe && comp.classe === p.classe;
     const deMaSousClasse = comp.sousClasse && comp.sousClasse === p.sousClasse;
-    if ((!deMaClasse && !deMaSousClasse) || p.grimoire.includes(id)) return;
+    const deMaVoie = comp.voie && comp.voie === p.voie;
+    if ((!deMaClasse && !deMaSousClasse && !deMaVoie) || p.grimoire.includes(id)) return;
     if ((comp.niveauRequis || 1) > p.niveau) return;
     // Les compétences du niveau 1 (signature et bases) s'imposent dans la
     // barre ; celles des paliers suivants respectent l'agencement choisi
@@ -1738,7 +1804,7 @@ function rendreHeros() {
   entete.innerHTML = `
     <span class="avatar-titan">${p.avatar}${familier ? `<span class="familier-avatar" title="${familier.nom}">${familier.emoji}</span>` : ''}</span>
     <div class="heros-identite">
-      <h2>${echapper(p.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''} <span class="niveau">${emojiClasse(p)} ${nomCompletClasse(p)} · niveau ${p.niveau}</span>
+      <h2>${echapper(p.nom)}${titreActif ? ` <span class="titre-heros">${titreActif.titre}</span>` : ''} <span class="niveau">${emojiClasse(p)} ${titreCompletHeros(p)} · niveau ${p.niveau}</span>
         <button id="btn-renommer" class="btn-choix btn-compact btn-renommer" title="Changer le nom de ce héros">✏️ Renommer</button></h2>
       <div id="zone-renommage" class="cache ligne-renommage">
         <input id="champ-renommage" maxlength="16" placeholder="Nouveau nom">
@@ -2533,6 +2599,7 @@ function chargerHerosImporte(donnees, id, token) {
   }
   if (d.classe && (CLASSES[d.classe] || MIGRATION_CLASSES[d.classe])) p.classe = d.classe;
   if (d.sousClasse !== undefined) p.sousClasse = d.sousClasse;
+  if (d.voie !== undefined) p.voie = d.voie;
   if (d.versionClasses != null) p.versionClasses = d.versionClasses;
   if (d.rangs && typeof d.rangs === 'object') p.rangs = d.rangs;
   if (d.maitrise != null) p.maitrise = d.maitrise;

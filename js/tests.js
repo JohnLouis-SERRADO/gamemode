@@ -1329,6 +1329,96 @@ suite('Actes III et IV', () => {
 });
 
 // =====================================================================
+// 12. Les Voies du niveau 50 (v19)
+// =====================================================================
+suite('Voies', () => {
+  test('quatre-vingt-une Voies, trois par sous-classe', () => {
+    egal(Object.keys(VOIES).length, 81, 'Voies');
+    const fautives = Object.values(SOUS_CLASSES)
+      .filter((sc) => (sc.voies || []).length !== 3)
+      .map((sc) => `${sc.nom} (${(sc.voies || []).length})`);
+    aucun(fautives, 'sous-classes mal dotées en Voies');
+  });
+
+  test('chaque Voie a un passif, une compétence, un titre', () => {
+    const fautives = Object.entries(VOIES)
+      .filter(([, v]) => !v.passif || !v.titre || !COMPETENCES[v.competence] || !v.emoji)
+      .map(([id]) => id);
+    aucun(fautives, 'Voies incomplètes');
+  });
+
+  test('les trois Voies d\'une sous-classe sont bien distinctes', () => {
+    const doublons = [];
+    Object.values(SOUS_CLASSES).forEach((sc) => {
+      const noms = (sc.voies || []).map((id) => VOIES[id].nom);
+      if (new Set(noms).size !== noms.length) doublons.push(sc.nom);
+    });
+    aucun(doublons, 'Voies en doublon');
+  });
+
+  test('chaque compétence de Voie suit l\'attribut de sa famille', () => {
+    const fautives = [];
+    Object.values(VOIES).forEach((v) => {
+      const comp = COMPETENCES[v.competence];
+      if (comp.type === 'utilitaire') return;
+      const attendu = CLASSES_BASE[v.classe].stat;
+      if (comp.stat !== attendu) fautives.push(`${v.nom} : ${comp.stat} au lieu de ${attendu}`);
+    });
+    aucun(fautives, 'Voies sur le mauvais attribut');
+  });
+
+  test('à profil égal, deux Voies frappent aussi fort', () => {
+    // C'est tout l'intérêt d'avoir calculé les chiffres plutôt que de les
+    // écrire : aucune sous-classe n'est avantagée par accident.
+    const parProfil = {};
+    Object.values(VOIES).forEach((v) => {
+      const comp = COMPETENCES[v.competence];
+      const cle = `${comp.type}-${comp.cible}-${comp.puissance}`;
+      (parProfil[cle] = parProfil[cle] || []).push(comp.ratio);
+    });
+    const inegaux = Object.entries(parProfil)
+      .filter(([, ratios]) => new Set(ratios).size > 1)
+      .map(([cle]) => cle);
+    aucun(inegaux, 'profils identiques aux chiffres différents');
+  });
+
+  test('les Voies s\'ouvrent au niveau 50, pas avant', () => {
+    egal(NIVEAU_VOIE, 50, 'palier des Voies');
+    const trop = Object.values(VOIES)
+      .filter((v) => (COMPETENCES[v.competence].niveauRequis || 1) !== NIVEAU_VOIE)
+      .map((v) => v.nom);
+    aucun(trop, 'compétences de Voie mal verrouillées');
+  });
+
+  test('le titre de Voie remplace le nom de classe', () => {
+    const heros = { classe: 'gardien', sousClasse: 'templier', voie: null };
+    egal(titreCompletHeros(heros), 'Gardien — Templier', 'sans Voie');
+    heros.voie = SOUS_CLASSES.templier.voies[0];
+    egal(titreCompletHeros(heros), VOIES[heros.voie].titre, 'avec Voie');
+    verifier(!titreCompletHeros(heros).includes('Voie '), 'le titre ne doit pas dire « Voie »');
+  });
+
+  test('une Voie inconnue est écartée sans casse à la migration', () => {
+    const p = herosTest({ niveau: 55, classe: 'gardien', sousClasse: 'templier' });
+    p.voie = 'voie-qui-n-existe-plus';
+    const migre = normaliserPerso(p);
+    egal(migre.voie, null, 'la Voie fantôme devrait être écartée');
+  });
+
+  test('les compétences de Voie sont accessibles et chiffrables', () => {
+    const stats = { for: 40, dex: 40, int: 40, esp: 40, vit: 40, cha: 20 };
+    const fautives = [];
+    Object.values(VOIES).forEach((v) => {
+      const comp = COMPETENCES[v.competence];
+      try {
+        if (!detailsCompetence(comp, stats, 0, 200).length) fautives.push(v.nom);
+      } catch (e) { fautives.push(`${v.nom} (${e.message})`); }
+    });
+    aucun(fautives, 'compétences de Voie inaffichables');
+  });
+});
+
+// =====================================================================
 // Exécution et rapport
 // =====================================================================
 function lancerTests() {
