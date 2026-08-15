@@ -220,7 +220,7 @@ function rendreListeFiltrable(options) {
   compteur.className = 'compteur-liste';
   compteur.textContent = total === 0
     ? `Aucun ${nomListe.replace(/s$/, '')}`
-    : `${total} ${nomListe}${total > parPage ? ` — ${debut + 1} à ${debut + tranche.length}` : ''}`;
+    : `${formatNombre(total)} ${nomListe}${total > parPage ? ` — ${formatNombre(debut + 1)} à ${formatNombre(debut + tranche.length)}` : ''}`;
   bloc.appendChild(compteur);
 
   // --- La liste -------------------------------------------------------

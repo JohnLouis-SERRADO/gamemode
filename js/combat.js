@@ -606,7 +606,7 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
       const cb2 = etat.combat;
       const butin = Math.max(1, Math.round(varie(4 + statDe(source, 'dex') * 1.2)));
       cb2.orVole = (cb2.orVole || 0) + butin;
-      journal(`💰 ${source.nom} fait les poches de ${cible.nom} : +${butin} po au butin !`);
+      journal(`💰 ${source.nom} fait les poches de ${cible.nom} : +${formatNombre(butin)} po au butin !`);
       break;
     }
   }

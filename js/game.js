@@ -505,7 +505,7 @@ function verifierChoixSpecialite() {
     </div>
     <div id="specialite-choix"></div>
     <p class="aide">Le choix est obligatoire pour continuer l'aventure — mais pas définitif :
-      changer coûtera ${COUT_CHANGEMENT_SPECIALITE} po depuis votre fiche de héros.</p>`;
+      changer coûtera ${formatNombre(COUT_CHANGEMENT_SPECIALITE)} po depuis votre fiche de héros.</p>`;
 
   const zoneChoix = modale.querySelector('#specialite-choix');
   Object.entries(METIERS).forEach(([idMetier, metier]) => {
@@ -1155,7 +1155,7 @@ function rendreTitre() {
     carte.innerHTML = `
       <div class="recap-entete"><span class="avatar-grand">${p.avatar}</span>
         <div><strong>${echapper(p.nom)}</strong><br>
-        <span class="niveau">Niveau ${p.niveau} · 💰 ${p.po} po${p.cloud ? ' · ☁️ relié au monde' : ''}</span></div>
+        <span class="niveau">Niveau ${p.niveau} · 💰 ${formatNombre(p.po)} po${p.cloud ? ' · ☁️ relié au monde' : ''}</span></div>
       </div>`;
     const boutons = document.createElement('div');
     boutons.className = 'rangee-boutons';
@@ -1884,7 +1884,7 @@ function rendreHeros() {
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
       <div class="heros-puissance">⚡ Puissance : <strong>${puissanceDe(p).toLocaleString('fr-FR')}</strong>
         <span class="aide-inline">(caractéristiques + équipement + niveau)</span></div>
-      <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${p.po} po · 💥 ${Math.round(5 + s.dex + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin${s.tenacite ? ` · 🛡️ ${Math.min(40, s.tenacite)} % tenacite` : ''}${s.celerite ? ` · 💨 ${Math.min(35, s.celerite)} % celerite` : ''}</div>
+      <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${formatNombre(p.po)} po · 💥 ${Math.round(5 + s.dex + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin${s.tenacite ? ` · 🛡️ ${Math.min(40, s.tenacite)} % tenacite` : ''}${s.celerite ? ` · 💨 ${Math.min(35, s.celerite)} % celerite` : ''}</div>
     </div>`;
   zone.appendChild(entete);
 
@@ -2192,7 +2192,7 @@ function rendreBlocMetiers(zone, p) {
     + 'La <strong>spécialité</strong> ⭐ — votre sous-classe de récolteur — se choisit au '
     + `niveau ${NIVEAU_SPECIALITE} : le spécialiste récolte plus (quantités, matériaux signatures) `
     + 'et progresse deux fois plus vite dans son métier — et plus sa Chance est haute, plus l’écart se creuse. '
-    + `En changer coûte ${COUT_CHANGEMENT_SPECIALITE} po.</p>`;
+    + `En changer coûte ${formatNombre(COUT_CHANGEMENT_SPECIALITE)} po.</p>`;
   const grilleMetiers = document.createElement('div');
   grilleMetiers.className = 'rangee-chips';
   Object.entries(METIERS).forEach(([idMetier, metier]) => {
@@ -2203,7 +2203,7 @@ function rendreBlocMetiers(zone, p) {
     chip.title = specialite
       ? `${metier.detail} — votre spécialité : récolte et progression améliorées`
       : `${metier.detail} — matériau signature : ${OBJETS[metier.exclusif].nom}. `
-        + (p.metierPrincipal ? `Changer de spécialité coûte ${COUT_CHANGEMENT_SPECIALITE} po.` : 'Cliquez pour en faire votre spécialité (gratuit).');
+        + (p.metierPrincipal ? `Changer de spécialité coûte ${formatNombre(COUT_CHANGEMENT_SPECIALITE)} po.` : 'Cliquez pour en faire votre spécialité (gratuit).');
     const progression = m.niveau >= NIVEAU_MAX_METIER
       ? 'maître'
       : `niv. ${m.niveau} (${m.xp}/${seuilXpMetier(m.niveau)} XP)`;
@@ -2215,7 +2215,7 @@ function rendreBlocMetiers(zone, p) {
         return;
       }
       if (p.metierPrincipal && p.po < COUT_CHANGEMENT_SPECIALITE) {
-        afficherToast(`💰 Changer de spécialité coûte ${COUT_CHANGEMENT_SPECIALITE} po.`);
+        afficherToast(`💰 Changer de spécialité coûte ${formatNombre(COUT_CHANGEMENT_SPECIALITE)} po.`);
         return;
       }
       if (p.metierPrincipal) p.po -= COUT_CHANGEMENT_SPECIALITE;

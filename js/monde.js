@@ -5,10 +5,6 @@
 // récompenses de combat et écran de butin.
 // =====================================================================
 
-function formatNombre(n) {
-  return Number(n).toLocaleString('fr-FR');
-}
-
 // =====================================================================
 // Carte du monde
 // =====================================================================
@@ -485,7 +481,7 @@ function evenementHistoire(z) {
     if (r.materiau && OBJETS[r.materiau]) ajouterObjet(m, r.materiau, 1);
     sauvegarder(m);
   });
-  if (r.po) lignes.push(`💰 +${r.po} po pour chaque héros`);
+  if (r.po) lignes.push(`💰 +${formatNombre(r.po)} po pour chaque héros`);
   if (r.xp) lignes.push(`⭐ +${r.xp} XP pour chaque héros`);
   if (r.soinPct) lignes.push(`❤️ +${Math.round(r.soinPct * 100)} % de PV pour chaque héros`);
   if (r.materiau && OBJETS[r.materiau]) lignes.push(`${OBJETS[r.materiau].emoji} ${OBJETS[r.materiau].nom} ×1 pour chaque héros`);
@@ -608,7 +604,7 @@ function marchandNomade(z) {
       ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}`;
     const acheter = document.createElement('button');
     acheter.className = 'btn-choix btn-compact btn-achat';
-    acheter.textContent = `Acheter — ${prixReduit} po (au lieu de ${objet.prix})`;
+    acheter.textContent = `Acheter — ${formatNombre(prixReduit)} po (au lieu de ${formatNombre(objet.prix)})`;
     acheter.disabled = p.po < prixReduit;
     acheter.addEventListener('click', () => {
       if (p.po < prixReduit) return;
@@ -806,7 +802,7 @@ function apresVictoireTour(cb) {
   const multTour = 1 + etage * 0.12;
   const xpParHeros = Math.max(1, Math.round((butin.xp * multTour) / partage));
   const poParHeros = Math.max(0, Math.round((butin.po * multTour) / partage));
-  lignes.push(`⭐ +${xpParHeros} XP et 💰 +${poParHeros} po par héros (prime d'étage +${Math.round(etage * 12)} %)`);
+  lignes.push(`⭐ +${xpParHeros} XP et 💰 +${formatNombre(poParHeros)} po par héros (prime d'étage +${Math.round(etage * 12)} %)`);
   Object.entries(butin.objets).forEach(([id, qte]) => {
     lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
   });
@@ -952,7 +948,7 @@ function apresVictoireTourBoss(cb) {
   const multEtage = 1 + etage * 0.15;
   const xpParHeros = Math.max(1, Math.round((butin.xp * multEtage) / partage));
   const poParHeros = Math.max(0, Math.round((butin.po * multEtage) / partage));
-  const lignes = [`⭐ +${xpParHeros} XP et 💰 +${poParHeros} po par héros (prime d'étage +${Math.round(etage * 15)} %)`];
+  const lignes = [`⭐ +${xpParHeros} XP et 💰 +${formatNombre(poParHeros)} po par héros (prime d'étage +${Math.round(etage * 15)} %)`];
   Object.entries(butin.objets).forEach(([id, qte]) => {
     lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
   });

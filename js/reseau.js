@@ -577,7 +577,7 @@ function rendreTaverne() {
           ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
           ${texteSet(objet)}
           ${objet.type === 'equipement' && objet.niveau ? `<div class="objet-niveau">niv. ${objet.niveau} requis</div>` : ''}
-          <div class="annonce-detail">Valeur de rachat en boutique : ${prixVenteDe(selectObjet.value)} po</div>
+          <div class="annonce-detail">Valeur de rachat en boutique : ${formatNombre(prixVenteDe(selectObjet.value))} po</div>
         </div>`;
     };
     selectObjet.addEventListener('change', majApercu);
@@ -792,7 +792,7 @@ function rendreSectionsTaverne() {
       const total = donneesTaverne.mesVentes.reduce((somme, vente) => somme + vente.prix, 0);
       const encaisser = document.createElement('button');
       encaisser.className = 'btn-principal btn-compact';
-      encaisser.textContent = `💰 Encaisser ${donneesTaverne.mesVentes.length} vente${donneesTaverne.mesVentes.length > 1 ? 's' : ''} — ${total} po`;
+      encaisser.textContent = `💰 Encaisser ${donneesTaverne.mesVentes.length} vente${donneesTaverne.mesVentes.length > 1 ? 's' : ''} — ${formatNombre(total)} po`;
       encaisser.addEventListener('click', () => reclamerVentes());
       zoneReclamer.appendChild(encaisser);
     }
@@ -832,14 +832,14 @@ function rendreSectionsTaverne() {
           ${texteSet(objet)}
           ${objet.type === 'equipement' && objet.niveau ? `<div class="objet-niveau ${p && p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}
           ${p ? texteComparaison(p, objet) : ''}
-          <div class="annonce-detail">Vendu par ${estMoi ? '<strong>vous</strong>' : echapper(annonce.vendeur_nom)} · valeur de rachat : ${prixVenteDe(annonce.objet_id)} po</div>`;
+          <div class="annonce-detail">Vendu par ${estMoi ? '<strong>vous</strong>' : echapper(annonce.vendeur_nom)} · valeur de rachat : ${formatNombre(prixVenteDe(annonce.objet_id))} po</div>`;
         const bouton = document.createElement('button');
         bouton.className = 'btn-choix btn-compact btn-achat';
         if (estMoi) {
           bouton.textContent = '↩️ Retirer';
           bouton.addEventListener('click', () => annulerEchange(annonce));
         } else {
-          bouton.textContent = `Acheter — ${annonce.prix} po`;
+          bouton.textContent = `Acheter — ${formatNombre(annonce.prix)} po`;
           bouton.disabled = !p || p.po < annonce.prix;
           bouton.addEventListener('click', () => acheterEchange(annonce));
         }
@@ -967,7 +967,7 @@ async function vendreAuComptoir() {
   }
   retirerObjet(p, idObjet, qte);
   sauvegarder(p);
-  afficherToast(`📤 ${objet.emoji} ${objet.nom} ×${qte} en vente pour ${prix} po.`);
+  afficherToast(`📤 ${objet.emoji} ${objet.nom} ×${qte} en vente pour ${formatNombre(prix)} po.`);
   rendreTaverne(); // reconstruit le formulaire avec l'inventaire à jour
 }
 
@@ -1025,7 +1025,7 @@ async function reclamerVentes() {
   p.compteurs.orTotal += resultat.total;
   verifierHautsFaits(p);
   sauvegarder(p);
-  afficherToast(`💰 ${resultat.nb} vente${resultat.nb > 1 ? 's' : ''} encaissée${resultat.nb > 1 ? 's' : ''} : +${resultat.total} po !`);
+  afficherToast(`💰 ${resultat.nb} vente${resultat.nb > 1 ? 's' : ''} encaissée${resultat.nb > 1 ? 's' : ''} : +${formatNombre(resultat.total)} po !`);
   rendreTopbar();
   rafraichirComptoir();
 }

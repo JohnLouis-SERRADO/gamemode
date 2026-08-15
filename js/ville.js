@@ -258,7 +258,7 @@ function rendreBoutique() {
   const config = BOUTIQUES[boutiqueCourante];
   el('boutique-titre').textContent = config.titre;
   el('boutique-accueil').textContent = config.accueil;
-  el('boutique-po').textContent = `💰 ${p.po} po`;
+  el('boutique-po').textContent = `💰 ${formatNombre(p.po)} po`;
 
   const zoneOnglets = el('boutique-onglets');
   zoneOnglets.innerHTML = '';
@@ -334,7 +334,7 @@ function carteArticleBoutique(p, id, objet, apresAchat) {
     ${texteComparaison(p, objet)}`;
   const acheter = document.createElement('button');
   acheter.className = 'btn-choix btn-compact btn-achat';
-  acheter.textContent = `Acheter — ${objet.prix} po`;
+  acheter.textContent = `Acheter — ${formatNombre(objet.prix)} po`;
   acheter.disabled = p.po < objet.prix;
   acheter.addEventListener('click', () => {
     if (p.po < objet.prix) return;
@@ -378,14 +378,14 @@ function rendreVente(contenu, p) {
     const total = materiaux.reduce((somme, e) => somme + prixVenteDe(e.id) * e.qte, 0);
     const toutVendre = document.createElement('button');
     toutVendre.className = 'btn-choix';
-    toutVendre.textContent = `💰 Vendre tous les matériaux — ${total} po`;
+    toutVendre.textContent = `💰 Vendre tous les matériaux — ${formatNombre(total)} po`;
     toutVendre.addEventListener('click', () => {
       materiaux.forEach((e) => {
         const gain = prixVenteDe(e.id) * e.qte;
         if (retirerObjet(p, e.id, e.qte)) p.po += gain;
       });
       sauvegarder(p);
-      afficherToast(`💰 Matériaux vendus : +${total} po !`);
+      afficherToast(`💰 Matériaux vendus : +${formatNombre(total)} po !`);
       rendreBoutique();
       rendreTopbar();
     });
@@ -421,7 +421,7 @@ function rendreVente(contenu, p) {
       ${objet.type === 'equipement' ? `<div class="objet-niveau">niv. ${objet.niveau} requis</div>` : ''}`;
     const rangee = document.createElement('div');
     rangee.className = 'rangee-boutons';
-    [[1, `Vendre 1 — ${prix} po`], [entree.qte, `Tout — ${formatNombre(prix * entree.qte)} po`]].forEach(([qte, libelle], index) => {
+    [[1, `Vendre 1 — ${formatNombre(prix)} po`], [entree.qte, `Tout — ${formatNombre(prix * entree.qte)} po`]].forEach(([qte, libelle], index) => {
       if (index === 1 && entree.qte < 2) return;
       const vendre = document.createElement('button');
       vendre.className = 'btn-choix btn-compact';
@@ -448,7 +448,7 @@ function rendreVente(contenu, p) {
 // =====================================================================
 function rendreAntiquaire() {
   const p = persoActif();
-  el('antiquaire-po').textContent = `💰 ${p.po} po`;
+  el('antiquaire-po').textContent = `💰 ${formatNombre(p.po)} po`;
   const zone = el('antiquaire-contenu');
   zone.innerHTML = '';
   rendreChipsFiltres(zone, 'antiquaire', () => rendreAntiquaire());
@@ -667,7 +667,7 @@ function prixGrimoire(comp) {
 
 function rendreArcanium() {
   const p = persoActif();
-  el('arcanium-po').textContent = `💰 ${p.po} po`;
+  el('arcanium-po').textContent = `💰 ${formatNombre(p.po)} po`;
   const zone = el('arcanium-contenu');
   zone.innerHTML = '';
 
@@ -707,7 +707,7 @@ function rendreArcanium() {
     const prix = prixGrimoire(comp);
     const acheter = document.createElement('button');
     acheter.className = 'btn-choix btn-compact btn-achat';
-    acheter.textContent = `📖 Étudier — ${prix} po`;
+    acheter.textContent = `📖 Étudier — ${formatNombre(prix)} po`;
     acheter.disabled = p.po < prix;
     acheter.addEventListener('click', () => {
       if (p.po < prix || p.grimoire.includes(id)) return;
@@ -832,7 +832,7 @@ function rendreGuilde() {
         ${quete.reclamee ? '<span class="objet-qte">✔ récompense empochée</span>' : ''}</div>
       <div class="barre contrat"><div class="remplissage" style="width:${pct}%"></div>
         <span>${quete.fait} / ${quete.requis}</span></div>
-      <div class="objet-bonus">🎁 ${quete.recompense.po} po · ⭐ ${quete.recompense.xp} XP${quete.recompense.coffre ? ` · 🎁 un objet surprise${(quete.recompense.bonusCoffre || 0) > 0 ? ' (chance dopée par la rareté du contrat)' : ''}` : ''}</div>`;
+      <div class="objet-bonus">🎁 ${formatNombre(quete.recompense.po)} po · ⭐ ${quete.recompense.xp} XP${quete.recompense.coffre ? ` · 🎁 un objet surprise${(quete.recompense.bonusCoffre || 0) > 0 ? ' (chance dopée par la rareté du contrat)' : ''}` : ''}</div>`;
     if (!quete.reclamee) {
       const reclamer = document.createElement('button');
       reclamer.className = complete && !quotaAtteint ? 'btn-principal btn-compact' : 'btn-choix btn-compact';
@@ -863,7 +863,7 @@ function reclamerQuete(p, quete) {
   const poGagne = Math.round(quete.recompense.po * multiplicateurOr(p));
   p.po += poGagne;
   p.compteurs.orTotal += poGagne;
-  const lignes = [`💰 +${poGagne} po`, `⭐ +${quete.recompense.xp} XP`];
+  const lignes = [`💰 +${formatNombre(poGagne)} po`, `⭐ +${quete.recompense.xp} XP`];
   // Le grand contrat du jour offre un objet tiré selon la chance — et la
   // rareté du contrat dope encore le tirage.
   if (quete.recompense.coffre) {
@@ -975,7 +975,7 @@ function rendreAtelier() {
   const config = ARTISANS[atelierCourant];
   el('atelier-titre').textContent = config.titre;
   el('atelier-accueil').textContent = config.accueil;
-  el('atelier-po').textContent = `💰 ${p.po} po`;
+  el('atelier-po').textContent = `💰 ${formatNombre(p.po)} po`;
   const zone = el('atelier-recettes');
   zone.innerHTML = '';
 
@@ -1079,7 +1079,7 @@ function rendreAtelier() {
       ${texteComparaison(p, objet)}
       ${!niveauOk ? `<div class="objet-niveau niveau-insuffisant">🔒 se débloque au niveau ${recette.niveau}</div>` : ''}
       <div class="ingredients">${listeMateriaux}
-        <span class="ingredient ${orOk ? 'ok' : 'manque'}">💰 ${recette.po} po</span></div>`;
+        <span class="ingredient ${orOk ? 'ok' : 'manque'}">💰 ${formatNombre(recette.po)} po</span></div>`;
 
     const fabriquer = document.createElement('button');
     fabriquer.className = 'btn-choix btn-compact';

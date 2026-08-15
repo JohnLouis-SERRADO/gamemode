@@ -214,3 +214,10 @@ const CATEGORIES = {
   soutien: '✨ Soutien',
   invocation: '🐾 Invocations',
 };
+
+// Espace insécable tous les trois chiffres : « 250 000 po » se lit d'un
+// coup d'œil, « 250000 po » se compte. Défini ici, dans le premier
+// fichier chargé, parce que tout l'affichage s'en sert.
+function formatNombre(n) {
+  return Number(n).toLocaleString('fr-FR');
+}
