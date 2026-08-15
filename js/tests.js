@@ -1419,6 +1419,153 @@ suite('Voies', () => {
 });
 
 // =====================================================================
+// 13. L'Éveil du niveau 80 (v19)
+// =====================================================================
+suite('Éveil', () => {
+  test('162 Éveils, six raretés par sous-classe', () => {
+    egal(Object.keys(EVEILS).length, 162, 'Éveils');
+    const fautives = Object.values(SOUS_CLASSES)
+      .filter((sc) => (sc.eveils || []).length !== 6)
+      .map((sc) => `${sc.nom} (${(sc.eveils || []).length})`);
+    aucun(fautives, 'sous-classes mal dotées');
+  });
+
+  test('chaque sous-classe couvre les six raretés, une fois chacune', () => {
+    const fautives = [];
+    Object.values(SOUS_CLASSES).forEach((sc) => {
+      const raretes = (sc.eveils || []).map((id) => EVEILS[id].rarete);
+      if (new Set(raretes).size !== 6) fautives.push(sc.nom);
+    });
+    aucun(fautives, 'raretés manquantes ou en double');
+  });
+
+  test('324 compétences d\'Éveil, deux par Éveil', () => {
+    const fautifs = Object.entries(EVEILS)
+      .filter(([, e]) => e.competences.length !== 2 || e.competences.some((c) => !COMPETENCES[c]))
+      .map(([id]) => id);
+    aucun(fautifs, 'Éveils aux compétences manquantes');
+    const total = Object.values(COMPETENCES).filter((c) => c.eveil).length;
+    egal(total, 324, 'compétences d\'Éveil');
+  });
+
+  test('LA RÈGLE : la rareté ne change jamais la puissance', () => {
+    // C'est la règle non négociable du document de conception. Sans elle,
+    // tout le monde relance jusqu'au Divin et le système devient une
+    // machine à frustration. On compare la puissance moyenne des
+    // compétences de chaque rareté : l'écart doit rester sous 10 %.
+    const parRarete = {};
+    Object.values(EVEILS).forEach((e) => {
+      const puissance = e.competences.reduce((somme, id) =>
+        somme + valeurProfilEveil(COMPETENCES[id]), 0);
+      (parRarete[e.rarete] = parRarete[e.rarete] || []).push(puissance);
+    });
+    const moyennes = Object.entries(parRarete).map(([r, l]) =>
+      [r, l.reduce((a, b) => a + b, 0) / l.length]);
+    const min = Math.min(...moyennes.map(([, m]) => m));
+    const max = Math.max(...moyennes.map(([, m]) => m));
+    const ecart = (max - min) / min;
+    verifier(ecart <= 0.1,
+      `écart de ${Math.round(ecart * 100)} % entre raretés — le maximum toléré est 10 %`);
+  });
+
+  test('chaque profil dépense exactement le même budget', () => {
+    // La règle tient parce que les profils sont budgétés, pas choisis à
+    // la main. Si quelqu'un en ajoute un de travers, c'est ici que ça se voit.
+    const ecarts = Object.entries(PROFILS_EVEIL)
+      .map(([nom, modele]) => [nom, valeurProfilEveil(modele)])
+      .filter(([, valeur]) => Math.abs(valeur - BUDGET_EVEIL) / BUDGET_EVEIL > 0.02)
+      .map(([nom, valeur]) => `${nom} = ${Math.round(valeur)} au lieu de ${BUDGET_EVEIL}`);
+    aucun(ecarts, 'profils hors budget');
+  });
+
+  test('la rareté change bien la CONTRAINTE', () => {
+    // L'autre moitié de la règle : ce qui monte avec la rareté, c'est
+    // l'exigence. Rare et Épique sont libres, le reste est contraint.
+    const fautifs = [];
+    Object.values(EVEILS).forEach((e) => {
+      const doitContraindre = RARETES_EVEIL[e.rarete].contrainte;
+      if (doitContraindre && !e.contrainte) fautifs.push(`${e.nom} (${e.rarete}) sans contrainte`);
+      if (!doitContraindre && e.contrainte) fautifs.push(`${e.nom} (${e.rarete}) contraint à tort`);
+    });
+    aucun(fautifs, 'contraintes mal réparties');
+  });
+
+  test('chaque Éveil a un nom, un effet et une sous-classe valides', () => {
+    const fautifs = Object.entries(EVEILS)
+      .filter(([, e]) => !e.nom || !e.effet || !SOUS_CLASSES[e.sousClasse] || !RARETES_EVEIL[e.rarete])
+      .map(([id]) => id);
+    aucun(fautifs, 'Éveils incomplets');
+  });
+
+  test('les compétences d\'Éveil suivent l\'attribut de leur famille', () => {
+    const fautives = [];
+    Object.values(EVEILS).forEach((e) => {
+      const attendu = CLASSES_BASE[e.classe].stat;
+      e.competences.forEach((id) => {
+        const c = COMPETENCES[id];
+        if (c.type !== 'utilitaire' && c.stat !== attendu) fautives.push(`${e.nom} : ${c.stat}`);
+      });
+    });
+    aucun(fautives, 'Éveils sur le mauvais attribut');
+  });
+
+  test('le tirage propose cinq Éveils de la bonne sous-classe', () => {
+    const p = herosTest({ niveau: 80, classe: 'guerrier', sousClasse: 'berserker' });
+    const tirage = tirerEveils(p);
+    egal(tirage.length, 5, 'propositions');
+    const etrangers = tirage.filter((e) => e.sousClasse !== 'berserker').map((e) => e.nom);
+    aucun(etrangers, 'propositions hors sous-classe');
+    const doublons = tirage.length - new Set(tirage.map((e) => e.id)).size;
+    egal(doublons, 0, 'propositions en double');
+  });
+
+  test('les Éveils cachés ne sortent jamais d\'un tirage ordinaire', () => {
+    const p = herosTest({ niveau: 80, classe: 'guerrier', sousClasse: 'berserker' });
+    const vus = new Set();
+    for (let i = 0; i < 400; i++) tirerEveils(p).forEach((e) => vus.add(e.rarete));
+    verifier(!vus.has('cache'), 'un Éveil caché est sorti d\'un tirage ordinaire');
+  });
+
+  test('la garantie anti-frustration tient après cinq relances', () => {
+    const p = herosTest({ niveau: 80, classe: 'arcaniste', sousClasse: 'pyromancien' });
+    p.eveil = { relances: RELANCES_AVANT_GARANTIE };
+    const rangs = ORDRE_EVEIL;
+    const echecs = [];
+    for (let i = 0; i < 200; i++) {
+      const tirage = tirerEveils(p);
+      const assezRare = tirage.some((e) => rangs.indexOf(e.rarete) >= rangs.indexOf('legendaire'));
+      if (!assezRare) echecs.push(i);
+    }
+    aucun(echecs.map(String), 'tirages garantis sans Légendaire');
+  });
+
+  test('chaque Éveil caché porte une condition avec indice et énoncé exact', () => {
+    const caches = Object.values(EVEILS).filter((e) => e.rarete === 'cache');
+    egal(caches.length, 27, 'Éveils cachés');
+    const fautifs = caches
+      .filter((e) => !e.condition || !e.condition.indice || !e.condition.exacte)
+      .map((e) => e.nom);
+    aucun(fautifs, 'Éveils cachés sans condition');
+  });
+
+  test('le titre d\'Éveil prime sur la Voie et sur la classe', () => {
+    const heros = { classe: 'guerrier', sousClasse: 'berserker', voie: null, eveil: null };
+    egal(titreCompletHeros(heros), 'Guerrier — Berserker', 'sans rien');
+    heros.voie = SOUS_CLASSES.berserker.voies[0];
+    egal(titreCompletHeros(heros), VOIES[heros.voie].titre, 'avec Voie');
+    const eveil = EVEILS[SOUS_CLASSES.berserker.eveils[1]];
+    heros.eveil = { id: eveil.id, rarete: eveil.rarete, relances: 0 };
+    egal(titreCompletHeros(heros), eveil.nom, 'l\'Éveil prime');
+  });
+
+  test('un Éveil disparu du catalogue est écarté sans casse', () => {
+    const p = herosTest({ niveau: 85, classe: 'guerrier', sousClasse: 'berserker' });
+    p.eveil = { id: 'eveil-qui-n-existe-plus', rarete: 'divin', relances: 0 };
+    egal(normaliserPerso(p).eveil, null, 'l\'Éveil fantôme devrait être écarté');
+  });
+});
+
+// =====================================================================
 // Exécution et rapport
 // =====================================================================
 function lancerTests() {

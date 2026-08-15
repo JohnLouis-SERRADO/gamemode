@@ -250,6 +250,10 @@ function voieDe(p) {
 // Le titre complet du héros : « Gardien — Templier » puis, à partir du
 // niveau 50, « Templier du Bastion ».
 function titreCompletHeros(p) {
+  // L'Éveil prime sur la Voie, qui prime sur la classe : le nom affiché
+  // est toujours le plus récent des trois, classements compris.
+  const eveil = typeof eveilDe === 'function' ? eveilDe(p) : null;
+  if (eveil) return eveil.titre;
   const voie = voieDe(p);
   return voie ? voie.titre : nomCompletClasse(p);
 }

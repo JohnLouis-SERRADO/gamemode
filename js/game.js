@@ -254,6 +254,7 @@ function montrerEcran(id) {
     verifierChoixSpecialite();
     verifierChoixSousClasse();
     verifierChoixVoie();
+    verifierEveil();
   }
   window.scrollTo(0, 0);
 }
@@ -268,7 +269,71 @@ function montrerEcran(id) {
 // On les fait donc passer l'une après l'autre, dans l'ordre des niveaux.
 // =====================================================================
 function modaleBloquanteOuverte() {
-  return !!document.querySelector('#voile-specialite, #voile-sous-classe, #voile-voie');
+  return !!document.querySelector('#voile-specialite, #voile-sous-classe, #voile-voie, #voile-eveil');
+}
+
+// =====================================================================
+// v19 — L'ÉVEIL, au niveau 80.
+//
+// Cinq propositions tirées parmi les Éveils de sa sous-classe, une seule
+// gardée. La rareté change la contrainte et la complexité, jamais la
+// puissance : c'est écrit dans les données, et le harnais le vérifie.
+// =====================================================================
+function verifierEveil() {
+  const p = persoActif();
+  if (!p || p.niveau < NIVEAU_EVEIL || (p.eveil && p.eveil.id) || !p.sousClasse) return;
+  if (modaleBloquanteOuverte()) return;
+  if (typeof combatEnCours === 'function' && combatEnCours()) return;
+
+  const propositions = tirerEveils(p);
+  if (!propositions.length) return;
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-eveil';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-specialite';
+  modale.innerHTML = `
+    <h2>✨ Niveau ${NIVEAU_EVEIL} : l’Éveil de ${echapper(p.nom)}</h2>
+    <p>Vous ne changez pas de style : vous changez de <strong>nature</strong>. Cinq natures
+      se présentent, vous en garderez une. La rareté ne rend pas plus puissant —
+      elle rend plus <strong>exigeant</strong>.</p>
+    <div id="eveil-choix"></div>
+    <p class="aide">Le choix se relance plus tard à la Tour de l’Éveil, contre des Sceaux.</p>`;
+
+  const zone = modale.querySelector('#eveil-choix');
+  propositions.forEach((eveil) => {
+    const rarete = RARETES_EVEIL[eveil.rarete];
+    const carte = document.createElement('div');
+    carte.className = `panneau carte-specialite bord-rar-${eveil.rarete === 'cache' ? 'divin' : eveil.rarete}`;
+    carte.innerHTML = `
+      <div class="objet-entete">${eveil.emoji} <strong>${eveil.nom}</strong>
+        <span class="rarete rar-${eveil.rarete === 'cache' ? 'divin' : eveil.rarete}">${rarete.nom}</span></div>
+      <div class="objet-desc">${eveil.effet}</div>
+      <div class="objet-bonus">${eveil.competences.map((c) => `${COMPETENCES[c].emoji} ${COMPETENCES[c].nom}`).join(' · ')}</div>
+      ${eveil.contrainte ? `<div class="objet-niveau niveau-insuffisant">⚠️ ${eveil.contrainte}</div>` : '<div class="objet-desc">Aucune contrainte.</div>'}`;
+    const choisir = document.createElement('button');
+    choisir.className = 'btn-principal btn-compact';
+    choisir.textContent = `${eveil.emoji} Devenir ${eveil.nom}`;
+    choisir.addEventListener('click', () => {
+      p.eveil = { id: eveil.id, rarete: eveil.rarete, relances: (p.eveil && p.eveil.relances) || 0 };
+      eveil.competences.forEach((c) => apprendreCompetence(p, c, true));
+      bornerVie(p);
+      sauvegarder(p);
+      voile.remove();
+      annoncerDeblocage({
+        emoji: eveil.emoji,
+        titre: eveil.nom,
+        texte: `${eveil.effet}${eveil.contrainte ? ` — en échange : ${eveil.contrainte}` : ''}`,
+      });
+      if (el('ecran-heros').classList.contains('actif')) rendreHeros();
+      rendreTopbar();
+    });
+    carte.appendChild(choisir);
+    zone.appendChild(carte);
+  });
+
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
 }
 
 // =====================================================================
@@ -673,6 +738,7 @@ function normaliserPerso(p) {
   migrerClasses(p);
   if (p.sousClasse && !SOUS_CLASSES[p.sousClasse]) p.sousClasse = null;
   if (p.voie && !VOIES[p.voie]) p.voie = null;
+  if (p.eveil && !EVEILS[p.eveil.id]) p.eveil = null;
   if (!p.rangs || typeof p.rangs !== 'object') p.rangs = {};
   debloquerCompetencesClasse(p, false);
   if (p.maitrise == null) {
@@ -919,7 +985,7 @@ function donneesCloud(p) {
     donjons: p.donjons, classe: p.classe, maitrise: p.maitrise, rangs: p.rangs,
     // v19 : la spécialité voyage avec le héros — code de sauvegarde, taverne,
     // fiches publiques et expéditions doivent tous la connaître.
-    sousClasse: p.sousClasse, voie: p.voie, versionClasses: p.versionClasses,
+    sousClasse: p.sousClasse, voie: p.voie, eveil: p.eveil, versionClasses: p.versionClasses,
     tourBoss: p.tourBoss, metiers: p.metiers, metierPrincipal: p.metierPrincipal,
     ascensions: p.ascensions, histoiresVues: p.histoiresVues,
   };
@@ -1021,7 +1087,8 @@ function debloquerCompetencesClasse(p, annoncer) {
     const deMaClasse = comp.classe && comp.classe === p.classe;
     const deMaSousClasse = comp.sousClasse && comp.sousClasse === p.sousClasse;
     const deMaVoie = comp.voie && comp.voie === p.voie;
-    if ((!deMaClasse && !deMaSousClasse && !deMaVoie) || p.grimoire.includes(id)) return;
+    const deMonEveil = comp.eveil && p.eveil && comp.eveil === p.eveil.id;
+    if ((!deMaClasse && !deMaSousClasse && !deMaVoie && !deMonEveil) || p.grimoire.includes(id)) return;
     if ((comp.niveauRequis || 1) > p.niveau) return;
     // Les compétences du niveau 1 (signature et bases) s'imposent dans la
     // barre ; celles des paliers suivants respectent l'agencement choisi
@@ -2600,6 +2667,7 @@ function chargerHerosImporte(donnees, id, token) {
   if (d.classe && (CLASSES[d.classe] || MIGRATION_CLASSES[d.classe])) p.classe = d.classe;
   if (d.sousClasse !== undefined) p.sousClasse = d.sousClasse;
   if (d.voie !== undefined) p.voie = d.voie;
+  if (d.eveil !== undefined) p.eveil = d.eveil;
   if (d.versionClasses != null) p.versionClasses = d.versionClasses;
   if (d.rangs && typeof d.rangs === 'object') p.rangs = d.rangs;
   if (d.maitrise != null) p.maitrise = d.maitrise;
