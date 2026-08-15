@@ -12,15 +12,54 @@
 const ARCHETYPES_BUTIN = [
   { cle: 'epee',     noms: ['Épée', 'Hache', 'Masse'],           emoji: '⚔️', slot: 'arme',       principal: 'for', secondaire: 'vit' },
   { cle: 'baton',    noms: ['Bâton', 'Sceptre', 'Orbe'],         emoji: '🪄', slot: 'arme',       principal: 'int', secondaire: 'cha' },
-  { cle: 'arc',      noms: ['Arc', 'Dague', 'Arbalète'],         emoji: '🏹', slot: 'arme',       principal: 'agi', secondaire: 'for' },
+  { cle: 'arc',      noms: ['Arc', 'Dague', 'Arbalète'],         emoji: '🏹', slot: 'arme',       principal: 'dex', secondaire: 'for' },
   { cle: 'heaume',   noms: ['Heaume', 'Capuche', 'Diadème'],     emoji: '🪖', slot: 'tete',       principal: 'vit', secondaire: 'int' },
   { cle: 'plastron', noms: ['Plastron', 'Tunique', 'Cuirasse'],  emoji: '🛡️', slot: 'torse',      principal: 'vit', secondaire: 'for' },
-  { cle: 'gants',    noms: ['Gants', 'Gantelets', 'Mitaines'],   emoji: '🧤', slot: 'mains',      principal: 'for', secondaire: 'agi', defensif: 'blocage' },
-  { cle: 'jambes',   noms: ['Jambières', 'Grèves', 'Cuissards'], emoji: '👖', slot: 'jambes',     principal: 'agi', secondaire: 'vit' },
-  { cle: 'bottes',   noms: ['Bottes', 'Sandales', 'Solerets'],   emoji: '🥾', slot: 'pieds',      principal: 'agi', secondaire: 'vit', defensif: 'esquive' },
-  { cle: 'anneau',   noms: ['Anneau', 'Sceau', 'Chevalière'],    emoji: '💍', slot: 'accessoire', principal: 'cha', secondaire: 'agi' },
+  { cle: 'gants',    noms: ['Gants', 'Gantelets', 'Mitaines'],   emoji: '🧤', slot: 'mains',      principal: 'for', secondaire: 'dex', defensif: 'tenacite' },
+  { cle: 'jambes',   noms: ['Jambières', 'Grèves', 'Cuissards'], emoji: '👖', slot: 'jambes',     principal: 'dex', secondaire: 'vit' },
+  { cle: 'bottes',   noms: ['Bottes', 'Sandales', 'Solerets'],   emoji: '🥾', slot: 'pieds',      principal: 'dex', secondaire: 'vit', defensif: 'celerite' },
+  { cle: 'anneau',   noms: ['Anneau', 'Sceau', 'Chevalière'],    emoji: '💍', slot: 'accessoire', principal: 'cha', secondaire: 'dex' },
   { cle: 'amulette', noms: ['Amulette', 'Pendentif', 'Relique'], emoji: '📿', slot: 'accessoire', principal: 'int', secondaire: 'cha' },
+  // v19 : l'Esprit a besoin de ses armes — sans quoi l'attribut du soigneur
+  // n'aurait nulle part où vivre.
+  { cle: 'calice',   noms: ['Calice', 'Canne', 'Crosse'],        emoji: '🕊️', slot: 'arme',       principal: 'esp', secondaire: 'int' },
 ];
+
+// =====================================================================
+// v19 — Les sous-caractéristiques du butin.
+//
+// Elles ne sont pas distribuées au hasard : chaque emplacement a son
+// tempérament, et la rareté décide COMBIEN il en porte, pas lesquelles.
+// C'est ce qui fait qu'un anneau épique se compare à un autre anneau
+// épique, et qu'on hésite entre deux pièces au lieu de lire un seul chiffre.
+// =====================================================================
+const SOUS_CARACS_PAR_SLOT = {
+  arme:       ['crit', 'direct', 'deter'],
+  tete:       ['deter', 'piete', 'tenacite'],
+  torse:      ['tenacite', 'deter', 'piete'],
+  mains:      ['direct', 'crit', 'tenacite'],
+  jambes:     ['deter', 'celerite', 'tenacite'],
+  pieds:      ['celerite', 'direct', 'crit'],
+  accessoire: ['crit', 'piete', 'celerite', 'deter'],
+};
+
+// Combien de sous-caractéristiques par rareté. Le commun n'en porte aucune :
+// c'est ce qui rend la première pièce rare mémorable.
+const NB_SOUS_CARACS = { commun: 0, inhabituel: 0, rare: 1, epique: 2, legendaire: 2, mythique: 3, divin: 3 };
+
+// Ajoute au bonus les sous-caractéristiques dues à la pièce. `decalage`
+// fait tourner la sélection pour que deux variantes ne soient pas jumelles.
+function ajouterSousCaracs(bonus, slot, niveau, rarete, decalage = 0) {
+  const disponibles = SOUS_CARACS_PAR_SLOT[slot] || SOUS_CARACS_PAR_SLOT.accessoire;
+  const combien = Math.min(NB_SOUS_CARACS[rarete] || 0, disponibles.length);
+  const mult = MULT_RARETE_BUTIN[rarete] || 1;
+  for (let i = 0; i < combien; i++) {
+    const cle = disponibles[(decalage + i) % disponibles.length];
+    const valeur = Math.max(1, Math.round((1 + niveau * 0.11) * mult));
+    bonus[cle] = (bonus[cle] || 0) + Math.min(valeur, PLAFONDS_SOUS_CARACS[cle]);
+  }
+  return bonus;
+}
 
 // Qualificatifs sans accord de genre (formes en « de/du/des »).
 const QUALIFICATIFS_BUTIN = {
@@ -54,13 +93,14 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
         const bonus = { [archetype.principal]: principal };
         if (niveau >= 4) bonus[archetype.secondaire] = Math.max(1, Math.round(principal * 0.35));
         if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = Math.round(niveau * 2 * mult);
-        if (archetype.principal === 'int') bonus.pmMax = Math.round(niveau * 1.5 * mult);
-        if (rarete === 'mythique' || rarete === 'divin') bonus.crit = Math.round(2 + niveau * 0.25);
-        // Gants et bottes portent les stats défensives (blocage/esquive)
-        // à partir de la rareté rare et du niveau 8.
+        if (archetype.principal === 'int' || archetype.principal === 'esp') {
+          bonus.pmMax = Math.round(niveau * 1.5 * mult);
+        }
+        // Gants et bottes gardent leur tempérament défensif d'origine.
         if (archetype.defensif && niveau >= 8 && !['commun', 'inhabituel'].includes(rarete)) {
           bonus[archetype.defensif] = Math.max(1, Math.round(1 + niveau * 0.12 * mult));
         }
+        ajouterSousCaracs(bonus, archetype.slot, niveau, rarete, niveau + variante);
         // Les objets partageant un même qualificatif forment une panoplie.
         const indexQualificatif = (niveau + variante * 2) % 3;
         const idSet = `butin-${rarete}-${indexQualificatif}`;
@@ -113,11 +153,16 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
       const bonus = { [archetype.principal]: principal };
       if (niveau >= 4) bonus[archetype.secondaire] = Math.max(1, Math.round(principal * 0.35));
       if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = Math.round(niveau * 2 * mult);
-      if (archetype.principal === 'int') bonus.pmMax = Math.round(niveau * 1.5 * mult);
-      if (rarete === 'legendaire') bonus.crit = Math.round(1 + niveau * 0.2);
+      if (archetype.principal === 'int' || archetype.principal === 'esp') {
+        bonus.pmMax = Math.round(niveau * 1.5 * mult);
+      }
       if (archetype.defensif && niveau >= 8 && ['rare', 'epique', 'legendaire'].includes(rarete)) {
         bonus[archetype.defensif] = Math.max(1, Math.round(1 + niveau * 0.1 * mult));
       }
+      // Le marchand porte une sous-caractéristique de moins que le butin :
+      // partir à l'aventure doit rester plus payant que passer à la caisse.
+      const rareteMoindre = { rare: 'inhabituel', epique: 'rare', legendaire: 'epique' }[rarete] || rarete;
+      ajouterSousCaracs(bonus, archetype.slot, niveau, rareteMoindre, niveau);
       OBJETS[`marchand-${archetype.cle}-${rarete}-${niveau}`] = {
         nom: `${nomBase} ${qualificatif}`,
         emoji: archetype.emoji, type: 'equipement', slot: archetype.slot,
@@ -162,11 +207,12 @@ function retirerObjet(p, idObjet, qte = 1) {
 function texteBonus(bonus) {
   if (!bonus) return '';
   const libelles = {
-    for: '💪 FOR', int: '🧠 INT', agi: '🏃 AGI', vit: '❤️ VIT', cha: '🍀 CHA',
-    pvMax: '❤️ PV max', pmMax: '💧 PM max', crit: '💥 Crit.',
-    blocage: '🛡️ Blocage', esquive: '💨 Esquive',
+    for: '💪 FOR', dex: '🎯 DEX', int: '🧠 INT', esp: '🕊️ ESP', vit: '❤️ VIT', cha: '🍀 CHA',
+    pvMax: '❤️ PV max', pmMax: '💧 PM max',
+    crit: '💥 Critique', direct: '🎲 Coup direct', deter: '⚖️ Détermination',
+    tenacite: '🛡️ Ténacité', celerite: '💨 Célérité', piete: '💧 Piété',
   };
-  const enPourcent = ['crit', 'blocage', 'esquive'];
+  const enPourcent = Object.keys(SOUS_CARACS);
   return Object.entries(bonus)
     .map(([cle, valeur]) => `+${valeur}${enPourcent.includes(cle) ? ' %' : ''} ${libelles[cle] || cle}`)
     .join(' · ');

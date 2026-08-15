@@ -308,7 +308,7 @@ async function supprimerPersonnageCloud(p) {
 function puissancePublique(j) {
   if (!j.dstats) return 0;
   return puissanceDe({
-    stats: { for: 4, int: 4, agi: 4, vit: 4, cha: 2, ...j.dstats },
+    stats: { for: 4, int: 4, dex: 4, vit: 4, cha: 2, ...j.dstats },
     equipement: j.dequip || {},
     familier: j.dfam || null,
     niveau: j.niveau || 1,
@@ -824,7 +824,7 @@ async function ouvrirFichePublique(idJoueur) {
 
   // Pseudo-héros reconstruit pour réutiliser les calculs du jeu.
   const pp = {
-    stats: d.stats || { for: 4, int: 4, agi: 4, vit: 4, cha: 2 },
+    stats: d.stats || { for: 4, int: 4, dex: 4, vit: 4, cha: 2 },
     equipement: d.equipement || {},
     familier: d.familier || null,
     familiers: d.familiers || [],
@@ -875,7 +875,7 @@ async function ouvrirFichePublique(idJoueur) {
       · ⚡ ${formatNombre(puissanceDe(pp))} de puissance · 💰 ${formatNombre(d.po || 0)} po · ⚔️ ${formatNombre(ligne.degats_boss_total || 0)} dégâts au boss du monde</p>
     <div class="panneau"><h3>Caractéristiques effectives</h3>
       <p>${statsTexte}</p>
-      <p class="joueur-detail">❤️ ${maxHpDe(pp)} PV max · 💧 ${maxMpDe(pp)} PM max${s.blocage ? ` · 🛡️ ${Math.min(40, s.blocage)} % blocage` : ''}${s.esquive ? ` · 💨 ${Math.min(35, s.esquive)} % esquive` : ''}</p>
+      <p class="joueur-detail">❤️ ${maxHpDe(pp)} PV max · 💧 ${maxMpDe(pp)} PM max${s.tenacite ? ` · 🛡️ ${Math.min(40, s.tenacite)} % tenacite` : ''}${s.celerite ? ` · 💨 ${Math.min(35, s.celerite)} % celerite` : ''}</p>
       <p class="joueur-detail">⚙️ ${panoplies}${compagnon ? ` · 🐾 ${compagnon.emoji} ${compagnon.nom}` : ''} · 🏅 ${(d.hautsFaits || []).length}/${HAUTS_FAITS.length} hauts faits</p>
       <p class="joueur-detail">${Object.entries(METIERS).map(([idMetier, metier]) => {
         const m = (d.metiers && d.metiers[idMetier]) || { niveau: 1 };

@@ -7,7 +7,7 @@
 // =====================================================================
 // v13 — Les CHRONIQUES DES TERRES : la petite histoire de chaque carte.
 // Chaque zone cache un récit court et corsé, dans l'esprit des grandes
-// Épopées. Déblocage exigeant : niveau minimum, caractéristique minimum,
+// Épopées. Détenacite exigeant : niveau minimum, caractéristique minimum,
 // objet-clé de la zone en poche, et le boss de la carte déjà vaincu.
 // =====================================================================
 const CHRONIQUES = [
@@ -29,7 +29,7 @@ const CHRONIQUES = [
     },
     tresor: { titre: '🌾 La cache du berger disparu', texte: 'Sous une pierre plate, la réserve d’un berger que la meute a chassé l’hiver dernier : provisions, herbes, et sa paie jamais dépensée.' },
     combat2: 'La garde rapprochée de l’alpha surgit des herbes hautes, crocs découverts.',
-    ep2: { stat: 'agi', texte: 'La colline de la tanière est un piège à chevilles : terriers, os rongés, cailloux roulants. Il faut monter vite ET en silence.', ok: 'Vous montez comme des chats, de pierre sûre en pierre sûre. Au sommet, le vent tourne en votre faveur : il ne vous a pas sentis venir.', ko: 'Un os craque sous une botte. Toute la colline hurle. Vous finissez la montée en courant, sous une pluie de cailloux.' },
+    ep2: { stat: 'dex', texte: 'La colline de la tanière est un piège à chevilles : terriers, os rongés, cailloux roulants. Il faut monter vite ET en silence.', ok: 'Vous montez comme des chats, de pierre sûre en pierre sûre. Au sommet, le vent tourne en votre faveur : il ne vous a pas sentis venir.', ko: 'Un os craque sous une botte. Toute la colline hurle. Vous finissez la montée en courant, sous une pluie de cailloux.' },
     avantBoss: '« Il est là, » murmure Mireille depuis le rocher où elle a refusé de rester. « Grand comme un poney, vieux comme ma rancune. Rendez-lui sa nuit — et rendez-moi mes plaines. »',
     boss: {
       nom: 'Père-des-Meutes', intro: 'Sur la crête, un loup gris-argent se lève — les cicatrices de cent hivers sur le poitrail. Le Père-des-Meutes vous jauge longuement, puis découvre ses crocs : l’audience est ouverte.',
@@ -44,7 +44,7 @@ const CHRONIQUES = [
     relique: { nom: 'Clochette du Grand Troupeau', emoji: '🔔', bonus: { vit: 3, cha: 2, pvMax: 14 }, desc: 'Elle sonne faux, mais elle sonne fidèle. Récompense de « La Nuit du Grand Troupeau ».' },
   },
   {
-    zone: 'foret', nom: 'Le Berceau de Soie', emoji: '🕸️', statAcces: 'agi',
+    zone: 'foret', nom: 'Le Berceau de Soie', emoji: '🕸️', statAcces: 'dex',
     pnj: { nom: 'Toinou le bûcheron', emoji: '🪓' },
     resume: 'La Matriarche tisse un cocon géant autour du chêne-cœur de la forêt. Ce qui en sortira n’a pas de nom.',
     scenes: [
@@ -52,11 +52,11 @@ const CHRONIQUES = [
       '« Je coupais du bois, je vous jure, du bois normal, » balbutie Toinou, l’apprenti bûcheron, la hache encore tremblante. « Et d’un coup : la soie. Partout. La Matriarche a enveloppé le chêne-cœur — elle en fait un berceau. Un berceau GÉANT. »',
       '« Le vieux forestier disait : ce que la Veuve-Reine couve dans un arbre-cœur naît avec les souvenirs de l’arbre. Mille ans de forêt dans une bête à huit pattes… Coupez la soie. Vite. Et pardon pour ce que j’ai réveillé. »',
     ],
-    ep1: { stat: 'agi', texte: 'La toile commence bien avant le berceau : des fils-pièges tendus entre les troncs, fins comme des cheveux, sonores comme des cordes de luth. Un seul frôlé, et toute la forêt saura.', ok: 'Vous dansez entre les fils, ployés, tordus, retenant vos capes. Le dernier fil vibre — frôlé par une feuille morte, pas par vous. Dans un cocon abandonné : la bourse d’un voyageur moins souple.', ko: 'Une boucle de ceinture accroche un fil. La note court jusqu’au cœur de la forêt — et quelque chose d’énorme, là-bas, cesse de tisser pour écouter.' },
+    ep1: { stat: 'dex', texte: 'La toile commence bien avant le berceau : des fils-pièges tendus entre les troncs, fins comme des cheveux, sonores comme des cordes de luth. Un seul frôlé, et toute la forêt saura.', ok: 'Vous dansez entre les fils, ployés, tordus, retenant vos capes. Le dernier fil vibre — frôlé par une feuille morte, pas par vous. Dans un cocon abandonné : la bourse d’un voyageur moins souple.', ko: 'Une boucle de ceinture accroche un fil. La note court jusqu’au cœur de la forêt — et quelque chose d’énorme, là-bas, cesse de tisser pour écouter.' },
     combat1: 'Les sentinelles de la toile descendent des cimes en silence, suspendues à leurs fils.',
     dilemme: {
       texte: '« Il y a les œufs de la couvée d’avant, » chuchote Toinou en désignant une grappe de cocons. « On peut les porter hors de la toile — la Matriarche nous suivra à moitié folle mais elle mordra retenu, ses petits sont dans nos bras. Ou on passe au large, et tant pis pour l’avantage. »',
-      optA: { stat: 'agi', texte: '🥚 Porter les cocons hors de la toile', detail: 'la Matriarche n’osera pas frapper fort', resultat: 'Vous cueillez les cocons comme des fruits trop mûrs et les déposez dans la fougère, hors de la toile. Un frisson parcourt toute la soie : elle SAIT. Et elle a peur pour eux.' },
+      optA: { stat: 'dex', texte: '🥚 Porter les cocons hors de la toile', detail: 'la Matriarche n’osera pas frapper fort', resultat: 'Vous cueillez les cocons comme des fruits trop mûrs et les déposez dans la fougère, hors de la toile. Un frisson parcourt toute la soie : elle SAIT. Et elle a peur pour eux.' },
       optB: { texte: '🚶 Passer au large des cocons', detail: 'plus prudent — la soie colle et griffe', resultat: 'Vous contournez la grappe en retenant votre souffle. La soie effleurée vous laisse des zébrures cuisantes en souvenir.' },
     },
     tresor: { titre: '🌲 Le garde-manger suspendu', texte: 'Un cocon plus gros que les autres, plein des « réserves » de la toile : sacoches de voyageurs, fioles intactes, et de la soie de première qualité.' },
@@ -73,7 +73,7 @@ const CHRONIQUES = [
       variante: 'La Veuve-Reine recule, vaincue — et vous poussez les cocons vers elle, intacts. Elle les palpe un à un de ses pédipalpes, longuement. Puis elle remonte dans les cimes SANS le chêne-cœur, sa couvée sur le dos, et la soie du berceau se défait toute seule, fil à fil, comme un pardon. Toinou jure d’apprendre les noms des arbres avant de les couper.',
       defaut: 'La Veuve-Reine se replie dans les cimes en emportant ce qui lui reste de toile. Le chêne-cœur, libéré, déploie ses branches dans un craquement de cathédrale — et une pluie de feuilles d’or salue votre passage. Toinou en garde une dans son chapeau : « Pour me souvenir de m’excuser avant de couper. »',
     },
-    relique: { nom: 'Fil du Berceau', emoji: '🧵', bonus: { agi: 4, esquive: 2, pvMax: 16 }, desc: 'Un fil de la Veuve-Reine, incassable et léger. Récompense du « Berceau de Soie ».' },
+    relique: { nom: 'Fil du Berceau', emoji: '🧵', bonus: { dex: 4, celerite: 2, pvMax: 16 }, desc: 'Un fil de la Veuve-Reine, incassable et léger. Récompense du « Berceau de Soie ».' },
   },
   {
     zone: 'collines', nom: 'Le Tambour de Guerre', emoji: '🥁', statAcces: 'for',
@@ -157,7 +157,7 @@ const CHRONIQUES = [
     },
     tresor: { titre: '🍷 Le buffet des siècles', texte: 'Huit cents ans de cadeaux de bal jamais ouverts : liqueurs d’un autre âge, bijoux de deuil, et la cagnotte des paris sur « qui restera ». Vous pariez sur vous — et raflez la mise.' },
     combat2: 'Le prêtre déchu qui célébrait les noces interrompt la musique : « Ces invités ne sont PAS sur la liste. »',
-    ep2: { stat: 'agi', texte: 'La dernière danse avant minuit : une gigue des morts au tempo impossible, où chaque faux pas vous rapproche des caveaux « invités permanents ».', ok: 'Vous tenez le tempo, puis le doublez. Les danseurs morts s’écartent en applaudissant des phalanges — le parquet est à vous.', ko: 'Le tempo vous sème. Des mains osseuses vous remettent dans le rythme sans douceur : on danse JUSQU’AU BOUT, ici.' },
+    ep2: { stat: 'dex', texte: 'La dernière danse avant minuit : une gigue des morts au tempo impossible, où chaque faux pas vous rapproche des caveaux « invités permanents ».', ok: 'Vous tenez le tempo, puis le doublez. Les danseurs morts s’écartent en applaudissant des phalanges — le parquet est à vous.', ko: 'Le tempo vous sème. Des mains osseuses vous remettent dans le rythme sans douceur : on danse JUSQU’AU BOUT, ici.' },
     avantBoss: '« Minuit, » souffle Sixte en remontant son col. « Le Roi va choisir qui reste. C’est maintenant : la faveur, la preuve, ou le fer. Personnellement je vote pour tout sauf le fer. J’ai déjà bien assez à creuser. »',
     boss: {
       nom: 'Le Roi déchu, l’Éternel Fiancé', intro: 'Les violons se taisent. Le Roi déchu descend de son trône, couronne de travers, bouquet de roses noires à la main. « Huit cents ans que je garde la première danse, » dit-il. « Elle sera pour l’un de vous. Pour toujours. »',
@@ -169,7 +169,7 @@ const CHRONIQUES = [
       variante: 'Vous tendez la lettre au Roi vacillant. Il la lit trois fois — huit cents ans de rancune qui se défont ligne à ligne. « Elle venait… » La couronne roule au sol ; il ne la ramasse pas. Le bal entier s’incline tandis qu’il traverse la salle vers l’aile ouest, un gant brodé contre la poitrine. Sixte renifle bruyamment : « Poussière. Dans l’œil. Taisez-vous. »',
       defaut: 'Le Roi déchu ploie le genou — et, en bon perdant de sang royal, vous accorde la faveur due au plus élégant : la liberté de tous les danseurs, vivants et morts. Le bal se vide dans un froissement d’étoffes soulagées. Sur le carton d’invitation, l’encre s’efface d’elle-même. Sixte le garde en souvenir : « Le seul bal dont je sois sorti. »',
     },
-    relique: { nom: 'Rose Noire du Bal', emoji: '🥀', bonus: { cha: 5, agi: 3, esquive: 2, pvMax: 18 }, desc: 'Elle ne fane pas — elle attend le prochain bal. Récompense du « Bal des Couronnes ».' },
+    relique: { nom: 'Rose Noire du Bal', emoji: '🥀', bonus: { cha: 5, dex: 3, celerite: 2, pvMax: 18 }, desc: 'Elle ne fane pas — elle attend le prochain bal. Récompense du « Bal des Couronnes ».' },
   },
   {
     zone: 'desert', nom: 'La Perle du Dessous', emoji: '💠', statAcces: 'vit',
@@ -184,7 +184,7 @@ const CHRONIQUES = [
     combat1: 'Des bandits des dunes surgissent d’un pli de sable — les sinistrés du désert qui marche, devenus charognards.',
     dilemme: {
       texte: '« Le Ver chasse à la vibration, » explique Naïla en plantant son bâton. « On peut lui monter un leurre : les tambours d’eau de ma grand-mère, enterrés au bon endroit — il remontera où NOUS voulons, déjà à moitié étourdi. Mais poser les tambours, c’est danser sur son garde-manger. Sinon : on tape du pied et on l’attend en priant. »',
-      optA: { stat: 'agi', texte: '🥁 Poser les tambours d’eau en silence', detail: 'le Ver remontera sonné, au lieu choisi', resultat: 'Vous enterrez les tambours en quinconce, sur la pointe des pieds, pendant que le sol frémit sous vos semelles. La dernière outre vibre juste — le piège est une partition, et elle est prête.' },
+      optA: { stat: 'dex', texte: '🥁 Poser les tambours d’eau en silence', detail: 'le Ver remontera sonné, au lieu choisi', resultat: 'Vous enterrez les tambours en quinconce, sur la pointe des pieds, pendant que le sol frémit sous vos semelles. La dernière outre vibre juste — le piège est une partition, et elle est prête.' },
       optB: { texte: '🦶 Taper du pied et l’attendre de face', detail: 'franc, brave, et très déconseillé', resultat: 'Vous frappez le sable en cadence. La réponse monte des profondeurs comme un train de marchandises — vous aurez voulu la manière forte.' },
     },
     tresor: { titre: '🏺 La cache de la sixième génération', texte: 'Naïla déterre l’une des caches familiales : eau scellée à la cire, dattes de dix ans, et la part d’or que chaque génération laisse « pour celle qui aura moins de chance ».' },
@@ -201,7 +201,7 @@ const CHRONIQUES = [
       variante: 'Étourdi par les tambours, le Ver crache la perle-mère presque poliment avant de plonger bouder dans les profondeurs. La perle roule, s’arrête, et le désert entier S’ARRÊTE avec elle — les dunes se rasseyent comme un troupeau au repos. Naïla la remet au Dessous par le puits rituel de sa grand-mère : « Chaque chose à sa place. Surtout les grosses. »',
       defaut: 'Le Ver s’effondre en travers de son propre sillage et rend la perle-mère dans un hoquet sismique. À l’instant où elle touche le sable, les dunes cessent de marcher — on entend le désert se taire, ce qui est un son en soi. La ville-oasis ne saura jamais à quoi elle a échappé. Naïla si : elle rebaptise sa piste « la Route des Têtus ».',
     },
-    relique: { nom: 'Éclat de la Perle-Mère', emoji: '💠', bonus: { vit: 5, for: 3, blocage: 2, pvMax: 24 }, desc: 'Un fragment qui ancre celui qui le porte. Récompense de « La Perle du Dessous ».' },
+    relique: { nom: 'Éclat de la Perle-Mère', emoji: '💠', bonus: { vit: 5, for: 3, tenacite: 2, pvMax: 24 }, desc: 'Un fragment qui ancre celui qui le porte. Récompense de « La Perle du Dessous ».' },
   },
   {
     zone: 'pics', nom: 'Le Chant du Blizzard', emoji: '🎶', statAcces: 'int',
@@ -268,7 +268,7 @@ const CHRONIQUES = [
     relique: { nom: 'Goutte des Mille Nuits', emoji: '💤', bonus: { for: 5, vit: 5, pvMax: 30 }, desc: 'Un fragment de sommeil minéral : qui la porte se repose même en marchant. Récompense de « La Veille du Gardien ».' },
   },
   {
-    zone: 'jungle-vai', nom: 'La Mue Royale', emoji: '🐍', statAcces: 'agi',
+    zone: 'jungle-vai', nom: 'La Mue Royale', emoji: '🐍', statAcces: 'dex',
     pnj: { nom: 'Kaï le chasseur de lianes', emoji: '🏹' },
     resume: 'La Matriarche Sarpense mue — et sa vieille peau, imprégnée de mille ans de venin, se relève derrière elle. Il y aura bientôt DEUX reines.',
     scenes: [
@@ -276,7 +276,7 @@ const CHRONIQUES = [
       '« Le problème n’est pas la mue, » murmure Kaï, accroupi sur une branche comme chez lui. « Le problème, c’est la PEAU. Mille ans de venin, de mémoire et de rancune imprégnés dedans. On raconte qu’une mue royale abandonnée se relève au bout de neuf jours. On est au huitième. »',
       '« Deux reines, une jungle : ça finit en guerre de territoire, et nous au milieu. Il faut brûler la vieille peau avant qu’elle ne marche — ou convaincre la Matriarche de la dévorer elle-même, comme l’exige l’ancienne coutume qu’elle a “oubliée”. Suivez mes marques. Et ne touchez à RIEN de brillant. »',
     ],
-    ep1: { stat: 'agi', texte: 'La piste de Kaï traverse la canopée : trente mètres au-dessus du sol, de liane en liane, sur des branches que la sève de mue rend glissantes comme du verre huilé.', ok: 'Vous volez de prise en prise sur les traces de Kaï, qui finit par cesser de se retourner pour vérifier — son plus grand compliment. Dans un nid de feuilles : le carquois perdu de son maître, intact.', ko: 'Une branche vernie de sève se dérobe. La canopée vous fait la courte échelle à l’envers — étage par étage, jusqu’au tapis de fougères qui amortit mal.' },
+    ep1: { stat: 'dex', texte: 'La piste de Kaï traverse la canopée : trente mètres au-dessus du sol, de liane en liane, sur des branches que la sève de mue rend glissantes comme du verre huilé.', ok: 'Vous volez de prise en prise sur les traces de Kaï, qui finit par cesser de se retourner pour vérifier — son plus grand compliment. Dans un nid de feuilles : le carquois perdu de son maître, intact.', ko: 'Une branche vernie de sève se dérobe. La canopée vous fait la courte échelle à l’envers — étage par étage, jusqu’au tapis de fougères qui amortit mal.' },
     combat1: 'Des panthères d’ombre débouchent des fourrés — la mue a chassé tous les prédateurs du cœur de la jungle vers vos mollets.',
     dilemme: {
       texte: '« La coutume dit : la reine dévore sa mue pour rester UNE, » explique Kaï. « La Matriarche l’a “oubliée” par orgueil — sa mue est son plus beau trophée. On peut lui rappeler la coutume à la manière du peuple-liane : en déposant l’offrande de cendre au seuil de son nid. Ou on brûle la peau nous-mêmes et on assume l’insulte. »',
@@ -297,7 +297,7 @@ const CHRONIQUES = [
       variante: 'Vaincue, Sarpense rampe vers sa vieille peau qui déjà se soulève — et, dans un dernier sursaut d’orgueil inversé, la DÉVORE, anneau par anneau, comme l’exige la coutume rappelée. La jungle entière expire. Il n’y aura qu’une reine, et elle vous doit sa couronne. Kaï taille une encoche neuve dans son arc : « Première fois que je marque une victoire sans flèche. »',
       defaut: 'Sarpense s’effondre entre vous et sa mue — et la vieille peau, privée du venin frais qu’elle pompait à sa reine, retombe en poussière d’écailles avec un soupir de siècle. La Matriarche, humiliée mais vivante, se love au fond de son nid pour cent ans de bouderie. La jungle rouvre ses bruits un à un, prudemment, comme on rallume des lampes.',
     },
-    relique: { nom: 'Écaille de la Mue Royale', emoji: '🐍', bonus: { agi: 7, vit: 4, esquive: 3, pvMax: 26 }, desc: 'Une écaille de la première heure, souple et impénétrable. Récompense de « La Mue Royale ».' },
+    relique: { nom: 'Écaille de la Mue Royale', emoji: '🐍', bonus: { dex: 7, vit: 4, celerite: 3, pvMax: 26 }, desc: 'Une écaille de la première heure, souple et impénétrable. Récompense de « La Mue Royale ».' },
   },
   {
     zone: 'falaises-hurlantes', nom: 'L’Œuf de Foudre', emoji: '🥚', statAcces: 'vit',
@@ -329,7 +329,7 @@ const CHRONIQUES = [
       variante: 'Le Rokh ploie, épuisé — et vous laisse approcher de l’œuf sans un cri : il a compris ce que vous avez compris. Ensemble (lui portant, vous guidant par les pulsations), vous déménagez l’œuf de foudre jusqu’au grand nuage-enclume du large, où une tempête peut naître sans raser personne. L’éclosion, cette nuit-là, ressemble à un feu d’artifice poli. Perrin note tout, en tremblant d’aise : « Meilleure garde de ma carrière. »',
       defaut: 'Le père tombe en vrille contrôlée jusqu’à une vire basse, vaincu mais vivant — et l’œuf, privé de sa chaleur d’orage, refroidit doucement en un cristal de foudre inerte et magnifique. Les falaises cessent de hurler « éclosion » et reprennent leur répertoire habituel d’insultes au vent. Perrin grave la date sur sa lunette : « Le jour où le ciel n’est pas tombé. »',
     },
-    relique: { nom: 'Coquille de l’Œuf de Foudre', emoji: '⚡', bonus: { vit: 6, agi: 5, blocage: 3, pvMax: 28 }, desc: 'Un éclat de coquille qui gronde quand le danger approche. Récompense de « L’Œuf de Foudre ».' },
+    relique: { nom: 'Coquille de l’Œuf de Foudre', emoji: '⚡', bonus: { vit: 6, dex: 5, tenacite: 3, pvMax: 28 }, desc: 'Un éclat de coquille qui gronde quand le danger approche. Récompense de « L’Œuf de Foudre ».' },
   },
   {
     zone: 'abysses-emeraude', nom: 'Les Lanternes Noyées', emoji: '🏮', statAcces: 'int',
@@ -425,7 +425,7 @@ const CHRONIQUES = [
       variante: 'L’Avatar se fissure — et le bouclier des druides s’engouffre dans chaque fente, semant du vert dans le quartz. Il ne meurt pas : il GERME. En une saison, disent déjà les druides libérés un à un de leur pose, l’Avatar deviendra la première statue-arbre — silence dehors, sève dedans. Lichen retrouve son cercle au complet. Sa moitié de pierre reste : « Souvenir de famille, » tranche-t-il.',
       defaut: 'L’Avatar s’effondre en gravier fin — et la Seconde Nuit, privée de son sculpteur, se dissout en une rosée grise qui fait briller la forêt sans la figer. Ici et là, une statue d’oiseau se secoue, ébouriffée, milléniale, et reprend son vol interrompu comme si de rien n’était. Lichen les regarde partir, sa moitié vivante trempée de larmes, sa moitié de pierre enfin tiède.',
     },
-    relique: { nom: 'Facette du Sculpteur', emoji: '💎', bonus: { int: 9, vit: 5, blocage: 3, pmMax: 34 }, desc: 'Un fragment d’Avatar où votre reflet bouge — lui. Récompense de « La Seconde Nuit ».' },
+    relique: { nom: 'Facette du Sculpteur', emoji: '💎', bonus: { int: 9, vit: 5, tenacite: 3, pmMax: 34 }, desc: 'Un fragment d’Avatar où votre reflet bouge — lui. Récompense de « La Seconde Nuit ».' },
   },
   {
     zone: 'vallee-geants', nom: 'Le Réveil des Aïeux', emoji: '🦴', statAcces: 'vit',
@@ -477,7 +477,7 @@ const CHRONIQUES = [
     },
     tresor: { titre: '⚙️ La forge de Volta', texte: 'Son atelier scellé depuis l’accident : aciers célestes trempés à l’éclair, fragments de foudre en bocaux, et sa paie de maîtresse-forgeronne jamais réclamée. « Prenez tout. Les fantômes n’ont pas de poches — c’est le seul défaut du métier. »' },
     combat2: 'Le forgeron foudroyé — le successeur de Volta, moins regretté — mène une vouivre d’orage à votre rencontre : la maintenance a des comptes à régler.',
-    ep2: { stat: 'agi', texte: 'La dernière vanne est sur le toit : une course de crête entre les arcs, sur des chemins de ronde où la foudre tombe TOUTES les quatre secondes — trois pour courir, une pour se plaquer. Volta compte à voix haute.', ok: 'Trois-secondes-PLAT. Trois-secondes-PLAT. Vous remontez la crête comme une couture d’éclairs, réglés sur la voix de Volta — la vanne s’ouvre, le ciel aspire son dû, et la citadelle soupire de tous ses créneaux.', ko: 'Un « plat » trop tardif : la foudre vous frôle assez près pour vous friser jusqu’à l’âme. La vanne s’ouvre — vous, vous vibrerez encore une semaine.' },
+    ep2: { stat: 'dex', texte: 'La dernière vanne est sur le toit : une course de crête entre les arcs, sur des chemins de ronde où la foudre tombe TOUTES les quatre secondes — trois pour courir, une pour se plaquer. Volta compte à voix haute.', ok: 'Trois-secondes-PLAT. Trois-secondes-PLAT. Vous remontez la crête comme une couture d’éclairs, réglés sur la voix de Volta — la vanne s’ouvre, le ciel aspire son dû, et la citadelle soupire de tous ses créneaux.', ko: 'Un « plat » trop tardif : la foudre vous frôle assez près pour vous friser jusqu’à l’âme. La vanne s’ouvre — vous, vous vibrerez encore une semaine.' },
     avantBoss: '« Il est au sommet, sur MON paratonnerre maître, » grésille Volta, et son grésillement a changé — c’est de la colère de forgeronne, la pire. « Rappelez-vous : il n’est fort que de sa charge. Chaque arc qu’il vous jette, c’est de la signature en moins. Faites-le DÉPENSER. Et quand il sera vide… rendez-lui la monnaie de mon éclair. »',
     boss: {
       nom: 'L’Archonte de la Tempête, Cœur-Condensé', intro: 'Il se tient au sommet du paratonnerre maître, bras ouverts, et la charge de neuf orages court sous sa peau en veines blanches — l’Archonte est devenu sa propre foudre. « Encore un orage, » dit-il sans se retourner. « Un SEUL. Et le ciel apprendra à épeler mon nom. »',
@@ -489,7 +489,7 @@ const CHRONIQUES = [
       variante: 'Vidé par la bobine, l’Archonte tombe à genoux au sommet — et son dernier arc, minuscule, grésille entre ses doigts comme une signature ratée sur un chèque en bois. La citadelle, déchargée, redevient une forteresse qui gronde pour la forme. Volta reprend possession de sa forge en fantôme-chef : « La maintenance recommence lundi. » Son éclair à elle, dit-elle, attendra un motif plus élégant.',
       defaut: 'L’Archonte s’effondre dans une gerbe d’arcs mourants — et la charge des neuf orages s’échappe par les trois vannes rouvertes en une aurore boréale qui se voit, dit-on, depuis les Plaines de l’Aube. Les Royaumes n’auront jamais su qu’ils ont failli servir de parchemin. Volta contemple le ciel qui se vide et grésille doucement : « Voilà. C’est ÇA, une belle signature : celle qu’on n’impose à personne. »',
     },
-    relique: { nom: 'Fusible de Volta', emoji: '⚡', bonus: { int: 10, agi: 6, esquive: 3, pmMax: 40 }, desc: 'Il saute AVANT le coup dur — c’est tout son art. Récompense du « Paratonnerre ».' },
+    relique: { nom: 'Fusible de Volta', emoji: '⚡', bonus: { int: 10, dex: 6, celerite: 3, pmMax: 40 }, desc: 'Il saute AVANT le coup dur — c’est tout son art. Récompense du « Paratonnerre ».' },
   },
   {
     zone: 'neant-scintillant', nom: 'Les Fausses Étoiles', emoji: '⭐', statAcces: 'cha',
@@ -526,7 +526,7 @@ const CHRONIQUES = [
 ];
 
 // Le générateur : chaque récit devient un donjon complet — boss de zone
-// renforcé à mécaniques, relique unique, et déblocage exigeant (niveau,
+// renforcé à mécaniques, relique unique, et détenacite exigeant (niveau,
 // caractéristique, objet-clé de la zone, boss de carte vaincu).
 CHRONIQUES.forEach((c) => {
   const z = ZONES.find((x) => x.id === c.zone);

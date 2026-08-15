@@ -165,9 +165,9 @@ const BONUS_SET_PAR_RARETE = {
   inhabituel: { 2: { pvMax: 12, pmMax: 5 },        4: { crit: 2, xpBonus: 0.03 } },
   rare:       { 2: { crit: 2, pvMax: 16 },         4: { xpBonus: 0.05, poBonus: 0.05 } },
   epique:     { 2: { crit: 3, pvMax: 25, cha: 1 }, 4: { xpBonus: 0.07, poBonus: 0.07, cha: 2 } },
-  legendaire: { 2: { crit: 4, pvMax: 35, cha: 2 }, 4: { xpBonus: 0.1, poBonus: 0.1, for: 2, int: 2, agi: 2, vit: 2 } },
-  mythique:   { 2: { crit: 5, pvMax: 50, cha: 2 }, 4: { xpBonus: 0.12, poBonus: 0.12, for: 3, int: 3, agi: 3, vit: 3 } },
-  divin:      { 2: { crit: 6, pvMax: 70, cha: 3 }, 4: { xpBonus: 0.15, poBonus: 0.15, for: 4, int: 4, agi: 4, vit: 4 } },
+  legendaire: { 2: { crit: 4, pvMax: 35, cha: 2 }, 4: { xpBonus: 0.1, poBonus: 0.1, for: 2, int: 2, dex: 2, vit: 2 } },
+  mythique:   { 2: { crit: 5, pvMax: 50, cha: 2 }, 4: { xpBonus: 0.12, poBonus: 0.12, for: 3, int: 3, dex: 3, vit: 3 } },
+  divin:      { 2: { crit: 6, pvMax: 70, cha: 3 }, 4: { xpBonus: 0.15, poBonus: 0.15, for: 4, int: 4, dex: 4, vit: 4 } },
 };
 
 // Texte d'un palier de bonus de panoplie (réutilise texteBonus, en
@@ -209,10 +209,16 @@ function bonusSetActifs(p) {
   return cumul;
 }
 
-// Multiplicateur d'or gagné : familier + panoplies.
+// Multiplicateur d'or gagné : familier + panoplies + équipement.
+// Les reliques de Chronique portent un bonus d'or (`poBonus`) qui n'était
+// jusqu'ici jamais compté nulle part — il l'est désormais.
 function multiplicateurOr(p) {
   const familier = familierActif(p);
-  return 1 + ((familier && familier.bonus.poBonus) || 0) + bonusSetActifs(p).poBonus;
+  const equipement = Object.values(p.equipement || {}).reduce((somme, id) => {
+    const objet = id && OBJETS[id];
+    return somme + ((objet && objet.bonus && objet.bonus.poBonus) || 0);
+  }, 0);
+  return 1 + ((familier && familier.bonus.poBonus) || 0) + bonusSetActifs(p).poBonus + equipement;
 }
 
 // Ligne d'affichage de la panoplie d'un objet (cartes d'inventaire/boutique).
@@ -271,14 +277,14 @@ SETS_CRAFT.forEach((serie) => {
   const pieces = [
     { cle: 'lame',      nom: `Lame ${serie.suffixe}`,      emoji: '⚔️', slot: 'arme',       bonus: { for: principal, vit: secondaire } },
     { cle: 'focus',     nom: `Focus ${serie.suffixe}`,     emoji: '🔮', slot: 'arme',       bonus: { int: principal, pmMax: secondaire * 3 } },
-    { cle: 'arc',       nom: `Arc ${serie.suffixe}`,       emoji: '🏹', slot: 'arme',       bonus: { agi: principal, crit: secondaire } },
+    { cle: 'arc',       nom: `Arc ${serie.suffixe}`,       emoji: '🏹', slot: 'arme',       bonus: { dex: principal, crit: secondaire } },
     { cle: 'armure',    nom: `Armure ${serie.suffixe}`,    emoji: '🛡️', slot: 'torse',      bonus: { vit: Math.max(1, Math.round(principal * 0.7)), pvMax: serie.niveau * 3 } },
     { cle: 'heaume',    nom: `Heaume ${serie.suffixe}`,    emoji: '🪖', slot: 'tete',       bonus: { vit: secondaire, pvMax: serie.niveau * 2 } },
-    { cle: 'jambieres', nom: `Jambières ${serie.suffixe}`, emoji: '👖', slot: 'jambes',     bonus: { agi: secondaire, vit: secondaire, pvMax: serie.niveau } },
+    { cle: 'jambieres', nom: `Jambières ${serie.suffixe}`, emoji: '👖', slot: 'jambes',     bonus: { dex: secondaire, vit: secondaire, pvMax: serie.niveau } },
     { cle: 'talisman',  nom: `Talisman ${serie.suffixe}`,  emoji: '🧿', slot: 'accessoire', bonus: { cha: 1 + Math.floor(serie.niveau / 5), vit: secondaire, crit: secondaire } },
     { cle: 'grimoire',  nom: `Grimoire ${serie.suffixe}`,  emoji: '📖', slot: 'accessoire', bonus: { int: secondaire + 1, pmMax: secondaire * 2, cha: Math.max(1, Math.floor(serie.niveau / 7)) } },
-    { cle: 'gants',     nom: `Gants ${serie.suffixe}`,     emoji: '🧤', slot: 'mains',      bonus: { for: secondaire, agi: secondaire, blocage: Math.max(1, Math.floor(serie.niveau / 8)) } },
-    { cle: 'bottes',    nom: `Bottes ${serie.suffixe}`,    emoji: '🥾', slot: 'pieds',      bonus: { agi: secondaire, vit: secondaire, esquive: Math.max(1, Math.floor(serie.niveau / 8)) } },
+    { cle: 'gants',     nom: `Gants ${serie.suffixe}`,     emoji: '🧤', slot: 'mains',      bonus: { for: secondaire, dex: secondaire, tenacite: Math.max(1, Math.floor(serie.niveau / 8)) } },
+    { cle: 'bottes',    nom: `Bottes ${serie.suffixe}`,    emoji: '🥾', slot: 'pieds',      bonus: { dex: secondaire, vit: secondaire, celerite: Math.max(1, Math.floor(serie.niveau / 8)) } },
   ];
   SETS[`craft-${idBase}`] = { nom: `Série ${serie.suffixe}`, rarete: serie.rarete };
   pieces.forEach((piece) => {

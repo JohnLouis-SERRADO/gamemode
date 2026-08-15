@@ -9,7 +9,7 @@
 // =====================================================================
 const FAMILIERS = {
   'louveteau':        { nom: 'Louveteau', emoji: '🐺', bonus: { for: 2 }, desc: '+2 Force', source: 'loupAlpha' },
-  'mygale-soyeuse':   { nom: 'Mygale soyeuse', emoji: '🕷️', bonus: { agi: 2 }, desc: '+2 Agilité', source: 'araigneeMatriarche' },
+  'mygale-soyeuse':   { nom: 'Mygale soyeuse', emoji: '🕷️', bonus: { dex: 2 }, desc: '+2 Dextérité', source: 'araigneeMatriarche' },
   'gobelin-mascotte': { nom: 'Gobelin mascotte', emoji: '👺', bonus: { poBonus: 0.1 }, desc: '+10 % d’or gagné', source: 'chefOrc' },
   'bebe-hydre':       { nom: 'Bébé hydre', emoji: '🐉', bonus: { int: 2 }, desc: '+2 Intelligence', source: 'hydreBrumes' },
   'chauve-souris':    { nom: 'Chauve-souris royale', emoji: '🦇', bonus: { crit: 3 }, desc: '+3 % critique', source: 'roiDechu' },

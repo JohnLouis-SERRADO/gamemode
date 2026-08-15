@@ -54,7 +54,7 @@ function aucun(liste, message) {
 function herosTest(surcharges = {}) {
   const p = nouveauPersonnage({
     nom: 'Éprouvette', avatar: '⚔️', race: 'humain', classe: 'guerrier',
-    stats: { for: 7, int: 2, agi: 3, vit: 6, cha: 2 },
+    stats: { for: 7, int: 2, dex: 3, vit: 6, cha: 2 },
     competences: ['frappe-heroique', 'coup-etourdissant', 'provocation', 'second-souffle'],
   });
   return Object.assign(p, surcharges);
@@ -286,7 +286,7 @@ suite('Progression', () => {
 
   test('la puissance croît avec les caractéristiques', () => {
     const faible = herosTest();
-    const fort = herosTest({ stats: { for: 20, int: 20, agi: 20, vit: 20, cha: 20 } });
+    const fort = herosTest({ stats: { for: 20, int: 20, dex: 20, vit: 20, cha: 20 } });
     bornerVie(faible); bornerVie(fort);
     verifier(puissanceDe(fort) > puissanceDe(faible), 'un héros mieux doté doit être plus puissant');
   });
@@ -305,7 +305,7 @@ suite('Progression', () => {
 // =====================================================================
 suite('Combat', () => {
   test('le coût en mana ne dépasse jamais 30 % de la réserve', () => {
-    const stats = { for: 60, int: 60, agi: 60, vit: 60, cha: 60 };
+    const stats = { for: 60, int: 60, dex: 60, vit: 60, cha: 60 };
     const maxMp = 100;
     const fautives = Object.entries(COMPETENCES)
       .filter(([, c]) => coutMpDe(c, stats, maxMp) > Math.max(c.coutMp || 0, Math.round(maxMp * 0.3)))
@@ -314,7 +314,7 @@ suite('Combat', () => {
   });
 
   test('le coût en mana n\'est jamais négatif', () => {
-    const stats = { for: 0, int: 0, agi: 0, vit: 0, cha: 0 };
+    const stats = { for: 0, int: 0, dex: 0, vit: 0, cha: 0 };
     const fautives = Object.entries(COMPETENCES)
       .filter(([, c]) => coutMpDe(c, stats, 50) < 0)
       .map(([id]) => id);
@@ -322,7 +322,7 @@ suite('Combat', () => {
   });
 
   test('une compétence gratuite le reste, quelles que soient les stats', () => {
-    const stats = { for: 99, int: 99, agi: 99, vit: 99, cha: 99 };
+    const stats = { for: 99, int: 99, dex: 99, vit: 99, cha: 99 };
     const fautives = Object.entries(COMPETENCES)
       .filter(([, c]) => !c.coutMp && coutMpDe(c, stats, 200) > 0)
       .map(([id]) => id);
@@ -353,7 +353,7 @@ suite('Combat', () => {
   });
 
   test('les détails d\'une compétence se calculent sans erreur', () => {
-    const stats = { for: 10, int: 10, agi: 10, vit: 10, cha: 10 };
+    const stats = { for: 10, int: 10, dex: 10, vit: 10, cha: 10 };
     const fautives = [];
     Object.entries(COMPETENCES).forEach(([id, c]) => {
       try {
@@ -455,7 +455,7 @@ suite('Migration des sauvegardes', () => {
   function sauvegardeAncienne() {
     return {
       version: 1, type: 'joueur', id: 'test-ancien', nom: 'Vieux Brisquard', avatar: '⚔️',
-      stats: { for: 8, int: 3, agi: 4, vit: 7 },
+      stats: { for: 8, int: 3, dex: 4, vit: 7 },
       niveau: 12, xp: seuilXp(12), pointsEnAttente: 0,
       competences: ['frappe-heroique', 'tourbillon', 'provocation'],
       po: 1234,
@@ -546,6 +546,213 @@ suite('Migration des sauvegardes', () => {
       .map(([id]) => id);
     const manquantes = dues.filter((id) => !p.grimoire.includes(id));
     aucun(manquantes, 'compétences de classe non débloquées');
+  });
+});
+
+// =====================================================================
+// 6. Caractéristiques — le modèle Final Fantasy XIV (v19)
+// =====================================================================
+suite('Caractéristiques FF XIV', () => {
+  test('les six attributs principaux sont déclarés', () => {
+    ['for', 'dex', 'int', 'esp', 'vit', 'cha'].forEach((cle) => {
+      verifier(CARACS[cle], `attribut ${cle} manquant`);
+      verifier(CARACS[cle].nom && CARACS[cle].emoji && CARACS[cle].desc, `attribut ${cle} incomplet`);
+    });
+    egal(Object.keys(CARACS).length, 6, 'nombre d\'attributs');
+  });
+
+  test('les six sous-caractéristiques sont déclarées et plafonnées', () => {
+    ['crit', 'direct', 'deter', 'tenacite', 'celerite', 'piete'].forEach((cle) => {
+      verifier(SOUS_CARACS[cle], `sous-caractéristique ${cle} manquante`);
+      verifier(PLAFONDS_SOUS_CARACS[cle] > 0, `plafond de ${cle} manquant`);
+    });
+    egal(Object.keys(SOUS_CARACS).length, 6, 'nombre de sous-caractéristiques');
+  });
+
+  test('attributs et sous-caractéristiques ne se chevauchent jamais', () => {
+    const collisions = Object.keys(SOUS_CARACS).filter((cle) => CARACS[cle]);
+    aucun(collisions, 'clés présentes dans les deux familles');
+  });
+
+  test('une sous-caractéristique ne dépasse jamais son plafond', () => {
+    // Un héros couvert de pièces divines ne doit pas atteindre 100 % de quoi
+    // que ce soit : c'est ce qui empêche les builds invincibles.
+    const p = herosTest({ niveau: 50 });
+    const divins = Object.entries(OBJETS)
+      .filter(([, o]) => o.type === 'equipement' && o.rarete === 'divin' && o.niveau <= 50);
+    Object.keys(SLOTS_EQUIPEMENT).forEach((slot) => {
+      const attendu = slot === 'acc1' || slot === 'acc2' ? 'accessoire' : slot;
+      const piece = divins.find(([, o]) => o.slot === attendu);
+      if (piece) p.equipement[slot] = piece[0];
+    });
+    const s = statsEffectives(p);
+    const debordements = Object.keys(SOUS_CARACS)
+      .filter((cle) => s[cle] > PLAFONDS_SOUS_CARACS[cle])
+      .map((cle) => `${cle} = ${s[cle]} > ${PLAFONDS_SOUS_CARACS[cle]}`);
+    aucun(debordements, 'plafonds dépassés');
+  });
+
+  test('statsEffectives renvoie toujours les douze clés', () => {
+    const s = statsEffectives(herosTest());
+    const manquantes = [...Object.keys(CARACS), ...Object.keys(SOUS_CARACS)]
+      .filter((cle) => typeof s[cle] !== 'number');
+    aucun(manquantes, 'clés absentes de statsEffectives');
+  });
+
+  test('un combattant sans stats ne fait pas planter le calcul', () => {
+    const s = statsEffectives({ type: 'joueur' });
+    const fautives = Object.keys(s).filter((cle) => typeof s[cle] !== 'number');
+    aucun(fautives, 'valeurs non numériques');
+  });
+
+  test('la Piété augmente réellement la réserve de mana', () => {
+    const sans = herosTest({ niveau: 20 });
+    const avec = herosTest({ niveau: 20 });
+    avec.statsEff = { ...statsEffectives(sans), piete: 40 };
+    verifier(maxMpDe(avec) > maxMpDe(sans), 'la Piété devrait gonfler le mana maximum');
+  });
+
+  test('l\'Esprit augmente la réserve de mana et la puissance des soins', () => {
+    const base = { for: 5, dex: 5, int: 5, esp: 5, vit: 5, cha: 5 };
+    const soin = COMPETENCES.soin;
+    const faible = statDeCompetence(soin, { ...base, esp: 0 });
+    const fort = statDeCompetence(soin, { ...base, esp: 40 });
+    verifier(fort > faible, 'l\'Esprit devrait porter les soins');
+  });
+
+  test('un ancien soigneur ne perd rien : l\'Intelligence fait foi si elle est meilleure', () => {
+    const ancien = { for: 2, dex: 2, int: 40, esp: 2, vit: 2, cha: 2 };
+    egal(statDeCompetence(COMPETENCES.soin, ancien), 40, 'soin porté par l\'Intelligence');
+    // …mais l'Intelligence ne déborde pas sur ce qui n'est pas du soutien.
+    egal(statDeCompetence(COMPETENCES['boule-de-feu'], ancien), 40, 'dégâts magiques');
+    const espritue = { for: 2, dex: 2, int: 2, esp: 40, vit: 2, cha: 2 };
+    egal(statDeCompetence(COMPETENCES['boule-de-feu'], espritue), 2, 'l\'Esprit ne porte pas les dégâts');
+  });
+
+  test('chaque modèle de classe distribue exactement la dotation de création', () => {
+    const attendu = POINTS_CREATION + Object.keys(CARACS).length * STAT_BASE;
+    const fautifs = MODELES
+      .map((m) => [m.nom, Object.keys(CARACS).reduce((somme, cle) => somme + m.stats[cle], 0)])
+      .filter(([, total]) => total !== attendu)
+      .map(([nom, total]) => `${nom} (${total} au lieu de ${attendu})`);
+    aucun(fautifs, 'modèles mal dotés');
+  });
+
+  test('aucun modèle ne dépasse le plafond de création', () => {
+    const fautifs = [];
+    MODELES.forEach((m) => {
+      Object.keys(CARACS).forEach((cle) => {
+        if (m.stats[cle] > STAT_MAX_CREATION) fautifs.push(`${m.nom} → ${cle} = ${m.stats[cle]}`);
+      });
+    });
+    aucun(fautifs, 'caractéristiques au-dessus du plafond');
+  });
+
+  test('l\'Esprit a des armes à sa mesure', () => {
+    const armes = Object.values(OBJETS)
+      .filter((o) => o.type === 'equipement' && o.slot === 'arme' && o.bonus && o.bonus.esp);
+    verifier(armes.length > 0, 'aucune arme ne porte l\'Esprit');
+  });
+
+  test('les objets rares et mieux portent des sous-caractéristiques', () => {
+    const rares = Object.values(OBJETS).filter((o) => o.type === 'equipement'
+      && ['epique', 'legendaire', 'mythique', 'divin'].includes(o.rarete));
+    const sans = rares.filter((o) => !Object.keys(SOUS_CARACS).some((cle) => o.bonus && o.bonus[cle]));
+    verifier(sans.length < rares.length * 0.05,
+      `${sans.length} objets de haute rareté sur ${rares.length} n'ont aucune sous-caractéristique`);
+  });
+
+  test('tout bonus d\'objet porte une clé connue', () => {
+    const connues = new Set([...Object.keys(CARACS), ...Object.keys(SOUS_CARACS), 'pvMax', 'pmMax', 'xpBonus', 'poBonus']);
+    const fautifs = [];
+    Object.entries(OBJETS).forEach(([id, o]) => {
+      Object.keys(o.bonus || {}).forEach((cle) => {
+        if (!connues.has(cle)) fautifs.push(`${id} → ${cle}`);
+      });
+    });
+    aucun(fautifs, 'clés de bonus inconnues');
+  });
+
+  test('texteBonus sait nommer toutes les clés', () => {
+    const connues = [...Object.keys(CARACS), ...Object.keys(SOUS_CARACS), 'pvMax', 'pmMax'];
+    const fautives = connues.filter((cle) => {
+      // Sans libellé, texteBonus recrache la clé brute telle quelle.
+      const rendu = texteBonus({ [cle]: 3 });
+      return rendu === `+3 ${cle}` || rendu === `+3 % ${cle}`;
+    });
+    aucun(fautives, 'clés sans libellé lisible');
+  });
+});
+
+// =====================================================================
+// 7. La route jusqu'au niveau 100 (v19)
+// =====================================================================
+suite('Route jusqu\'au niveau 100', () => {
+  test('le plafond est bien à 100', () => {
+    egal(NIVEAU_MAX, 100, 'niveau maximum');
+  });
+
+  test('la courbe d\'XP reste continue aux deux raccords', () => {
+    // Un saut brutal à 50 ou à 80 se verrait comme un mur en jeu.
+    [PALIER_XP_MOYEN, PALIER_XP_HAUT].forEach((palier) => {
+      const avant = seuilXp(palier) - seuilXp(palier - 1);
+      const apres = seuilXp(palier + 1) - seuilXp(palier);
+      verifier(apres > avant, `le palier ${palier} devrait durcir la pente`);
+      verifier(apres < avant * 12, `le palier ${palier} fait un mur (×${Math.round(apres / avant)})`);
+    });
+  });
+
+  test('la courbe d\'XP d\'avant le niveau 50 est inchangée', () => {
+    // Les héros existants ne doivent voir aucune différence sur le chemin
+    // qu'ils ont déjà parcouru.
+    const ancienne = (n) => 14 * (n - 1) * (n - 1) + 30 * (n - 1);
+    const ecarts = [];
+    for (let n = 1; n <= 50; n++) {
+      if (seuilXp(n) !== ancienne(n)) ecarts.push(`niv. ${n}`);
+    }
+    aucun(ecarts, 'paliers d\'XP modifiés sous le niveau 50');
+  });
+
+  test('les points par niveau suivent les trois tranches', () => {
+    egal(pointsPourNiveau(30), 2, 'tranche 1-50');
+    egal(pointsPourNiveau(60), 3, 'tranche 51-80');
+    egal(pointsPourNiveau(85), 4, 'tranche 81-100');
+    egal(pointsPourNiveau(90), 14, 'palier de respiration du niveau 90');
+    egal(pointsPourNiveau(100), 14, 'palier de respiration du niveau 100');
+    egal(pointsPourNiveau(1), 0, 'aucun point au niveau 1');
+  });
+
+  test('pointsCumules est cohérent avec pointsPourNiveau', () => {
+    let somme = 0;
+    const ecarts = [];
+    for (let n = 2; n <= NIVEAU_MAX; n++) {
+      somme += pointsPourNiveau(n);
+      if (pointsCumules(n) !== somme) ecarts.push(`niv. ${n}`);
+    }
+    aucun(ecarts, 'cumuls incohérents');
+  });
+
+  test('les paliers de maîtrise vont jusqu\'au niveau 100', () => {
+    egal(SEUILS_MAITRISE[SEUILS_MAITRISE.length - 1], 100, 'dernier palier de maîtrise');
+    const desordre = SEUILS_MAITRISE.filter((s, i) => i > 0 && s <= SEUILS_MAITRISE[i - 1]);
+    aucun(desordre, 'paliers de maîtrise dans le désordre');
+  });
+
+  test('la puissance conseillée reste atteignable à chaque niveau', () => {
+    // Un héros de référence, correctement doté, doit rester dans l'épure de
+    // la recommandation de son niveau — sinon toutes les cartes s'affichent
+    // en rouge et l'indicateur ne veut plus rien dire.
+    const ecarts = [];
+    [1, 10, 25, 50, 70, 85, 100].forEach((n) => {
+      const p = herosTest({ niveau: n });
+      const points = POINTS_CREATION + 6 * STAT_BASE + pointsCumules(n);
+      const part = Math.floor(points / 6);
+      Object.keys(CARACS).forEach((cle) => { p.stats[cle] = part; });
+      bornerVie(p);
+      const rapport = puissanceDe(p) / puissanceRecommandee(n);
+      if (rapport < 0.55 || rapport > 1.6) ecarts.push(`niv. ${n} (×${rapport.toFixed(2)})`);
+    });
+    aucun(ecarts, 'recommandations décalées du héros de référence');
   });
 });
 

@@ -40,7 +40,7 @@ const OBJETS_DONJONS = {
   },
   'sabre-du-capitaine': {
     nom: 'Sabre du capitaine Morvane', emoji: '🗡️', type: 'equipement', slot: 'arme', niveau: 13,
-    rarete: 'legendaire', prixVente: 420, bonus: { for: 8, agi: 6, crit: 4 },
+    rarete: 'legendaire', prixVente: 420, bonus: { for: 8, dex: 6, crit: 4 },
     desc: 'Il sent encore le sel et l’orage. Récompense du Brise-Brume.',
   },
   'marteau-de-la-forge-eternelle': {
@@ -50,7 +50,7 @@ const OBJETS_DONJONS = {
   },
   'lame-de-la-derniere-cendre': {
     nom: 'Lame de la Dernière Cendre', emoji: '🌑', type: 'equipement', slot: 'arme', niveau: 17,
-    rarete: 'mythique', prixVente: 700, bonus: { agi: 12, for: 8, crit: 6 },
+    rarete: 'mythique', prixVente: 700, bonus: { dex: 12, for: 8, crit: 6 },
     desc: 'Trempée dans le dernier feu du volcan éteint. Froide, et pourtant…',
   },
 };
@@ -62,7 +62,7 @@ Object.assign(OBJETS, OBJETS_DONJONS);
 const MONSTRES_DONJONS = {
   // ----- La Crypte du Roi Oublié (niv. 4+) -----
   'garde-noye': {
-    nom: 'Garde noyé', emoji: '🧟', niveau: 4, hp: 52, atk: 10, agi: 4, xp: 46, po: [8, 14],
+    nom: 'Garde noyé', emoji: '🧟', niveau: 4, hp: 52, atk: 10, dex: 4, xp: 46, po: [8, 14],
     drops: [{ id: 'poussiere-spectre', chance: 0.3 }],
     attaques: [
       { nom: 'Hallebarde rouillée', emoji: '🪓', mult: 1.0, poids: 3, type: 'mono' },
@@ -70,7 +70,7 @@ const MONSTRES_DONJONS = {
     ],
   },
   'spectre-vorn': {
-    nom: 'Spectre du chancelier Vorn', emoji: '🌫️', niveau: 6, boss: true, hp: 135, atk: 12, agi: 7, xp: 130, po: [30, 50],
+    nom: 'Spectre du chancelier Vorn', emoji: '🌫️', niveau: 6, boss: true, hp: 135, atk: 12, dex: 7, xp: 130, po: [30, 50],
     drops: [{ id: 'poussiere-spectre', chance: 1 }],
     attaques: [
       { nom: 'Griffe de regret', emoji: '🌫️', mult: 1.1, poids: 3, type: 'mono' },
@@ -79,14 +79,14 @@ const MONSTRES_DONJONS = {
     ],
   },
   'garde-outre-tombe': {
-    nom: 'Garde d’outre-tombe', emoji: '💀', niveau: 5, hp: 42, atk: 9, agi: 5, xp: 26, po: [4, 8],
+    nom: 'Garde d’outre-tombe', emoji: '💀', niveau: 5, hp: 42, atk: 9, dex: 5, xp: 26, po: [4, 8],
     drops: [],
     attaques: [
       { nom: 'Lance spectrale', emoji: '🔱', mult: 1.0, poids: 1, type: 'mono' },
     ],
   },
   'roi-aldric': {
-    nom: 'Aldric le Déchu', emoji: '👑', niveau: 6, boss: true, hp: 240, atk: 13, agi: 6, xp: 320, po: [60, 90],
+    nom: 'Aldric le Déchu', emoji: '👑', niveau: 6, boss: true, hp: 240, atk: 13, dex: 6, xp: 320, po: [60, 90],
     drops: [{ id: 'os-ancien', chance: 1 }, { id: 'poussiere-spectre', chance: 0.8 }],
     attaques: [
       { nom: 'Sceptre du jugement', emoji: '🪄', mult: 1.15, poids: 3, type: 'mono' },
@@ -115,7 +115,7 @@ const MONSTRES_DONJONS = {
 
   // ----- Le Laboratoire de Frivole (niv. 8+) -----
   'cobaye-enrage': {
-    nom: 'Cobaye enragé', emoji: '🐹', niveau: 8, hp: 70, atk: 13, agi: 9, xp: 60, po: [10, 18],
+    nom: 'Cobaye enragé', emoji: '🐹', niveau: 8, hp: 70, atk: 13, dex: 9, xp: 60, po: [10, 18],
     drops: [{ id: 'herbe-lunaire', chance: 0.4 }],
     attaques: [
       { nom: 'Morsure frénétique', emoji: '🦷', mult: 1.1, poids: 3, type: 'mono' },
@@ -123,7 +123,7 @@ const MONSTRES_DONJONS = {
     ],
   },
   'gelee-instable': {
-    nom: 'Gelée instable', emoji: '🟢', niveau: 8, hp: 85, atk: 14, agi: 5, xp: 66, po: [12, 20],
+    nom: 'Gelée instable', emoji: '🟢', niveau: 8, hp: 85, atk: 14, dex: 5, xp: 66, po: [12, 20],
     drops: [{ id: 'seve-ambree', chance: 0.35 }],
     attaques: [
       { nom: 'Éclaboussure acide', emoji: '🧪', mult: 0.9, poids: 2, type: 'mono', effet: { type: 'poison', degats: 5, duree: 2 } },
@@ -131,14 +131,14 @@ const MONSTRES_DONJONS = {
     ],
   },
   'flaque-vive': {
-    nom: 'Flaque vive', emoji: '💧', niveau: 8, hp: 48, atk: 11, agi: 7, xp: 30, po: [5, 10],
+    nom: 'Flaque vive', emoji: '💧', niveau: 8, hp: 48, atk: 11, dex: 7, xp: 30, po: [5, 10],
     drops: [],
     attaques: [
       { nom: 'Gifle de mercure', emoji: '🫧', mult: 1.0, poids: 1, type: 'mono' },
     ],
   },
   'chimere-mercure': {
-    nom: 'Chimère de Mercure', emoji: '🫠', niveau: 10, boss: true, hp: 380, atk: 17, agi: 9, xp: 500, po: [90, 140],
+    nom: 'Chimère de Mercure', emoji: '🫠', niveau: 10, boss: true, hp: 380, atk: 17, dex: 9, xp: 500, po: [90, 140],
     drops: [{ id: 'noyau-golem', chance: 0.8 }, { id: 'cristal-givre', chance: 0.5 }],
     attaques: [
       { nom: 'Pseudopode fouettant', emoji: '🫠', mult: 1.1, poids: 3, type: 'mono' },
@@ -168,7 +168,7 @@ const MONSTRES_DONJONS = {
 
   // ----- Le Brise-Brume (niv. 12+) -----
   'matelot-spectral': {
-    nom: 'Matelot spectral', emoji: '🧟‍♂️', niveau: 12, hp: 105, atk: 19, agi: 10, xp: 95, po: [18, 30],
+    nom: 'Matelot spectral', emoji: '🧟‍♂️', niveau: 12, hp: 105, atk: 19, dex: 10, xp: 95, po: [18, 30],
     drops: [{ id: 'poussiere-spectre', chance: 0.5 }],
     attaques: [
       { nom: 'Crochet d’abordage', emoji: '🪝', mult: 1.1, poids: 3, type: 'mono' },
@@ -176,14 +176,14 @@ const MONSTRES_DONJONS = {
     ],
   },
   'mousse-spectral': {
-    nom: 'Mousse spectral', emoji: '👻', niveau: 12, hp: 62, atk: 15, agi: 11, xp: 36, po: [6, 12],
+    nom: 'Mousse spectral', emoji: '👻', niveau: 12, hp: 62, atk: 15, dex: 11, xp: 36, po: [6, 12],
     drops: [],
     attaques: [
       { nom: 'Coup de gaffe', emoji: '🪝', mult: 1.0, poids: 1, type: 'mono' },
     ],
   },
   'brume-affamee': {
-    nom: 'Brume affamée', emoji: '🌫️', niveau: 13, hp: 120, atk: 21, agi: 12, xp: 105, po: [20, 34],
+    nom: 'Brume affamée', emoji: '🌫️', niveau: 13, hp: 120, atk: 21, dex: 12, xp: 105, po: [20, 34],
     drops: [{ id: 'lotus-noir', chance: 0.45 }],
     attaques: [
       { nom: 'Morsure de brouillard', emoji: '🌫️', mult: 1.0, poids: 2, type: 'mono', effet: { type: 'drain', part: 0.4 } },
@@ -191,7 +191,7 @@ const MONSTRES_DONJONS = {
     ],
   },
   'capitaine-morvane': {
-    nom: 'Capitaine Morvane', emoji: '🏴‍☠️', niveau: 14, boss: true, hp: 620, atk: 24, agi: 12, xp: 850, po: [150, 220],
+    nom: 'Capitaine Morvane', emoji: '🏴‍☠️', niveau: 14, boss: true, hp: 620, atk: 24, dex: 12, xp: 850, po: [150, 220],
     drops: [{ id: 'perle-des-sables', chance: 0.7 }, { id: 'lotus-noir', chance: 1 }],
     attaques: [
       { nom: 'Taillade de sabre', emoji: '🗡️', mult: 1.15, poids: 3, type: 'mono' },
@@ -219,7 +219,7 @@ const MONSTRES_DONJONS = {
 
   // ----- Le Cœur du Volcan (niv. 16+) -----
   'golem-basalte': {
-    nom: 'Golem de basalte', emoji: '🗿', niveau: 16, hp: 190, atk: 28, agi: 6, xp: 150, po: [30, 50],
+    nom: 'Golem de basalte', emoji: '🗿', niveau: 16, hp: 190, atk: 28, dex: 6, xp: 150, po: [30, 50],
     drops: [{ id: 'noyau-golem', chance: 0.6 }],
     attaques: [
       { nom: 'Poing tellurique', emoji: '🗿', mult: 1.1, poids: 3, type: 'mono' },
@@ -227,14 +227,14 @@ const MONSTRES_DONJONS = {
     ],
   },
   'elementaire-magma': {
-    nom: 'Élémentaire de magma', emoji: '🔥', niveau: 16, hp: 115, atk: 24, agi: 9, xp: 62, po: [10, 18],
+    nom: 'Élémentaire de magma', emoji: '🔥', niveau: 16, hp: 115, atk: 24, dex: 9, xp: 62, po: [10, 18],
     drops: [],
     attaques: [
       { nom: 'Projection de lave', emoji: '🌋', mult: 1.0, poids: 1, type: 'mono' },
     ],
   },
   'ignarok': {
-    nom: 'Ignarok, Cœur de Magma', emoji: '🌋', niveau: 18, boss: true, hp: 950, atk: 33, agi: 10, xp: 1600, po: [250, 350],
+    nom: 'Ignarok, Cœur de Magma', emoji: '🌋', niveau: 18, boss: true, hp: 950, atk: 33, dex: 10, xp: 1600, po: [250, 350],
     drops: [{ id: 'ecaille-draconique', chance: 1 }, { id: 'noyau-golem', chance: 1 }],
     attaques: [
       { nom: 'Poing de magma', emoji: '🌋', mult: 1.15, poids: 3, type: 'mono' },
@@ -340,7 +340,7 @@ const DONJONS = [
         type: 'epreuve',
         qui: 'Narrateur', emoji: '💀',
         texte: 'La galerie suivante est un ossuaire : des centaines de crânes empilés du sol au plafond, et un silence qui vous regarde passer. Le couloir est étroit — un seul os qui roule, et tout l’étage se réveillera.',
-        stat: 'agi', difficulte: 16,
+        stat: 'dex', difficulte: 16,
         reussite: {
           texte: 'Pas à pas, souffle court, vous glissez entre les piles sans en effleurer une seule. Au passage, vos doigts trouvent une coupelle d’offrandes que les siècles avaient oubliée.',
           effet: { po: 40, objets: { 'poussiere-spectre': 1 } },
@@ -393,7 +393,7 @@ const DONJONS = [
         type: 'epreuve',
         qui: 'Narrateur', emoji: '🌉',
         texte: 'Entre vous et la salle du trône, le pont des funérailles s’est effondré : il n’en reste qu’une poutre de marbre suspendue au-dessus d’un gouffre où chante de l’eau noire.',
-        stat: 'agi', difficulte: 16,
+        stat: 'dex', difficulte: 16,
         reussite: {
           texte: 'Bras écartés, un pied devant l’autre, vous traversez la poutre comme un funambule de cour. Sur la corniche d’en face, une cache royale n’attendait que vous.',
           effet: { po: 50, objets: { 'grande-potion-soin': 1 } },
@@ -485,7 +485,7 @@ const DONJONS = [
         type: 'epreuve',
         qui: 'Boulon', emoji: '⚗️',
         texte: 'La distillerie. Des alambics gros comme des tonneaux rotent des vapeurs multicolores. « Ne respirez pas les roses, ne touchez pas les vertes, ne regardez pas les bleues, » énumère Boulon. « Le chemin sûr change toutes les dix secondes. Suivez-moi. Vite. »',
-        stat: 'agi', difficulte: 19,
+        stat: 'dex', difficulte: 19,
         reussite: {
           texte: 'Vous dansez entre les vapeurs sur les talons de Boulon. Au dernier passage, vous cueillez au vol une fiole qui flottait, tranquille, au-dessus d’un alambic.',
           effet: { po: 60, objets: { 'grande-potion-soin': 1 } },
@@ -681,8 +681,8 @@ const DONJONS = [
         options: [
           {
             texte: '🧗 Grimper hisser le pavillon noir',
-            detail: 'Agilité ≥ 14 — Morvane paradera, sabre baissé',
-            condition: { stat: 'agi', min: 14 },
+            detail: 'Dextérité ≥ 14 — Morvane paradera, sabre baissé',
+            condition: { stat: 'dex', min: 14 },
             effet: { drapeau: 'pavillon-hisse' },
             resultat: 'Le mât proteste à chaque prise, mais vous dansez plus vite qu’il ne casse. Le pavillon noir claque au vent mort. En bas, une voix caverneuse s’exclame, presque émue : « Voilà qui est mieux ! »',
             suite: 'promesse',
@@ -839,7 +839,7 @@ const DONJONS = [
         type: 'epreuve',
         qui: 'Narrateur', emoji: '💨',
         texte: 'Le champ de geysers. Le sol siffle, crache, se tait — puis recommence, jamais dans le même ordre. Barguzan le traverse en trois enjambées de géant et vous attend de l’autre côté, poliment.',
-        stat: 'agi', difficulte: 24,
+        stat: 'dex', difficulte: 24,
         reussite: {
           texte: 'Vous lisez le sol comme une partition : deux pas, pause, trois pas, saut. Le dernier geyser fuse dans votre dos, vexé. Dans une vasque refroidie, une écaille attendait depuis mille ans.',
           effet: { po: 150, objets: { 'ecaille-draconique': 1 } },
@@ -953,7 +953,7 @@ Object.assign(OBJETS, {
   },
   'lame-du-firmament': {
     nom: 'Lame du Firmament', emoji: '🌌', type: 'equipement', slot: 'arme', niveau: 46,
-    rarete: 'divin', prixVente: 2600, bonus: { agi: 20, for: 12, crit: 10 },
+    rarete: 'divin', prixVente: 2600, bonus: { dex: 20, for: 12, crit: 10 },
     desc: 'Forgée dans la pluie d’étoiles d’un trône brisé. Récompense de la Couronne Céleste.',
   },
 });
@@ -961,7 +961,7 @@ Object.assign(OBJETS, {
 Object.assign(MONSTRES_DONJONS, {
   // ----- Le Sanctuaire des Marées (niv. 25-30) -----
   'pelerin-noye': {
-    nom: 'Pèlerin noyé', emoji: '🧎', niveau: 26, hp: 443, atk: 42, agi: 8, xp: 230, po: [26, 52],
+    nom: 'Pèlerin noyé', emoji: '🧎', niveau: 26, hp: 443, atk: 42, dex: 8, xp: 230, po: [26, 52],
     drops: [{ id: 'nacre-abyssale', chance: 0.3 }],
     attaques: [
       { nom: 'Étreinte suppliante', emoji: '🙏', mult: 1.0, poids: 3, type: 'mono' },
@@ -969,7 +969,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'garde-corail': {
-    nom: 'Garde de corail', emoji: '🪸', niveau: 28, hp: 510, atk: 45, agi: 9, xp: 265, po: [28, 56],
+    nom: 'Garde de corail', emoji: '🪸', niveau: 28, hp: 510, atk: 45, dex: 9, xp: 265, po: [28, 56],
     drops: [{ id: 'corail-sanglant', chance: 0.35 }],
     attaques: [
       { nom: 'Hallebarde incrustée', emoji: '🔱', mult: 1.15, poids: 3, type: 'mono' },
@@ -977,7 +977,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'oracle-corrompu': {
-    nom: 'Oracle corrompu', emoji: '🐙', niveau: 29, hp: 546, atk: 46, agi: 10, xp: 283, po: [29, 58],
+    nom: 'Oracle corrompu', emoji: '🐙', niveau: 29, hp: 546, atk: 46, dex: 10, xp: 283, po: [29, 58],
     drops: [{ id: 'larme-de-sirene', chance: 0.25 }],
     attaques: [
       { nom: 'Prophétie amère', emoji: '🔮', mult: 1.05, poids: 2, type: 'mono', effet: { type: 'poison', degats: 14, duree: 2 } },
@@ -985,7 +985,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'gardienne-des-marees': {
-    nom: 'Gardienne des Marées', emoji: '🌊', niveau: 30, boss: true, hp: 2444, atk: 59, agi: 11, xp: 1510, po: [180, 300],
+    nom: 'Gardienne des Marées', emoji: '🌊', niveau: 30, boss: true, hp: 2444, atk: 59, dex: 11, xp: 1510, po: [180, 300],
     drops: [{ id: 'larme-de-sirene', chance: 1 }, { id: 'nacre-abyssale', chance: 0.9 }],
     attaques: [
       { nom: 'Trident du jugement', emoji: '🔱', mult: 1.2, poids: 3, type: 'mono' },
@@ -1014,7 +1014,7 @@ Object.assign(MONSTRES_DONJONS, {
 
   // ----- La Couronne Céleste (niv. 42-50, équipe) -----
   'sentinelle-de-la-couronne': {
-    nom: 'Sentinelle de la Couronne', emoji: '⚙️', niveau: 44, hp: 1836, atk: 68, agi: 9, xp: 634, po: [44, 88],
+    nom: 'Sentinelle de la Couronne', emoji: '⚙️', niveau: 44, hp: 1836, atk: 68, dex: 9, xp: 634, po: [44, 88],
     drops: [{ id: 'acier-celeste', chance: 0.35 }],
     attaques: [
       { nom: 'Glaive de protocole', emoji: '⚙️', mult: 1.15, poids: 3, type: 'mono' },
@@ -1022,7 +1022,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'choeur-d-echos': {
-    nom: 'Chœur d’échos', emoji: '🎭', niveau: 46, hp: 1998, atk: 71, agi: 12, xp: 691, po: [46, 92],
+    nom: 'Chœur d’échos', emoji: '🎭', niveau: 46, hp: 1998, atk: 71, dex: 12, xp: 691, po: [46, 92],
     drops: [{ id: 'eclat-d-etoile', chance: 0.3 }],
     attaques: [
       { nom: 'Dissonance', emoji: '🎭', mult: 1.05, poids: 2, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
@@ -1030,7 +1030,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'executeur-astral': {
-    nom: 'Exécuteur astral', emoji: '⚖️', niveau: 48, hp: 2183, atk: 74, agi: 11, xp: 751, po: [48, 96],
+    nom: 'Exécuteur astral', emoji: '⚖️', niveau: 48, hp: 2183, atk: 74, dex: 11, xp: 751, po: [48, 96],
     drops: [{ id: 'plume-d-archon', chance: 0.15 }],
     attaques: [
       { nom: 'Verdict stellaire', emoji: '⚖️', mult: 1.25, poids: 3, type: 'mono' },
@@ -1038,14 +1038,14 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'eclat-d-archonte': {
-    nom: 'Éclat d’Archonte', emoji: '💫', niveau: 44, hp: 980, atk: 60, agi: 12, xp: 240, po: [15, 30],
+    nom: 'Éclat d’Archonte', emoji: '💫', niveau: 44, hp: 980, atk: 60, dex: 12, xp: 240, po: [15, 30],
     drops: [],
     attaques: [
       { nom: 'Scintillement blessant', emoji: '💫', mult: 1.0, poids: 1, type: 'mono' },
     ],
   },
   'archonte-dechu': {
-    nom: 'L’Archonte Déchu', emoji: '👑', niveau: 50, boss: true, hp: 9916, atk: 96, agi: 12, xp: 4070, po: [350, 550],
+    nom: 'L’Archonte Déchu', emoji: '👑', niveau: 50, boss: true, hp: 9916, atk: 96, dex: 12, xp: 4070, po: [350, 550],
     drops: [{ id: 'plume-d-archon', chance: 1 }, { id: 'essence-primordiale', chance: 0.6 }],
     attaques: [
       { nom: 'Sceptre du zénith', emoji: '🌠', mult: 1.2, poids: 3, type: 'mono' },
@@ -1274,7 +1274,7 @@ DONJONS.push(
         type: 'epreuve',
         qui: 'Céleste-Écho', emoji: '☁️',
         texte: 'Le pont qui mène aux Archives se dématérialise par plaques — la citadelle recycle sa propre substance pour retarder la chute. « Il tiendra, » assure l’Écho. « Statistiquement. Par endroits. Courez selon un motif imprévisible, c’est ma meilleure recommandation. »',
-        stat: 'agi', difficulte: 36,
+        stat: 'dex', difficulte: 36,
         reussite: {
           texte: 'Vous courez sur des nuages qui cessent d’exister une demi-seconde après votre passage. Sur la dernière plaque, un fragment d’acier céleste s’était détaché du garde-corps — il est pour vous.',
           effet: { objets: { 'acier-celeste': 2 } },
@@ -1425,12 +1425,12 @@ DONJONS.push(
 Object.assign(OBJETS, {
   'linceul-de-nihelm': {
     nom: 'Linceul de Nihelm', emoji: '🕳️', type: 'equipement', slot: 'torse', niveau: 50,
-    rarete: 'divin', prixVente: 3200, bonus: { vit: 22, for: 10, pvMax: 120, blocage: 6 },
+    rarete: 'divin', prixVente: 3200, bonus: { vit: 22, for: 10, pvMax: 120, tenacite: 6 },
     desc: 'Tissé dans l’ombre de tous les monstres vaincus. Il pèse exactement le poids d’une conscience tranquille.',
   },
   'couronne-des-heures': {
     nom: 'Couronne des Heures', emoji: '⏰', type: 'equipement', slot: 'tete', niveau: 50,
-    rarete: 'divin', prixVente: 3600, bonus: { int: 20, agi: 12, pmMax: 50, esquive: 6 },
+    rarete: 'divin', prixVente: 3600, bonus: { int: 20, dex: 12, pmMax: 50, celerite: 6 },
     desc: 'Chaque pointe est une aiguille arrêtée sur un instant parfait. Récompense de la Forteresse du Temps Brisé.',
   },
   'coeur-du-neant': {
@@ -1440,7 +1440,7 @@ Object.assign(OBJETS, {
   },
   'sceau-de-l-aube': {
     nom: 'Sceau de l’Aube', emoji: '🌅', type: 'equipement', slot: 'accessoire', niveau: 50,
-    rarete: 'divin', prixVente: 4500, bonus: { cha: 12, vit: 14, pvMax: 90, esquive: 5 },
+    rarete: 'divin', prixVente: 4500, bonus: { cha: 12, vit: 14, pvMax: 90, celerite: 5 },
     desc: 'La marque de qui a refermé l’Œil sans le regarder mourir. Le matin lui obéit un peu.',
   },
 });
@@ -1448,7 +1448,7 @@ Object.assign(OBJETS, {
 Object.assign(MONSTRES_DONJONS, {
   // ----- Le Gouffre de Nihelm (défi 50) -----
   'ombre-de-heros': {
-    nom: 'Ombre de héros', emoji: '👤', niveau: 52, hp: 2550, atk: 79, agi: 14, xp: 879, po: [52, 104],
+    nom: 'Ombre de héros', emoji: '👤', niveau: 52, hp: 2550, atk: 79, dex: 14, xp: 879, po: [52, 104],
     drops: [{ id: 'essence-primordiale', chance: 0.1 }],
     attaques: [
       { nom: 'Lame retournée', emoji: '🗡️', mult: 1.1, poids: 3, type: 'mono' },
@@ -1456,7 +1456,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'deuil-rampant': {
-    nom: 'Deuil rampant', emoji: '🕷️', niveau: 53, hp: 2648, atk: 81, agi: 10, xp: 913, po: [53, 106],
+    nom: 'Deuil rampant', emoji: '🕷️', niveau: 53, hp: 2648, atk: 81, dex: 10, xp: 913, po: [53, 106],
     drops: [{ id: 'poussiere-spectre', chance: 0.5 }],
     attaques: [
       { nom: 'Morsure de chagrin', emoji: '🕷️', mult: 1.0, poids: 3, type: 'mono', effet: { type: 'poison', degats: 22, duree: 2 } },
@@ -1464,7 +1464,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'porteur-de-cendres': {
-    nom: 'Porteur de cendres', emoji: '⚱️', niveau: 54, hp: 2748, atk: 82, agi: 11, xp: 947, po: [54, 108],
+    nom: 'Porteur de cendres', emoji: '⚱️', niveau: 54, hp: 2748, atk: 82, dex: 11, xp: 947, po: [54, 108],
     drops: [{ id: 'os-ancien', chance: 0.45 }],
     attaques: [
       { nom: 'Urne brisée', emoji: '⚱️', mult: 1.15, poids: 3, type: 'mono' },
@@ -1472,7 +1472,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'avatar-de-nihelm': {
-    nom: 'L’Avatar de Nihelm', emoji: '🕳️', niveau: 55, boss: true, hp: 11950, atk: 105, agi: 13, xp: 4910, po: [400, 600],
+    nom: 'L’Avatar de Nihelm', emoji: '🕳️', niveau: 55, boss: true, hp: 11950, atk: 105, dex: 13, xp: 4910, po: [400, 600],
     drops: [{ id: 'essence-primordiale', chance: 1 }, { id: 'poussiere-spectre', chance: 1 }],
     attaques: [
       { nom: 'Poigne du gouffre', emoji: '🕳️', mult: 1.2, poids: 3, type: 'mono' },
@@ -1505,7 +1505,7 @@ Object.assign(MONSTRES_DONJONS, {
 
   // ----- La Forteresse du Temps Brisé (défi 60) -----
   'sentinelle-des-heures': {
-    nom: 'Sentinelle des heures', emoji: '⏳', niveau: 60, hp: 3384, atk: 91, agi: 12, xp: 1166, po: [60, 120],
+    nom: 'Sentinelle des heures', emoji: '⏳', niveau: 60, hp: 3384, atk: 91, dex: 12, xp: 1166, po: [60, 120],
     drops: [{ id: 'eclat-d-etoile', chance: 0.3 }],
     attaques: [
       { nom: 'Hallebarde-aiguille', emoji: '🕰️', mult: 1.1, poids: 3, type: 'mono' },
@@ -1513,7 +1513,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'regret-devorant': {
-    nom: 'Regret dévorant', emoji: '🫥', niveau: 61, hp: 3497, atk: 92, agi: 11, xp: 1205, po: [61, 122],
+    nom: 'Regret dévorant', emoji: '🫥', niveau: 61, hp: 3497, atk: 92, dex: 11, xp: 1205, po: [61, 122],
     drops: [{ id: 'larme-de-sirene', chance: 0.3 }],
     attaques: [
       { nom: 'Si-seulement', emoji: '🫥', mult: 1.05, poids: 2, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
@@ -1521,7 +1521,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'paradoxe-arme': {
-    nom: 'Paradoxe armé', emoji: '🌀', niveau: 62, hp: 3611, atk: 94, agi: 15, xp: 1244, po: [62, 124],
+    nom: 'Paradoxe armé', emoji: '🌀', niveau: 62, hp: 3611, atk: 94, dex: 15, xp: 1244, po: [62, 124],
     drops: [{ id: 'coeur-d-orage', chance: 0.3 }],
     attaques: [
       { nom: 'Coup déjà porté', emoji: '🌀', mult: 1.2, poids: 3, type: 'mono' },
@@ -1529,7 +1529,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'grand-horloger': {
-    nom: 'Le Grand Horloger', emoji: '⏰', niveau: 62, boss: true, hp: 15150, atk: 117, agi: 14, xp: 6220, po: [500, 750],
+    nom: 'Le Grand Horloger', emoji: '⏰', niveau: 62, boss: true, hp: 15150, atk: 117, dex: 14, xp: 6220, po: [500, 750],
     drops: [{ id: 'essence-primordiale', chance: 1 }, { id: 'eclat-d-etoile', chance: 1 }],
     attaques: [
       { nom: 'Balancier de bronze', emoji: '⏰', mult: 1.2, poids: 3, type: 'mono' },
@@ -1567,7 +1567,7 @@ Object.assign(MONSTRES_DONJONS, {
 
   // ----- L'Œil du Néant (défi 70) -----
   'annonciateur-du-neant': {
-    nom: 'Annonciateur du Néant', emoji: '🌑', niveau: 70, hp: 4593, atk: 106, agi: 14, xp: 1582, po: [70, 140],
+    nom: 'Annonciateur du Néant', emoji: '🌑', niveau: 70, hp: 4593, atk: 106, dex: 14, xp: 1582, po: [70, 140],
     drops: [{ id: 'essence-primordiale', chance: 0.25 }],
     attaques: [
       { nom: 'Verbe d’effacement', emoji: '🌑', mult: 1.15, poids: 3, type: 'mono' },
@@ -1575,7 +1575,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'mange-etoiles': {
-    nom: 'Mange-étoiles', emoji: '🐋', niveau: 71, hp: 4724, atk: 107, agi: 12, xp: 1627, po: [71, 142],
+    nom: 'Mange-étoiles', emoji: '🐋', niveau: 71, hp: 4724, atk: 107, dex: 12, xp: 1627, po: [71, 142],
     drops: [{ id: 'eclat-d-etoile', chance: 0.6 }],
     attaques: [
       { nom: 'Gober la lumière', emoji: '🐋', mult: 1.3, poids: 2, type: 'mono' },
@@ -1583,14 +1583,14 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'echo-du-devoreur': {
-    nom: 'Écho du Dévoreur', emoji: '💫', niveau: 70, hp: 2300, atk: 95, agi: 15, xp: 380, po: [20, 40],
+    nom: 'Écho du Dévoreur', emoji: '💫', niveau: 70, hp: 2300, atk: 95, dex: 15, xp: 380, po: [20, 40],
     drops: [],
     attaques: [
       { nom: 'Réplique du vide', emoji: '💫', mult: 1.0, poids: 1, type: 'mono' },
     ],
   },
   'celui-qui-attend': {
-    nom: 'Celui-qui-Attend', emoji: '👁️', niveau: 72, boss: true, hp: 20400, atk: 135, agi: 15, xp: 8400, po: [700, 1000],
+    nom: 'Celui-qui-Attend', emoji: '👁️', niveau: 72, boss: true, hp: 20400, atk: 135, dex: 15, xp: 8400, po: [700, 1000],
     drops: [{ id: 'essence-primordiale', chance: 1 }, { id: 'plume-d-archon', chance: 0.8 }],
     attaques: [
       { nom: 'Regard qui défait', emoji: '👁️', mult: 1.2, poids: 3, type: 'mono' },
@@ -1656,7 +1656,7 @@ DONJONS.push(
         type: 'epreuve',
         qui: 'Narrateur', emoji: '🪢',
         texte: 'La paroi du gouffre descend à pic, luisante d’une rosée noire. Les prises existent — mais elles bougent, très légèrement, comme si la pierre respirait. Le Fossoyeur, lui, descend par son propre escalier, qu’il refuse de partager : « professionnel uniquement ».',
-        stat: 'agi', difficulte: 40,
+        stat: 'dex', difficulte: 40,
         reussite: {
           texte: 'Vous descendez la paroi vivante comme si vous l’aviez gravie cent fois. À mi-hauteur, une anfractuosité abrite le sac d’un précédent visiteur — qui n’en aura plus besoin.',
           effet: { po: 600, objets: { 'potion-supreme-soin': 2 } },

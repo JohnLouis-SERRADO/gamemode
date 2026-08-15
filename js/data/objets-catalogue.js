@@ -8,7 +8,7 @@
 // Catalogue d'objets : équipement, consommables, matériaux.
 // type : 'equipement' | 'consommable' | 'materiau'
 // slot : 'arme' | 'tete' | 'torse' | 'jambes' | 'accessoire'
-// bonus : { for, int, agi, vit, pvMax, pmMax, crit (%) }
+// bonus : { for, int, dex, vit, pvMax, pmMax, crit (%) }
 // prix : prix d'achat en boutique (absent = introuvable en boutique)
 // prixVente : prix de vente d'un matériau (équipement/consommable : 40 % du prix)
 // =====================================================================
@@ -29,8 +29,8 @@ const OBJETS = {
   'epee-courte':      { nom: 'Épée courte', emoji: '🗡️', type: 'equipement', slot: 'arme', niveau: 1, prix: 40,  bonus: { for: 2 }, desc: 'Une lame simple et fiable.' },
   'lame-de-fer':      { nom: 'Lame de fer', emoji: '⚔️', type: 'equipement', slot: 'arme', niveau: 4, prix: 90,  bonus: { for: 4, vit: 1 }, desc: 'Forgée dans le fer des Collines.' },
   'epee-chevalier':   { nom: 'Épée de chevalier', emoji: '⚔️', type: 'equipement', slot: 'arme', niveau: 8, prix: 260, bonus: { for: 7, vit: 2 }, desc: 'L’arme des défenseurs de Valciel.' },
-  'croc-de-guerre':   { nom: 'Croc de guerre', emoji: '🪓', type: 'equipement', slot: 'arme', niveau: 12, prix: 480, bonus: { for: 10, agi: 2 }, desc: 'Taillée pour les champs de bataille.' },
-  'lame-crepuscule':  { nom: 'Lame du crépuscule', emoji: '🌘', type: 'equipement', slot: 'arme', niveau: 16, prixVente: 350, bonus: { for: 14, agi: 3, crit: 5 }, desc: 'Une lame légendaire, forgée à l’atelier seulement.' },
+  'croc-de-guerre':   { nom: 'Croc de guerre', emoji: '🪓', type: 'equipement', slot: 'arme', niveau: 12, prix: 480, bonus: { for: 10, dex: 2 }, desc: 'Taillée pour les champs de bataille.' },
+  'lame-crepuscule':  { nom: 'Lame du crépuscule', emoji: '🌘', type: 'equipement', slot: 'arme', niveau: 16, prixVente: 350, bonus: { for: 14, dex: 3, crit: 5 }, desc: 'Une lame légendaire, forgée à l’atelier seulement.' },
 
   // ----- Armes : Intelligence -----
   'baton-noueux':     { nom: 'Bâton noueux', emoji: '🪄', type: 'equipement', slot: 'arme', niveau: 1, prix: 40,  bonus: { int: 2 }, desc: 'Un bâton de novice, chargé d’une étincelle.' },
@@ -39,15 +39,15 @@ const OBJETS = {
   'baton-tempetes':   { nom: 'Bâton des tempêtes', emoji: '⚡', type: 'equipement', slot: 'arme', niveau: 12, prix: 480, bonus: { int: 10, pmMax: 14 }, desc: 'L’orage y gronde en permanence.' },
   'sceptre-neant':    { nom: 'Sceptre du néant', emoji: '🌀', type: 'equipement', slot: 'arme', niveau: 16, prixVente: 350, bonus: { int: 14, pmMax: 20, crit: 5 }, desc: 'Un artefact légendaire, forgé à l’atelier seulement.' },
 
-  // ----- Armes : Agilité -----
-  'arc-court':        { nom: 'Arc court', emoji: '🏹', type: 'equipement', slot: 'arme', niveau: 1, prix: 40,  bonus: { agi: 2 }, desc: 'Léger et maniable.' },
-  'arc-chasse':       { nom: 'Arc de chasse', emoji: '🏹', type: 'equipement', slot: 'arme', niveau: 4, prix: 90,  bonus: { agi: 4, for: 1 }, desc: 'L’allié des pisteurs des Plaines.' },
-  'arc-elfique':      { nom: 'Arc long elfique', emoji: '🏹', type: 'equipement', slot: 'arme', niveau: 8, prix: 260, bonus: { agi: 7, for: 2 }, desc: 'Un bois souple venu de la Forêt des Murmures.' },
-  'arc-precision':    { nom: 'Arc de précision', emoji: '🎯', type: 'equipement', slot: 'arme', niveau: 12, prix: 480, bonus: { agi: 10, crit: 4 }, desc: 'Chaque flèche trouve sa cible.' },
-  'arc-du-vent':      { nom: 'Arc du vent', emoji: '🌪️', type: 'equipement', slot: 'arme', niveau: 16, prixVente: 350, bonus: { agi: 14, crit: 8 }, desc: 'Un arc légendaire, forgé à l’atelier seulement.' },
+  // ----- Armes : Dextérité -----
+  'arc-court':        { nom: 'Arc court', emoji: '🏹', type: 'equipement', slot: 'arme', niveau: 1, prix: 40,  bonus: { dex: 2 }, desc: 'Léger et maniable.' },
+  'arc-chasse':       { nom: 'Arc de chasse', emoji: '🏹', type: 'equipement', slot: 'arme', niveau: 4, prix: 90,  bonus: { dex: 4, for: 1 }, desc: 'L’allié des pisteurs des Plaines.' },
+  'arc-elfique':      { nom: 'Arc long elfique', emoji: '🏹', type: 'equipement', slot: 'arme', niveau: 8, prix: 260, bonus: { dex: 7, for: 2 }, desc: 'Un bois souple venu de la Forêt des Murmures.' },
+  'arc-precision':    { nom: 'Arc de précision', emoji: '🎯', type: 'equipement', slot: 'arme', niveau: 12, prix: 480, bonus: { dex: 10, crit: 4 }, desc: 'Chaque flèche trouve sa cible.' },
+  'arc-du-vent':      { nom: 'Arc du vent', emoji: '🌪️', type: 'equipement', slot: 'arme', niveau: 16, prixVente: 350, bonus: { dex: 14, crit: 8 }, desc: 'Un arc légendaire, forgé à l’atelier seulement.' },
 
   // ----- Tête -----
-  'capuche-cuir':     { nom: 'Capuche de cuir', emoji: '🧢', type: 'equipement', slot: 'tete', niveau: 2, prix: 45,  bonus: { vit: 1, agi: 1 }, desc: 'Discrète et confortable.' },
+  'capuche-cuir':     { nom: 'Capuche de cuir', emoji: '🧢', type: 'equipement', slot: 'tete', niveau: 2, prix: 45,  bonus: { vit: 1, dex: 1 }, desc: 'Discrète et confortable.' },
   'casque-fer':       { nom: 'Casque de fer', emoji: '⛑️', type: 'equipement', slot: 'tete', niveau: 6, prix: 130, bonus: { vit: 2, pvMax: 10 }, desc: 'Protège des mauvais coups.' },
   'diademe-mage':     { nom: 'Diadème de mage', emoji: '👑', type: 'equipement', slot: 'tete', niveau: 6, prix: 130, bonus: { int: 2, pmMax: 8 }, desc: 'Aiguise l’esprit.' },
   'heaume-chevalier': { nom: 'Heaume de chevalier', emoji: '🪖', type: 'equipement', slot: 'tete', niveau: 10, prix: 300, bonus: { vit: 4, pvMax: 20 }, desc: 'Le heaume des champions.' },
@@ -61,18 +61,18 @@ const OBJETS = {
   'armure-draconique': { nom: 'Armure draconique', emoji: '🐲', type: 'equipement', slot: 'torse', niveau: 14, prixVente: 300, bonus: { vit: 6, for: 2, pvMax: 40 }, desc: 'Se forge à l’atelier avec des écailles de dragon.' },
 
   // ----- Jambes -----
-  'pantalon-toile':   { nom: 'Pantalon de toile', emoji: '👖', type: 'equipement', slot: 'jambes', niveau: 2, prix: 40,  bonus: { vit: 1, agi: 1 }, desc: 'Pratique pour marcher loin.' },
-  'jambieres-cuir':   { nom: 'Jambières de cuir', emoji: '🦵', type: 'equipement', slot: 'jambes', niveau: 6, prix: 120, bonus: { vit: 2, agi: 2 }, desc: 'Souples et résistantes.' },
+  'pantalon-toile':   { nom: 'Pantalon de toile', emoji: '👖', type: 'equipement', slot: 'jambes', niveau: 2, prix: 40,  bonus: { vit: 1, dex: 1 }, desc: 'Pratique pour marcher loin.' },
+  'jambieres-cuir':   { nom: 'Jambières de cuir', emoji: '🦵', type: 'equipement', slot: 'jambes', niveau: 6, prix: 120, bonus: { vit: 2, dex: 2 }, desc: 'Souples et résistantes.' },
   'jambieres-plates': { nom: 'Jambières de plates', emoji: '🦿', type: 'equipement', slot: 'jambes', niveau: 10, prix: 260, bonus: { vit: 4, pvMax: 15 }, desc: 'Lourdes, mais sûres.' },
-  'jambieres-zephyr': { nom: 'Jambières du zéphyr', emoji: '💨', type: 'equipement', slot: 'jambes', niveau: 14, prixVente: 250, bonus: { agi: 4, vit: 3, crit: 3 }, desc: 'Se cousent à l’atelier seulement.' },
+  'jambieres-zephyr': { nom: 'Jambières du zéphyr', emoji: '💨', type: 'equipement', slot: 'jambes', niveau: 14, prixVente: 250, bonus: { dex: 4, vit: 3, crit: 3 }, desc: 'Se cousent à l’atelier seulement.' },
 
   // ----- Accessoires -----
   'anneau-force':     { nom: 'Anneau de force', emoji: '💍', type: 'equipement', slot: 'accessoire', niveau: 3, prix: 80,  bonus: { for: 2 }, desc: 'Un anneau qui durcit le poing.' },
   'anneau-esprit':    { nom: 'Anneau d’esprit', emoji: '💍', type: 'equipement', slot: 'accessoire', niveau: 3, prix: 80,  bonus: { int: 2 }, desc: 'Un anneau qui éclaircit les pensées.' },
-  'anneau-vent':      { nom: 'Anneau de vent', emoji: '💍', type: 'equipement', slot: 'accessoire', niveau: 3, prix: 80,  bonus: { agi: 2 }, desc: 'Un anneau léger comme une brise.' },
+  'anneau-vent':      { nom: 'Anneau de vent', emoji: '💍', type: 'equipement', slot: 'accessoire', niveau: 3, prix: 80,  bonus: { dex: 2 }, desc: 'Un anneau léger comme une brise.' },
   'amulette-vie':     { nom: 'Amulette de vie', emoji: '📿', type: 'equipement', slot: 'accessoire', niveau: 5, prix: 120, bonus: { pvMax: 15 }, desc: 'Bat doucement, comme un second cœur.' },
   'talisman-mana':    { nom: 'Talisman de mana', emoji: '🧿', type: 'equipement', slot: 'accessoire', niveau: 5, prix: 120, bonus: { pmMax: 10 }, desc: 'Une réserve d’énergie arcanique.' },
-  'anneau-chasseur':  { nom: 'Anneau du chasseur', emoji: '💍', type: 'equipement', slot: 'accessoire', niveau: 9, prix: 280, bonus: { agi: 3, crit: 3 }, desc: 'Le fétiche des grands pisteurs.' },
+  'anneau-chasseur':  { nom: 'Anneau du chasseur', emoji: '💍', type: 'equipement', slot: 'accessoire', niveau: 9, prix: 280, bonus: { dex: 3, crit: 3 }, desc: 'Le fétiche des grands pisteurs.' },
   'medaillon-sage':   { nom: 'Médaillon du sage', emoji: '🏅', type: 'equipement', slot: 'accessoire', niveau: 9, prix: 280, bonus: { int: 4, pmMax: 8 }, desc: 'Transmis de sage en sage.' },
   'sceau-colosse':    { nom: 'Sceau du colosse', emoji: '🔱', type: 'equipement', slot: 'accessoire', niveau: 12, prix: 420, bonus: { for: 4, pvMax: 20 }, desc: 'Pèse lourd — dans tous les sens.' },
   'oeil-dragon':      { nom: 'Œil de dragon', emoji: '🐉', type: 'equipement', slot: 'accessoire', niveau: 15, prixVente: 400, bonus: { for: 3, int: 3, crit: 5 }, desc: 'Se sertit à l’atelier seulement.' },
@@ -80,9 +80,9 @@ const OBJETS = {
 
   // ----- Curiosités de l'Antiquaire -----
   'pendentif-lunaire': { nom: 'Pendentif lunaire', emoji: '🌙', type: 'equipement', slot: 'accessoire', niveau: 7, prix: 160, vendeur: 'antiquaire', bonus: { int: 3, vit: 1 }, desc: 'Capture un rayon de lune éternel.' },
-  'broche-scarabee':   { nom: 'Broche scarabée', emoji: '🪲', type: 'equipement', slot: 'accessoire', niveau: 10, prix: 220, vendeur: 'antiquaire', bonus: { agi: 2, vit: 2, crit: 2 }, desc: 'Porte-bonheur des pilleurs de tombes.' },
+  'broche-scarabee':   { nom: 'Broche scarabée', emoji: '🪲', type: 'equipement', slot: 'accessoire', niveau: 10, prix: 220, vendeur: 'antiquaire', bonus: { dex: 2, vit: 2, crit: 2 }, desc: 'Porte-bonheur des pilleurs de tombes.' },
   'anneau-sanguin':    { nom: 'Anneau sanguin', emoji: '🩸', type: 'equipement', slot: 'accessoire', niveau: 11, prix: 300, vendeur: 'antiquaire', bonus: { for: 3, pvMax: 15 }, desc: 'Bat au rythme de votre cœur.' },
-  'orbe-des-dunes':    { nom: 'Orbe des dunes', emoji: '🔮', type: 'equipement', slot: 'accessoire', niveau: 13, prixVente: 130, bonus: { int: 3, agi: 2, crit: 2 }, desc: 'Se façonne à l’atelier avec des perles des sables.' },
+  'orbe-des-dunes':    { nom: 'Orbe des dunes', emoji: '🔮', type: 'equipement', slot: 'accessoire', niveau: 13, prixVente: 130, bonus: { int: 3, dex: 2, crit: 2 }, desc: 'Se façonne à l’atelier avec des perles des sables.' },
 
   'potion-supreme-soin': { nom: 'Potion suprême de soin', emoji: '🍷', type: 'consommable', rarete: 'rare', prixVente: 60, effet: { type: 'pv', valeur: 120 }, desc: 'Rend 120 PV. Se distille à l’atelier.' },
   'potion-supreme-mana': { nom: 'Potion suprême de mana', emoji: '🍾', type: 'consommable', rarete: 'rare', prixVente: 70, effet: { type: 'pm', valeur: 60 }, desc: 'Rend 60 PM. Se distille à l’atelier.' },
@@ -111,14 +111,14 @@ const OBJETS = {
   // ----- Nouveaux étals de l'Antiquaire : curiosités d'équipement -----
   'patte-de-lapin':       { nom: 'Patte de lapin usée', emoji: '🐰', type: 'equipement', slot: 'accessoire', niveau: 4, rarete: 'inhabituel', prix: 90, vendeur: 'antiquaire', bonus: { cha: 2 }, desc: 'Elle n’a pas porté chance au lapin, mais qui sait.' },
   'monocle-savant':       { nom: 'Monocle du savant', emoji: '🧐', type: 'equipement', slot: 'accessoire', niveau: 6, rarete: 'inhabituel', prix: 150, vendeur: 'antiquaire', bonus: { int: 3, cha: 1 }, desc: 'On y voit plus clair — surtout dans les grimoires.' },
-  'gants-du-voleur':      { nom: 'Gants du voleur repenti', emoji: '🧤', type: 'equipement', slot: 'accessoire', niveau: 8, rarete: 'rare', prix: 210, vendeur: 'antiquaire', bonus: { agi: 3, cha: 2 }, desc: '« Repenti », précise l’étiquette, deux fois.' },
+  'gants-du-voleur':      { nom: 'Gants du voleur repenti', emoji: '🧤', type: 'equipement', slot: 'accessoire', niveau: 8, rarete: 'rare', prix: 210, vendeur: 'antiquaire', bonus: { dex: 3, cha: 2 }, desc: '« Repenti », précise l’étiquette, deux fois.' },
   'ceinturon-cloute':     { nom: 'Ceinturon clouté', emoji: '🥋', type: 'equipement', slot: 'accessoire', niveau: 9, rarete: 'rare', prix: 240, vendeur: 'antiquaire', bonus: { for: 3, pvMax: 10 }, desc: 'Ayant appartenu à un champion de lutte naine.' },
-  'boussole-detraquee':   { nom: 'Boussole détraquée', emoji: '🧭', type: 'equipement', slot: 'accessoire', niveau: 11, rarete: 'rare', prix: 300, vendeur: 'antiquaire', bonus: { agi: 3, int: 2, crit: 2 }, desc: 'Elle n’indique pas le nord, mais toujours quelque chose d’intéressant.' },
+  'boussole-detraquee':   { nom: 'Boussole détraquée', emoji: '🧭', type: 'equipement', slot: 'accessoire', niveau: 11, rarete: 'rare', prix: 300, vendeur: 'antiquaire', bonus: { dex: 3, int: 2, crit: 2 }, desc: 'Elle n’indique pas le nord, mais toujours quelque chose d’intéressant.' },
   'chope-runique':        { nom: 'Chope runique', emoji: '🍻', type: 'equipement', slot: 'accessoire', niveau: 12, rarete: 'rare', prix: 330, vendeur: 'antiquaire', bonus: { vit: 4, cha: 2 }, desc: 'Grave « santé ! » en sept langues mortes.' },
   'cape-mitee':           { nom: 'Cape mitée (mais magique)', emoji: '🧥', type: 'equipement', slot: 'accessoire', niveau: 14, rarete: 'epique', prix: 420, vendeur: 'antiquaire', bonus: { int: 4, vit: 3, pmMax: 12 }, desc: 'Les trous seraient « décoratifs », jure l’antiquaire.' },
   'dent-requin-fossile':  { nom: 'Dent de requin fossile', emoji: '🦈', type: 'equipement', slot: 'accessoire', niveau: 15, rarete: 'epique', prix: 480, vendeur: 'antiquaire', bonus: { for: 5, crit: 3 }, desc: 'Le requin, lui, date d’avant les Royaumes.' },
-  'sablier-fele':         { nom: 'Sablier fêlé', emoji: '⏳', type: 'equipement', slot: 'accessoire', niveau: 17, rarete: 'epique', prix: 590, vendeur: 'antiquaire', bonus: { agi: 5, cha: 3, crit: 3 }, desc: 'Son sable remonte, certains soirs.' },
-  'idole-sans-nom':       { nom: 'Idole sans nom', emoji: '🗿', type: 'equipement', slot: 'accessoire', niveau: 19, rarete: 'legendaire', prix: 750, vendeur: 'antiquaire', bonus: { for: 3, int: 3, agi: 3, vit: 3, cha: 3 }, desc: 'Personne ne sait qui elle représente. Elle, si.' },
+  'sablier-fele':         { nom: 'Sablier fêlé', emoji: '⏳', type: 'equipement', slot: 'accessoire', niveau: 17, rarete: 'epique', prix: 590, vendeur: 'antiquaire', bonus: { dex: 5, cha: 3, crit: 3 }, desc: 'Son sable remonte, certains soirs.' },
+  'idole-sans-nom':       { nom: 'Idole sans nom', emoji: '🗿', type: 'equipement', slot: 'accessoire', niveau: 19, rarete: 'legendaire', prix: 750, vendeur: 'antiquaire', bonus: { for: 3, int: 3, dex: 3, vit: 3, cha: 3 }, desc: 'Personne ne sait qui elle représente. Elle, si.' },
 
   // ----- Consommables -----
   'potion-soin':        { nom: 'Potion de soin', emoji: '🧪', type: 'consommable', prix: 15,  effet: { type: 'pv', valeur: 30 },  desc: 'Rend 30 PV.' },
@@ -146,14 +146,14 @@ const OBJETS = {
   'perle-des-sables':   { nom: 'Perle des sables', emoji: '💠', type: 'materiau', prixVente: 55, desc: 'Le désert la polit pendant un siècle.' },
 
   // ----- Trophées uniques des boss (trouvés dans leurs coffres) -----
-  'croc-de-l-alpha':      { nom: 'Croc de l’Alpha', emoji: '🐺', type: 'equipement', slot: 'accessoire', niveau: 4,  rarete: 'epique',     prixVente: 120, bonus: { for: 3, agi: 2 }, desc: 'Trophée du Loup Alpha des Plaines.' },
-  'couronne-de-soie':     { nom: 'Couronne de soie', emoji: '🕷️', type: 'equipement', slot: 'tete',       niveau: 7,  rarete: 'epique',     prixVente: 160, bonus: { agi: 3, int: 2, pmMax: 8 }, desc: 'Trophée de la Matriarche des Murmures.' },
+  'croc-de-l-alpha':      { nom: 'Croc de l’Alpha', emoji: '🐺', type: 'equipement', slot: 'accessoire', niveau: 4,  rarete: 'epique',     prixVente: 120, bonus: { for: 3, dex: 2 }, desc: 'Trophée du Loup Alpha des Plaines.' },
+  'couronne-de-soie':     { nom: 'Couronne de soie', emoji: '🕷️', type: 'equipement', slot: 'tete',       niveau: 7,  rarete: 'epique',     prixVente: 160, bonus: { dex: 3, int: 2, pmMax: 8 }, desc: 'Trophée de la Matriarche des Murmures.' },
   'pagne-du-chef-orc':    { nom: 'Pagne du chef orc', emoji: '👹', type: 'equipement', slot: 'jambes',     niveau: 9,  rarete: 'epique',     prixVente: 190, bonus: { for: 3, vit: 3, pvMax: 15 }, desc: 'Trophée du Chef de guerre des Collines.' },
   'coeur-de-l-hydre':     { nom: 'Cœur de l’Hydre', emoji: '🐉', type: 'equipement', slot: 'accessoire', niveau: 11, rarete: 'epique',     prixVente: 240, bonus: { int: 4, vit: 2, pmMax: 12 }, desc: 'Trophée de l’Hydre des brumes. Il bat encore.' },
   'sceau-du-roi-dechu':   { nom: 'Sceau du Roi déchu', emoji: '💍', type: 'equipement', slot: 'accessoire', niveau: 13, rarete: 'legendaire', prixVente: 320, bonus: { int: 5, cha: 2, crit: 3 }, desc: 'Trophée du maître des Cryptes Oubliées.' },
   'dent-du-ver':          { nom: 'Dent du Ver colossal', emoji: '🪱', type: 'equipement', slot: 'arme',       niveau: 16, rarete: 'legendaire', prixVente: 400, bonus: { for: 12, cha: 3, crit: 4 }, desc: 'Trophée du Ver des sables. Encore acérée.' },
   'noyau-de-l-ancien':    { nom: 'Noyau de l’Ancien', emoji: '🌋', type: 'equipement', slot: 'accessoire', niveau: 17, rarete: 'legendaire', prixVente: 450, bonus: { vit: 5, pvMax: 30, cha: 2 }, desc: 'Trophée de l’Élémentaire ancien des Pics.' },
-  'larme-du-gardien':     { nom: 'Larme du Gardien', emoji: '💧', type: 'equipement', slot: 'accessoire', niveau: 19, rarete: 'legendaire', prixVente: 600, bonus: { for: 4, int: 4, agi: 4, cha: 3 }, desc: 'Trophée du Gardien éternel des Profondeurs.' },
+  'larme-du-gardien':     { nom: 'Larme du Gardien', emoji: '💧', type: 'equipement', slot: 'accessoire', niveau: 19, rarete: 'legendaire', prixVente: 600, bonus: { for: 4, int: 4, dex: 4, cha: 3 }, desc: 'Trophée du Gardien éternel des Profondeurs.' },
 };
 
 // ----- Matériaux des Terres lointaines (v10, niv. 22-50) -----
@@ -184,13 +184,13 @@ Object.assign(OBJETS, {
   'essence-primordiale': { nom: 'Essence primordiale', emoji: '✨', type: 'materiau', prixVente: 350, desc: 'La matière première du monde, en flacon.' },
 
   // ----- Trophées uniques des boss des Terres lointaines -----
-  'crochet-de-sarpense':  { nom: 'Crochet de Sarpense', emoji: '🐍', type: 'equipement', slot: 'arme', niveau: 28, rarete: 'epique', prixVente: 700, bonus: { agi: 18, for: 6, crit: 4 }, desc: 'Trophée de la Matriarche de Vaï-Sombre.' },
-  'serre-du-rokh':        { nom: 'Serre du Rokh', emoji: '🦅', type: 'equipement', slot: 'accessoire', niveau: 28, rarete: 'epique', prixVente: 700, bonus: { agi: 8, for: 6, esquive: 4 }, desc: 'Trophée du Rokh Tempétueux des Falaises.' },
+  'crochet-de-sarpense':  { nom: 'Crochet de Sarpense', emoji: '🐍', type: 'equipement', slot: 'arme', niveau: 28, rarete: 'epique', prixVente: 700, bonus: { dex: 18, for: 6, crit: 4 }, desc: 'Trophée de la Matriarche de Vaï-Sombre.' },
+  'serre-du-rokh':        { nom: 'Serre du Rokh', emoji: '🦅', type: 'equipement', slot: 'accessoire', niveau: 28, rarete: 'epique', prixVente: 700, bonus: { dex: 8, for: 6, celerite: 4 }, desc: 'Trophée du Rokh Tempétueux des Falaises.' },
   'fanon-du-leviathan':   { nom: 'Fanon du Léviathan', emoji: '🐋', type: 'equipement', slot: 'accessoire', niveau: 36, rarete: 'legendaire', prixVente: 1100, bonus: { int: 10, vit: 8, pmMax: 30 }, desc: 'Trophée du maître des Abysses d’Émeraude.' },
-  'coeur-du-behemoth':    { nom: 'Cœur du Béhémoth', emoji: '🌋', type: 'equipement', slot: 'accessoire', niveau: 36, rarete: 'legendaire', prixVente: 1100, bonus: { for: 10, vit: 8, pvMax: 45, blocage: 4 }, desc: 'Trophée du Béhémoth de la Steppe. Il bat encore, lentement.' },
+  'coeur-du-behemoth':    { nom: 'Cœur du Béhémoth', emoji: '🌋', type: 'equipement', slot: 'accessoire', niveau: 36, rarete: 'legendaire', prixVente: 1100, bonus: { for: 10, vit: 8, pvMax: 45, tenacite: 4 }, desc: 'Trophée du Béhémoth de la Steppe. Il bat encore, lentement.' },
   'oeil-de-quartz':       { nom: 'Œil de Quartz', emoji: '💎', type: 'equipement', slot: 'tete', niveau: 44, rarete: 'legendaire', prixVente: 1600, bonus: { int: 14, vit: 8, crit: 6, pmMax: 30 }, desc: 'Trophée de l’Avatar de la Forêt Pétrifiée.' },
-  'couronne-d-ossements': { nom: 'Couronne d’Ossements', emoji: '👑', type: 'equipement', slot: 'tete', niveau: 44, rarete: 'legendaire', prixVente: 1600, bonus: { for: 14, vit: 8, pvMax: 60, blocage: 5 }, desc: 'Trophée du Roi de la Vallée des Géants.' },
-  'aile-de-l-archonte':   { nom: 'Aile de l’Archonte', emoji: '🕊️', type: 'equipement', slot: 'accessoire', niveau: 50, rarete: 'mythique', prixVente: 2400, bonus: { agi: 14, int: 10, crit: 8, esquive: 6 }, desc: 'Trophée de l’Archonte de la Tempête. Elle bat encore la mesure de l’orage.' },
+  'couronne-d-ossements': { nom: 'Couronne d’Ossements', emoji: '👑', type: 'equipement', slot: 'tete', niveau: 44, rarete: 'legendaire', prixVente: 1600, bonus: { for: 14, vit: 8, pvMax: 60, tenacite: 5 }, desc: 'Trophée du Roi de la Vallée des Géants.' },
+  'aile-de-l-archonte':   { nom: 'Aile de l’Archonte', emoji: '🕊️', type: 'equipement', slot: 'accessoire', niveau: 50, rarete: 'mythique', prixVente: 2400, bonus: { dex: 14, int: 10, crit: 8, celerite: 6 }, desc: 'Trophée de l’Archonte de la Tempête. Elle bat encore la mesure de l’orage.' },
   'singularite-apprivoisee': { nom: 'Singularité apprivoisée', emoji: '🕳️', type: 'equipement', slot: 'accessoire', niveau: 50, rarete: 'mythique', prixVente: 2400, bonus: { for: 12, int: 12, vit: 8, pvMax: 60 }, desc: 'Trophée du Dévoreur de Mondes. Ne pas secouer.' },
 });
 

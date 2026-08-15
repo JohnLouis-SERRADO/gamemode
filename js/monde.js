@@ -211,7 +211,7 @@ function scorePuissance(membres) {
   if (!membres.length) return 0;
   return membres.reduce((somme, m) => {
     const s = statsEffectives(m);
-    return somme + s.for + s.int + s.agi + s.vit + (s.cha || 0);
+    return somme + s.for + s.int + s.dex + s.vit + (s.cha || 0);
   }, 0) / membres.length;
 }
 
@@ -608,7 +608,7 @@ function demarrerCombatBossMonde(boss) {
     nom: boss.nom, emoji: boss.emoji, niveau,
     hp: 80 + niveau * 55,
     atk: Math.round(7 + niveau * 2.1),
-    agi: 8,
+    dex: 8,
     xp: 0, po: [0, 0], drops: [],
     boss: true,
     attaques: [

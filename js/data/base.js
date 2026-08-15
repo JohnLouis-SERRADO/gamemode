@@ -4,22 +4,44 @@
 // Socle : avatars, caractéristiques, races, raretés, métiers, invocations
 // =====================================================================
 
-// =====================================================================
-// Données de base : caractéristiques, compétences, modèles, progression.
-// Les objets sont dans objets.js, les zones et monstres dans zones.js.
-// =====================================================================
-
 const AVATARS = ['⚔️', '🧙‍♂️', '🧝‍♀️', '🏹', '🛡️', '🗡️', '🔮', '🌿', '🐺', '🦊', '👑', '🎭'];
 
+// =====================================================================
+// v19 — Caractéristiques, modèle Final Fantasy XIV.
+//
+// On sépare désormais deux familles, comme le fait FF XIV :
+//
+//  • les ATTRIBUTS PRINCIPAUX, où le joueur investit ses points de niveau.
+//    Chacun porte un rôle : c'est lui qui décide de la puissance brute.
+//  • les SOUS-CARACTÉRISTIQUES, qui ne s'achètent pas — elles se portent.
+//    Elles viennent de l'équipement et font toute la personnalité d'un
+//    build : frapper fort mais au hasard, ou moins fort mais tout le temps.
+// =====================================================================
 const CARACS = {
-  for: { nom: 'Force',        emoji: '💪', desc: 'Augmente les dégâts physiques' },
-  int: { nom: 'Intelligence', emoji: '🧠', desc: 'Augmente les dégâts magiques, les soins et le mana' },
-  agi: { nom: 'Agilité',      emoji: '🏃', desc: 'Augmente l’initiative et les chances de critique' },
-  vit: { nom: 'Vitalité',     emoji: '❤️', desc: 'Augmente les points de vie' },
+  for: { nom: 'Force',        emoji: '💪', desc: 'Augmente les dégâts physiques de mêlée' },
+  dex: { nom: 'Dextérité',    emoji: '🎯', desc: 'Augmente les dégâts physiques à distance' },
+  int: { nom: 'Intelligence', emoji: '🧠', desc: 'Augmente les dégâts magiques' },
+  esp: { nom: 'Esprit',       emoji: '🕊️', desc: 'Augmente la puissance des soins et des boucliers' },
+  vit: { nom: 'Vitalité',     emoji: '❤️', desc: 'Augmente les points de vie — et les dégâts du Gardien' },
   cha: { nom: 'Chance',       emoji: '🍀', desc: 'Augmente les trouvailles et la rareté du butin' },
 };
 
-const POINTS_CREATION = 10;   // points à répartir à la création
+// Les sous-caractéristiques ne se répartissent pas : elles se trouvent.
+// `pourcent` indique si la valeur s'affiche et se lit comme un pourcentage.
+const SOUS_CARACS = {
+  crit:     { nom: 'Critique',      emoji: '💥', pourcent: true,  desc: 'Fréquence des coups critiques (×1,5 de dégâts)' },
+  direct:   { nom: 'Coup direct',   emoji: '🎲', pourcent: true,  desc: 'Chance d’un coup net à +25 %, sans se cumuler au critique' },
+  deter:    { nom: 'Détermination', emoji: '⚖️', pourcent: true,  desc: 'Augmente TOUS les dégâts et TOUS les soins, sans hasard' },
+  tenacite: { nom: 'Ténacité',      emoji: '🛡️', pourcent: true,  desc: 'Réduit les dégâts subis et renforce les vôtres — pièces de plaque' },
+  celerite: { nom: 'Célérité',      emoji: '💨', pourcent: true,  desc: 'Augmente l’initiative et raccourcit les recharges' },
+  piete:    { nom: 'Piété',         emoji: '💧', pourcent: true,  desc: 'Augmente le mana maximum et sa régénération' },
+};
+
+// Bornes des sous-caractéristiques : au-delà, le rendement est perdu.
+// Elles empêchent qu'un build à 100 % d'esquive ou de réduction existe.
+const PLAFONDS_SOUS_CARACS = { crit: 60, direct: 50, deter: 60, tenacite: 40, celerite: 50, piete: 100 };
+
+const POINTS_CREATION = 12;   // points à répartir à la création (6 attributs)
 const STAT_BASE = 2;          // valeur de départ de chaque caractéristique
 const STAT_MAX_CREATION = 8;  // maximum par caractéristique à la création
 const NB_COMPETENCES = 4;          // compétences choisies à la création
@@ -150,37 +172,37 @@ const FAMILLE_MATERIAU = {
 const INVOCATIONS = {
   'loup-spectral': {
     nom: 'Loup spectral', emoji: '🐺', pvPct: 0.55,
-    stats: { for: 0.7, int: 0.2, agi: 0.9, vit: 0.6, cha: 0.3 },
+    stats: { for: 0.7, int: 0.2, dex: 0.9, vit: 0.6, cha: 0.3 },
     competences: ['morsure-du-loup', 'lame-dans-l-ombre', 'rafale-de-coups', 'instinct-sauvage'],
     desc: 'Un écho des meutes des Plaines : crocs rapides, loyauté d’outre-brume.',
   },
   'golem-de-basalte': {
     nom: 'Golem de basalte', emoji: '🗿', pvPct: 0.9,
-    stats: { for: 0.8, int: 0.1, agi: 0.2, vit: 1.0, cha: 0.1 },
+    stats: { for: 0.8, int: 0.1, dex: 0.2, vit: 1.0, cha: 0.1 },
     competences: ['provocation', 'frappe-heroique', 'verdict-de-fer', 'second-souffle'],
     desc: 'Un fragment des Pics qui a accepté de marcher : il encaisse, il provoque, il tient.',
   },
   'feu-follet': {
     nom: 'Feu follet', emoji: '🔥', pvPct: 0.35,
-    stats: { for: 0.1, int: 0.95, agi: 0.7, vit: 0.35, cha: 0.5 },
+    stats: { for: 0.1, int: 0.95, dex: 0.7, vit: 0.35, cha: 0.5 },
     competences: ['boule-de-feu', 'eclair', 'combustion', 'mur-de-flammes'],
     desc: 'Une étincelle échappée de la Forge première — fragile, furieuse, incendiaire.',
   },
   'ondine-des-marees': {
     nom: 'Ondine des marées', emoji: '💧', pvPct: 0.5,
-    stats: { for: 0.2, int: 0.85, agi: 0.5, vit: 0.6, cha: 0.6 },
+    stats: { for: 0.2, int: 0.85, dex: 0.5, vit: 0.6, cha: 0.6 },
     competences: ['soin', 'cercle-de-soin', 'regeneration', 'fleche-de-givre'],
     desc: 'Une goutte du Sanctuaire des Marées : elle soigne les siens et gifle les autres.',
   },
   'corbeau-d-orage': {
     nom: 'Corbeau d’orage', emoji: '🐦‍⬛', pvPct: 0.4,
-    stats: { for: 0.3, int: 0.75, agi: 0.95, vit: 0.4, cha: 0.6 },
+    stats: { for: 0.3, int: 0.75, dex: 0.95, vit: 0.4, cha: 0.6 },
     competences: ['chaine-d-eclairs', 'eclair', 'totem-tonnerre', 'voile-de-fumee'],
     desc: 'Un éclat des Falaises Hurlantes à plumes : vif, bruyant, électrique.',
   },
   'ombre-de-nihelm': {
     nom: 'Ombre de Nihelm', emoji: '🕳️', pvPct: 0.45,
-    stats: { for: 0.4, int: 0.9, agi: 0.8, vit: 0.45, cha: 0.4 },
+    stats: { for: 0.4, int: 0.9, dex: 0.8, vit: 0.45, cha: 0.4 },
     competences: ['faux-spectrale', 'drain-de-vie', 'horde-spectrale', 'terreur'],
     desc: 'Un pan du gouffre qui a choisi un maître — pour l’instant.',
   },

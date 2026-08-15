@@ -151,7 +151,7 @@ const SOUS_TYPES = {
   armes: [
     { id: 'force', nom: '💪 Force', filtre: (o) => o.bonus && o.bonus.for != null },
     { id: 'magie', nom: '🧠 Magie', filtre: (o) => o.bonus && o.bonus.int != null },
-    { id: 'agilite', nom: '🏃 Agilité', filtre: (o) => o.bonus && o.bonus.agi != null && o.bonus.for == null && o.bonus.int == null },
+    { id: 'agilite', nom: '🏃 Dextérité', filtre: (o) => o.bonus && o.bonus.dex != null && o.bonus.for == null && o.bonus.int == null },
   ],
   armures: [
     { id: 'tete', nom: '🪖 Tête', filtre: (o) => o.slot === 'tete' },

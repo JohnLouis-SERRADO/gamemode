@@ -7,6 +7,34 @@
 // =====================================================================
 // Détails chiffrés d'une compétence pour un jeu de stats donné
 // =====================================================================
+// =====================================================================
+// v19 — Quelle caractéristique porte une compétence ?
+//
+// Les soins, boucliers et régénérations relèvent désormais de l'Esprit.
+// Mais un Clerc qui a passé quarante niveaux à monter son Intelligence ne
+// doit pas se réveiller diminué : tant qu'il n'a pas réagencé ses points,
+// c'est la meilleure des deux qui compte. Personne ne perd ses soins.
+// =====================================================================
+function estCompetenceDeSoutien(comp) {
+  if (comp.type === 'soin') return true;
+  const effet = comp.effet && comp.effet.type;
+  return effet === 'bouclier' || effet === 'regen';
+}
+
+function statDeCompetence(comp, s) {
+  const valeur = (s && s[comp.stat]) || 0;
+  if (comp.stat === 'int' && estCompetenceDeSoutien(comp)) return Math.max(valeur, (s && s.esp) || 0);
+  return valeur;
+}
+
+// Valeur de soutien d'un effet : l'Esprit, ou l'Intelligence si elle est
+// encore meilleure (héros d'avant la refonte des caractéristiques).
+function statSoutien(s, cle) {
+  const choisie = cle || 'int';
+  const valeur = (s && s[choisie]) || 0;
+  return choisie === 'int' ? Math.max(valeur, (s && s.esp) || 0) : valeur;
+}
+
 const TEXTE_CIBLE = {
   ennemi: 'un ennemi', ennemis: 'tous les ennemis',
   allie: 'un allié', allies: 'tout le groupe', soi: 'soi-même',
@@ -17,20 +45,20 @@ function texteEffetCompetence(effet, s) {
     case 'poison': {
       const valeur = effet.degats != null
         ? effet.degats
-        : Math.round(3 + (s[effet.stat || 'agi'] || 0) * (effet.stat === 'int' ? 0.5 : 0.6));
+        : Math.round(3 + (s[effet.stat || 'dex'] || 0) * (effet.stat === 'int' ? 0.5 : 0.6));
       return `🧪 poison ≈${valeur}/tour (${effet.duree} t.)`;
     }
     case 'etourdi':
       return `💫 étourdit ${effet.duree || 1} t.${effet.chance != null && effet.chance < 1 ? ` (${Math.round(effet.chance * 100)} %)` : ''}`;
     case 'affaibli': return `⬇️ −30 % dégâts (${effet.duree} t.)`;
-    case 'bouclier': return `🛡️ bouclier ≈${Math.round(8 + (s[effet.stat || 'int'] || 0) * 1.5)} (${effet.duree} t.)`;
+    case 'bouclier': return `🛡️ bouclier ≈${Math.round(8 + statSoutien(s, effet.stat) * 1.5)} (${effet.duree} t.)`;
     case 'benediction': return `🙏 +30 % dégâts (${effet.duree} t.)`;
     case 'provocation': return `😤 attire les coups + bouclier ≈${Math.round(4 + (s.for || 0))}`;
-    case 'regen': return `💧 régén. ≈${Math.round(3 + (s[effet.stat || 'int'] || 0) * 0.8)}/tour (${effet.duree} t.)`;
+    case 'regen': return `💧 régén. ≈${Math.round(3 + statSoutien(s, effet.stat) * 0.8)}/tour (${effet.duree} t.)`;
     case 'mana': return `🧘 +${effet.valeur} PM`;
     case 'drain': return `🧛 rend ${Math.round(effet.part * 100)} % des dégâts en PV`;
     case 'pacte': return `🩸 −${Math.round(effet.partPv * 100)} % PV max → +${effet.mana} PM`;
-    case 'vol-or': return `💰 vole ≈${Math.round(4 + (s.agi || 0) * 1.2)} po`;
+    case 'vol-or': return `💰 vole ≈${Math.round(4 + (s.dex || 0) * 1.2)} po`;
     default: return '';
   }
 }
@@ -41,10 +69,10 @@ function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
   const parts = [];
   const multRang = 1 + 0.15 * rang;
   if (comp.type === 'degats') {
-    const brut = Math.round((comp.puissance + (s[comp.stat] || 0) * comp.ratio) * multRang);
+    const brut = Math.round((comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang);
     parts.push(`⚔️ ≈${brut} dégâts${comp.coups ? ` ×${comp.coups} coups` : ''}`);
   } else if (comp.type === 'soin') {
-    parts.push(`💚 ≈${Math.round((comp.puissance + (s[comp.stat] || 0) * comp.ratio) * multRang)} PV`);
+    parts.push(`💚 ≈${Math.round((comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang)} PV`);
   } else if (comp.type === 'invocation') {
     const modele = INVOCATIONS[comp.invocation];
     parts.push(`🐾 invoque ${modele.emoji} ${modele.nom} (jusqu'à sa mort ou la fin du combat)`);
@@ -102,19 +130,19 @@ const COMPETENCES = {
   },
   'lame-empoisonnee': {
     nom: 'Lame empoisonnée', emoji: '🗡️', categorie: 'physique', type: 'degats', cible: 'ennemi',
-    stat: 'agi', puissance: 4, ratio: 1.0, coutMp: 5, cooldown: 3,
+    stat: 'dex', puissance: 4, ratio: 1.0, coutMp: 5, cooldown: 3,
     effet: { type: 'poison', duree: 3 },
     desc: 'Blesse un ennemi et l’empoisonne pendant 3 tours.',
   },
   'tir-precis': {
     nom: 'Tir précis', emoji: '🏹', categorie: 'physique', type: 'degats', cible: 'ennemi',
-    stat: 'agi', puissance: 7, ratio: 1.4, coutMp: 3, cooldown: 2, critBonus: 0.2,
-    desc: 'Un tir précis avec +20 % de chances de critique. Basé sur l’Agilité.',
+    stat: 'dex', puissance: 7, ratio: 1.4, coutMp: 3, cooldown: 2, critBonus: 0.2,
+    desc: 'Un tir précis avec +20 % de chances de critique. Basé sur l’Dextérité.',
   },
   'pluie-de-fleches': {
     nom: 'Pluie de flèches', emoji: '🎯', categorie: 'physique', type: 'degats', cible: 'ennemis',
-    stat: 'agi', puissance: 3, ratio: 0.8, coutMp: 8, cooldown: 3,
-    desc: 'Crible tous les ennemis de flèches. Basé sur l’Agilité.',
+    stat: 'dex', puissance: 3, ratio: 0.8, coutMp: 8, cooldown: 3,
+    desc: 'Crible tous les ennemis de flèches. Basé sur l’Dextérité.',
   },
   'boule-de-feu': {
     nom: 'Boule de feu', emoji: '🔥', categorie: 'magie', type: 'degats', cible: 'ennemi',
@@ -236,12 +264,12 @@ const COMPETENCES = {
   // ----- Voie du Moine -----
   'rafale-de-coups': {
     nom: 'Rafale de coups', emoji: '👊', categorie: 'physique', type: 'degats', cible: 'ennemi',
-    stat: 'agi', puissance: 2, ratio: 0.55, coups: 3, coutMp: 6, cooldown: 3,
+    stat: 'dex', puissance: 2, ratio: 0.55, coups: 3, coutMp: 6, cooldown: 3,
     desc: 'Trois coups éclair sur la même cible, chacun pouvant être critique.',
   },
   'paume-zephyr': {
     nom: 'Paume du zéphyr', emoji: '🌬️', categorie: 'physique', type: 'degats', cible: 'ennemi',
-    stat: 'agi', puissance: 6, ratio: 1.0, coutMp: 6, cooldown: 4,
+    stat: 'dex', puissance: 6, ratio: 1.0, coutMp: 6, cooldown: 4,
     effet: { type: 'etourdi', duree: 1, chance: 0.4 },
     desc: 'Une paume précise avec 40 % de chances d’étourdir.',
   },
@@ -253,7 +281,7 @@ const COMPETENCES = {
   },
   'poing-dragon': {
     nom: 'Poing du dragon', emoji: '🐲', categorie: 'physique', type: 'degats', cible: 'ennemi',
-    stat: 'agi', puissance: 14, ratio: 1.8, coutMp: 9, cooldown: 5,
+    stat: 'dex', puissance: 14, ratio: 1.8, coutMp: 9, cooldown: 5,
     desc: 'Le coup ultime des arts martiaux. Dévastateur, mais épuisant.',
   },
 
@@ -280,18 +308,18 @@ const COMPETENCES = {
   // ----- Voie du Rôdeur -----
   'morsure-du-loup': {
     nom: 'Morsure du loup', emoji: '🐺', categorie: 'physique', type: 'degats', cible: 'ennemi',
-    stat: 'agi', puissance: 4, ratio: 0.8, coups: 2, coutMp: 5, cooldown: 2,
+    stat: 'dex', puissance: 4, ratio: 0.8, coups: 2, coutMp: 5, cooldown: 2,
     desc: 'Votre compagnon loup mord deux fois la cible.',
   },
   'ronces-etrangleuses': {
     nom: 'Ronces étrangleuses', emoji: '🌿', categorie: 'physique', type: 'degats', cible: 'ennemis',
-    stat: 'agi', puissance: 3, ratio: 0.6, coutMp: 9, cooldown: 4,
+    stat: 'dex', puissance: 3, ratio: 0.6, coutMp: 9, cooldown: 4,
     effet: { type: 'poison', duree: 2 },
     desc: 'Des ronces lacèrent et empoisonnent tous les ennemis.',
   },
   'instinct-sauvage': {
     nom: 'Instinct sauvage', emoji: '👁️', categorie: 'soutien', type: 'utilitaire', cible: 'soi',
-    stat: 'agi', coutMp: 6, cooldown: 5,
+    stat: 'dex', coutMp: 6, cooldown: 5,
     effet: { type: 'benediction', duree: 3 },
     desc: 'Vos sens s’aiguisent : +30 % de dégâts pendant 3 tours.',
   },
@@ -299,7 +327,7 @@ const COMPETENCES = {
   // ----- Voie de l'Assassin -----
   'lame-dans-l-ombre': {
     nom: 'Lame dans l’ombre', emoji: '🌑', categorie: 'physique', type: 'degats', cible: 'ennemi',
-    stat: 'agi', puissance: 8, ratio: 1.3, coutMp: 5, cooldown: 2, critBonus: 0.35,
+    stat: 'dex', puissance: 8, ratio: 1.3, coutMp: 5, cooldown: 2, critBonus: 0.35,
     desc: 'Une attaque surgie de nulle part, presque toujours critique.',
   },
   'voile-de-fumee': {
@@ -310,7 +338,7 @@ const COMPETENCES = {
   },
   'mise-a-mort': {
     nom: 'Mise à mort', emoji: '☠️', categorie: 'physique', type: 'degats', cible: 'ennemi',
-    stat: 'agi', puissance: 12, ratio: 2.1, coutMp: 10, cooldown: 5, critBonus: 0.15,
+    stat: 'dex', puissance: 12, ratio: 2.1, coutMp: 10, cooldown: 5, critBonus: 0.15,
     desc: 'Le coup de grâce de l’assassin. Dévastateur.',
   },
 
@@ -463,19 +491,19 @@ const COMPETENCES = {
   // ----- Voie du Voleur -----
   'vol-a-la-tire': {
     nom: 'Vol à la tire', emoji: '💰', categorie: 'physique', type: 'degats', cible: 'ennemi',
-    stat: 'agi', puissance: 4, ratio: 0.9, coutMp: 4, cooldown: 2,
+    stat: 'dex', puissance: 4, ratio: 0.9, coutMp: 4, cooldown: 2,
     effet: { type: 'vol-or' },
     desc: 'Frappe la cible et lui fait les poches : de l’or en plus au butin !',
   },
   'coup-bas': {
     nom: 'Coup bas', emoji: '🦵', categorie: 'physique', type: 'degats', cible: 'ennemi',
-    stat: 'agi', puissance: 5, ratio: 1.0, coutMp: 6, cooldown: 4,
+    stat: 'dex', puissance: 5, ratio: 1.0, coutMp: 6, cooldown: 4,
     effet: { type: 'etourdi', duree: 1, chance: 0.4 },
     desc: 'Un coup peu glorieux mais efficace : 40 % de chances d’étourdir.',
   },
   'poussiere-aveuglante': {
     nom: 'Poussière aveuglante', emoji: '🌫️', categorie: 'physique', type: 'degats', cible: 'ennemis',
-    stat: 'agi', puissance: 1, ratio: 0.4, coutMp: 7, cooldown: 4,
+    stat: 'dex', puissance: 1, ratio: 0.4, coutMp: 7, cooldown: 4,
     effet: { type: 'affaibli', duree: 2 },
     desc: 'Une poignée de sable dans les yeux : tous les ennemis frappent moins fort.',
   },
@@ -483,17 +511,17 @@ const COMPETENCES = {
   // ----- Voie du Danselame -----
   'valse-des-lames': {
     nom: 'Valse des lames', emoji: '🌸', categorie: 'physique', type: 'degats', cible: 'ennemis',
-    stat: 'agi', puissance: 3, ratio: 0.75, coutMp: 8, cooldown: 3,
+    stat: 'dex', puissance: 3, ratio: 0.75, coutMp: 8, cooldown: 3,
     desc: 'Une danse mortelle qui effleure tous les ennemis.',
   },
   'estocade-gracieuse': {
     nom: 'Estocade gracieuse', emoji: '🤺', categorie: 'physique', type: 'degats', cible: 'ennemi',
-    stat: 'agi', puissance: 7, ratio: 1.35, coutMp: 5, cooldown: 2, critBonus: 0.25,
+    stat: 'dex', puissance: 7, ratio: 1.35, coutMp: 5, cooldown: 2, critBonus: 0.25,
     desc: 'Un assaut élégant et précis, souvent critique.',
   },
   'danse-du-vent': {
     nom: 'Danse du vent', emoji: '🍃', categorie: 'soutien', type: 'soin', cible: 'soi',
-    stat: 'agi', puissance: 4, ratio: 0.7, coutMp: 0, cooldown: 4,
+    stat: 'dex', puissance: 4, ratio: 0.7, coutMp: 0, cooldown: 4,
     effet: { type: 'mana', valeur: 5 },
     desc: 'Un pas de côté pour souffler : récupère des PV et 5 PM.',
   },

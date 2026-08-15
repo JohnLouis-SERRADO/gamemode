@@ -106,7 +106,7 @@ function annoncerDeblocage(info) {
   }
 }
 
-// Exécute une action sans aucune annonce de déblocage.
+// Exécute une action sans aucune annonce de détenacite.
 function sansAnnonces(action) {
   deblocagesSilencieux = true;
   try {
@@ -129,7 +129,7 @@ function afficherProchainDeblocage() {
     <div class="deblocage-bandeau">✨ DÉBLOQUÉ ✨</div>
     <h2>${info.titre}</h2>
     ${info.texte ? `<p class="deblocage-texte">${info.texte}</p>` : ''}
-    ${fileDeblocages.length > 0 ? `<p class="deblocage-reste">+ ${fileDeblocages.length} autre${fileDeblocages.length > 1 ? 's' : ''} déblocage${fileDeblocages.length > 1 ? 's' : ''} à découvrir</p>` : ''}`;
+    ${fileDeblocages.length > 0 ? `<p class="deblocage-reste">+ ${fileDeblocages.length} autre${fileDeblocages.length > 1 ? 's' : ''} détenacite${fileDeblocages.length > 1 ? 's' : ''} à découvrir</p>` : ''}`;
   const fermer = () => {
     voile.remove();
     deblocageAffiche = false;
@@ -269,7 +269,7 @@ function verifierChoixSpecialite() {
 
   const PRESENTATIONS = {
     mineur: 'Pierres, minerais et cristaux — et la fameuse <strong>pierre magique</strong>. C\'est lui qui nourrit la <strong>Forge</strong> : lames, heaumes, cuirasses et jambières. Sans mineur, pas d\'acier — et les guerriers combattent en chemise.',
-    tanneur: 'Cuirs, os et dépouilles de bêtes — jusqu\'au précieux <strong>cuir primal</strong>. C\'est lui qui nourrit la <strong>Tannerie</strong> : gants et bottes, blocage et esquive. Sans tanneur, les aventuriers marchent pieds nus.',
+    tanneur: 'Cuirs, os et dépouilles de bêtes — jusqu\'au précieux <strong>cuir primal</strong>. C\'est lui qui nourrit la <strong>Tannerie</strong> : gants et bottes, tenacite et celerite. Sans tanneur, les aventuriers marchent pieds nus.',
     tisseur: 'Plantes, fibres et étoffes — dont le <strong>tissu magique</strong>. C\'est lui qui nourrit le <strong>Tisserand</strong> (talismans et grimoires des mages) et l\'<strong>Alchimiste</strong> (potions, bombes, philtres). Sans tisseur, personne ne boit ni ne lance rien.',
   };
 
@@ -379,10 +379,38 @@ function chargerProfils() {
   }
 }
 
+// =====================================================================
+// v19 — Migration des caractéristiques vers le modèle Final Fantasy XIV.
+//
+// Deux changements, et une règle qui prime sur les deux : personne ne perd
+// quoi que ce soit.
+//
+//  • l'Agilité devient la DEXTÉRITÉ — un simple renommage, la valeur suit ;
+//  • l'ESPRIT fait son entrée, à sa valeur de base, offerte.
+//
+// Le héros garde exactement la répartition qu'il s'était choisie. On
+// recompte ensuite ce que la nouvelle courbe lui doit vraiment, et on lui
+// rend la différence en points à placer — jamais l'inverse : si l'ancien
+// modèle avait été plus généreux, il conserve son avance.
+// =====================================================================
+function migrerCaracteristiques(p) {
+  if (p.stats.agi != null && p.stats.dex == null) p.stats.dex = p.stats.agi;
+  delete p.stats.agi;
+  Object.keys(CARACS).forEach((cle) => {
+    if (p.stats[cle] == null) p.stats[cle] = STAT_BASE;
+  });
+  // Points réellement dus à ce niveau, création et bases comprises.
+  const dus = POINTS_CREATION + Object.keys(CARACS).length * STAT_BASE + pointsCumules(p.niveau || 1);
+  const detenus = Object.keys(CARACS).reduce((somme, cle) => somme + p.stats[cle], 0)
+    + (p.pointsEnAttente || 0);
+  if (detenus < dus) p.pointsEnAttente = (p.pointsEnAttente || 0) + (dus - detenus);
+}
+
 // Complète les sauvegardes venues d'anciennes versions du jeu.
 function normaliserPerso(p) {
   if (!p.race) p.race = 'humain';
-  if (p.stats.cha == null) p.stats.cha = 2;
+  if (!p.stats) p.stats = {};
+  migrerCaracteristiques(p);
   if (!p.compteurs) p.compteurs = {};
   ['monstres', 'orTotal', 'crafts', 'quetes', 'legendaires', 'divins'].forEach((cle) => {
     if (p.compteurs[cle] == null) p.compteurs[cle] = 0;
@@ -492,7 +520,7 @@ function appliquerMortHeros(m) {
   const apres = Math.max(1, m.niveau - 1);
   const niveauxPerdus = m.niveau - apres;
   if (niveauxPerdus > 0) {
-    let aRetirer = POINTS_PAR_NIVEAU * niveauxPerdus;
+    let aRetirer = pointsCumules(m.niveau) - pointsCumules(apres);
     const surAttente = Math.min(m.pointsEnAttente || 0, aRetirer);
     m.pointsEnAttente -= surAttente;
     aRetirer -= surAttente;
@@ -782,7 +810,7 @@ function gagnerXp(p, xp) {
   p.xp += xp;
   const apres = niveauPour(p.xp);
   if (apres > avant) {
-    p.pointsEnAttente += POINTS_PAR_NIVEAU * (apres - avant);
+    p.pointsEnAttente += pointsCumules(apres) - pointsCumules(avant);
     // Points de maîtrise de la signature (niveaux 3, 6, 9, 12, 15, 18)
     p.maitrise = (p.maitrise || 0) + pointsMaitrisePourNiveau(apres) - pointsMaitrisePourNiveau(avant);
     p.niveau = apres;
@@ -1195,7 +1223,7 @@ function adminFixerNiveau(p, n) {
   p.xp = seuilXp(n);
   p.niveau = n;
   if (n > avant) {
-    p.pointsEnAttente += POINTS_PAR_NIVEAU * (n - avant);
+    p.pointsEnAttente += pointsCumules(n) - pointsCumules(avant);
     p.maitrise = (p.maitrise || 0) + pointsMaitrisePourNiveau(n) - pointsMaitrisePourNiveau(avant);
     debloquerCompetencesClasse(p, false);
   }
@@ -1314,7 +1342,7 @@ function rendreConsoleAdmin(zone, p) {
     }],
     ['↺ Caracs au minimum', () => {
       Object.keys(CARACS).forEach((cle) => { p.stats[cle] = STAT_BASE; });
-      p.pointsEnAttente = POINTS_CREATION + POINTS_PAR_NIVEAU * (p.niveau - 1);
+      p.pointsEnAttente = POINTS_CREATION + pointsCumules(p.niveau);
     }, true],
   ]);
   ligneValeur(blocNiveau, 'admin-niveau', '📈 Fixer le niveau', `Niveau exact (1-${NIVEAU_MAX})`,
@@ -1457,19 +1485,19 @@ function rendreConsoleAdmin(zone, p) {
 
   // ----- 🧪 Tests d'interface -----
   section('🧪 Tests d’interface', 'Pour vérifier les fenêtres et les alertes sans jouer des heures.', [
-    ['🎉 Tester un popup de déblocage', () => {
+    ['🎉 Tester un popup de détenacite', () => {
       // Celui-ci doit s'afficher : on force la sortie de la sourdine.
       setTimeout(() => annoncerDeblocage({
         emoji: '🎉',
-        titre: 'Test de déblocage',
-        texte: 'Voici à quoi ressemble une annonce de déblocage. Tout va bien.',
+        titre: 'Test de détenacite',
+        texte: 'Voici à quoi ressemble une annonce de détenacite. Tout va bien.',
       }), 0);
     }],
     ['🎊 Tester une file de 3 popups', () => {
       setTimeout(() => {
         ['🥇', '🥈', '🥉'].forEach((emoji, i) => annoncerDeblocage({
           emoji,
-          titre: `Déblocage de test n° ${i + 1}`,
+          titre: `Détenacite de test n° ${i + 1}`,
           texte: 'Vérifiez le compteur « encore N » et le bouton « Tout fermer ».',
         }));
       }, 0);
@@ -1545,7 +1573,7 @@ function rendreHeros() {
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
       <div class="heros-puissance">⚡ Puissance : <strong>${puissanceDe(p).toLocaleString('fr-FR')}</strong>
         <span class="aide-inline">(caractéristiques + équipement + niveau)</span></div>
-      <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${p.po} po · 💥 ${Math.round(5 + s.agi + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin${s.blocage ? ` · 🛡️ ${Math.min(40, s.blocage)} % blocage` : ''}${s.esquive ? ` · 💨 ${Math.min(35, s.esquive)} % esquive` : ''}</div>
+      <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${p.po} po · 💥 ${Math.round(5 + s.dex + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin${s.tenacite ? ` · 🛡️ ${Math.min(40, s.tenacite)} % tenacite` : ''}${s.celerite ? ` · 💨 ${Math.min(35, s.celerite)} % celerite` : ''}</div>
     </div>`;
   zone.appendChild(entete);
 
@@ -2304,7 +2332,7 @@ function chargerHerosImporte(donnees, id, token) {
   const d = donnees.donnees || {};
   const p = nouveauPersonnage({
     nom: donnees.nom, avatar: donnees.avatar || '⚔️',
-    stats: d.stats || { for: 4, int: 4, agi: 4, vit: 4 },
+    stats: d.stats || { for: 4, int: 4, dex: 4, vit: 4 },
     competences: d.competences || [],
   });
   if (Array.isArray(d.grimoire)) {

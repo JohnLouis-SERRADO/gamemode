@@ -710,7 +710,7 @@ function rendreEpreuveAscension() {
   const scene = el('donjon-scene');
   scene.innerHTML = '';
 
-  const stats = ['for', 'int', 'agi', 'vit', 'cha'];
+  const stats = ['for', 'int', 'dex', 'vit', 'cha'];
   const stat = stats[Math.floor(etage / 3) % stats.length];
   const difficulte = 12 + Math.round(donjon.niveauMin * 0.6) + etage;
 

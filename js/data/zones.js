@@ -256,7 +256,7 @@ function miniBossDe(z) {
     miniBoss: true,
     hp: Math.round(base.hp * 2.6),
     atk: Math.round(base.atk * 1.3),
-    agi: base.agi + 2,
+    dex: base.dex + 2,
     xp: Math.round(base.xp * 2.5),
     po: [base.po[0] * 2, base.po[1] * 3],
     drops: (base.drops || []).map((d) => ({ id: d.id, chance: Math.min(1, d.chance * 2) })),
