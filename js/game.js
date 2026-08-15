@@ -385,6 +385,26 @@ function normaliserPerso(p) {
   if (!p.ascensions || typeof p.ascensions !== 'object') p.ascensions = {};
   // v17 : histoires uniques découvertes sur chaque carte.
   if (!p.histoiresVues || typeof p.histoiresVues !== 'object') p.histoiresVues = {};
+  // v17.1 : migration des objets disparus du catalogue (les légendaires du
+  // marchand n'existent plus) vers leur équivalent de BUTIN de même rareté
+  // et de même niveau — le héros ne perd rien, il y gagne même un peu.
+  const migrerObjet = (id) => {
+    if (!id || OBJETS[id]) return id;
+    const m = /^marchand-([a-z]+)-([a-z]+)-(\d+)$/.exec(id);
+    if (m) {
+      const butin = `butin-${m[1]}-${m[2]}-${m[3]}-0`;
+      if (OBJETS[butin]) return butin;
+      const epique = `marchand-${m[1]}-epique-${m[3]}`;
+      if (OBJETS[epique]) return epique;
+    }
+    return null; // objet inconnu : on l'écarte plutôt que de planter
+  };
+  Object.keys(p.equipement).forEach((slot) => {
+    p.equipement[slot] = migrerObjet(p.equipement[slot]);
+  });
+  p.inventaire = p.inventaire
+    .map((entree) => ({ ...entree, id: migrerObjet(entree.id) }))
+    .filter((entree) => entree.id);
   if (!p.quetes || p.quetes.date !== new Date().toISOString().slice(0, 10)) {
     p.quetes = genererQuetesDuJour(p);
   }
@@ -1791,10 +1811,13 @@ function rendreSac() {
   grilleEquip.className = 'grille-equipement';
   Object.entries(SLOTS_EQUIPEMENT).forEach(([slot, meta]) => {
     const idObjet = p.equipement[slot];
+    // Garde-fou : un id qui ne correspond plus au catalogue est traité
+    // comme un emplacement vide (et nettoyé) plutôt que de planter l'écran.
+    const objet = idObjet ? OBJETS[idObjet] : null;
+    if (idObjet && !objet) p.equipement[slot] = null;
     const caseSlot = document.createElement('div');
-    caseSlot.className = 'case-equipement' + (idObjet ? ' occupee' : '');
-    if (idObjet) {
-      const objet = OBJETS[idObjet];
+    caseSlot.className = 'case-equipement' + (objet ? ' occupee' : '');
+    if (objet) {
       caseSlot.innerHTML = `
         <div class="case-slot-nom">${meta.nom}</div>
         <div class="case-objet">${objet.emoji} <strong>${objet.nom}</strong></div>
