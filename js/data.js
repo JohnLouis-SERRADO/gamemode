@@ -1237,7 +1237,9 @@ function difficulteDebloquee(p, zone, cle) {
 // =====================================================================
 const NIVEAU_MAX = 50;
 const POINTS_PAR_NIVEAU = 2;
-const NIVEAUX_NOUVELLE_COMPETENCE = [4, 8, 12, 16, 20, 25, 30, 35, 40, 45, 50];
+// v18 : plus de compétence offerte aux paliers de niveau. Hors compétences
+// de classe (automatiques aux niveaux 5, 10 et 15), tout nouveau sort
+// s'achète en grimoire à l'Arcanium.
 
 // XP cumulée requise pour atteindre le niveau n.
 function seuilXp(n) {

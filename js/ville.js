@@ -589,8 +589,12 @@ function rendreFournisseur() {
 let filtreArcanium = 'tous';
 
 // Prix d'un grimoire de compétence : selon son coût en mana et sa recharge.
+// La recharge est plafonnée à 6 tours dans le calcul : les invocations
+// portent un cooldown sentinelle de 99 (« une fois par combat ») qui,
+// pris au pied de la lettre, ferait exploser la note.
 function prixGrimoire(comp) {
-  return 90 + (comp.coutMp || 0) * 25 + (comp.cooldown || 0) * 15;
+  const recharge = Math.min(comp.cooldown || 0, 6);
+  return 90 + (comp.coutMp || 0) * 25 + recharge * 15;
 }
 
 function rendreArcanium() {
@@ -601,7 +605,7 @@ function rendreArcanium() {
 
   const aide = document.createElement('p');
   aide.className = 'aide';
-  aide.textContent = 'Chaque grimoire enseigne une compétence COMMUNE, ajoutée à votre grimoire personnel (et équipée s’il reste une place parmi vos 8 actives). Les compétences de classe (signature, voies et arbre) ne s’achètent jamais — elles appartiennent à leur classe.';
+  aide.textContent = 'C’est ici — et NULLE PART ailleurs — qu’on apprend de nouveaux sorts : monter de niveau n’en offre aucun. Chaque grimoire enseigne une compétence COMMUNE, ajoutée à votre grimoire personnel (et équipée s’il reste une place parmi vos 8 actives). Les compétences de classe (signature, voies et arbre) ne s’achètent jamais — elles vous reviennent de droit : 5 dès le niveau 1, puis une aux niveaux 5, 10 et 15.';
   zone.appendChild(aide);
 
   // Sous-filtres par école de compétence

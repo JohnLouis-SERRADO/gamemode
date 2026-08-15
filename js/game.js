@@ -85,10 +85,35 @@ function afficherToast(texte) {
 // =====================================================================
 const fileDeblocages = [];
 let deblocageAffiche = false;
+// v18 : la console d'admin fait bondir de 20 niveaux d'un clic — inutile
+// de dérouler vingt fenêtres de célébration derrière.
+let deblocagesSilencieux = false;
+
+let renduDeblocagePlanifie = false;
 
 function annoncerDeblocage(info) {
+  if (deblocagesSilencieux) return;
   fileDeblocages.push(info);
-  afficherProchainDeblocage();
+  // Une montée de niveau annonce souvent plusieurs déblocages d'affilée :
+  // on laisse tout le lot arriver avant d'ouvrir la première fenêtre, pour
+  // que le compteur « encore N » soit juste dès le premier écran.
+  if (!deblocageAffiche && !renduDeblocagePlanifie) {
+    renduDeblocagePlanifie = true;
+    setTimeout(() => {
+      renduDeblocagePlanifie = false;
+      afficherProchainDeblocage();
+    }, 0);
+  }
+}
+
+// Exécute une action sans aucune annonce de déblocage.
+function sansAnnonces(action) {
+  deblocagesSilencieux = true;
+  try {
+    action();
+  } finally {
+    deblocagesSilencieux = false;
+  }
 }
 
 function afficherProchainDeblocage() {
@@ -103,16 +128,30 @@ function afficherProchainDeblocage() {
     <div class="deblocage-eclat">${info.emoji || '🎉'}</div>
     <div class="deblocage-bandeau">✨ DÉBLOQUÉ ✨</div>
     <h2>${info.titre}</h2>
-    ${info.texte ? `<p class="deblocage-texte">${info.texte}</p>` : ''}`;
-  const btn = document.createElement('button');
-  btn.className = 'btn-principal btn-deblocage';
-  btn.textContent = info.bouton || '✨ Génial !';
-  btn.addEventListener('click', () => {
+    ${info.texte ? `<p class="deblocage-texte">${info.texte}</p>` : ''}
+    ${fileDeblocages.length > 0 ? `<p class="deblocage-reste">+ ${fileDeblocages.length} autre${fileDeblocages.length > 1 ? 's' : ''} déblocage${fileDeblocages.length > 1 ? 's' : ''} à découvrir</p>` : ''}`;
+  const fermer = () => {
     voile.remove();
     deblocageAffiche = false;
     afficherProchainDeblocage();
-  });
+  };
+  const btn = document.createElement('button');
+  btn.className = 'btn-principal btn-deblocage';
+  btn.textContent = info.bouton || (fileDeblocages.length > 0 ? '✨ Suivant' : '✨ Génial !');
+  btn.addEventListener('click', fermer);
   modale.appendChild(btn);
+  // Une grosse montée de niveau peut en empiler plusieurs : on doit
+  // pouvoir tout balayer d'un geste.
+  if (fileDeblocages.length > 0) {
+    const tout = document.createElement('button');
+    tout.className = 'btn-choix btn-compact btn-deblocage-tout';
+    tout.textContent = `⏩ Tout fermer (${fileDeblocages.length + 1})`;
+    tout.addEventListener('click', () => {
+      fileDeblocages.length = 0;
+      fermer();
+    });
+    modale.appendChild(tout);
+  }
   voile.appendChild(modale);
   document.body.appendChild(voile);
 }
@@ -304,7 +343,7 @@ function rendreTopbar() {
       </div>
     </div>`;
   const badge = el('badge-heros');
-  if (badge) badge.classList.toggle('cache', !(p.pointsEnAttente > 0 || p.competencesEnAttente > 0 || p.maitrise > 0));
+  if (badge) badge.classList.toggle('cache', !(p.pointsEnAttente > 0 || p.maitrise > 0));
   const point = el('point-en-ligne');
   if (point) point.classList.toggle('actif-reseau', etat.enLigne);
 }
@@ -359,6 +398,9 @@ function normaliserPerso(p) {
   // MAX_COMPETENCES_ACTIVES d'entre elles sont équipées en même temps.
   if (!Array.isArray(p.grimoire)) p.grimoire = [];
   p.competences.forEach((id) => { if (!p.grimoire.includes(id)) p.grimoire.push(id); });
+  // v18 : plus aucune compétence gratuite à la montée de niveau — les
+  // crédits en attente des anciennes sauvegardes sont soldés.
+  p.competencesEnAttente = 0;
   if (p.competences.length > MAX_COMPETENCES_ACTIVES) {
     p.competences = p.competences.slice(0, MAX_COMPETENCES_ACTIVES);
   }
@@ -689,11 +731,20 @@ function bornerVie(p) {
 
 // Apprend une compétence : elle entre au grimoire, et devient active
 // immédiatement s'il reste une place parmi les 8.
-function apprendreCompetence(p, id) {
+function apprendreCompetence(p, id, prioritaire) {
   if (!p.grimoire.includes(id)) p.grimoire.push(id);
-  if (!p.competences.includes(id) && p.competences.length < MAX_COMPETENCES_ACTIVES) {
+  if (p.competences.includes(id)) return;
+  if (p.competences.length < MAX_COMPETENCES_ACTIVES) {
     p.competences.push(id);
+    return;
   }
+  // v18 : une compétence de CLASSE ne doit jamais rester à la porte parce
+  // que la barre est pleine des choix de création — elle prend la place
+  // d'une commune, qui reste au grimoire et se rééquipe d'un clic.
+  if (!prioritaire) return;
+  const aCeder = p.competences.find((autre) => !(COMPETENCES[autre] || {}).classe);
+  if (!aCeder) return;
+  p.competences[p.competences.indexOf(aCeder)] = id;
 }
 
 // Débloque les compétences de classe atteintes (signature au niveau 1,
@@ -702,12 +753,17 @@ function debloquerCompetencesClasse(p, annoncer) {
   Object.entries(COMPETENCES).forEach(([id, comp]) => {
     if (comp.classe !== p.classe || p.grimoire.includes(id)) return;
     if ((comp.niveauRequis || 1) > p.niveau) return;
-    apprendreCompetence(p, id);
+    // Les compétences du niveau 1 (signature et bases) s'imposent dans la
+    // barre ; celles des paliers suivants respectent l'agencement choisi
+    // par le joueur et attendent sagement au grimoire si tout est plein.
+    apprendreCompetence(p, id, (comp.niveauRequis || 1) <= 1);
     if (annoncer && !p.distant) {
       annoncerDeblocage({
         emoji: comp.emoji,
         titre: `Compétence de classe : ${comp.nom}`,
-        texte: comp.desc,
+        texte: `${comp.desc}${p.competences.includes(id)
+          ? ''
+          : ' — vos 8 emplacements actifs sont pleins : elle vous attend dans le grimoire (Profil → ⚡ Compétences).'}`,
       });
     }
   });
@@ -727,23 +783,13 @@ function gagnerXp(p, xp) {
   const apres = niveauPour(p.xp);
   if (apres > avant) {
     p.pointsEnAttente += POINTS_PAR_NIVEAU * (apres - avant);
-    let nouvellesCompetences = 0;
-    NIVEAUX_NOUVELLE_COMPETENCE.forEach((seuil) => {
-      if (avant < seuil && apres >= seuil) { p.competencesEnAttente++; nouvellesCompetences++; }
-    });
     // Points de maîtrise de la signature (niveaux 3, 6, 9, 12, 15, 18)
     p.maitrise = (p.maitrise || 0) + pointsMaitrisePourNiveau(apres) - pointsMaitrisePourNiveau(avant);
     p.niveau = apres;
-    // Nouvelles compétences de classe atteintes (niveaux 5, 10, 15)
+    // v18 : monter de niveau n'offre PLUS de compétence gratuite. Hors
+    // compétences de classe (automatiques), tout nouveau sort s'achète en
+    // grimoire à l'Arcanium — le savoir se paie.
     debloquerCompetencesClasse(p, true);
-    // v17 : tout ce que cette montée débloque s'annonce en popup.
-    if (nouvellesCompetences > 0 && !p.distant) {
-      annoncerDeblocage({
-        emoji: '📖',
-        titre: 'Nouvelle compétence à apprendre !',
-        texte: 'Passez par la fiche du héros (onglet Compétences) pour choisir votre nouveau sort.',
-      });
-    }
     annoncerDeblocagesNiveau(p, avant, apres);
     bornerVie(p);
     p.hp = p.maxHp;
@@ -801,21 +847,27 @@ function rendreTitre() {
 // =====================================================================
 // Création de personnage
 // =====================================================================
-function demarrerCreation() {
+// v18 : la création accepte un MODE ADMIN — même parcours de A à Z
+// (identité, race, classe, caractéristiques, compétences), mais le héros
+// qui en naît porte la console de bac à sable.
+function demarrerCreation(options = {}) {
   const stats = {};
   Object.keys(CARACS).forEach((cle) => { stats[cle] = STAT_BASE; });
   etat.brouillon = {
     nom: '',
-    avatar: AVATARS[etat.profils.length % AVATARS.length],
+    avatar: options.admin ? '🛠️' : AVATARS[etat.profils.length % AVATARS.length],
     race: 'humain',
     classe: 'aventurier',
     stats,
     competences: new Set(),
     page: 1,
+    admin: !!options.admin,
   };
   el('creation-nom').value = '';
   el('creation-recuperation').value = '';
-  el('creation-titre').textContent = 'Crée ton héros';
+  el('creation-titre').textContent = options.admin
+    ? '🛠️ Crée ton héros admin'
+    : 'Crée ton héros';
   rendreCreation();
   montrerEcran('ecran-creation');
 }
@@ -849,6 +901,20 @@ function pointsRestants() {
 function rendreCreation() {
   const b = etat.brouillon;
 
+  // v18 : bandeau permanent en mode admin — on sait ce qu'on fabrique.
+  const ancienBandeau = el('creation-bandeau-admin');
+  if (ancienBandeau) ancienBandeau.remove();
+  if (b.admin) {
+    const bandeau = document.createElement('p');
+    bandeau.id = 'creation-bandeau-admin';
+    bandeau.className = 'bandeau-admin-creation';
+    bandeau.innerHTML = '🛠️ <strong>Création d’un héros admin</strong> — un héros complet, choisi de A à Z, '
+      + 'qui recevra en plus la <strong>console de bac à sable</strong> (onglet 🛠️ Admin de son profil) '
+      + 'et une bourse de départ bien garnie. Il reste <strong>local par défaut</strong> : c’est vous qui '
+      + 'déciderez de le relier au monde en ligne, depuis l’onglet ☁️ Compte.';
+    el('creation-etapes').insertAdjacentElement('afterend', bandeau);
+  }
+
   // Pages : une seule visible à la fois, un fil d'étapes en haut.
   document.querySelectorAll('#ecran-creation .page-creation').forEach((page) => {
     page.classList.toggle('cache', Number(page.dataset.page) !== b.page);
@@ -868,7 +934,10 @@ function rendreCreation() {
 
   const zoneAvatars = el('creation-avatars');
   zoneAvatars.innerHTML = '';
-  AVATARS.forEach((a) => {
+  // En mode admin, l'emblème 🛠️ rejoint la grille : sinon il serait
+  // choisi par défaut… sans jamais pouvoir être re-sélectionné.
+  const avatarsProposes = b.admin ? ['🛠️', ...AVATARS] : AVATARS;
+  avatarsProposes.forEach((a) => {
     const btn = document.createElement('button');
     btn.className = 'avatar-choix' + (b.avatar === a ? ' selectionne' : '');
     btn.textContent = a;
@@ -1087,42 +1156,37 @@ function validerCreation() {
 
 function finaliserCreation(codeRecuperation) {
   const b = etat.brouillon;
-  const nom = el('creation-nom').value.trim() || `Héros ${etat.profils.length + 1}`;
+  const nom = el('creation-nom').value.trim()
+    || (b.admin ? `Admin ${etat.profils.filter((x) => x.admin).length + 1}` : `Héros ${etat.profils.length + 1}`);
   const p = nouveauPersonnage({ nom, avatar: b.avatar, race: b.race, classe: b.classe, stats: b.stats, competences: [...b.competences] });
   if (codeRecuperation) p.recuperation = codeRecuperation;
+  // v18 : le héros admin naît comme les autres — mais avec sa console et
+  // sa bourse de bac à sable. Il reste LOCAL tant qu'on ne le relie pas
+  // soi-même au monde (bouton de l'onglet ☁️ Compte).
+  if (b.admin) {
+    p.admin = true;
+    p.relieAuMonde = false;
+    p.po = 100000;
+  }
   etat.profils.push(p);
   etat.actifId = p.id;
   etat.equipe = [p.id];
   sauvegarderLocal();
-  if (typeof creerPersonnageCloud === 'function') creerPersonnageCloud(p);
-  afficherToast(`${p.avatar} ${p.nom} rejoint les Royaumes de Valciel !`);
+  if (!p.admin && typeof creerPersonnageCloud === 'function') creerPersonnageCloud(p);
+  if (p.admin) {
+    afficherToast(`🛠️ ${p.avatar} ${p.nom} — héros admin créé ! Sa console vous attend : Profil → onglet 🛠️ Admin.`);
+  } else {
+    afficherToast(`${p.avatar} ${p.nom} rejoint les Royaumes de Valciel !`);
+  }
   rendreCarte();
   montrerEcran('ecran-carte');
 }
 
 // =====================================================================
-// Héros admin : un bac à sable local avec une console pour tout modifier.
-// Jamais relié au monde en ligne (ni classement, ni taverne).
+// Héros admin (v18) : un héros créé de A à Z comme les autres, doté
+// d'une console de bac à sable rangée par thèmes. Local par défaut —
+// c'est son joueur qui décide de le relier (ou non) au monde en ligne.
 // =====================================================================
-function creerHerosAdmin() {
-  const p = nouveauPersonnage({
-    nom: `Admin ${etat.profils.filter((x) => x.admin).length + 1}`,
-    avatar: '🛠️',
-    race: 'humain',
-    classe: 'aventurier',
-    stats: { for: 5, int: 5, agi: 5, vit: 5, cha: 5 },
-    competences: ['frappe-heroique', 'boule-de-feu', 'soin', 'tir-precis'],
-  });
-  p.admin = true;
-  p.po = 100000;
-  etat.profils.push(p);
-  etat.actifId = p.id;
-  etat.equipe = [p.id];
-  sauvegarderLocal();
-  afficherToast('🛠️ Héros admin créé — sa console vous attend sur sa fiche (onglet Héros). Il reste local, jamais publié en ligne.');
-  rendreCarte();
-  montrerEcran('ecran-carte');
-}
 
 // Fixe directement le niveau (console d'admin), avec tous les déblocages.
 function adminFixerNiveau(p, n) {
@@ -1132,9 +1196,6 @@ function adminFixerNiveau(p, n) {
   p.niveau = n;
   if (n > avant) {
     p.pointsEnAttente += POINTS_PAR_NIVEAU * (n - avant);
-    NIVEAUX_NOUVELLE_COMPETENCE.forEach((seuil) => {
-      if (avant < seuil && n >= seuil) p.competencesEnAttente++;
-    });
     p.maitrise = (p.maitrise || 0) + pointsMaitrisePourNiveau(n) - pointsMaitrisePourNiveau(avant);
     debloquerCompetencesClasse(p, false);
   }
@@ -1143,43 +1204,140 @@ function adminFixerNiveau(p, n) {
   p.mp = p.maxMp;
 }
 
-function rendreConsoleAdmin(zone, p) {
-  const bloc = document.createElement('div');
-  bloc.className = 'panneau panneau-admin';
-  bloc.innerHTML = `<h3>🛠️ Console d'admin</h3>
-    <p class="aide">Héros bac à sable : modifiez tout, testez tout. Il n'est jamais publié en ligne — le classement des vrais joueurs reste honnête.</p>`;
+// Équipe le héros avec ce que le catalogue offre de mieux à son niveau.
+// Les pièces remplacées retournent au sac, et les deux accessoires sont
+// DISTINCTS (deux fois le même gonflerait artificiellement les panoplies).
+function adminEquiperAuMieux(p) {
+  const poids = (o) => (o.niveau || 1) * (MULT_RARETE_CRAFT[rareteDe(o)] || 1);
+  const parSlot = {};
+  const accessoires = [];
+  Object.entries(OBJETS).forEach(([id, o]) => {
+    if (o.type !== 'equipement' || (o.niveau || 1) > p.niveau) return;
+    if (o.slot === 'accessoire') { accessoires.push(id); return; }
+    const meilleur = parSlot[o.slot];
+    if (!meilleur || poids(o) > poids(OBJETS[meilleur])) parSlot[o.slot] = id;
+  });
+  accessoires.sort((a, b) => poids(OBJETS[b]) - poids(OBJETS[a]));
+  parSlot.acc1 = accessoires[0];
+  parSlot.acc2 = accessoires[1];
 
-  const actions = [
-    ['⬆️ Niveau +1', () => adminFixerNiveau(p, p.niveau + 1)],
-    ['⬆️ Niveau +5', () => adminFixerNiveau(p, p.niveau + 5)],
-    ['🌟 Niveau 50', () => adminFixerNiveau(p, 50)],
-    ['💰 +10 000 po', () => { p.po += 10000; }],
-    ['🏅 +5 maîtrise', () => { p.maitrise = (p.maitrise || 0) + 5; }],
-    ['📚 Toutes les compétences', () => { Object.keys(COMPETENCES).forEach((id) => { if (!COMPETENCES[id].classe || COMPETENCES[id].classe === p.classe) apprendreCompetence(p, id); }); }],
-    ['🐾 Tous les familiers', () => { p.familiers = Object.keys(FAMILIERS); }],
-    ['⛏️ Matériaux ×25', () => { Object.entries(OBJETS).forEach(([id, o]) => { if (o.type === 'materiau') ajouterObjet(p, id, 25); }); }],
-    ['🧪 Potions ×10', () => { Object.entries(OBJETS).forEach(([id, o]) => { if (o.type === 'consommable') ajouterObjet(p, id, 10); }); }],
-    ['❤️ Soin complet', () => { p.hp = p.maxHp; p.mp = p.maxMp; }],
-    ['💪 +5 à toutes les stats', () => { Object.keys(CARACS).forEach((cle) => { p.stats[cle] += 5; }); bornerVie(p); }],
-    ['📜 Contrats du jour remplis', () => { p.quetes.liste.forEach((q) => { q.fait = q.requis; }); }],
-    ['🧰 Métiers au maximum', () => { Object.keys(METIERS).forEach((id) => { metierDe(p, id).niveau = NIVEAU_MAX_METIER; metierDe(p, id).xp = 0; }); }],
-  ];
-  const rangee = document.createElement('div');
-  rangee.className = 'rangee-boutons';
-  actions.forEach(([libelle, action]) => {
+  Object.entries(parSlot).forEach(([slot, id]) => {
+    if (!id) return;
+    const porte = p.equipement[slot];
+    if (porte && porte !== id) ajouterObjet(p, porte);
+    p.equipement[slot] = id;
+  });
+  bornerVie(p);
+  p.hp = p.maxHp;
+  p.mp = p.maxMp;
+}
+
+function rendreConsoleAdmin(zone, p) {
+  const entete = document.createElement('div');
+  entete.className = 'panneau panneau-admin';
+  entete.innerHTML = `<h3>🛠️ Console d'admin</h3>
+    <p class="aide">Héros bac à sable : modifiez tout, testez tout, cassez tout.
+    ${p.cloud
+    ? '☁️ Ce héros est <strong>relié au monde</strong> : ses statistiques apparaissent à la taverne et dans les classements.'
+    : '📴 Ce héros est <strong>local</strong> : rien n’est publié en ligne. Le bouton « Relier au monde » vous attend dans l’onglet ☁️ Compte.'}</p>`;
+  zone.appendChild(entete);
+
+  // Rafraîchit tout ce qui peut avoir changé, puis annonce le résultat.
+  // (les hauts faits déclenchés en cascade restent muets : un simple toast
+  // suffit à la console.)
+  const appliquer = (libelle, sansRecalcul) => {
+    // Sans ce garde-fou, « Effacer les hauts faits » les re-décernerait
+    // tous dans le même clic (leurs conditions sont toujours remplies).
+    if (!sansRecalcul) sansAnnonces(() => verifierHautsFaits(p));
+    bornerVie(p);
+    sauvegarder(p);
+    afficherToast(`🛠️ ${libelle} — fait.`);
+    rendreHeros();
+    rendreTopbar();
+  };
+
+  // Fabrique une section : un panneau, sa note, et sa rangée de boutons.
+  const section = (titre, note, actions) => {
+    const bloc = document.createElement('div');
+    bloc.className = 'panneau panneau-admin';
+    bloc.innerHTML = `<h4 class="titre-admin">${titre}</h4>${note ? `<p class="aide">${note}</p>` : ''}`;
+    const rangee = document.createElement('div');
+    rangee.className = 'rangee-boutons';
+    actions.forEach(([libelle, action, danger, sansRecalcul]) => {
+      const btn = document.createElement('button');
+      btn.className = `btn-choix btn-compact${danger ? ' btn-danger' : ''}`;
+      btn.textContent = libelle;
+      // Les actions d'admin sont muettes : pas de pluie de célébrations.
+      btn.addEventListener('click', () => { sansAnnonces(action); appliquer(libelle, sansRecalcul); });
+      rangee.appendChild(btn);
+    });
+    bloc.appendChild(rangee);
+    zone.appendChild(bloc);
+    return bloc;
+  };
+
+  // Champ numérique + bouton d'application (niveau exact, or exact…).
+  const ligneValeur = (bloc, id, libelle, placeholder, surValidation) => {
+    const ligne = document.createElement('div');
+    ligne.className = 'rangee-boutons';
+    const champ = document.createElement('input');
+    champ.id = id;
+    champ.type = 'number';
+    champ.className = 'champ-comptoir large';
+    champ.placeholder = placeholder;
     const btn = document.createElement('button');
     btn.className = 'btn-choix btn-compact';
     btn.textContent = libelle;
     btn.addEventListener('click', () => {
-      action();
-      sauvegarderLocal();
-      afficherToast(`🛠️ ${libelle} — fait.`);
-      rendreHeros();
-      rendreTopbar();
+      const valeur = parseInt(champ.value, 10);
+      if (Number.isNaN(valeur)) { afficherToast('🛠️ Entrez un nombre.'); return; }
+      sansAnnonces(() => surValidation(valeur));
+      appliquer(libelle);
     });
-    rangee.appendChild(btn);
-  });
-  bloc.appendChild(rangee);
+    ligne.appendChild(champ);
+    ligne.appendChild(btn);
+    bloc.appendChild(ligne);
+  };
+
+  // ----- 📈 Progression -----
+  const blocNiveau = section('📈 Progression', 'Niveau, caractéristiques et maîtrise.', [
+    ['⬆️ Niveau +1', () => adminFixerNiveau(p, p.niveau + 1)],
+    ['⬆️ +5', () => adminFixerNiveau(p, p.niveau + 5)],
+    ['⬆️ +10', () => adminFixerNiveau(p, p.niveau + 10)],
+    [`🌟 Niveau ${NIVEAU_MAX}`, () => adminFixerNiveau(p, NIVEAU_MAX)],
+    ['⬇️ Niveau −1', () => adminFixerNiveau(p, p.niveau - 1)],
+    ['💪 +5 à toutes les caracs', () => { Object.keys(CARACS).forEach((cle) => { p.stats[cle] += 5; }); }],
+    ['🎯 +10 points à répartir', () => { p.pointsEnAttente += 10; }],
+    ['🏅 +5 points de maîtrise', () => { p.maitrise = (p.maitrise || 0) + 5; }],
+    ['🏅 Signatures au rang max', () => {
+      p.grimoire.forEach((id) => { if (COMPETENCES[id] && COMPETENCES[id].classe) p.rangs[id] = RANG_SIGNATURE_MAX; });
+    }],
+    ['↺ Caracs au minimum', () => {
+      Object.keys(CARACS).forEach((cle) => { p.stats[cle] = STAT_BASE; });
+      p.pointsEnAttente = POINTS_CREATION + POINTS_PAR_NIVEAU * (p.niveau - 1);
+    }, true],
+  ]);
+  ligneValeur(blocNiveau, 'admin-niveau', '📈 Fixer le niveau', `Niveau exact (1-${NIVEAU_MAX})`,
+    (v) => adminFixerNiveau(p, v));
+
+  // ----- 💰 Richesse et objets -----
+  const blocOr = section('💰 Richesse & objets', 'Bourse, matériaux, potions et équipement.', [
+    ['💰 +1 000 po', () => { p.po += 1000; }],
+    ['💰 +10 000 po', () => { p.po += 10000; }],
+    ['💰 +100 000 po', () => { p.po += 100000; }],
+    ['⛏️ Tous les matériaux ×25', () => { Object.entries(OBJETS).forEach(([id, o]) => { if (o.type === 'materiau') ajouterObjet(p, id, 25); }); }],
+    ['⛏️ Matériaux ×99', () => { Object.entries(OBJETS).forEach(([id, o]) => { if (o.type === 'materiau') ajouterObjet(p, id, 99); }); }],
+    ['🧪 Toutes les potions ×10', () => { Object.entries(OBJETS).forEach(([id, o]) => { if (o.type === 'consommable') ajouterObjet(p, id, 10); }); }],
+    ['🛡️ S’équiper au mieux', () => adminEquiperAuMieux(p)],
+    ['🧹 Vider le sac', () => { p.inventaire = []; }, true],
+    ['🧹 Tout déséquiper', () => {
+      Object.keys(p.equipement).forEach((slot) => {
+        if (p.equipement[slot]) ajouterObjet(p, p.equipement[slot]);
+        p.equipement[slot] = null;
+      });
+    }, true],
+  ]);
+  ligneValeur(blocOr, 'admin-or', '💰 Fixer l’or', 'Or exact', (v) => { p.po = Math.max(0, v); });
 
   // Donner n'importe quel objet, par nom ou par identifiant.
   const ligneObjet = document.createElement('div');
@@ -1187,14 +1345,7 @@ function rendreConsoleAdmin(zone, p) {
   const champ = document.createElement('input');
   champ.id = 'admin-objet';
   champ.placeholder = 'Nom ou id d’objet (ex : Lame du Firmament)';
-  champ.className = 'champ-comptoir large';
-  champ.style.width = '280px';
-  const donner = document.createElement('button');
-  donner.className = 'btn-choix btn-compact';
-  donner.textContent = '🎁 Donner ×1';
-  const donnerDix = document.createElement('button');
-  donnerDix.className = 'btn-choix btn-compact';
-  donnerDix.textContent = '🎁 ×10';
+  champ.className = 'champ-comptoir large champ-admin-objet';
   const chercherEtDonner = (qte) => {
     const requete = champ.value.trim().toLowerCase();
     if (!requete) return;
@@ -1203,17 +1354,155 @@ function rendreConsoleAdmin(zone, p) {
       : Object.entries(OBJETS).find(([, o]) => o.nom.toLowerCase().includes(requete));
     if (!trouve) { afficherToast(`🛠️ Aucun objet ne correspond à « ${champ.value} ».`); return; }
     ajouterObjet(p, trouve[0], qte);
-    sauvegarderLocal();
+    sauvegarder(p);
     afficherToast(`🛠️ ${trouve[1].emoji} ${trouve[1].nom} ×${qte} ajouté au sac.`);
     rendreTopbar();
   };
-  donner.addEventListener('click', () => chercherEtDonner(1));
-  donnerDix.addEventListener('click', () => chercherEtDonner(10));
-  ligneObjet.appendChild(champ);
-  ligneObjet.appendChild(donner);
-  ligneObjet.appendChild(donnerDix);
-  bloc.appendChild(ligneObjet);
-  zone.appendChild(bloc);
+  [[1, '🎁 Donner ×1'], [10, '🎁 ×10'], [99, '🎁 ×99']].forEach(([qte, libelle]) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-choix btn-compact';
+    btn.textContent = libelle;
+    btn.addEventListener('click', () => chercherEtDonner(qte));
+    ligneObjet.appendChild(btn);
+  });
+  ligneObjet.insertBefore(champ, ligneObjet.firstChild);
+  blocOr.appendChild(ligneObjet);
+
+  // ----- ⚡ Compétences -----
+  section('⚡ Compétences', 'Le grimoire, sans passer par la caisse de l’Arcanium.', [
+    ['📚 Toutes les compétences', () => {
+      Object.keys(COMPETENCES).forEach((id) => {
+        if (!COMPETENCES[id].classe || COMPETENCES[id].classe === p.classe) apprendreCompetence(p, id);
+      });
+    }],
+    ['✨ Toutes les communes', () => {
+      Object.keys(COMPETENCES).forEach((id) => { if (!COMPETENCES[id].classe) apprendreCompetence(p, id); });
+    }],
+    ['🏅 Toutes celles de ma classe', () => {
+      Object.keys(COMPETENCES).forEach((id) => { if (COMPETENCES[id].classe === p.classe) apprendreCompetence(p, id); });
+    }],
+    ['🐾 Tous les sorts d’invocation', () => {
+      Object.entries(COMPETENCES).forEach(([id, c]) => { if (c.type === 'invocation') apprendreCompetence(p, id); });
+    }],
+    ['↺ Vider le grimoire', () => {
+      p.grimoire = [...p.competences];
+      p.rangs = {};
+    }, true],
+  ]);
+
+  // ----- 🌍 Monde et déblocages -----
+  section('🌍 Monde & déblocages', 'Boss, difficultés, histoires, donjons et records de tours.', [
+    ['👑 Tous les boss de zone vaincus', () => {
+      p.bossVaincus = ZONES.map((z) => z.id);
+      ZONES.forEach((z) => { p.explorations[z.id] = Math.max(p.explorations[z.id] || 0, 10); });
+    }],
+    ['🗺️ +10 explorations partout', () => {
+      ZONES.forEach((z) => { p.explorations[z.id] = (p.explorations[z.id] || 0) + 10; });
+    }],
+    ['📜 Toutes les histoires découvertes', () => {
+      p.histoiresVues = {};
+      Object.entries(HISTOIRES_ZONES).forEach(([idZone, liste]) => {
+        p.histoiresVues[idZone] = liste.map((_, i) => i);
+      });
+    }],
+    ['📖 Tous les donjons terminés', () => {
+      DONJONS.forEach((d) => {
+        p.donjons[d.id] = p.donjons[d.id] || { fini: 0, checkpoint: null, drapeaux: {} };
+        p.donjons[d.id].fini = Math.max(1, p.donjons[d.id].fini || 0);
+        p.donjons[d.id].checkpoint = null;
+      });
+    }],
+    ['🗼 Records de tours au max', () => {
+      p.tourMax = Math.max(p.tourMax || 0, 25);
+      p.tourBoss = { normal: 10, heroique: 10, cauchemar: 10 };
+    }],
+    ['↺ Effacer boss & explorations', () => {
+      p.bossVaincus = [];
+      p.explorations = {};
+      etat.menaces = {};
+    }, true],
+    ['↺ Oublier les histoires', () => { p.histoiresVues = {}; }, true],
+  ]);
+
+  // ----- 🧰 Métiers -----
+  section('🧰 Métiers de récolte', 'Niveaux de métier et sous-classe de récolteur.', [
+    ['🧰 Tous au maximum', () => {
+      Object.keys(METIERS).forEach((id) => { metierDe(p, id).niveau = NIVEAU_MAX_METIER; metierDe(p, id).xp = 0; });
+    }],
+    ...Object.entries(METIERS).map(([id, m]) => [`${m.emoji} Devenir ${m.nom}`, () => { p.metierPrincipal = id; }]),
+    ['↺ Réinitialiser les métiers', () => {
+      p.metiers = {};
+      p.metierPrincipal = null;
+      Object.keys(METIERS).forEach((id) => { p.metiers[id] = { niveau: 1, xp: 0 }; });
+    }, true],
+  ]);
+
+  // ----- 🏅 Collections -----
+  section('🏅 Collections', 'Familiers, hauts faits et titres.', [
+    ['🐾 Tous les familiers', () => { p.familiers = Object.keys(FAMILIERS); }],
+    ['🏅 Tous les hauts faits', () => { p.hautsFaits = HAUTS_FAITS.map((h) => h.id); }],
+    ['↺ Effacer les hauts faits', () => { p.hautsFaits = []; p.titre = null; }, true, true],
+    ['↺ Renvoyer les familiers', () => { p.familiers = []; p.familier = null; }, true],
+  ]);
+
+  // ----- ❤️ Vie et contrats -----
+  section('❤️ Vie, combat & contrats', 'De quoi tester les situations extrêmes.', [
+    ['❤️ Soin complet', () => { p.hp = p.maxHp; p.mp = p.maxMp; }],
+    ['🩸 Tomber à 1 PV', () => { p.hp = 1; }],
+    ['💧 Vider le mana', () => { p.mp = 0; }],
+    ['💧 Mana plein', () => { p.mp = p.maxMp; }],
+    ['📜 Contrats du jour remplis', () => { p.quetes.liste.forEach((q) => { q.fait = q.requis; }); }],
+    ['🔄 Régénérer les contrats', () => { p.quetes = genererQuetesDuJour(p); }],
+  ]);
+
+  // ----- 🧪 Tests d'interface -----
+  section('🧪 Tests d’interface', 'Pour vérifier les fenêtres et les alertes sans jouer des heures.', [
+    ['🎉 Tester un popup de déblocage', () => {
+      // Celui-ci doit s'afficher : on force la sortie de la sourdine.
+      setTimeout(() => annoncerDeblocage({
+        emoji: '🎉',
+        titre: 'Test de déblocage',
+        texte: 'Voici à quoi ressemble une annonce de déblocage. Tout va bien.',
+      }), 0);
+    }],
+    ['🎊 Tester une file de 3 popups', () => {
+      setTimeout(() => {
+        ['🥇', '🥈', '🥉'].forEach((emoji, i) => annoncerDeblocage({
+          emoji,
+          titre: `Déblocage de test n° ${i + 1}`,
+          texte: 'Vérifiez le compteur « encore N » et le bouton « Tout fermer ».',
+        }));
+      }, 0);
+    }],
+    ['⚠️ Armer une menace de boss', () => {
+      const dispo = ZONES.filter((z) => p.niveau >= z.niveauMin);
+      const z = dispo[dispo.length - 1] || ZONES[0];
+      etat.menaces = etat.menaces || {};
+      etat.menaces[z.id] = { compteur: 0, declencheA: 1 };
+      afficherToast(`⚠️ Menace armée sur ${z.nom} : le boss surgira à la prochaine exploration.`);
+    }],
+  ]);
+
+  // ----- ⚠️ Zone rouge -----
+  const blocRouge = document.createElement('div');
+  blocRouge.className = 'panneau panneau-admin panneau-admin-rouge';
+  blocRouge.innerHTML = `<h4 class="titre-admin">⚠️ Zone rouge</h4>
+    <p class="aide">Renoncer au statut d'admin rend ce héros définitivement ordinaire : la console disparaît,
+    et il se synchronise avec le monde comme tous les autres. Irréversible.</p>`;
+  blocRouge.appendChild(boutonConfirmation(
+    '🎭 Renoncer au statut d’admin',
+    'Vraiment ? Ce héros deviendra ordinaire',
+    () => {
+      delete p.admin;
+      delete p.relieAuMonde;
+      ongletHeros = 'apercu';
+      sauvegarder(p);
+      afficherToast('🎭 Ce héros est désormais un aventurier comme les autres.');
+      rendreHeros();
+      rendreTopbar();
+    },
+  ));
+  zone.appendChild(blocRouge);
 }
 
 // =====================================================================
@@ -1222,7 +1511,6 @@ function rendreConsoleAdmin(zone, p) {
 // v15.1 : brouillons de la fiche — la répartition de caractéristiques et
 // le choix d'une nouvelle compétence attendent une CONFIRMATION.
 let brouillonRepartition = null; // { persoId, points: { for: 1, ... } }
-let selectionApprentissage = null; // id de la compétence pré-choisie
 let ongletHeros = 'apercu'; // v17 : onglet actif de la fiche du héros
 
 function rendreHeros() {
@@ -1261,8 +1549,7 @@ function rendreHeros() {
     </div>`;
   zone.appendChild(entete);
 
-  // Console d'admin (héros bac à sable uniquement)
-  if (p.admin) rendreConsoleAdmin(zone, p);
+  // (v18 : la console d'admin vit désormais dans son propre onglet)
 
   // Renommage du héros (mis à jour aussi dans le monde en ligne)
   entete.querySelector('#btn-renommer').addEventListener('click', () => {
@@ -1286,10 +1573,13 @@ function rendreHeros() {
   // v17 : la fiche s'organise en ONGLETS clairs — fini le grand déballage.
   const onglets = [
     ['apercu', `📊 Aperçu${p.pointsEnAttente > 0 ? ' ❗' : ''}`],
-    ['competences', `⚡ Compétences${p.competencesEnAttente > 0 || p.maitrise > 0 ? ' ❗' : ''}`],
+    ['competences', `⚡ Compétences${p.maitrise > 0 ? ' ❗' : ''}`],
     ['progression', '🏅 Progression'],
     ['compte', '☁️ Compte'],
   ];
+  // v18 : la console d'admin a désormais son propre onglet.
+  if (p.admin) onglets.push(['admin', '🛠️ Admin']);
+  if (!onglets.some(([id]) => id === ongletHeros)) ongletHeros = 'apercu';
   const barreOnglets = document.createElement('div');
   barreOnglets.className = 'onglets onglets-heros';
   onglets.forEach(([id, nom]) => {
@@ -1305,12 +1595,13 @@ function rendreHeros() {
     rendreBlocStats(zone, p, s);
     rendreBlocSets(zone, p);
   } else if (ongletHeros === 'competences') {
-    rendreBlocApprentissage(zone, p, s);
     rendreBlocCompetences(zone, p, s);
   } else if (ongletHeros === 'progression') {
     rendreBlocMetiers(zone, p);
     rendreBlocFamiliers(zone, p);
     rendreBlocFaits(zone, p);
+  } else if (ongletHeros === 'admin') {
+    rendreConsoleAdmin(zone, p);
   } else {
     rendreBlocCode(zone, p);
     rendreBlocDeconnexion(zone, p);
@@ -1403,67 +1694,6 @@ function rendreBlocStats(zone, p, s) {
   zone.appendChild(blocStats);
 }
 
-// --- Nouvelle compétence à apprendre (montée de niveau) ---
-// v15.1 : on SÉLECTIONNE d'abord, on confirme ensuite — un mauvais clic
-// ne grave plus rien dans le marbre.
-function rendreBlocApprentissage(zone, p, s) {
-  if (p.competencesEnAttente > 0) {
-    if (selectionApprentissage && (!COMPETENCES[selectionApprentissage] || p.grimoire.includes(selectionApprentissage))) {
-      selectionApprentissage = null;
-    }
-    const bloc = document.createElement('div');
-    bloc.className = 'panneau bloc-apprentissage';
-    bloc.innerHTML = `<h3>📖 Nouvelle compétence à apprendre (${p.competencesEnAttente})</h3>
-      <p class="aide">Cliquez une compétence pour la choisir, puis confirmez — rien n'est appris avant la confirmation. La compétence rejoint votre grimoire, et vos actives s'il reste une place.</p>`;
-    if (selectionApprentissage) {
-      const compChoisie = COMPETENCES[selectionApprentissage];
-      const idChoisi = selectionApprentissage;
-      const rangee = document.createElement('div');
-      rangee.className = 'rangee-boutons';
-      const confirmer = document.createElement('button');
-      confirmer.className = 'btn-principal btn-compact';
-      confirmer.id = 'apprentissage-confirmer';
-      confirmer.textContent = `✔ Apprendre ${compChoisie.emoji} ${compChoisie.nom}`;
-      confirmer.addEventListener('click', () => {
-        apprendreCompetence(p, idChoisi);
-        p.competencesEnAttente--;
-        selectionApprentissage = null;
-        sauvegarder(p);
-        afficherToast(`${compChoisie.emoji} ${p.nom} apprend ${compChoisie.nom} !`);
-        rendreHeros();
-        rendreTopbar();
-      });
-      const annuler = document.createElement('button');
-      annuler.className = 'btn-choix btn-compact';
-      annuler.id = 'apprentissage-annuler';
-      annuler.textContent = '✖ Changer d’avis';
-      annuler.addEventListener('click', () => { selectionApprentissage = null; rendreHeros(); });
-      rangee.appendChild(confirmer);
-      rangee.appendChild(annuler);
-      bloc.appendChild(rangee);
-    }
-    const grille = document.createElement('div');
-    grille.className = 'grille-competences';
-    Object.entries(COMPETENCES)
-      .filter(([id, comp]) => !p.grimoire.includes(id) && !comp.classe)
-      .forEach(([id, comp]) => {
-        grille.appendChild(carteCompetence(id, comp, {
-          stats: s,
-          cliquable: true,
-          selectionnee: selectionApprentissage === id,
-          surClic: () => {
-            selectionApprentissage = selectionApprentissage === id ? null : id;
-            rendreHeros();
-          },
-        }));
-      });
-    bloc.appendChild(grille);
-    zone.appendChild(bloc);
-  } else if (selectionApprentissage) {
-    selectionApprentissage = null;
-  }
-}
-
 // --- Compétences actives (max 8) et grimoire ---
 function rendreBlocCompetences(zone, p, s) {
   const classe = classeDe(p);
@@ -1472,7 +1702,10 @@ function rendreBlocCompetences(zone, p, s) {
   blocComp.innerHTML = `<h3>⚡ Compétences actives (${p.competences.length}/${MAX_COMPETENCES_ACTIVES})
     ${p.maitrise > 0 ? `<span class="badge badge-alerte">🏅 ${p.maitrise} point${p.maitrise > 1 ? 's' : ''} de maîtrise à investir !</span>` : ''}</h3>
     <p class="aide">Ce sont elles que vous lancez en combat. Retirez-en, équipez-en d'autres depuis le grimoire — autant de fois que vous voulez, hors combat.
-    Votre signature de classe se renforce avec les points de maîtrise (niv. 3, 6, 9, 12, 15, 18).</p>`;
+    Votre signature de classe se renforce avec les points de maîtrise (niv. 3, 6, 9, 12, 15, 18).</p>
+    <p class="aide">📖 <strong>Apprendre de nouveaux sorts ?</strong> Monter de niveau n'en offre aucun. Vos
+    8 compétences de classe vous reviennent de droit (5 dès le niveau 1, puis une aux niveaux 5, 10 et 15) ;
+    tout le reste se lit dans un <strong>grimoire acheté à l'Arcanium</strong>, chez Dame Sibylle. Le savoir se paie.</p>`;
   const grilleComp = document.createElement('div');
   grilleComp.className = 'grille-competences';
   p.competences.forEach((id) => {
@@ -1502,7 +1735,7 @@ function rendreBlocCompetences(zone, p, s) {
   if (enReserve.length === 0) {
     const aide = document.createElement('p');
     aide.className = 'aide';
-    aide.textContent = 'Toutes vos compétences connues sont actives. Débloquez-en d’autres en montant de niveau — ou achetez des grimoires à la boutique !';
+    aide.textContent = 'Toutes vos compétences connues sont actives. Pour en apprendre d’autres, achetez leur grimoire à l’Arcanium — c’est la seule école du bourg.';
     blocComp.appendChild(aide);
   } else {
     const grilleGrimoire = document.createElement('div');
@@ -1752,16 +1985,31 @@ function rendreBlocCode(zone, p) {
   } else {
     const note = document.createElement('p');
     note.className = 'aide';
-    note.textContent = etat.enLigne
-      ? 'Ce héros n’est pas encore relié au monde en ligne.'
-      : 'Le monde en ligne est injoignable pour le moment — le code apparaîtra dès que la connexion sera rétablie.';
+    if (!etat.enLigne) {
+      note.textContent = 'Le monde en ligne est injoignable pour le moment — le code apparaîtra dès que la connexion sera rétablie.';
+    } else if (p.admin) {
+      // v18 : le bouton reste disponible pour l'admin — c'est LUI qui
+      // décide. On dit juste franchement ce que ça implique.
+      note.innerHTML = '🛠️ Ce héros admin est <strong>local</strong> : rien de lui n’est publié en ligne. '
+        + 'Vous pouvez le relier au monde quand vous voulez — il apparaîtra alors à la taverne, '
+        + 'dans les classements et pourra échanger avec les autres joueurs, <strong>console d’admin comprise</strong>.';
+    } else {
+      note.textContent = 'Ce héros n’est pas encore relié au monde en ligne.';
+    }
     blocCode.appendChild(note);
     if (etat.enLigne && typeof creerPersonnageCloud === 'function') {
       const relier = document.createElement('button');
       relier.className = 'btn-choix';
       relier.textContent = '☁️ Relier au monde';
       relier.addEventListener('click', async () => {
+        // Un héros admin est local par défaut : le clic vaut consentement.
+        if (p.admin) p.relieAuMonde = true;
+        relier.disabled = true;
+        relier.textContent = '☁️ Liaison en cours…';
         await creerPersonnageCloud(p);
+        if (!p.cloud && p.admin) p.relieAuMonde = false; // échec : on reste local
+        sauvegarderLocal();
+        afficherToast(p.cloud ? '☁️ Héros relié au monde !' : '📴 Liaison impossible pour le moment.');
         rendreHeros();
       });
       blocCode.appendChild(relier);
@@ -2014,7 +2262,9 @@ async function importerHeros() {
     champ.value = '';
     message.textContent = '';
     el('zone-import').classList.add('cache');
-    creerHerosAdmin();
+    // v18 : le code n'invoque plus un héros tout fait — il ouvre la
+    // création complète, en mode admin.
+    demarrerCreation({ admin: true });
     return;
   }
   // Deux formes de code : « id.token » (code de sauvegarde technique)
@@ -2067,7 +2317,7 @@ function chargerHerosImporte(donnees, id, token) {
   p.niveau = donnees.niveau || 1;
   p.xp = donnees.xp || 0;
   p.pointsEnAttente = d.pointsEnAttente || 0;
-  p.competencesEnAttente = d.competencesEnAttente || 0;
+  p.competencesEnAttente = 0; // v18 : plus de compétence gratuite
   p.po = d.po != null ? d.po : 60;
   p.inventaire = Array.isArray(d.inventaire) ? d.inventaire : [];
   p.equipement = { arme: null, tete: null, torse: null, jambes: null, acc1: null, acc2: null, ...(d.equipement || {}) };

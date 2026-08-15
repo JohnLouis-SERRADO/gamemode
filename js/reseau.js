@@ -131,8 +131,19 @@ function planifierSauvegardeCloud(p) {
   }, 1500);
 }
 
+// v18 : le héros admin reste local PAR DÉFAUT — mais son joueur peut
+// choisir de le relier au monde (bouton « Relier au monde », onglet
+// Compte). Une fois relié, il se synchronise comme n'importe quel héros.
+function herosLocalSeulement(p) {
+  // Un héros DÉJÀ enregistré en ligne se synchronise toujours : sans cette
+  // garde, un aller-retour malheureux du drapeau le laisserait publié mais
+  // figé pour toujours, jamais remis à jour.
+  if (p.cloud) return false;
+  return !!p.admin && !p.relieAuMonde;
+}
+
 async function sauvegarderCloud(p) {
-  if (!etat.enLigne || p.admin) return; // le héros admin reste local
+  if (!etat.enLigne || herosLocalSeulement(p)) return;
   try {
     if (!p.cloud) {
       await creerPersonnageCloud(p);
@@ -156,7 +167,7 @@ async function sauvegarderCloud(p) {
 const creationsCloudEnCours = new Set();
 
 async function creerPersonnageCloud(p) {
-  if (!etat.enLigne || p.cloud || p.admin || creationsCloudEnCours.has(p.id)) return;
+  if (!etat.enLigne || p.cloud || herosLocalSeulement(p) || creationsCloudEnCours.has(p.id)) return;
   creationsCloudEnCours.add(p.id);
   try {
     const resultat = await apiRequete('/rest/v1/rpc/creer_personnage', {
@@ -165,6 +176,9 @@ async function creerPersonnageCloud(p) {
     });
     if (resultat && resultat.id) {
       p.cloud = { id: resultat.id, token: resultat.token };
+      // La création a abouti : le drapeau suit, quoi qu'ait fait entre-temps
+      // un clic concurrent sur « Relier au monde ».
+      if (p.admin) p.relieAuMonde = true;
       sauvegarderLocal();
       await apiRequete('/rest/v1/rpc/sauvegarder_personnage', {
         methode: 'POST',

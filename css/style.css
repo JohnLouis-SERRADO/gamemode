@@ -390,7 +390,14 @@ button:focus-visible,
 
 .btn-choix:not(:disabled):hover { border-color: var(--accent); background: #2a3348; }
 
-.btn-danger:not(:disabled):hover { border-color: var(--danger); }
+/* Un bouton destructif se reconnaît AU REPOS — sur tactile, il n'y a
+   pas de survol pour prévenir avant le clic. */
+.btn-danger {
+  border-color: rgba(212, 80, 80, 0.55);
+  color: #ff9e9e;
+}
+
+.btn-danger:not(:disabled):hover { border-color: var(--danger); background: #3a2229; }
 
 .btn-compact { padding: 8px 14px; font-size: 0.9rem; }
 
@@ -1018,7 +1025,7 @@ button:focus-visible,
 .ligne-code input { flex: 1; min-width: 200px; margin-top: 0; font-size: 1rem; }
 .ligne-code input:focus { outline: none; border-color: var(--accent); }
 
-.bloc-apprentissage { border-color: var(--accent); }
+/* (le bloc d'apprentissage gratuit a disparu en v18 : les sorts s'achètent) */
 
 /* ----- Taverne ----- */
 .colonnes-taverne {
@@ -1269,6 +1276,39 @@ button:focus-visible,
 /* ----- Console d'admin ----- */
 .panneau-admin { border-color: #d4a017; }
 .panneau-admin h3 { color: #ffd54f; }
+
+/* v18 : console d'admin rangée par sections thématiques */
+.titre-admin {
+  color: #ffd54f;
+  font-size: 0.98rem;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(212, 160, 23, 0.3);
+  padding-bottom: 5px;
+}
+
+.panneau-admin + .panneau-admin { margin-top: -4px; }
+
+.panneau-admin-rouge { border-color: var(--danger); }
+.panneau-admin-rouge .titre-admin {
+  color: #ff8a80;
+  border-bottom-color: rgba(212, 80, 80, 0.35);
+}
+
+/* Doublement qualifié : sinon .champ-comptoir.large l'écrase à 90 px. */
+.champ-comptoir.champ-admin-objet { width: min(280px, 100%); }
+
+/* Bandeau du mode création admin */
+.bandeau-admin-creation {
+  background: rgba(212, 160, 23, 0.12);
+  border: 1px solid #d4a017;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  color: var(--texte-doux);
+  font-size: 0.9rem;
+}
+
+.bandeau-admin-creation strong { color: #ffd54f; }
 
 /* ----- Panoplies et grimoire ----- */
 .objet-set {
@@ -1674,6 +1714,8 @@ button:focus-visible,
   align-items: center;
   justify-content: center;
   padding: 18px;
+  /* en paysage, une fenêtre à deux boutons dépasse : elle doit défiler */
+  overflow-y: auto;
   animation: apparition 0.25s ease;
 }
 
@@ -1717,6 +1759,14 @@ button:focus-visible,
 .modale-deblocage h2 { margin-bottom: 8px; }
 .deblocage-texte { color: var(--texte-doux); margin-bottom: 4px; }
 .btn-deblocage { margin-top: 14px; width: 100%; }
+
+.deblocage-reste {
+  color: var(--accent-clair);
+  font-size: 0.82rem;
+  margin-top: 8px;
+}
+
+.btn-deblocage-tout { margin-top: 8px; width: 100%; }
 
 /* ----- Verrouillé : grisé + cadenas ----- */
 .cadenas-zone {
