@@ -1109,16 +1109,39 @@ function debloquerCompetencesClasse(p, annoncer) {
 }
 
 // Gagne de l'XP ; une montée de niveau soigne entièrement (le fameux « ding »).
-function gagnerXp(p, xp) {
-  const avant = p.niveau;
-  // Rythme global de progression : gains réduits de 65 % (réglage v11).
+// Ce que ce héros gagnera VRAIMENT : la réduction globale (v11 : −65 %)
+// puis ses bonus personnels (race, familier, panoplie). C'est LA source
+// de vérité — gagnerXp l'applique et les écrans de butin l'affichent,
+// pour que l'annonce et le gain soient exactement le même nombre.
+function xpReelle(p, xp) {
   xp = Math.max(1, Math.round(xp * 0.35));
   if (p.race === 'humain') xp = Math.round(xp * 1.1); // Ambition
   const familier = familierActif(p);
   if (familier && familier.bonus.xpBonus) xp = Math.round(xp * (1 + familier.bonus.xpBonus));
   const sets = bonusSetActifs(p);
   if (sets.xpBonus) xp = Math.round(xp * (1 + sets.xpBonus));
-  p.xp += xp;
+  return xp;
+}
+
+// Texte honnête d'un gain partagé : une valeur unique si toute l'équipe
+// touche pareil, une fourchette sinon (les bonus varient par héros).
+function texteGainXp(membres, xpBase) {
+  const gains = membres.map((m) => xpReelle(m, xpBase));
+  const min = Math.min(...gains);
+  const max = Math.max(...gains);
+  return min === max ? `+${formatNombre(min)} XP` : `+${formatNombre(min)} à ${formatNombre(max)} XP`;
+}
+
+function texteGainPo(membres, poBase) {
+  const gains = membres.map((m) => Math.round(poBase * multiplicateurOr(m)));
+  const min = Math.min(...gains);
+  const max = Math.max(...gains);
+  return min === max ? `+${formatNombre(min)} po` : `+${formatNombre(min)} à ${formatNombre(max)} po`;
+}
+
+function gagnerXp(p, xp) {
+  const avant = p.niveau;
+  p.xp += xpReelle(p, xp);
   const apres = niveauPour(p.xp);
   if (apres > avant) {
     p.pointsEnAttente += pointsCumules(apres) - pointsCumules(avant);
@@ -1298,8 +1321,13 @@ function rendreCreation() {
   zoneModeles.innerHTML = '';
   MODELES.forEach((m) => {
     const btn = document.createElement('button');
-    btn.className = 'btn-choix' + (b.classe === m.id ? ' selectionne' : '');
-    btn.textContent = `${m.emoji} ${m.nom}`;
+    btn.className = 'btn-choix btn-race' + (b.classe === m.id ? ' selectionne' : '');
+    // Le rôle et l'armure font partie du choix : un joueur qui débarque
+    // doit savoir qui encaisse, qui soigne et qui frappe — sans cliquer.
+    const base = CLASSES_BASE[m.id];
+    const categorie = base && CATEGORIES_ARMURE[base.armure];
+    const armure = categorie ? ` · ${categorie.emoji} ${categorie.nom}` : '';
+    btn.innerHTML = `${m.emoji} <strong>${m.nom}</strong><span class="race-passif">${m.role}${armure}</span>`;
     btn.addEventListener('click', () => {
       b.classe = m.id;
       b.stats = { ...m.stats };

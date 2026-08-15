@@ -340,7 +340,7 @@ function appliquerEffetDonjon(effet) {
   }
   if (effet.xp) {
     membres.forEach((m) => gagnerXp(m, effet.xp));
-    lignes.push(`⭐ +${effet.xp} XP pour chaque héros`);
+    lignes.push(`⭐ ${texteGainXp(membres, effet.xp)} pour chaque héros`);
   }
   if (effet.objets) {
     Object.entries(effet.objets).forEach(([id, qte]) => {
@@ -596,7 +596,7 @@ function apresVictoireDonjon(cb) {
   const butin = tirerButinCombat(cb);
   const xpParHeros = Math.max(1, Math.round(butin.xp / partage));
   const poParHeros = Math.max(0, Math.round(butin.po / partage));
-  const lignes = [`⭐ +${xpParHeros} XP et 💰 +${poParHeros} po par héros`];
+  const lignes = [`⭐ ${texteGainXp(membres, xpParHeros)} et 💰 ${texteGainPo(membres, poParHeros)} par héros`];
   Object.entries(butin.objets).forEach(([id, qte]) => {
     lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
   });
@@ -849,7 +849,7 @@ function apresVictoireAscension(cb) {
   const bonusPo = a.etage * 12;
   const xpParHeros = Math.max(1, Math.round(butin.xp / partage));
   const poParHeros = Math.max(0, Math.round((butin.po + bonusPo) / partage));
-  const lignes = [`⭐ +${xpParHeros} XP et 💰 +${poParHeros} po par héros (prime d'étage comprise)`];
+  const lignes = [`⭐ ${texteGainXp(membres, xpParHeros)} et 💰 ${texteGainPo(membres, poParHeros)} par héros (prime d'étage comprise)`];
   Object.entries(butin.objets).forEach(([id, qte]) => {
     lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
   });
@@ -933,7 +933,7 @@ function terminerDonjon(etape) {
   const lignes = [];
   const xpParHeros = Math.round(donjon.recompenses.xp * mult);
   const poParHeros = Math.round(donjon.recompenses.po * mult);
-  lignes.push(`⭐ +${xpParHeros} XP et 💰 +${poParHeros} po par héros${premiere ? '' : ' (histoire déjà vécue)'}`);
+  lignes.push(`⭐ ${texteGainXp(membres, xpParHeros)} et 💰 +${formatNombre(poParHeros)} po par héros${premiere ? '' : ' (histoire déjà vécue)'}`);
 
   // L'objet unique de l'histoire (variante selon la fin), première fois seulement.
   if (premiere) {

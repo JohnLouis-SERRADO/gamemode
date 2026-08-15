@@ -474,15 +474,16 @@ function evenementHistoire(z) {
 
   const lignes = [];
   const r = histoire.recompense || {};
-  membresEquipe().forEach((m) => {
+  const equipe = membresEquipe();
+  equipe.forEach((m) => {
     if (r.po) { const gain = Math.round(r.po * multiplicateurOr(m)); m.po += gain; m.compteurs.orTotal += gain; }
     if (r.xp) gagnerXp(m, r.xp);
     if (r.soinPct) m.hp = Math.min(m.maxHp, m.hp + Math.round(m.maxHp * r.soinPct));
     if (r.materiau && OBJETS[r.materiau]) ajouterObjet(m, r.materiau, 1);
     sauvegarder(m);
   });
-  if (r.po) lignes.push(`💰 +${formatNombre(r.po)} po pour chaque héros`);
-  if (r.xp) lignes.push(`⭐ +${r.xp} XP pour chaque héros`);
+  if (r.po) lignes.push(`💰 ${texteGainPo(equipe, r.po)} pour chaque héros`);
+  if (r.xp) lignes.push(`⭐ ${texteGainXp(equipe, r.xp)} pour chaque héros`);
   if (r.soinPct) lignes.push(`❤️ +${Math.round(r.soinPct * 100)} % de PV pour chaque héros`);
   if (r.materiau && OBJETS[r.materiau]) lignes.push(`${OBJETS[r.materiau].emoji} ${OBJETS[r.materiau].nom} ×1 pour chaque héros`);
   lignes.push(`📜 Histoire ${vues.length}/${histoires.length} de ${z.nom} — chacune ne se vit qu'une fois.`);
@@ -804,7 +805,7 @@ function apresVictoireTour(cb) {
   const multTour = 1 + etage * 0.12;
   const xpParHeros = Math.max(1, Math.round((butin.xp * multTour) / partage));
   const poParHeros = Math.max(0, Math.round((butin.po * multTour) / partage));
-  lignes.push(`⭐ +${xpParHeros} XP et 💰 +${formatNombre(poParHeros)} po par héros (prime d'étage +${Math.round(etage * 12)} %)`);
+  lignes.push(`⭐ ${texteGainXp(membres, xpParHeros)} et 💰 ${texteGainPo(membres, poParHeros)} par héros (prime d'étage +${Math.round(etage * 12)} %)`);
   Object.entries(butin.objets).forEach(([id, qte]) => {
     lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
   });
@@ -950,7 +951,7 @@ function apresVictoireTourBoss(cb) {
   const multEtage = 1 + etage * 0.15;
   const xpParHeros = Math.max(1, Math.round((butin.xp * multEtage) / partage));
   const poParHeros = Math.max(0, Math.round((butin.po * multEtage) / partage));
-  const lignes = [`⭐ +${xpParHeros} XP et 💰 +${formatNombre(poParHeros)} po par héros (prime d'étage +${Math.round(etage * 15)} %)`];
+  const lignes = [`⭐ ${texteGainXp(membres, xpParHeros)} et 💰 ${texteGainPo(membres, poParHeros)} par héros (prime d'étage +${Math.round(etage * 15)} %)`];
   Object.entries(butin.objets).forEach(([id, qte]) => {
     lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
   });
@@ -1041,8 +1042,8 @@ function apresVictoire(cb) {
   if (cb.genre === 'boss') {
     lignes.push(`👑 ${MONSTRES[cb.zone.boss].nom} est vaincu ! Les environs respirent… pour l'instant.`);
   }
-  lignes.push(`⭐ +${xpParHeros} XP par héros`);
-  lignes.push(`💰 +${poParHeros} pièces d'or par héros`);
+  lignes.push(`⭐ ${texteGainXp(membres, xpParHeros)} par héros`);
+  lignes.push(`💰 ${texteGainPo(membres, poParHeros)} par héros`);
 
   // Les objets sont répartis aléatoirement entre les membres.
   const partsObjets = membres.map(() => ({}));

@@ -756,8 +756,8 @@ function apresCombatGroupeHote(cb, type) {
     const bonusPoAscension = extra.ascension ? extra.ascension.etage * 12 : 0;
     const xpParHeros = Math.max(1, Math.round((butin.xp * multEtage / partage) * bonusGroupe));
     const poParHeros = Math.max(0, Math.round((butin.po * multEtage + bonusPoAscension) / partage));
-    lignes.push(`⭐ +${xpParHeros} XP par héros`);
-    lignes.push(`💰 +${poParHeros} pièces d'or par héros`);
+    lignes.push(`⭐ ${texteGainXp(cb.equipe, xpParHeros)} par héros`);
+    lignes.push(`💰 +${formatNombre(poParHeros)} pièces d'or par héros`);
     const parts = {};
     cb.equipe.forEach((j) => { parts[j.bid] = {}; });
     Object.entries(butin.objets).forEach(([id, qte]) => {

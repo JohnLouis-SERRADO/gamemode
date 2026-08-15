@@ -863,7 +863,7 @@ function reclamerQuete(p, quete) {
   const poGagne = Math.round(quete.recompense.po * multiplicateurOr(p));
   p.po += poGagne;
   p.compteurs.orTotal += poGagne;
-  const lignes = [`💰 +${formatNombre(poGagne)} po`, `⭐ +${quete.recompense.xp} XP`];
+  const lignes = [`💰 +${formatNombre(poGagne)} po`, `⭐ +${formatNombre(xpReelle(p, quete.recompense.xp))} XP`];
   // Le grand contrat du jour offre un objet tiré selon la chance — et la
   // rareté du contrat dope encore le tirage.
   if (quete.recompense.coffre) {
