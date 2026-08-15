@@ -106,7 +106,7 @@ function annoncerDeblocage(info) {
   }
 }
 
-// Exécute une action sans aucune annonce de détenacite.
+// Exécute une action sans aucune annonce de déblocage.
 function sansAnnonces(action) {
   deblocagesSilencieux = true;
   try {
@@ -129,7 +129,7 @@ function afficherProchainDeblocage() {
     <div class="deblocage-bandeau">✨ DÉBLOQUÉ ✨</div>
     <h2>${info.titre}</h2>
     ${info.texte ? `<p class="deblocage-texte">${info.texte}</p>` : ''}
-    ${fileDeblocages.length > 0 ? `<p class="deblocage-reste">+ ${fileDeblocages.length} autre${fileDeblocages.length > 1 ? 's' : ''} détenacite${fileDeblocages.length > 1 ? 's' : ''} à découvrir</p>` : ''}`;
+    ${fileDeblocages.length > 0 ? `<p class="deblocage-reste">+ ${fileDeblocages.length} autre${fileDeblocages.length > 1 ? 's' : ''} déblocage${fileDeblocages.length > 1 ? 's' : ''} à découvrir</p>` : ''}`;
   const fermer = () => {
     voile.remove();
     deblocageAffiche = false;
@@ -269,7 +269,7 @@ function verifierChoixSpecialite() {
 
   const PRESENTATIONS = {
     mineur: 'Pierres, minerais et cristaux — et la fameuse <strong>pierre magique</strong>. C\'est lui qui nourrit la <strong>Forge</strong> : lames, heaumes, cuirasses et jambières. Sans mineur, pas d\'acier — et les guerriers combattent en chemise.',
-    tanneur: 'Cuirs, os et dépouilles de bêtes — jusqu\'au précieux <strong>cuir primal</strong>. C\'est lui qui nourrit la <strong>Tannerie</strong> : gants et bottes, tenacite et celerite. Sans tanneur, les aventuriers marchent pieds nus.',
+    tanneur: 'Cuirs, os et dépouilles de bêtes — jusqu\'au précieux <strong>cuir primal</strong>. C\'est lui qui nourrit la <strong>Tannerie</strong> : gants et bottes, Ténacité et Célérité. Sans tanneur, les aventuriers marchent pieds nus.',
     tisseur: 'Plantes, fibres et étoffes — dont le <strong>tissu magique</strong>. C\'est lui qui nourrit le <strong>Tisserand</strong> (talismans et grimoires des mages) et l\'<strong>Alchimiste</strong> (potions, bombes, philtres). Sans tisseur, personne ne boit ni ne lance rien.',
   };
 
@@ -1485,19 +1485,19 @@ function rendreConsoleAdmin(zone, p) {
 
   // ----- 🧪 Tests d'interface -----
   section('🧪 Tests d’interface', 'Pour vérifier les fenêtres et les alertes sans jouer des heures.', [
-    ['🎉 Tester un popup de détenacite', () => {
+    ['🎉 Tester un popup de déblocage', () => {
       // Celui-ci doit s'afficher : on force la sortie de la sourdine.
       setTimeout(() => annoncerDeblocage({
         emoji: '🎉',
-        titre: 'Test de détenacite',
-        texte: 'Voici à quoi ressemble une annonce de détenacite. Tout va bien.',
+        titre: 'Test de déblocage',
+        texte: 'Voici à quoi ressemble une annonce de déblocage. Tout va bien.',
       }), 0);
     }],
     ['🎊 Tester une file de 3 popups', () => {
       setTimeout(() => {
         ['🥇', '🥈', '🥉'].forEach((emoji, i) => annoncerDeblocage({
           emoji,
-          titre: `Détenacite de test n° ${i + 1}`,
+          titre: `Déblocage de test n° ${i + 1}`,
           texte: 'Vérifiez le compteur « encore N » et le bouton « Tout fermer ».',
         }));
       }, 0);

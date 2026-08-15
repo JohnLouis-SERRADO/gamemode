@@ -7,7 +7,7 @@
 // =====================================================================
 // v13 — Les CHRONIQUES DES TERRES : la petite histoire de chaque carte.
 // Chaque zone cache un récit court et corsé, dans l'esprit des grandes
-// Épopées. Détenacite exigeant : niveau minimum, caractéristique minimum,
+// Épopées. Déblocage exigeant : niveau minimum, caractéristique minimum,
 // objet-clé de la zone en poche, et le boss de la carte déjà vaincu.
 // =====================================================================
 const CHRONIQUES = [
@@ -526,7 +526,7 @@ const CHRONIQUES = [
 ];
 
 // Le générateur : chaque récit devient un donjon complet — boss de zone
-// renforcé à mécaniques, relique unique, et détenacite exigeant (niveau,
+// renforcé à mécaniques, relique unique, et déblocage exigeant (niveau,
 // caractéristique, objet-clé de la zone, boss de carte vaincu).
 CHRONIQUES.forEach((c) => {
   const z = ZONES.find((x) => x.id === c.zone);
