@@ -1,0 +1,339 @@
+'use strict';
+
+// =====================================================================
+// v19 — LES DIX CHRONIQUES DES MARCHES ET DE LA COUTURE
+//
+// Une par carte neuve, au format exact des seize premières : un PNJ, une
+// épreuve, un dilemme, un trésor, un boss renforcé et une relique.
+//
+// Elles se lisent dans l'ordre, et chacune avance d'un cran la même
+// découverte : le monde a déjà fini, quelqu'un l'a recousu, et la couture
+// lâche. La dernière laisse le choix — laisser recommencer, ou couper.
+// =====================================================================
+
+CHRONIQUES.push(
+  {
+    zone: 'marches-grises', nom: 'Ceux Qui Marchent Encore', emoji: '🚶', statAcces: 'vit',
+    pnj: { nom: 'Vasque, cartographe', emoji: '🧭' },
+    resume: 'Les voyageurs des Marches vont tous dans la même direction. Aucun ne sait laquelle, et aucun ne s’arrête.',
+    scenes: [
+      'Passé la dernière borne des Terres lointaines, la carte s’arrête. Pas parce qu’elle est incomplète : parce que le pays, lui, ne se décide pas. Les collines changent de place entre deux regards.',
+      '« Trente ans que je cartographie, et voilà ce que ça donne. » Vasque déroule un parchemin où les lignes se contredisent. « Chaque relevé est juste. Tous les relevés sont différents. Ce n’est pas moi qui me trompe, c’est le terrain qui hésite. »',
+      '« Et il y a les marcheurs. Ils vont vers l’ouest, tous, sans exception. Demandez-leur pourquoi : ils ne savent plus. Mais ils savaient, avant. Suivez-les, et notez tout — même ce qui n’a pas de sens. Surtout ce qui n’a pas de sens. »',
+    ],
+    ep1: { stat: 'vit', texte: 'Les Marches usent avant de blesser. Trois jours de cendre grise, sans repère fixe, avec l’impression permanente d’avoir déjà vu ce rocher-là.', ok: 'Vous tenez le rythme des marcheurs sans vous laisser prendre à leur pas. Dans une cache sous une borne renversée : le paquetage d’un cartographe plus ancien que Vasque.', ko: 'Le troisième jour, vous marchez comme eux, au même rythme, sans y penser. Il faut la voix de Vasque pour vous en sortir — et vous en gardez des courbatures.' },
+    combat1: 'Trois arpenteurs sortent du gris et vous barrent le passage. Ils ne parlent pas. Ils ont juste cessé d’aller vers l’ouest.',
+    dilemme: {
+      texte: '« Il y a un relevé au sol, » souffle Vasque. « Un vrai, gravé dans la pierre, plus vieux que tout. Si on le déterre, on saura où on est. Mais Celui Qui Compte le surveille — et il n’aime pas qu’on lise ses registres. »',
+      optA: { stat: 'int', texte: '🗺️ Déterrer le relevé gravé', detail: 'on saura ce qu’il y avait ici avant', resultat: 'La pierre montre une côte, un port, des routes. Rien de tout cela n’existe. La date gravée est antérieure à la fondation de Valciel de six cents ans — et Valciel n’existait pas encore. Celui Qui Compte, quelque part, cesse de compter.' },
+      optB: { texte: '🤫 Passer sans rien déranger', detail: 'plus prudent, mais on avance à l’aveugle', resultat: 'Vous contournez la dalle. Le gris se referme derrière vous, un peu plus épais qu’avant, et Vasque range son parchemin sans un mot.' },
+    },
+    tresor: { titre: '🌫️ La cache du premier cartographe', texte: 'Sous la borne : des instruments, une bourse intacte, et un carnet dont la dernière page dit « ce n’est pas la première fois ».' },
+    combat2: 'Les bornes elles-mêmes se dressent. Elles ont marqué des frontières qui n’ont plus de pays à séparer.',
+    ep2: { stat: 'int', texte: 'Le registre de Celui Qui Compte tient sur une colonne de cire. Il faut le lire vite : chaque nom qu’on y lit s’efface derrière le regard.', ok: 'Vous lisez plus vite qu’il n’efface. Six colonnes, six listes closes, et une septième encore ouverte. La vôtre.', ko: 'Les noms fondent sous vos yeux avant d’avoir un sens. Vous n’en retenez qu’un chiffre, gravé en haut : sept.' },
+    avantBoss: '« Il nous a vus, » dit Vasque, très calme. « Depuis le début, je crois. Il ne nous en veut pas — il nous compte. C’est différent, et c’est pire. »',
+    boss: {
+      nom: 'Celui Qui Compte', intro: 'Une silhouette de cire, courbée sur un registre qui n’a pas de fin. Elle lève la tête, vous regarde l’un après l’autre, et note. Puis elle referme le livre : « Sept. Toujours sept. Vous êtes en avance. »',
+      annonce: '🗺️ Le relevé gravé est entre vos mains : Celui Qui Compte doit défendre un registre que vous savez déjà faux !',
+      phase: '🕯️ La cire coule : il raye des lignes entières et ce qui était écrit cesse d’avoir existé !',
+      enrage: '⚠️ Le registre se referme : il ne compte plus, il conclut !',
+    },
+    fins: {
+      variante: 'Celui Qui Compte s’effondre en cire tiède, et son registre reste ouvert à la septième page. Vasque le recopie fébrilement. Six mondes, six fins, six recommencements — et une septième colonne qui n’est pas encore close. « Nous ne sommes pas les premiers, » dit-elle. « Nous sommes les derniers en date. »',
+      defaut: 'Le compteur tombe et son registre brûle sans flamme. Vasque n’a eu le temps de lire qu’un mot, en tête de la dernière colonne : « Valciel — VII ». Elle le note. Elle ne dit rien pendant très longtemps.',
+    },
+    relique: { nom: 'Boussole de Vasque', emoji: '🧭', bonus: { vit: 12, int: 10, celerite: 5 }, desc: 'Elle n’indique pas le nord : elle indique là où le monde est encore sûr de lui. Récompense de « Ceux Qui Marchent Encore ».' },
+  },
+  {
+    zone: 'chant-ruines', nom: 'Le Concert Sans Public', emoji: '🎻', statAcces: 'dex',
+    pnj: { nom: 'Aldo, luthier', emoji: '🎼' },
+    resume: 'Chaque soir, une cité en ruines rejoue un concert que personne n’a jamais donné. Ce soir, quelqu’un écoute.',
+    scenes: [
+      'Il ne reste de la cité que sa forme sonore : les murs sont tombés, l’acoustique est restée. À la tombée du jour, les pierres reprennent leur place le temps d’un mouvement, puis retombent.',
+      '« Ce n’est pas de la magie, » insiste Aldo en accordant un instrument qui n’existe plus. « C’est de la mémoire mal rangée. La cité se souvient d’un soir. Toujours le même soir. Elle le rejoue parce qu’elle ne sait pas faire autre chose. »',
+      '« Le Maître de Chapelle dirige encore. Il n’a pas remarqué que la salle était vide depuis des siècles. Si on l’interrompt, tout s’arrête. Si on l’écoute jusqu’au bout… je crois qu’on apprendra ce qui s’est passé ce soir-là. »',
+    ],
+    ep1: { stat: 'dex', texte: 'Traverser la nef pendant le mouvement lent : chaque dalle est une note, et fausser la partition réveille tout l’orchestre.', ok: 'Vous posez les pieds entre les notes, en mesure. La cité vous prend pour un silence prévu. Dans une loge d’artiste intacte : la recette d’un soir de gala.', ko: 'Une dalle sonne juste au mauvais moment. Trois mesures de chaos, et l’orchestre entier vous cherche du regard.' },
+    combat1: 'Le chœur de pierre descend des tribunes. Il chante toujours — c’est ce qui rend la chose désagréable.',
+    dilemme: {
+      texte: '« Il y a la partition originale dans la fosse, » murmure Aldo. « On peut la désaccorder d’un demi-ton. Le Maître perdra le fil, et la cité avec lui. Ou on la laisse et on affronte un orchestre au complet, au sommet de son art. »',
+      optA: { stat: 'dex', texte: '🎼 Désaccorder la partition', detail: 'le Maître perdra la mesure', resultat: 'Vous décalez la clef d’un demi-ton, discrètement, comme un mauvais élève. Ce soir, tout sonnera légèrement faux — et le Maître passera son temps à chercher pourquoi.' },
+      optB: { texte: '🎵 Laisser la musique intacte', detail: 'par respect — l’orchestre sera au complet', resultat: 'Aldo hoche la tête, reconnaissant. Vous entrez dans la salle par la grande porte, et la cité vous accueille comme des invités attendus depuis longtemps.' },
+    },
+    tresor: { titre: '🏚️ La loge du premier violon', texte: 'Un écrin, une bourse de gala, et un programme imprimé. En haut : « Ce soir, la fin du monde — représentation unique ».' },
+    combat2: 'Les veuves des arcades descendent de la voûte, portées par leurs propres fils.',
+    ep2: { stat: 'esp', texte: 'Le dernier mouvement dure une heure. Il faut l’écouter en entier sans céder — et il a été composé pour briser ceux qui écoutent.', ok: 'Vous tenez jusqu’à la dernière note. La musique raconte, très clairement : une ville qui s’achève, et quelqu’un qui recoud le ciel au-dessus pour que ça tienne encore un peu.', ko: 'À la quarantième minute, vous rompez. La cité en profite pour vous rappeler qu’elle a mille ans de plus que vous.' },
+    avantBoss: '« Il va vous saluer, » prévient Aldo. « Il salue toujours avant. C’est un homme bien élevé, même mort, même en morceaux. »',
+    boss: {
+      nom: 'Le Maître de Chapelle', intro: 'Il se retourne, baguette levée, et s’incline avec une politesse impeccable. « Vous êtes en retard de six cents ans. Ce n’est pas grave — asseyez-vous, nous reprenons au début. »',
+      annonce: '🎼 La clef est faussée d’un demi-ton : le Maître cherche la mesure au lieu de la donner !',
+      phase: '🎶 Il attaque le mouvement final : la cité se reconstruit autour de vous, pierre par pierre, pour l’occasion !',
+      enrage: '⚠️ Dernière mesure. Il veut finir le morceau, quel qu’en soit le prix pour l’auditoire.',
+    },
+    fins: {
+      variante: 'La baguette tombe et la cité se tait pour de bon. Le Maître vous regarde, presque soulagé. « Merci. Six cents ans à répéter le même soir… » Il s’efface en même temps que l’écho. Aldo ramasse la partition : la dernière page n’a jamais été écrite. Le morceau n’a pas de fin, parce que ce soir-là n’en a pas eu.',
+      defaut: 'Le concert s’achève sur un accord que personne ne devrait entendre deux fois. Les ruines redeviennent des ruines. Aldo emporte la partition sous son manteau : « Je la jouerai. Une fois. Pour qu’il y ait eu un public, au moins une fois. »',
+    },
+    relique: { nom: 'Archet du Maître', emoji: '🎻', bonus: { dex: 12, esp: 8, crit: 6 }, desc: 'Il donne le tempo d’une salle entière. Récompense du « Concert Sans Public ».' },
+  },
+  {
+    zone: 'mer-de-verre', nom: 'La Vague Qui N’est Jamais Retombée', emoji: '🌊', statAcces: 'for',
+    pnj: { nom: 'Ondile, plongeuse', emoji: '🤿' },
+    resume: 'Sous la mer figée, on distingue des villes. Elles ne ressemblent à aucune ville de Valciel.',
+    scenes: [
+      'On marche sur l’océan. Pas sur de la glace : sur de l’eau arrêtée en pleine vague, dure comme du quartz, avec l’écume encore en suspension au sommet des crêtes.',
+      '« Je plonge depuis vingt ans, » dit Ondile en frappant la surface du talon. « Vingt ans à regarder à travers. Il y a des rues là-dessous. Des places, des ponts, des toits. Et pas un seul bâtiment que je saurais nommer. »',
+      '« Le pire, c’est que ça n’a pas coulé. Regardez la vague : elle monte encore. Cette mer a été arrêtée EN TRAIN d’engloutir quelque chose. Quelqu’un a appuyé sur pause, et n’est jamais revenu appuyer sur lecture. »',
+    ],
+    ep1: { stat: 'for', texte: 'Descendre par une faille dans le verre, à mains nues, sur trente mètres. Chaque prise coupe, et le verre ne pardonne pas la fatigue.', ok: 'Vous descendez proprement, en bloquant sur les avant-bras. Au fond de la faille, coincée depuis toujours : une cassette de capitaine.', ko: 'Une prise cède à mi-hauteur. Vous vous rattrapez — le verre vous fait payer chaque mètre en lanières de peau.' },
+    combat1: 'Des vagues figées se détachent du massif et se referment sur vous, toujours en train de déferler.',
+    dilemme: {
+      texte: '« Il y a un fanal, en bas, » dit Ondile. « Encore allumé, après tout ce temps. On peut le rallumer vraiment — la ville sous le verre nous reconnaîtrait comme des siens. Ou on file droit vers l’épave, et tant pis pour les honneurs. »',
+      optA: { stat: 'esp', texte: '🏮 Rallumer le fanal du port', detail: 'la ville engloutie nous prendra pour des siens', resultat: 'La flamme reprend sous trente mètres de verre. Loin en dessous, des fenêtres s’allument une à une, comme on répond à un appel. Ce soir, la mer figée ne vous considère plus comme une intruse.' },
+      optB: { texte: '⛵ Aller droit à l’épave', detail: 'plus rapide — le verre reste hostile', resultat: 'Vous coupez au plus court sur la crête. Le verre craque sous vos pas, à chaque pas, et ne s’arrête jamais tout à fait de craquer.' },
+    },
+    tresor: { titre: '🔷 La cassette du capitaine', texte: 'Le coffre personnel d’un capitaine qui n’a jamais accosté : sa solde, ses cartes, et un livre de bord qui s’arrête au milieu d’un mot.' },
+    combat2: 'Les noyés debout se retournent vers vous. Ils n’ont pas coulé non plus. Personne ici n’a eu le temps de finir quoi que ce soit.',
+    ep2: { stat: 'vit', texte: 'La coque de l’épave est un couloir de verre qui se referme lentement. Il faut le traverser en apnée, sans céder à ce qu’on y voit sur les côtés.', ok: 'Vous traversez sans regarder. Au bout : une salle intacte, un équipage à table, et un repas qui n’a jamais refroidi.', ko: 'Vous regardez. On regarde toujours. Vous sortez du couloir en toussant, avec des images qui ne partiront pas.' },
+    avantBoss: '« Elle va se lever, » dit Ondile. « Elle attend depuis six cents ans qu’on lui dise que la traversée est finie. Personne n’a jamais osé le lui dire. »',
+    boss: {
+      nom: 'Celle Qui N’a Jamais Coulé', intro: 'L’épave se redresse dans un hurlement de verre, gréement déployé, figure de proue intacte. Ce n’est pas un navire hanté : c’est un navire qui n’a jamais reçu l’ordre de s’arrêter.',
+      annonce: '🏮 Le fanal brûle à nouveau : le navire vous prend pour le port, et n’ose pas frapper trop fort !',
+      phase: '🔷 La coque se fend et la mer figée se soulève avec elle : la vague reprend sa course, six cents ans après !',
+      enrage: '⚠️ Elle veut achever sa traversée. Elle passera sur vous s’il le faut.',
+    },
+    fins: {
+      variante: 'La grande voile retombe, et le navire s’immobilise pour de bon — cette fois de son plein gré. Ondile monte à bord, décroche la cloche et la fait sonner : arrivée au port. Le verre, tout autour, se met à fondre en une eau très ordinaire. La ville en dessous ne se réveille pas. Elle a fini d’attendre, c’est déjà quelque chose.',
+      defaut: 'L’épave s’effondre en éclats bleus qui retombent en pluie sur toute la Mer de Verre. Dans le livre de bord repêché, une dernière ligne : « Le ciel s’est ouvert. On nous a dit de tenir. On tient. » La date est celle du sixième monde.',
+    },
+    relique: { nom: 'Cloche d’arrivée', emoji: '🔔', bonus: { for: 14, vit: 10, deter: 6 }, desc: 'Elle sonne la fin d’une traversée, quelle qu’elle soit. Récompense de « La Vague Qui N’est Jamais Retombée ».' },
+  },
+  {
+    zone: 'jardins-renverses', nom: 'Ce Qui Pousse Vers le Bas', emoji: '🌺', statAcces: 'esp',
+    pnj: { nom: 'Frère Aubépin', emoji: '🌱' },
+    resume: 'Les jardiniers entretiennent des allées à l’envers en attendant qu’on remette le monde à l’endroit. Ils attendent depuis six cents ans.',
+    scenes: [
+      'Les racines montent, les fleurs plongent, et la pluie tombe vers le ciel. Rien n’est mort : tout pousse, simplement dans la mauvaise direction.',
+      '« Nous taillons, nous arrosons, nous désherbons, » récite Frère Aubépin sans lever les yeux de son sécateur. « Le jardin doit être en ordre quand on le remettra à l’endroit. C’est notre seule tâche. »',
+      '« Quand ? Personne ne l’a dit. Qui ? Personne ne l’a dit non plus. On nous a demandé de tenir le jardin prêt. Alors nous le tenons prêt. » Il coupe une tige, très proprement. « Cela dit… vous êtes les premiers visiteurs depuis longtemps. Peut-être que vous, vous savez. »',
+    ],
+    ep1: { stat: 'esp', texte: 'Les allées répondent à l’intention plus qu’aux pas : elles s’ouvrent pour qui vient jardiner, se ferment pour qui vient piétiner.', ok: 'Vous avancez comme on entre chez quelqu’un. Le jardin s’écarte, et vous découvrez une remise oubliée au bout d’une allée qui n’existait pas il y a un instant.', ko: 'Vous marchez en visiteurs pressés. Les ronces vous rappellent qu’un jardin, ça se respecte, et elles le rappellent longuement.' },
+    combat1: 'Les ronces inversées se referment depuis le ciel. Elles ne poussent pas vers vous : elles vous tombent dessus.',
+    dilemme: {
+      texte: '« Grand-Mère Ronce dort au centre, » dit Aubépin. « C’est elle qui garde le jardin depuis le début. Si vous lui rendez la graine-mère qu’on a perdue à l’époque, elle se souviendra de vous. Sinon… elle ne se souvient de personne. »',
+      optA: { stat: 'cha', texte: '🌰 Retrouver la graine-mère perdue', detail: 'elle se souviendra de vous', resultat: 'Vous la trouvez sous une dalle, intacte, encore tiède. Quand vous la posez au pied du massif central, tout le jardin frémit — et Grand-Mère Ronce, dans son sommeil, cesse de serrer les poings.' },
+      optB: { texte: '🥀 Aller la réveiller directement', detail: 'plus direct — elle vous accueillera en intrus', resultat: 'Vous traversez le massif sans rien apporter. Les ronces vous ouvrent le passage, mais en vous marquant les bras : c’est ainsi qu’on note un intrus, ici.' },
+    },
+    tresor: { titre: '🌺 La remise du premier jardinier', texte: 'Outils, gages jamais réclamés, et un registre de semis. La dernière entrée dit : « planté en prévision du prochain monde ».' },
+    combat2: 'Les jardiniers sans tête continuent leur tâche. Vous êtes entre eux et la haie. Ils taillent ce qui dépasse.',
+    ep2: { stat: 'int', texte: 'Le plan du jardin est gravé sur le mur du fond, mais à l’envers. Il faut le lire dans le bon sens sans le retourner — et il porte le tracé d’un pays entier.', ok: 'Vous le lisez de tête, en inversant. Ce n’est pas un plan de jardin : c’est une carte du monde d’avant, avec Valciel dessinée par-dessus, en pointillés.', ko: 'Vous vous emmêlez dans les symétries. Il ne vous reste qu’une impression tenace : le jardin est trop grand pour un jardin.' },
+    avantBoss: '« Soyez doux, » demande Aubépin. « Elle n’a rien fait de mal. On lui a dit d’attendre, elle attend. Comme nous. Comme tout ce pays, en réalité. »',
+    boss: {
+      nom: 'Grand-Mère Ronce', intro: 'Le massif central se déplie et se lève : une vieille chose de bois et d’épines, immense, lente, et manifestement contrariée d’avoir été réveillée pour rien.',
+      annonce: '🌰 La graine-mère est rendue : Grand-Mère Ronce vous reconnaît comme des jardiniers, et retient ses épines !',
+      phase: '🥀 Elle enracine le jardin entier dans le combat : chaque allée devient une lanière !',
+      enrage: '⚠️ Elle a compris que personne ne viendra remettre le monde à l’endroit. Elle n’a plus de raison d’être douce.',
+    },
+    fins: {
+      variante: 'Grand-Mère Ronce s’affaisse, et le jardin avec elle — mais dans le bon sens. Les fleurs se redressent, les racines replongent en terre, la pluie retombe. Sur une seule parcelle, la plus ancienne. Aubépin s’agenouille dedans et pleure sans bruit. « Une parcelle. C’est un début. C’est même exactement comme ça que ça commence. »',
+      defaut: 'La vieille chose retombe en fagot d’épines. Le jardin reste à l’envers — mais les jardiniers cessent enfin de tailler. Aubépin range son sécateur : « Six cents ans à préparer une visite qui n’est pas venue. Vous, au moins, vous êtes venus. »',
+    },
+    relique: { nom: 'Sécateur d’Aubépin', emoji: '✂️', bonus: { esp: 14, vit: 10, piete: 8 }, desc: 'Il coupe ce qui dépasse, et rien d’autre. Récompense de « Ce Qui Pousse Vers le Bas ».' },
+  },
+  {
+    zone: 'ossuaire-dieux', nom: 'Les Points de Suture', emoji: '💀', statAcces: 'int',
+    pnj: { nom: 'Sœur Ivre-de-Nuit', emoji: '🕯️' },
+    resume: 'Les os des dieux portent des coutures. Ce sont exactement les mêmes que celles des fêlures du monde.',
+    scenes: [
+      'Un champ d’ossements alignés comme dans un atelier, et non comme sur un champ de bataille. Trop grands pour des géants, trop fins pour des bêtes. Aucun squelette n’est complet.',
+      '« Regardez les jointures. » Sœur Ivre-de-Nuit passe la main sur une côte haute comme un mât. « Des points. De vrais points, faits à l’aiguille. On les a réparés. Plusieurs fois. »',
+      '« Et maintenant regardez ça. » Elle sort de sa besace un éclat ramassé dans les Terres lointaines, arraché à une fêlure du Néant Scintillant. Le même point. La même main. « Ce que nous combattons depuis toujours, ce ne sont pas des monstres. Ce sont des coutures qui lâchent. »',
+    ],
+    ep1: { stat: 'int', texte: 'L’ossuaire est rangé selon un ordre qui n’est ni la taille ni l’âge. Comprendre le classement, c’est savoir où aller — et éviter trois jours d’errance entre des côtes.', ok: 'Vous saisissez la logique : ils sont rangés par DATE DE RÉPARATION. Six sections, six campagnes de couture. Dans la plus ancienne, un reliquaire scellé.', ko: 'Vous cherchez un ordre par taille, par culte, par époque. Rien ne colle. Vous finissez par avancer au hasard, et l’ossuaire vous le fait sentir.' },
+    combat1: 'Trois reliquaires marcheurs vous barrent l’allée. Ils transportent encore des morceaux qu’on ne leur a jamais repris.',
+    dilemme: {
+      texte: '« Il y a une aiguille plantée dans la septième section, » dit la sœur. « La section vide. Notre section. On peut la retirer — savoir ce que ça fait. Ou la laisser où elle est, et se contenter de regarder. »',
+      optA: { stat: 'for', texte: '🪡 Retirer l’aiguille de la septième section', detail: 'on saura ce qu’elle tenait', resultat: 'Elle vient avec un bruit de tissu déchiré, long, qui traverse tout l’ossuaire. Rien ne s’effondre. Mais quelque chose, très loin vers l’ouest, cède d’un cran — et le Dieu Recousu se met debout.' },
+      optB: { texte: '🙏 La laisser en place', detail: 'plus sage — on avance sans avantage', resultat: 'Sœur Ivre-de-Nuit repose la main sans y toucher. « Certaines choses tiennent parce qu’on ne les touche pas. » Vous avancez sans rien avoir appris de plus.' },
+    },
+    tresor: { titre: '💀 Le reliquaire de la première campagne', texte: 'Scellé depuis six mondes : des offrandes, un trésor de temple, et une aiguille brisée, rangée comme une relique. Elle l’était.' },
+    combat2: 'Les côtes du ciel s’abaissent en cage autour de vous. Ce n’est pas une attaque : c’est un réflexe de squelette qu’on dérange.',
+    ep2: { stat: 'vit', texte: 'La galerie centrale traverse un dieu de part en part. À l’intérieur, l’air est vieux de six mondes, et il n’a nourri personne depuis.', ok: 'Vous traversez au souffle court, sans céder. De l’autre côté : la salle où on les a recousus, table comprise.', ko: 'L’air ancien vous prend à la gorge. Vous sortez de la galerie à quatre pattes, avec le goût de six mondes dans la bouche.' },
+    avantBoss: '« Ce n’est pas un dieu en colère, » prévient la sœur. « C’est un dieu qu’on a rafistolé six fois et qu’on n’a jamais remercié. Ce n’est pas du tout la même chose, et c’est bien pire. »',
+    boss: {
+      nom: 'Le Dieu Recousu', intro: 'Il se lève par morceaux, dans l’ordre où on l’a réparé. Là où les points tiennent encore, il est immense. Là où ils ont lâché, il n’y a rien — et le rien, chez lui, fait aussi partie du corps.',
+      annonce: '🪡 L’aiguille est retirée : le Dieu Recousu se défait plus vite qu’il ne frappe !',
+      phase: '🧵 Ses coutures cèdent une à une, et ce qui sort par les trous ne lui appartient plus !',
+      enrage: '⚠️ Il ne se bat plus pour vaincre : il se bat pour tenir ensemble encore un peu.',
+    },
+    fins: {
+      variante: 'Le dieu s’effondre en pièces détachées, presque proprement, comme un ouvrage qu’on démonte. Sœur Ivre-de-Nuit ramasse un fil de suture intact et le tient à la lumière. « Six réparations. Six. Et à chaque fois, quelqu’un a décidé pour tout le monde que ça valait la peine de recommencer. » Elle range le fil. « J’aimerais bien lui poser la question, à celui-là. »',
+      defaut: 'Le Dieu Recousu retombe en morceaux, et l’ossuaire reprend son silence d’atelier. Sur la table de réparation, la sœur trouve un plan de travail annoté : « Septième. Prévoir plus de fil. » L’écriture est nette, patiente, et pas du tout divine.',
+    },
+    relique: { nom: 'Fil de la Sixième Campagne', emoji: '🧵', bonus: { int: 14, vit: 12, deter: 7 }, desc: 'Il a tenu un dieu ensemble pendant six cents ans. Récompense des « Points de Suture ».' },
+  },
+  {
+    zone: 'bibliotheque-noyee', nom: 'Le Catalogue des Sept Mondes', emoji: '📚', statAcces: 'int',
+    pnj: { nom: 'Maître Ombrelin', emoji: '🕮' },
+    resume: 'Le catalogue est complet, méthodique, et recense sept versions du monde. Valciel porte le numéro sept.',
+    scenes: [
+      'Tout le savoir d’avant, sous trois mètres d’eau parfaitement immobile. Les livres s’y lisent encore : l’eau ne les a pas gonflés, elle les a conservés.',
+      '« Je suis arrivé il y a onze ans pour un inventaire de trois semaines, » dit Maître Ombrelin sans quitter sa page des yeux. « Le fonds est trop vaste. Mais surtout, il est trop bien rangé. »',
+      '« Une bibliothèque qui pousse toute seule est en désordre. Celle-ci est classée. Par édition. » Il lève enfin la tête. « Sept éditions du monde. Nous vivons dans la septième. Elle est marquée “en cours”. »',
+    ],
+    ep1: { stat: 'int', texte: 'La cote de classement n’est ni alphabétique ni chronologique. Sans la comprendre, on peut nager dix ans entre deux rayonnages.', ok: 'Vous percez le système en trois essais : les livres sont classés PAR CE QUI LES A DÉTRUITS. Dans la travée « feu », intact, le coffre d’un bibliothécaire prévoyant.', ko: 'Vous suivez l’alphabet, comme tout le monde, et comme tout le monde vous tournez en rond une bonne partie de la journée.' },
+    combat1: 'Trois copistes noyés lèvent la tête. Ils recopient encore. Vous n’êtes pas dans leur texte.',
+    dilemme: {
+      texte: '« La septième édition est dans la réserve, » dit Ombrelin. « Notre monde, relié, catalogué. On peut lire la fiche — savoir ce qui est déjà écrit. Ou refermer la réserve sans regarder, et garder l’avenir ouvert. »',
+      optA: { stat: 'esp', texte: '📖 Lire la fiche de la septième édition', detail: 'savoir ce qui est déjà écrit', resultat: 'La fiche est presque vide. Titre : Valciel. État : en cours. Fin prévue : imminente. Et, en bas, d’une autre main, plus récente, une note : « ne pas relier avant d’avoir demandé aux habitants ». C’est la première fois que quelqu’un pense à le demander.' },
+      optB: { texte: '🚪 Refermer la réserve sans lire', detail: 'l’avenir reste à écrire — mais on avance sans savoir', resultat: 'Ombrelin repousse la porte doucement. « Un livre non lu reste possible. » L’Archiviste, quelque part au fond, note quand même quelque chose.' },
+    },
+    tresor: { titre: '📚 Le coffre du bibliothécaire prévoyant', texte: 'Il avait tout prévu sauf l’eau : provisions, or de secours, et une clef qui n’ouvre plus rien de ce monde-ci.' },
+    combat2: 'Un rayonnage entier se referme sur vous. Il a faim de la même façon qu’une bibliothèque a faim : lentement, et pour toujours.',
+    ep2: { stat: 'dex', texte: 'L’index vivant vous poursuit à travers les travées en réorganisant les rayonnages devant vous. Il faut atteindre la réserve avant qu’il ne vous classe.', ok: 'Vous prenez de vitesse ses renvois et débouchez dans la réserve avant lui. Il s’arrête net devant la porte : il n’a pas le droit d’y entrer.', ko: 'Il vous rattrape deux fois et vous range chaque fois dans la mauvaise section. Vous arrivez à la réserve fourbus, et en retard.' },
+    avantBoss: '« Il ne vous en voudra pas, » dit Ombrelin en essuyant ses lunettes. « Il fait son travail. Le problème, c’est que son travail consiste à conclure les éditions. »',
+    boss: {
+      nom: 'L’Archiviste des Fins', intro: 'Un homme long et poli, une plume à la main, six volumes reliés flottant en cercle autour de lui. « La septième ? Elle avance bien. Un peu longue. Je m’apprêtais justement à la clore. »',
+      annonce: '📖 Vous avez lu la fiche : l’Archiviste doit défendre une conclusion que vous savez optionnelle !',
+      phase: '📕 Il ouvre les six éditions précédentes : ce qui les a tuées sort des pages, une fin à la fois !',
+      enrage: '⚠️ Il passe à la rédaction finale. Il écrit vite, et il écrit votre nom.',
+    },
+    fins: {
+      variante: 'L’Archiviste laisse tomber sa plume et la regarde rouler. « Vous avez raison. On ne me l’avait jamais demandé. » Il tend le septième volume à Ombrelin : les trois quarts des pages sont blanches. « Elle n’est pas finie. Personne ne m’avait dit qu’il fallait attendre qu’elle le soit. » Puis il s’efface, et pour la première fois en six éditions, une conclusion n’est pas écrite.',
+      defaut: 'L’Archiviste se referme comme un livre qu’on repose. Ombrelin récupère le septième volume, le serre contre lui, et refuse de le lâcher pendant tout le voyage de retour. « Il reste des pages blanches, » répète-t-il. « Beaucoup de pages blanches. »',
+    },
+    relique: { nom: 'Plume de l’Archiviste', emoji: '🖋️', bonus: { int: 16, esp: 10, crit: 6 }, desc: 'Elle écrit les fins. Rien ne l’oblige à s’en servir. Récompense du « Catalogue des Sept Mondes ».' },
+  },
+  {
+    zone: 'rempart-crepuscule', nom: 'La Garde Qu’On N’a Jamais Relevée', emoji: '🌇', statAcces: 'vit',
+    pnj: { nom: 'Sergent Bercail', emoji: '🛡️' },
+    resume: 'Une garnison tient un mur depuis la première reconstruction. Elle n’a reçu aucun ordre depuis, et elle n’en attend plus.',
+    scenes: [
+      'Un rempart sans fin, face au vide, sous un soleil qui tombe sans jamais se coucher. Les créneaux sont tenus. Les feux sont allumés. Tout est en ordre.',
+      '« Sergent Bercail, troisième compagnie du Rempart. » Il salue impeccablement. « Effectif : cent quarante à l’origine. Aujourd’hui : onze. Relève attendue : depuis six cents ans. »',
+      '« Nos ordres tiennent en une phrase : tenir jusqu’à la relève. » Il regarde le vide de l’autre côté. « Personne ne nous a dit ce qu’il y avait derrière. On a fini par le voir tout seuls. C’est de là que sortent les brèches. Toutes les brèches, depuis toujours. »',
+    ],
+    ep1: { stat: 'vit', texte: 'Une garde complète sur le chemin de ronde : douze heures, sans relève, dans un crépuscule qui ne bouge pas. C’est ainsi qu’on entre dans cette compagnie.', ok: 'Vous tenez les douze heures debout, sans un mot. À l’aube qui ne vient pas, Bercail vous tend une gourde : vous êtes de la maison. Le magasin vous est ouvert.', ko: 'Vous cédez à la neuvième heure. Personne ne vous en fait le reproche — c’est bien ça, le plus dur à encaisser.' },
+    combat1: 'Trois sentinelles du soir vous chargent. Elles ne vous ont pas reconnus comme des amis, et elles n’ont plus l’habitude d’en avoir.',
+    dilemme: {
+      texte: '« Il reste un cor de relève dans la tour nord, » dit Bercail. « On ne l’a jamais sonné : c’est à l’officier relevant de le faire, pas à nous. Vous, vous n’êtes pas de la compagnie. Vous pourriez. »',
+      optA: { stat: 'esp', texte: '📯 Sonner le cor de relève', detail: 'la compagnie sera enfin relevée', resultat: 'Le son porte sur tout le Rempart. Onze soldats s’arrêtent en même temps, se redressent, et regardent autour d’eux comme des gens qui viennent de se réveiller. Six cents ans de garde s’achèvent en une note.' },
+      optB: { texte: '🔕 Laisser le cor à sa place', detail: 'ce n’est pas votre rôle — la garde continue', resultat: 'Vous reposez le cor sur son crochet. Bercail vous remercie d’un signe de tête. Il tient à ce que ce soit fait dans les règles, même si ça ne l’est jamais.' },
+    },
+    tresor: { titre: '🌇 Le magasin de la troisième compagnie', texte: 'Six cents ans de solde jamais versée, de vivres jamais consommés et d’équipement jamais distribué. Bercail vous en ouvre la porte sans hésiter.' },
+    combat2: 'Une brèche ambulante se détache du mur et vient vers vous. C’est ce contre quoi ils tiennent depuis le début.',
+    ep2: { stat: 'for', texte: 'Colmater une brèche vive à mains nues, avec du fil de suture et le peu qu’on a. Les soldats le font tous les jours. Ils ne le font plus très bien.', ok: 'Vous refermez la brèche d’un point large et solide. Bercail siffle entre ses dents : « Six cents ans qu’on n’avait pas vu un point pareil. »', ko: 'Le fil casse deux fois avant de tenir. La brèche se referme quand même, de travers, et il faudra y revenir.' },
+    avantBoss: '« Il vous arrêtera, » prévient le sergent. « Ce n’est pas de la méchanceté. Le capitaine n’a jamais reçu l’ordre de laisser passer qui que ce soit vers la Couture. Alors il ne laisse passer personne. »',
+    boss: {
+      nom: 'Le Capitaine du Dernier Soir', intro: 'Il descend de la tour de garde en armure complète, entretenue chaque jour depuis six siècles. « Nul ne passe vers la Couture. Ce sont mes ordres. Je les ai reçus d’un roi qui est mort avant votre monde. Ils tiennent toujours. »',
+      annonce: '📯 Le cor de relève a sonné : le Capitaine est officiellement relevé, et son épée pèse soudain moins lourd !',
+      phase: '🧱 Il rappelle le Rempart à lui : le mur entier se bat à ses côtés !',
+      enrage: '⚠️ Il a compris que la relève ne viendra jamais. Il ne tient plus un ordre, il tient un principe.',
+    },
+    fins: {
+      variante: 'Le Capitaine met un genou à terre, retire son heaume — un visage très ordinaire, très fatigué — et rend son épée. « Relevé. » Il le dit deux fois, comme pour y croire. Puis il désigne la porte vers la Couture, et l’ouvre lui-même. « Allez voir. Quelqu’un devrait aller voir. Ce n’est pas normal que personne n’y soit jamais allé. »',
+      defaut: 'Le Capitaine tombe sans lâcher son épée, et le Rempart, derrière lui, ne bouge pas d’un pouce. Bercail vous ouvre la porte à sa place, en silence. Il gardera le mur. Quelqu’un doit garder le mur.',
+    },
+    relique: { nom: 'Cor de relève', emoji: '📯', bonus: { vit: 18, for: 12, tenacite: 8 }, desc: 'Il n’a servi qu’une fois. Ça a suffi. Récompense de « La Garde Qu’On N’a Jamais Relevée ».' },
+  },
+  {
+    zone: 'terres-recousues', nom: 'Les Points Qui Lâchent', emoji: '🧵', statAcces: 'dex',
+    pnj: { nom: 'Maro, raccommodeur', emoji: '🪡' },
+    resume: 'Des morceaux de pays cousus ensemble, et les points cèdent. C’est de là que sortait tout ce qu’on a combattu depuis le premier jour.',
+    scenes: [
+      'Une plaine s’arrête net contre une falaise. Un fleuve coule jusqu’à une couture et disparaît dedans. De l’autre côté, un désert commence sans transition. Les points sont visibles à l’œil nu.',
+      '« Je recouds, » dit Maro sans lever les yeux de son ouvrage. « Mon père recousait. Son père aussi. On ne sait pas qui a cousu en premier, mais on sait où ça lâche, et on y va. »',
+      'Il tend le doigt vers une déchirure qui court à l’horizon. « Celle-là, elle date de la semaine dernière. Regardez ce qui en sort. » Une chose informe s’en extrait lentement. « Vous avez passé votre vie à tuer ça. Nous, on essaie de refermer le trou. »',
+    ],
+    ep1: { stat: 'dex', texte: 'Marcher sur une couture, c’est marcher sur une ligne large comme deux doigts, avec un pays de chaque côté et rien en dessous.', ok: 'Vous suivez le point de suture comme un fil tendu. À mi-parcours, accroché à la couture : un ballot tombé d’un raccommodeur d’il y a longtemps.', ko: 'Vous glissez, vous vous rattrapez au fil. Il tient. Vous, un peu moins bien — et vous saignez sur tout le reste du chemin.' },
+    combat1: 'Trois cousus vivants se relèvent. Ils étaient deux êtres différents avant qu’on ne les répare ensemble.',
+    dilemme: {
+      texte: '« Il y a la grande couture, celle du nord, » dit Maro. « Elle tient trois pays. Si on la renforce avant d’aller voir la Couturière, elle nous tiendra dans le dos. Sinon on file, et on lui laisse le champ libre derrière nous. »',
+      optA: { stat: 'for', texte: '🪡 Renforcer la grande couture du nord', detail: 'elle tiendra pendant le combat', resultat: 'À six mains, vous doublez le point sur trois lieues. C’est un travail de brute et de patience. Quand la Couturière tirera sur ce fil-là, il ne viendra pas.' },
+      optB: { texte: '🏃 Filer directement vers l’atelier', detail: 'plus rapide — la couture reste fragile', resultat: 'Vous laissez la grande couture en l’état et coupez à travers les Terres. Derrière vous, quelque chose tire doucement sur le fil.' },
+    },
+    tresor: { titre: '🧵 Le ballot du vieux raccommodeur', texte: 'Aiguilles, bobines, gages de toute une vie — et un carnet de points, transmis de main en main, où la première page est signée d’un nom royal.' },
+    combat2: 'Un raccord raté cède juste devant vous, et le bord à vif se referme comme une mâchoire.',
+    ep2: { stat: 'int', texte: 'Le carnet de points contient une technique que plus personne ne pratique : le point du Roi. Il faut le comprendre avant l’atelier.', ok: 'Vous démêlez le schéma : ce n’est pas un point de réparation, c’est un point de FERMETURE. Il ne sert pas à faire tenir. Il sert à finir.', ko: 'Le tracé vous échappe. Vous retenez seulement qu’il se fait une seule fois, et qu’on ne le défait pas.' },
+    avantBoss: '« Elle vous dira qu’elle aide, » prévient Maro. « Elle ne ment pas. C’est bien ça, le problème : elle recoud vraiment. Elle recoud tout. Même ce qui voudrait rester ouvert. »',
+    boss: {
+      nom: 'La Couturière', intro: 'Un atelier au milieu de nulle part, une femme penchée sur un ouvrage grand comme une province. Elle ne s’arrête pas en vous voyant. « Une minute. Je finis ce bord. Si je m’arrête, ça file. »',
+      annonce: '🪡 La grande couture du nord est doublée : la Couturière ne peut plus tirer sur ce fil-là !',
+      phase: '🧵 Elle coud le terrain autour de vous : le sol se plisse, se rassemble, et vos appuis avec !',
+      enrage: '⚠️ Elle abandonne l’ouvrage pour la première fois de sa vie. Vous devez valoir la peine.',
+    },
+    fins: {
+      variante: 'La Couturière pose son aiguille — le vrai geste rare, celui que Maro n’avait jamais vu. « Vous voulez que j’arrête. » Ce n’est pas une question. « Alors dites-moi qui recoud, après. » Elle attend une réponse. Personne n’en a. Elle sourit presque : « Voilà. C’est exactement pour ça que je n’arrête pas. Allez le voir, lui. C’est lui qu’il faut convaincre. »',
+      defaut: 'L’atelier retombe en silence, l’ouvrage inachevé sur le métier. Maro s’approche, ramasse l’aiguille avec un respect infini, et se met au travail. « Il faut bien que quelqu’un continue. » Derrière, la porte de la Couture s’ouvre.',
+    },
+    relique: { nom: 'Carnet de points', emoji: '📓', bonus: { dex: 16, int: 12, direct: 7 }, desc: 'Il contient le point du Roi. On ne le fait qu’une fois. Récompense des « Points Qui Lâchent ».' },
+  },
+  {
+    zone: 'couture-monde', nom: 'Le Compte à Rebours', emoji: '🪡', statAcces: 'esp',
+    pnj: { nom: 'Vasque, cartographe', emoji: '🧭' },
+    resume: 'La suture maîtresse cède. Ce n’est pas une menace : c’est un délai, et il a commencé bien avant votre naissance.',
+    scenes: [
+      'La grande couture traverse le ciel d’un bout à l’autre de l’horizon. Sous elle, en transparence, on distingue six autres mondes empilés, comme des feuilles sous une feuille.',
+      'Vasque est là, arrivée avant vous, son parchemin enfin lisible. « J’ai fini ma carte. Regardez : ce ne sont pas des pays. Ce sont des morceaux de six mondes différents, cousus en un seul. Le nôtre. »',
+      '« Et là, » elle montre le point le plus haut, « c’est ce qui tient tout. Il cède. Pas dans mille ans : maintenant, cette année, sous nos yeux. » Elle range son parchemin. « La bonne nouvelle, c’est qu’il y a quelqu’un au bout. La mauvaise, c’est qu’il a déjà décidé quoi faire. »',
+    ],
+    ep1: { stat: 'esp', texte: 'S’approcher de la suture maîtresse, c’est sentir six mondes finis passer à travers soi. La plupart des gens s’assoient et renoncent.', ok: 'Vous encaissez les six fins sans lâcher prise. Elles laissent une trace, mais vous restez debout — et vous trouvez, coincé dans le fil, un dépôt d’avant le premier monde.', ko: 'Le quatrième monde vous met à genoux. Vous vous relevez, mais quelque chose en vous a compris beaucoup trop de choses d’un coup.' },
+    combat1: 'Les gardes de la Couture s’interposent. Ils protègent le fil, pas le monde — et depuis longtemps, ce n’est plus pareil.',
+    dilemme: {
+      texte: '« On peut faire deux choses, » dit Vasque. « Renforcer la suture : gagner du temps, cent ans peut-être. Ou la marquer au point du Roi : la préparer à être fermée pour de bon. L’un empêche l’autre. »',
+      optA: { stat: 'int', texte: '🪡 Marquer la suture au point du Roi', detail: 'préparer une vraie fin — pas un sursis de plus', resultat: 'Vous tracez le point de fermeture le long de la couture maîtresse. Il ne tient rien : il annonce. Pour la première fois depuis six mondes, quelque chose est prévu pour finir proprement.' },
+      optB: { texte: '🧵 Renforcer la suture', detail: 'cent ans de plus — et le problème passe aux suivants', resultat: 'Vous doublez le fil sur toute sa longueur. Ça tiendra. Cent ans, peut-être deux cents. Vasque note la date dans son carnet, à la suite de six autres dates.' },
+    },
+    tresor: { titre: '🪡 Le dépôt d’avant le premier monde', texte: 'Rangé là avant qu’il n’y ait un « là » : des matériaux qu’aucun artisan de Valciel ne sait nommer, et une bourse dans une monnaie morte six fois.' },
+    combat2: 'Un point de rupture s’ouvre et se propage. Ce n’est plus une créature : c’est la couture qui se défend elle-même.',
+    ep2: { stat: 'vit', texte: 'Remonter la suture jusqu’au trône, c’est marcher sur le fil au-dessus de six mondes ouverts. Rien ne rattrape ceux qui tombent.', ok: 'Vous montez sans regarder en bas, l’un derrière l’autre, à la corde. Au bout : une porte, et derrière la porte, quelqu’un qui vous attendait.', ko: 'Deux d’entre vous manquent le fil et se rattrapent de justesse. Vous arrivez à la porte tremblants, et elle s’ouvre quand même.' },
+    avantBoss: '« C’est elle, la dernière, » dit Vasque. « La suture maîtresse. Si elle lâche pendant qu’on est dessus… » Elle hausse les épaules. « Eh bien, nous saurons enfin ce que ça fait. »',
+    boss: {
+      nom: 'La Dernière Suture', intro: 'Le fil se soulève sur toute sa longueur, comme un serpent qu’on réveille. Ce n’est pas une bête : c’est six cents ans de tension qui cherchent où se relâcher.',
+      annonce: '🪡 La suture est marquée au point du Roi : elle sait qu’elle a le droit de céder, et elle lutte moins !',
+      phase: '🌌 Elle se défait par sections : chaque section libère un morceau d’un monde précédent !',
+      enrage: '⚠️ Tout va céder d’un coup. Elle a tenu six cents ans — elle ne tiendra pas six minutes de plus.',
+    },
+    fins: {
+      variante: 'La suture se relâche enfin, doucement, sans tout emporter. Six mondes glissent en dessous et se rangent, comme des pages qu’on tasse. Valciel reste. Fragile, réparable, mais à sa place. Vasque regarde le ciel désormais nu : « Ce n’est pas fini. C’est juste… en ordre. La porte du trône est ouverte. »',
+      defaut: 'Le fil retombe, épuisé, et le ciel garde sa cicatrice. Cent ans de gagnés, peut-être deux cents. Vasque inscrit la date à la suite des six autres, referme son carnet, et lève les yeux vers la porte du trône. « Il faudra bien lui parler un jour. Autant que ce soit nous. »',
+    },
+    relique: { nom: 'Nœud de la Dernière Suture', emoji: '🪢', bonus: { esp: 18, vit: 14, piete: 10 }, desc: 'Le nœud qui a tenu six mondes. Il tient encore, dans votre poche. Récompense du « Compte à Rebours ».' },
+  },
+  {
+    zone: 'trone-premier-roi', nom: 'La Question Qu’On Ne Lui a Jamais Posée', emoji: '👑', statAcces: 'esp',
+    pnj: { nom: 'Le Premier Roi', emoji: '👑' },
+    resume: 'Il a recousu le monde six fois. Il s’apprête à recommencer. Personne ne lui a jamais demandé s’il fallait continuer.',
+    scenes: [
+      'La salle du trône est plus vieille que Valciel, et propre. Quelqu’un l’entretient. Sur les murs, six tapisseries : six mondes, six fins, six reprises. La septième toile est vierge et déjà tendue.',
+      'Il est assis là, sans garde, sans faste. Il pose l’aiguille en vous voyant. « Vous êtes venus loin. Asseyez-vous, si vous voulez. Personne ne s’assoit jamais. »',
+      '« Je sais pourquoi vous êtes là. Vous voulez que j’arrête. » Il désigne la septième toile. « Alors expliquez-moi ce que je fais à la place. J’attends cette conversation depuis six mondes, et c’est la première fois que quelqu’un monte assez haut pour l’avoir. »',
+    ],
+    ep1: { stat: 'esp', texte: 'Il ne se bat pas tout de suite. Il parle. Il est patient, courtois, et il a six mondes d’arguments — la conversation est l’épreuve la plus dure du voyage.', ok: 'Vous tenez la discussion sans vous laisser convaincre ni vous braquer. Il vous écoute vraiment. À un moment, il concède un point — et il ouvre son coffre personnel en signe de respect.', ko: 'Il vous emmène là où il veut, calmement. Vous ressortez de l’échange en doutant de ce que vous êtes venus faire.' },
+    combat1: 'La garde de la première heure entre malgré ses ordres. Elle protège son roi contre son gré — c’est ce qu’elle a toujours fait.',
+    dilemme: {
+      texte: '« Deux choses sont possibles, » dit-il sans se lever. « Vous me laissez recoudre, et un huitième monde commence — sans vous, sans vos noms, sans rien de ce que vous avez fait. Ou vous m’en empêchez, et celui-ci devra tenir seul. Il est abîmé. Il tiendra peut-être mal. »',
+      optA: { stat: 'vit', texte: '🌍 Refuser le huitième monde', detail: 'Valciel tiendra seul, abîmé et vivant', resultat: '« Vous préférez un monde blessé à un monde neuf. » Il hoche lentement la tête. « C’est un mauvais calcul. C’est aussi le premier choix que quelqu’un fait ici au lieu de le subir. » Il repose l’aiguille sur l’accoudoir.' },
+      optB: { texte: '🪡 Le laisser recoudre une dernière fois', detail: 'un monde neuf — mais tout ce qui existe s’efface', resultat: '« C’est raisonnable. » Il dit cela sans joie. « C’est ce que j’ai choisi six fois. » Il reprend l’aiguille — et vous voyez très bien qu’il espérait autre chose.' },
+    },
+    tresor: { titre: '👑 Le coffre personnel du Roi', texte: 'Six couronnes brisées, une par monde, rangées côte à côte. Et de l’or qu’il n’a jamais dépensé, faute de marchand à qui parler.' },
+    combat2: 'Les ombres couronnées se dressent : ce qu’il fut avant chaque reprise, et qu’il n’a jamais réussi à laisser derrière lui.',
+    ep2: { stat: 'for', texte: 'Il finit par se lever. Le premier échange décide de tout : il frappe comme quelqu’un qui n’a plus rien à prouver et tout à finir.', ok: 'Vous encaissez la première charge sans reculer d’un pas. Il l’enregistre, et il change de garde : il vous prend au sérieux.', ko: 'La première charge vous jette au sol. Il attend que vous vous releviez. Il attend toujours.' },
+    avantBoss: '« Une dernière chose, » dit-il en dégrafant sa cape. « Si vous gagnez, ne me remplacez pas. C’est l’erreur que j’ai commise. »',
+    boss: {
+      nom: 'Le Premier Roi', intro: 'Il se lève enfin, et la salle se souvient de ce qu’il est. Pas un tyran, pas un dieu : un homme qui a fait le même travail six fois de suite, seul, sans qu’on le lui demande jamais.',
+      annonce: '🌍 Vous avez refusé le huitième monde : il se bat pour un principe auquel il ne croit plus tout à fait !',
+      phase: '👑 Il rappelle les six mondes à lui : chacun lui prête sa force, et chacun lui pèse !',
+      enrage: '⚠️ Il veut en finir. Depuis six cents ans, c’est tout ce qu’il a jamais voulu.',
+    },
+    fins: {
+      variante: 'Il tombe à genoux, et il rit — un rire fatigué, presque soulagé. « Bien. Très bien. » Il vous tend l’aiguille première, poignée en avant. « Ne recousez pas. Réparez. Ce n’est pas la même chose, il m’a fallu six mondes pour le comprendre. » La septième toile reste vierge. Dehors, Valciel tient — de travers, rapiécée, absolument vivante. Et pour la première fois, personne ne prévoit de la refaire.',
+      defaut: 'Le Premier Roi s’effondre au pied de son trône, et les six tapisseries tombent avec lui. L’aiguille première roule jusqu’à vos pieds. Il n’y aura pas de huitième monde. Il n’y aura pas non plus de couturier — et c’est à ceux qui restent de s’arranger avec ça. Vasque, sur le seuil, ouvre un carnet neuf à la première page.',
+    },
+    relique: { nom: 'Aiguille Première', emoji: '🪡', bonus: { for: 16, esp: 16, vit: 14, deter: 10 }, desc: 'Elle a recousu six mondes. Ce que vous en ferez ne regarde que vous. Récompense de « La Question Qu’On Ne Lui a Jamais Posée ».' },
+  },
+);
+
+// Les dix récits repassent par le générateur commun : même format de
+// donjon, mêmes verrous d'accès, même relique à la clef.
+construireChroniques(CHRONIQUES.slice(-10));

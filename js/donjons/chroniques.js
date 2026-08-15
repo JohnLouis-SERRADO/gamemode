@@ -528,7 +528,10 @@ const CHRONIQUES = [
 // Le générateur : chaque récit devient un donjon complet — boss de zone
 // renforcé à mécaniques, relique unique, et déblocage exigeant (niveau,
 // caractéristique, objet-clé de la zone, boss de carte vaincu).
-CHRONIQUES.forEach((c) => {
+// Sorti en fonction : les Chroniques des Marches sont ajoutées après le
+// chargement de ce fichier et doivent repasser par le même générateur.
+function construireChroniques(liste) {
+  liste.forEach((c) => {
   const z = ZONES.find((x) => x.id === c.zone);
   const niveau = Math.max(3, z.niveauMin + 2);
   const bossBase = MONSTRES[z.boss];
@@ -647,4 +650,7 @@ CHRONIQUES.forEach((c) => {
       },
     },
   });
-});
+  });
+}
+
+construireChroniques(CHRONIQUES);

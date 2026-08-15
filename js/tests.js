@@ -1206,6 +1206,129 @@ suite('Monde vivant', () => {
 });
 
 // =====================================================================
+// 11. Les Marches Fêlées et la Couture (v19)
+// =====================================================================
+suite('Actes III et IV', () => {
+  test('vingt-six cartes couvrent la route du niveau 1 au niveau 100', () => {
+    egal(ZONES.length, 26, 'cartes du monde');
+    const plafond = Math.max(...ZONES.map((z) => z.niveauMin));
+    verifier(plafond >= 90, `la dernière carte s'ouvre au niveau ${plafond}`);
+  });
+
+  test('aucun trou de plus de dix niveaux entre deux cartes', () => {
+    // Un palier trop large, et le joueur se retrouve sans terrain de jeu.
+    const seuils = [...new Set(ZONES.map((z) => z.niveauMin))].sort((a, b) => a - b);
+    const trous = [];
+    for (let i = 1; i < seuils.length; i++) {
+      if (seuils[i] - seuils[i - 1] > 10) trous.push(`${seuils[i - 1]} → ${seuils[i]}`);
+    }
+    aucun(trous, 'paliers trop espacés');
+  });
+
+  test('chaque acte du fil conducteur a ses cartes', () => {
+    const vides = ACTES_MONDE
+      .filter((a) => !ZONES.some((z) => z.niveauMin >= a.de && z.niveauMin <= a.a))
+      .map((a) => a.nom);
+    aucun(vides, 'actes sans aucune carte');
+  });
+
+  test('les dix cartes neuves ont monstres, boss, récolte et trophée', () => {
+    const neuves = ['marches-grises', 'chant-ruines', 'mer-de-verre', 'jardins-renverses',
+      'ossuaire-dieux', 'bibliotheque-noyee', 'rempart-crepuscule', 'terres-recousues',
+      'couture-monde', 'trone-premier-roi'];
+    const fautives = [];
+    neuves.forEach((id) => {
+      const z = ZONES.find((x) => x.id === id);
+      if (!z) { fautives.push(`${id} absente`); return; }
+      if (z.monstres.length !== 3) fautives.push(`${id} : ${z.monstres.length} monstres`);
+      if (!MONSTRES[z.boss]) fautives.push(`${id} : boss introuvable`);
+      if (!(z.recolte || []).length) fautives.push(`${id} : aucune récolte`);
+      if (!COFFRES_BOSS[z.boss] || !OBJETS[COFFRES_BOSS[z.boss]]) fautives.push(`${id} : pas de trophée`);
+    });
+    aucun(fautives, 'cartes incomplètes');
+  });
+
+  test('la courbe des monstres reste continue au raccord du niveau 52', () => {
+    // Un mur de statistiques au passage des Terres lointaines aux Marches
+    // se sentirait immédiatement en jeu.
+    const avant = Object.values(MONSTRES).filter((m) => !m.boss && m.niveau >= 46 && m.niveau <= 50);
+    const apres = Object.values(MONSTRES).filter((m) => !m.boss && m.niveau >= 53 && m.niveau <= 57);
+    const moy = (l, cle) => l.reduce((s, m) => s + m[cle], 0) / l.length;
+    const rapportHp = moy(apres, 'hp') / moy(avant, 'hp');
+    verifier(rapportHp > 1 && rapportHp < 2,
+      `les PV font un bond de ×${rapportHp.toFixed(2)} au raccord`);
+  });
+
+  test('les monstres montent régulièrement jusqu\'au niveau 100', () => {
+    const hauts = Object.values(MONSTRES).filter((m) => !m.boss && m.niveau >= 90);
+    verifier(hauts.length >= 4, `seulement ${hauts.length} monstres au-delà du niveau 90`);
+    const ruptures = [];
+    Object.values(MONSTRES).filter((m) => !m.boss).forEach((m) => {
+      if (!(m.hp > 0) || !(m.atk > 0) || !(m.xp > 0)) ruptures.push(m.nom);
+    });
+    aucun(ruptures, 'monstres aux statistiques invalides');
+  });
+
+  test('chaque boss est nettement plus coriace que ses sbires', () => {
+    const fautifs = [];
+    ZONES.forEach((z) => {
+      const boss = MONSTRES[z.boss];
+      const sbires = z.monstres.map((c) => MONSTRES[c]).filter(Boolean);
+      const moyenne = sbires.reduce((s, m) => s + m.hp, 0) / sbires.length;
+      if (boss.hp < moyenne * 2) fautifs.push(`${z.id} (×${(boss.hp / moyenne).toFixed(1)})`);
+    });
+    aucun(fautifs, 'boss trop faibles');
+  });
+
+  test('vingt-six Chroniques, une par carte', () => {
+    egal(CHRONIQUES.length, 26, 'Chroniques');
+    const sansRecit = ZONES.filter((z) => !CHRONIQUES.some((c) => c.zone === z.id)).map((z) => z.id);
+    aucun(sansRecit, 'cartes sans Chronique');
+  });
+
+  test('chaque Chronique neuve est complète et devient un donjon', () => {
+    const champs = ['nom', 'emoji', 'statAcces', 'pnj', 'resume', 'scenes', 'ep1',
+      'combat1', 'dilemme', 'tresor', 'combat2', 'ep2', 'avantBoss', 'boss', 'fins', 'relique'];
+    const fautives = [];
+    CHRONIQUES.slice(-10).forEach((c) => {
+      champs.forEach((champ) => { if (!c[champ]) fautives.push(`${c.nom} → ${champ}`); });
+      if (c.scenes && c.scenes.length !== 3) fautives.push(`${c.nom} → ${c.scenes.length} scènes`);
+      if (!DONJONS.some((d) => d.chronique && d.nom === c.nom)) fautives.push(`${c.nom} → pas de donjon`);
+    });
+    aucun(fautives, 'Chroniques incomplètes');
+  });
+
+  test('chaque relique de Chronique existe et donne un vrai bonus', () => {
+    const fautives = CHRONIQUES
+      .filter((c) => !c.relique || !c.relique.bonus || !Object.keys(c.relique.bonus).length)
+      .map((c) => c.nom);
+    aucun(fautives, 'reliques vides');
+  });
+
+  test('les matériaux des Marches sont récoltables et servent à quelque chose', () => {
+    const neufs = ['cendre-grise', 'echo-fossilise', 'verre-de-mer', 'graine-renversee',
+      'os-divin', 'encre-noyee', 'braise-crepusculaire', 'fil-de-suture',
+      'aiguille-premiere', 'eclat-de-couronne'];
+    const orphelins = neufs.filter((id) => {
+      if (!OBJETS[id]) return true;
+      if (!FAMILLE_MATERIAU[id]) return true;
+      const recolte = ZONES.some((z) => (z.recolte || []).some((r) => r.id === id));
+      const butin = Object.values(MONSTRES).some((m) => (m.drops || []).some((d) => d.id === id));
+      const utilise = RECETTES.some((r) => r.materiaux[id]);
+      return !(recolte || butin) || !utilise;
+    });
+    aucun(orphelins, 'matériaux sans source ou sans usage');
+  });
+
+  test('l\'artisanat suit jusqu\'au niveau 100', () => {
+    const hautes = RECETTES.filter((r) => r.niveau >= 90);
+    verifier(hautes.length > 0, 'aucune recette au niveau 90+');
+    const series = SETS_CRAFT.filter((s) => s.niveau >= 88);
+    verifier(series.length >= 2, `seulement ${series.length} série(s) au-delà du niveau 88`);
+  });
+});
+
+// =====================================================================
 // Exécution et rapport
 // =====================================================================
 function lancerTests() {

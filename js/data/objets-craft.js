@@ -267,7 +267,10 @@ function materiauxDePiece(serie, slot) {
   return materiaux;
 }
 
-SETS_CRAFT.forEach((serie) => {
+// Le générateur de pièces, sorti en fonction : les Marches Fêlées
+// ajoutent leurs propres séries après le chargement de ce fichier.
+function construireSeriesCraft(series) {
+  series.forEach((serie) => {
   const mult = MULT_RARETE_CRAFT[serie.rarete];
   const principal = Math.max(2, Math.round(serie.niveau * 0.8 * mult));
   const secondaire = Math.max(1, Math.round(principal * 0.35));
@@ -305,5 +308,8 @@ SETS_CRAFT.forEach((serie) => {
     };
     RECETTES.push({ resultat: id, niveau: serie.niveau, po: serie.po, materiaux: materiauxDePiece(serie, piece.slot) });
   });
-});
+  });
+}
+
+construireSeriesCraft(SETS_CRAFT);
 RECETTES.sort((a, b) => a.niveau - b.niveau);
