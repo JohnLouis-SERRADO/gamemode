@@ -9,8 +9,8 @@
 const BOUTIQUES = {
   armes: {
     emoji: '🗡️', nom: 'À la Bonne Lame', titre: '🗡️ Armurerie « À la Bonne Lame »',
-    detail: 'L’armurerie du bourg : armes du commun à l’épique (l’exceptionnel se gagne ou se forge)',
-    accueil: '« Une lame pour chaque bras, un prix pour chaque bourse. Le légendaire ? Chez les artisans, ou au bout d’une épée. » — maître Brisefer',
+    detail: 'L’armurerie du bourg : armes du commun au légendaire (mythique et divin se méritent)',
+    accueil: '« Une lame pour chaque bras, un prix pour chaque bourse. Le mythique ? Ça ne s’achète pas, ça se gagne. » — maître Brisefer',
     onglets: ['armes', 'vendre'],
   },
   armures: {
