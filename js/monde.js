@@ -784,6 +784,17 @@ function demarrerCombatTourEtage(etage) {
   });
 }
 
+// Les deux Tours alimentent la même bourse de Sceaux : monter n'importe
+// quel escalier finance la Tour de l'Éveil. On ne récolte qu'à partir du
+// niveau requis, sinon les Sceaux s'accumuleraient sans rien à en faire.
+function recolterSceaux(m, etage, lignes) {
+  if (m.niveau < NIVEAU_TOUR_EVEIL) return;
+  const gain = gagnerSceaux(m, etage);
+  if (m.distant) return;
+  const majeur = gain.majeurs > 0 ? ' et 💠 1 Sceau Majeur' : '';
+  lignes.push(`🔹 +${gain.normaux} Sceau${gain.normaux > 1 ? 'x' : ''}${majeur} — à dépenser à la Tour de l'Éveil`);
+}
+
 function apresVictoireTour(cb) {
   const etage = cb.tourEtage;
   const membres = cb.equipe;
@@ -810,6 +821,7 @@ function apresVictoireTour(cb) {
     progresserQuete(m, 'tour', 1);
     Object.entries(butin.objets).forEach(([id, qte]) => ajouterObjet(m, id, qte));
     if (m.tourMax < etage) m.tourMax = etage;
+    recolterSceaux(m, etage, lignes);
 
     // Palier (étages 5, 10, 15…) : coffre de la Tour + familier éventuel
     if (estPalier) {
@@ -969,6 +981,7 @@ function apresVictoireTourBoss(cb) {
       }
     }
     if (m.tourBoss[difficulte] < etage) m.tourBoss[difficulte] = etage;
+    recolterSceaux(m, etage, lignes);
     const niveaux = gagnerXp(m, xpParHeros);
     verifierHautsFaits(m);
     nettoyerApresCombat(m); // pas de soin entre les étages

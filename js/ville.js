@@ -27,6 +27,11 @@ const BOUTIQUES = {
   },
 };
 
+function ouvrirTourEveil() {
+  rendreTourEveil();
+  montrerEcran('ecran-tour-eveil');
+}
+
 function ouvrirBoutique(idBoutique) {
   boutiqueCourante = idBoutique;
   ongletBoutique = BOUTIQUES[idBoutique].onglets[0];
@@ -36,6 +41,7 @@ function ouvrirBoutique(idBoutique) {
 }
 
 function rendreVille() {
+  const p = persoActif();
   const zone = el('ville-lieux');
   zone.innerHTML = '';
 
@@ -98,6 +104,13 @@ function rendreVille() {
           emoji: '🍻', nom: 'Taverne', detail: 'Chat, classement et boss du monde — avec tous les joueurs',
           action: () => naviguer('taverne'),
         },
+        // La Tour de l'Éveil n'apparaît qu'une fois le niveau atteint :
+        // avant, ses services n'auraient rien à corriger.
+        ...(p.niveau >= NIVEAU_TOUR_EVEIL ? [{
+          emoji: '🗝️', nom: 'Tour de l’Éveil',
+          detail: 'Défaire ses choix : rechoisir sa Voie, sa spécialité, son rôle, relancer son Éveil — contre des Sceaux',
+          action: () => ouvrirTourEveil(),
+        }] : []),
       ],
     },
   ];
@@ -709,6 +722,86 @@ function rendreArcanium() {
     return carte;
     },
   });
+}
+
+// =====================================================================
+// v19 — LA TOUR DE L'ÉVEIL : la porte de sortie payante.
+//
+// Règle 10 du document de conception : « tout choix définitif doit avoir
+// une porte de sortie payante ». Un joueur qui s'est trompé de spécialité
+// au niveau 10 ne doit pas être condamné à refaire un héros.
+//
+// Les Sceaux se gagnent en grimpant les tours existantes — la Tour de
+// l'Éveil ne construit pas son propre escalier, elle se nourrit de tout
+// ce qu'on escalade déjà.
+// =====================================================================
+function rendreTourEveil() {
+  const p = persoActif();
+  const zone = el('tour-eveil-contenu');
+  zone.innerHTML = '';
+  const bourse = sceauxDe(p);
+
+  const entete = document.createElement('div');
+  entete.className = 'panneau';
+  entete.innerHTML = `
+    <p class="sous-titre">« On monte ici pour changer ce qu’on est. Cent étages, et au sommet,
+      la seule question qui vaille : et si vous aviez choisi autrement ? » — la Gardienne des Sceaux</p>
+    <div class="objet-bonus">🔹 ${bourse.normaux} Sceau${bourse.normaux > 1 ? 'x' : ''} ·
+      💠 ${bourse.majeurs} Sceau${bourse.majeurs > 1 ? 'x' : ''} Majeur${bourse.majeurs > 1 ? 's' : ''}</div>
+    <p class="aide">Les Sceaux se gagnent en grimpant la Tour Sans Fin et la Tour des Boss :
+      ${sceauxDeLEtage(10)} par étage au début, jusqu’à ${sceauxDeLEtage(100)} au sommet, et un Sceau Majeur
+      à chaque étage multiple de dix.</p>`;
+  zone.appendChild(entete);
+
+  if (p.niveau < NIVEAU_TOUR_EVEIL) {
+    zone.insertAdjacentHTML('beforeend',
+      `<p class="aide">🔒 La Tour n’ouvre ses portes qu’au niveau ${NIVEAU_TOUR_EVEIL}.</p>`);
+    return;
+  }
+
+  const grille = document.createElement('div');
+  grille.className = 'grille-recettes';
+  Object.entries(SERVICES_TOUR).forEach(([id, service]) => {
+    const dispo = service.disponible(p);
+    const payable = peutPayerService(p, service);
+    const carte = document.createElement('div');
+    carte.className = 'carte-recette' + (dispo ? '' : ' verrouillee element-verrouille');
+    // Le coût d'abord, la bourse ensuite : « 15 Sceaux » se lit,
+    // « 300/15 » se déchiffre.
+    const manqueNormaux = Math.max(0, service.sceaux - bourse.normaux);
+    const manqueMajeurs = Math.max(0, service.majeurs - bourse.majeurs);
+    const raison = dispo ? '' : (service.raison ? service.raison(p) : 'Rien à changer pour l’instant.');
+    carte.innerHTML = `
+      <div class="objet-entete">${service.emoji} <strong>${service.nom}</strong></div>
+      <div class="objet-desc">${service.desc}</div>
+      <div class="ingredients">
+        <span class="ingredient ${manqueNormaux ? 'manque' : 'ok'}">🔹 ${service.sceaux} Sceaux${manqueNormaux ? ` — il vous en manque ${manqueNormaux}` : ''}</span>
+        ${service.majeurs ? `<span class="ingredient ${manqueMajeurs ? 'manque' : 'ok'}">💠 ${service.majeurs} Majeur${service.majeurs > 1 ? 's' : ''}${manqueMajeurs ? ` — il vous en manque ${manqueMajeurs}` : ''}</span>` : ''}
+      </div>
+      ${dispo ? '' : `<div class="objet-niveau niveau-insuffisant">🔒 ${raison}</div>`}`;
+    const bouton = document.createElement('button');
+    bouton.className = 'btn-choix btn-compact';
+    bouton.textContent = dispo
+      ? (payable ? '✔ Employer ce service' : '🔹 Sceaux insuffisants')
+      : '🔒 Indisponible';
+    bouton.disabled = !dispo || !payable;
+    bouton.addEventListener('click', () => {
+      if (!service.disponible(p) || !peutPayerService(p, service)) return;
+      const bourseVive = sceauxDe(p);
+      bourseVive.normaux -= service.sceaux;
+      bourseVive.majeurs -= service.majeurs;
+      if (service.or) p.po -= service.or;
+      const message = service.appliquer(p);
+      bornerVie(p);
+      sauvegarder(p);
+      afficherToast(`${service.emoji} ${message}`);
+      rendreTourEveil();
+      rendreTopbar();
+    });
+    carte.appendChild(bouton);
+    grille.appendChild(carte);
+  });
+  zone.appendChild(grille);
 }
 
 // =====================================================================

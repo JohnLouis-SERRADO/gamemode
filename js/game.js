@@ -224,13 +224,14 @@ function boutonConfirmation(libelle, libelleConfirme, action) {
 // =====================================================================
 const ECRANS_AVEC_TOPBAR = ['ecran-carte', 'ecran-equipe', 'ecran-zone', 'ecran-ville',
   'ecran-boutique', 'ecran-antiquaire', 'ecran-arcanium', 'ecran-guilde', 'ecran-atelier',
-  'ecran-fournisseur', 'ecran-heros', 'ecran-sac', 'ecran-taverne', 'ecran-groupe-ligne', 'ecran-donjon'];
+  'ecran-fournisseur', 'ecran-tour-eveil', 'ecran-heros', 'ecran-sac', 'ecran-taverne', 'ecran-groupe-ligne', 'ecran-donjon'];
 
 // Quel bouton de la barre du bas s'allume pour chaque écran.
 const NAV_POUR_ECRAN = {
   'ecran-carte': 'carte', 'ecran-equipe': 'carte', 'ecran-zone': 'carte', 'ecran-donjon': 'carte',
   'ecran-ville': 'ville', 'ecran-boutique': 'ville', 'ecran-antiquaire': 'ville', 'ecran-arcanium': 'ville',
   'ecran-guilde': 'ville', 'ecran-atelier': 'ville', 'ecran-fournisseur': 'ville',
+  'ecran-tour-eveil': 'ville',
   'ecran-heros': 'heros', 'ecran-sac': 'sac', 'ecran-taverne': 'taverne', 'ecran-groupe-ligne': 'taverne',
 };
 
@@ -985,7 +986,8 @@ function donneesCloud(p) {
     donjons: p.donjons, classe: p.classe, maitrise: p.maitrise, rangs: p.rangs,
     // v19 : la spécialité voyage avec le héros — code de sauvegarde, taverne,
     // fiches publiques et expéditions doivent tous la connaître.
-    sousClasse: p.sousClasse, voie: p.voie, eveil: p.eveil, versionClasses: p.versionClasses,
+    sousClasse: p.sousClasse, voie: p.voie, eveil: p.eveil, sceaux: p.sceaux,
+    versionClasses: p.versionClasses,
     tourBoss: p.tourBoss, metiers: p.metiers, metierPrincipal: p.metierPrincipal,
     ascensions: p.ascensions, histoiresVues: p.histoiresVues,
   };
@@ -2668,6 +2670,7 @@ function chargerHerosImporte(donnees, id, token) {
   if (d.sousClasse !== undefined) p.sousClasse = d.sousClasse;
   if (d.voie !== undefined) p.voie = d.voie;
   if (d.eveil !== undefined) p.eveil = d.eveil;
+  if (d.sceaux) p.sceaux = d.sceaux;
   if (d.versionClasses != null) p.versionClasses = d.versionClasses;
   if (d.rangs && typeof d.rangs === 'object') p.rangs = d.rangs;
   if (d.maitrise != null) p.maitrise = d.maitrise;

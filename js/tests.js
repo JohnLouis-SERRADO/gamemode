@@ -1565,6 +1565,134 @@ suite('Éveil', () => {
   });
 });
 
+suite('Tour de l\'Éveil', () => {
+  test('les sept services annoncent un nom, un coût et une description', () => {
+    const ids = Object.keys(SERVICES_TOUR);
+    egal(ids.length, 7, 'services');
+    const fautifs = ids.filter((id) => {
+      const s = SERVICES_TOUR[id];
+      return !s.nom || !s.emoji || !s.desc
+        || typeof s.sceaux !== 'number' || s.sceaux <= 0
+        || typeof s.majeurs !== 'number' || s.majeurs < 0
+        || typeof s.disponible !== 'function' || typeof s.appliquer !== 'function';
+    });
+    aucun(fautifs, 'services mal décrits');
+  });
+
+  test('le coût suit la gravité du changement', () => {
+    const c = (id) => SERVICES_TOUR[id].sceaux;
+    verifier(c('changer-voie') < c('changer-sous-classe'),
+      `changer de Voie (${c('changer-voie')}) devrait coûter moins que changer de spécialité (${c('changer-sous-classe')})`);
+    verifier(c('changer-sous-classe') < c('changer-classe'),
+      `changer de spécialité (${c('changer-sous-classe')}) devrait coûter moins que changer de rôle (${c('changer-classe')})`);
+    egal(SERVICES_TOUR['changer-voie'].majeurs, 0, 'Majeurs pour la Voie');
+    egal(SERVICES_TOUR['changer-classe'].majeurs, 3, 'Majeurs pour le rôle');
+  });
+
+  test('les Sceaux montent par tranche et le boss donne un Majeur', () => {
+    egal(sceauxDeLEtage(1), 1, 'étage 1');
+    egal(sceauxDeLEtage(20), 1, 'étage 20');
+    egal(sceauxDeLEtage(21), 2, 'étage 21');
+    egal(sceauxDeLEtage(50), 2, 'étage 50');
+    egal(sceauxDeLEtage(51), 3, 'étage 51');
+    egal(sceauxDeLEtage(80), 3, 'étage 80');
+    egal(sceauxDeLEtage(100), 5, 'étage 100');
+    verifier(sceauxDeLEtage(150) >= 5, 'au-delà de cent étages la Tour doit continuer à payer');
+    const paliers = [];
+    for (let e = 1; e <= 100; e++) if (estEtageBoss(e) !== (e % 10 === 0)) paliers.push(String(e));
+    aucun(paliers, 'étages boss mal détectés');
+  });
+
+  test('gagnerSceaux crédite la bourse, Majeur compris', () => {
+    const p = herosTest({ niveau: 80 });
+    egal(sceauxDe(p).normaux, 0, 'bourse de départ');
+    const petit = gagnerSceaux(p, 7);
+    egal(petit.normaux, 1, 'gain étage 7');
+    egal(petit.majeurs, 0, 'Majeur étage 7');
+    const boss = gagnerSceaux(p, 30);
+    egal(boss.majeurs, 1, 'Majeur étage 30');
+    egal(sceauxDe(p).normaux, 3, 'cumul');
+    egal(sceauxDe(p).majeurs, 1, 'cumul Majeurs');
+  });
+
+  test('un service ne s\'emploie pas à crédit', () => {
+    const p = herosTest({ niveau: 80, classe: 'guerrier', sousClasse: 'berserker' });
+    const service = SERVICES_TOUR['changer-sous-classe'];
+    verifier(!peutPayerService(p, service), 'une bourse vide ne devrait rien payer');
+    sceauxDe(p).normaux = service.sceaux;
+    verifier(!peutPayerService(p, service), 'les Sceaux Majeurs manquants devraient bloquer');
+    sceauxDe(p).majeurs = service.majeurs;
+    verifier(peutPayerService(p, service), 'la bourse complète devrait payer');
+  });
+
+  test('aucun service ne retire une compétence du grimoire', () => {
+    const fautifs = [];
+    Object.entries(SERVICES_TOUR).forEach(([id, service]) => {
+      const p = herosTest({ niveau: 85, classe: 'guerrier', sousClasse: 'berserker' });
+      p.voie = SOUS_CLASSES.berserker.voies[0];
+      const eveil = EVEILS[SOUS_CLASSES.berserker.eveils[0]];
+      p.eveil = { id: eveil.id, rarete: eveil.rarete, relances: 0, propositions: [eveil.id] };
+      const avant = p.competences.slice();
+      const orAvant = p.po;
+      const niveauAvant = p.niveau;
+      service.appliquer(p);
+      const perdues = avant.filter((c) => !p.competences.includes(c));
+      if (perdues.length) fautifs.push(`${id} : ${perdues.join(', ')}`);
+      if (p.niveau !== niveauAvant) fautifs.push(`${id} : niveau modifié`);
+      if (p.po !== orAvant) fautifs.push(`${id} : or modifié hors paiement`);
+    });
+    aucun(fautifs, 'services destructeurs');
+  });
+
+  test('changer de spécialité remet aussi la Voie en jeu', () => {
+    const p = herosTest({ niveau: 85, classe: 'guerrier', sousClasse: 'berserker' });
+    p.voie = SOUS_CLASSES.berserker.voies[0];
+    SERVICES_TOUR['changer-sous-classe'].appliquer(p);
+    egal(p.sousClasse, null, 'spécialité');
+    egal(p.voie, null, 'Voie — elle dépend de la spécialité');
+  });
+
+  test('relancer l\'Éveil fait avancer le compteur de garantie', () => {
+    const p = herosTest({ niveau: 85, classe: 'guerrier', sousClasse: 'berserker' });
+    const eveil = EVEILS[SOUS_CLASSES.berserker.eveils[0]];
+    p.eveil = { id: eveil.id, rarete: eveil.rarete, relances: 2 };
+    SERVICES_TOUR['relancer-eveil'].appliquer(p);
+    egal(p.eveil.id, undefined, 'l\'Éveil devrait être oublié');
+    egal(p.eveil.relances, 3, 'relances');
+  });
+
+  test('forcer une rareté garantit vraiment un Légendaire au tirage suivant', () => {
+    const p = herosTest({ niveau: 85, classe: 'arcaniste', sousClasse: 'pyromancien' });
+    SERVICES_TOUR['forcer-rarete'].appliquer(p);
+    const rangs = ORDRE_EVEIL;
+    const echecs = [];
+    for (let i = 0; i < 200; i++) {
+      const tirage = tirerEveils(p);
+      if (!tirage.some((e) => rangs.indexOf(e.rarete) >= rangs.indexOf('legendaire'))) echecs.push(String(i));
+    }
+    aucun(echecs, 'tirages sans Légendaire malgré la garantie payée');
+  });
+
+  test('révéler un Éveil caché rend son énoncé exact et le mémorise', () => {
+    const p = herosTest({ niveau: 85, classe: 'guerrier', sousClasse: 'berserker' });
+    const message = SERVICES_TOUR['reveler-cache'].appliquer(p);
+    const cache = SOUS_CLASSES.berserker.eveils.map((id) => EVEILS[id]).find((e) => e.rarete === 'cache');
+    verifier(message.includes(cache.condition.exacte), `l'énoncé exact devrait apparaître : ${message}`);
+    verifier((p.cachesReveles || []).includes(cache.id), 'la révélation devrait être mémorisée');
+  });
+
+  test('les services ne s\'ouvrent que s\'il y a quelque chose à défaire', () => {
+    const vierge = herosTest({ niveau: 80, classe: 'guerrier' });
+    vierge.sousClasse = null;
+    vierge.voie = null;
+    vierge.eveil = null;
+    verifier(!SERVICES_TOUR['changer-voie'].disponible(vierge), 'changer de Voie sans Voie');
+    verifier(!SERVICES_TOUR['changer-sous-classe'].disponible(vierge), 'changer de spécialité sans spécialité');
+    verifier(!SERVICES_TOUR['relancer-eveil'].disponible(vierge), 'relancer un Éveil inexistant');
+    verifier(SERVICES_TOUR['changer-classe'].disponible(vierge), 'changer de rôle est toujours possible');
+  });
+});
+
 // =====================================================================
 // Exécution et rapport
 // =====================================================================
