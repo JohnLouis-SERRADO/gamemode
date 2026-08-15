@@ -7,6 +7,25 @@
 // =====================================================================
 // Zones du monde
 // =====================================================================
+// =====================================================================
+// v19 — Les actes du fil conducteur.
+//
+// La carte du monde se lit désormais par acte plutôt qu'en une seule
+// colonne de cinquante entrées. Les bornes recouvrent déjà les niveaux
+// à venir : les Marches Fêlées et la Couture accueilleront les cartes
+// des niveaux 52 à 100 sans qu'il faille retoucher l'affichage.
+// =====================================================================
+const ACTES_MONDE = [
+  { id: 'royaumes', nom: 'Acte I — Les Royaumes', emoji: '🌾', de: 1, a: 20,
+    resume: 'La petite histoire des huit premières terres — et ce qu’elles déterrent.' },
+  { id: 'lointaines', nom: 'Acte II — Les Terres lointaines', emoji: '🌴', de: 21, a: 50,
+    resume: 'Au-delà des Royaumes, le monde commence à se fêler.' },
+  { id: 'marches', nom: 'Acte III — Les Marches Fêlées', emoji: '🌫️', de: 51, a: 78,
+    resume: 'Là où le monde a déjà fini une fois.' },
+  { id: 'couture', nom: 'Acte IV — La Couture', emoji: '🪡', de: 79, a: 100,
+    resume: 'Jusqu’au Premier Roi, celui qui a recousu le monde.' },
+];
+
 const EXPLORATIONS_POUR_BOSS = 3;
 
 const ZONES = [

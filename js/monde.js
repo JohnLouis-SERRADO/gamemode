@@ -54,7 +54,15 @@ function rendreCarte() {
   rendreCliquable(ville, () => naviguer('ville'));
   zone.appendChild(ville);
 
-  ZONES.forEach((z) => {
+  // v19 : les cartes se regroupent par acte du fil conducteur. Tout était
+  // empilé dans un seul défilement de dix écrans, verrouillé compris.
+  const groupes = [];
+  ACTES_MONDE.forEach((acte) => {
+    const zones = ZONES.filter((z) => z.niveauMin >= acte.de && z.niveauMin <= acte.a);
+    if (zones.length) groupes.push({ acte, zones });
+  });
+
+  const carteDeZone = (z) => {
     const verrouillee = p.niveau < z.niveauMin;
     const carte = document.createElement('div');
     carte.className = 'carte-zone' + (verrouillee ? ' verrouillee' : '');
@@ -71,7 +79,43 @@ function rendreCarte() {
         montrerEcran('ecran-zone');
       });
     }
-    zone.appendChild(carte);
+    return carte;
+  };
+
+  groupes.forEach(({ acte, zones }) => {
+    const ouvertes = zones.filter((z) => p.niveau >= z.niveauMin);
+    const fermees = zones.filter((z) => p.niveau < z.niveauMin);
+    // Un acte dont aucune carte n'est accessible reste replié : inutile de
+    // faire défiler dix cartes verrouillées avant d'atteindre les siennes.
+    const toutFerme = ouvertes.length === 0;
+
+    const bloc = document.createElement('section');
+    bloc.className = 'acte-monde' + (toutFerme ? ' acte-verrouille' : '');
+
+    const entete = document.createElement('button');
+    entete.type = 'button';
+    entete.className = 'acte-entete';
+    entete.setAttribute('aria-expanded', String(!toutFerme));
+    entete.innerHTML = `
+      <span class="acte-titre">${acte.emoji} ${acte.nom}</span>
+      <span class="acte-plage">niv. ${acte.de}-${acte.a} · ${zones.length} carte${zones.length > 1 ? 's' : ''}${
+        fermees.length ? ` · ${fermees.length} 🔒` : ''}</span>
+      <span class="acte-chevron">${toutFerme ? '▸' : '▾'}</span>`;
+
+    const contenu = document.createElement('div');
+    contenu.className = 'acte-cartes grille-zones';
+    if (toutFerme) contenu.classList.add('cache');
+    zones.forEach((z) => contenu.appendChild(carteDeZone(z)));
+
+    entete.addEventListener('click', () => {
+      const replie = contenu.classList.toggle('cache');
+      entete.setAttribute('aria-expanded', String(!replie));
+      entete.querySelector('.acte-chevron').textContent = replie ? '▸' : '▾';
+    });
+
+    bloc.appendChild(entete);
+    bloc.appendChild(contenu);
+    zone.appendChild(bloc);
   });
 
   // La Tour Sans Fin : combats enchaînés sans repos, de plus en plus durs.

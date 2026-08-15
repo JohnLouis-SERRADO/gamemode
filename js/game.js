@@ -2281,17 +2281,20 @@ function rendreSac() {
     return objet && (sousFiltreSac === 'tous' || objet.type === sousFiltreSac)
       && (sousFiltreSacRarete === 'tous' || rareteDe(objet) === sousFiltreSacRarete);
   });
-  if (entrees.length === 0) {
-    const vide = document.createElement('p');
-    vide.className = 'aide';
-    vide.textContent = p.inventaire.length === 0
+  rendreListeFiltrable({
+    cle: 'sac',
+    conteneur: blocInv,
+    elements: entrees,
+    texteDe: (entree) => texteRecherchableObjet(OBJETS[entree.id]),
+    tris: TRIS_OBJETS,
+    trierAvec: (entree) => ({ objet: OBJETS[entree.id], prix: prixVenteDe(entree.id) }),
+    classeListe: 'grille-inventaire',
+    placeholder: '🔎 Chercher dans le sac…',
+    nomListe: 'lots',
+    vide: p.inventaire.length === 0
       ? 'Votre sac est vide. Le monde regorge de trésors !'
-      : 'Rien dans cette catégorie.';
-    blocInv.appendChild(vide);
-  } else {
-    const grille = document.createElement('div');
-    grille.className = 'grille-inventaire';
-    entrees.forEach((entree) => {
+      : 'Rien dans cette catégorie.',
+    rendre: (entree) => {
       const objet = OBJETS[entree.id];
       const carte = document.createElement('div');
       carte.className = `carte-objet bord-rar-${rareteDe(objet)}`;
@@ -2300,7 +2303,8 @@ function rendreSac() {
         <div class="objet-desc">${objet.desc || ''}</div>
         ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
         ${texteSet(objet)}
-        ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}`;
+        ${objet.type === 'equipement' ? `<div class="objet-niveau ${p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}
+        ${texteComparaison(p, objet)}`;
       if (objet.type === 'equipement') {
         const equiperBtn = document.createElement('button');
         equiperBtn.className = 'btn-choix btn-compact';
@@ -2328,10 +2332,9 @@ function rendreSac() {
         note.textContent = 'Matériau d’artisanat';
         carte.appendChild(note);
       }
-      grille.appendChild(carte);
-    });
-    blocInv.appendChild(grille);
-  }
+      return carte;
+    },
+  });
   zone.appendChild(blocInv);
 }
 

@@ -517,13 +517,27 @@ function rendreTaverne() {
     const selectObjet = document.createElement('select');
     selectObjet.id = 'comptoir-objet';
     selectObjet.className = 'select-groupe';
-    vendables.forEach((entree) => {
-      const objet = OBJETS[entree.id];
-      const option = document.createElement('option');
-      option.value = entree.id;
-      option.textContent = `${objet.emoji} ${objet.nom} (×${entree.qte})`;
-      selectObjet.appendChild(option);
-    });
+    // v19 : la liste déroulante annonçait un nom et rien d'autre — ni la
+    // rareté, ni les effets. On y met tout, et un aperçu complet s'affiche
+    // sous le formulaire dès qu'un objet est choisi.
+    vendables
+      .slice()
+      .sort((a, b) => {
+        const oa = OBJETS[a.id]; const ob = OBJETS[b.id];
+        const ordre = ['divin', 'mythique', 'legendaire', 'epique', 'rare', 'inhabituel', 'commun'];
+        return ordre.indexOf(rareteDe(oa)) - ordre.indexOf(rareteDe(ob))
+          || (ob.niveau || 0) - (oa.niveau || 0);
+      })
+      .forEach((entree) => {
+        const objet = OBJETS[entree.id];
+        const option = document.createElement('option');
+        option.value = entree.id;
+        const rarete = rareteDe(objet);
+        const etiquette = rarete === 'commun' ? '' : ` 〔${RARETES[rarete].nom}〕`;
+        const niveau = objet.type === 'equipement' && objet.niveau ? ` · niv. ${objet.niveau}` : '';
+        option.textContent = `${objet.emoji} ${objet.nom}${etiquette}${niveau} (×${entree.qte})`;
+        selectObjet.appendChild(option);
+      });
     const champQte = document.createElement('input');
     champQte.id = 'comptoir-qte';
     champQte.type = 'number';
@@ -548,6 +562,27 @@ function rendreTaverne() {
     formulaire.appendChild(champPrix);
     formulaire.appendChild(vendre);
     blocComptoir.appendChild(formulaire);
+
+    // L'aperçu : la même carte que partout ailleurs, pour qu'on sache
+    // exactement ce qu'on met en vente avant de fixer son prix.
+    const apercu = document.createElement('div');
+    apercu.className = 'apercu-vente';
+    const majApercu = () => {
+      const objet = OBJETS[selectObjet.value];
+      if (!objet) { apercu.innerHTML = ''; return; }
+      apercu.innerHTML = `
+        <div class="carte-objet bord-rar-${rareteDe(objet)}">
+          <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)}</div>
+          <div class="objet-desc">${objet.desc || ''}</div>
+          ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
+          ${texteSet(objet)}
+          ${objet.type === 'equipement' && objet.niveau ? `<div class="objet-niveau">niv. ${objet.niveau} requis</div>` : ''}
+          <div class="annonce-detail">Valeur de rachat en boutique : ${prixVenteDe(selectObjet.value)} po</div>
+        </div>`;
+    };
+    selectObjet.addEventListener('change', majApercu);
+    majApercu();
+    blocComptoir.appendChild(apercu);
   }
   // v17 : filtres du comptoir (type + rareté), comme dans les boutiques.
   const rangeeFiltresComptoir = document.createElement('div');
@@ -772,35 +807,45 @@ function rendreSectionsTaverne() {
       if (filtresComptoir.rarete !== 'tous' && rareteDe(objet) !== filtresComptoir.rarete) return false;
       return true;
     });
-    if (annoncesVisibles.length === 0) {
-      zoneComptoir.innerHTML = donneesTaverne.echanges.length === 0
-        ? '<p class="aide">Aucune annonce au comptoir. Soyez le premier marchand !</p>'
-        : '<p class="aide">Aucune annonce ne correspond à ces filtres.</p>';
-    }
-    annoncesVisibles.forEach((annonce) => {
-      const objet = OBJETS[annonce.objet_id];
-      const estMoi = p && p.cloud && annonce.vendeur_id === p.cloud.id;
-      const ligne = document.createElement('div');
-      ligne.className = `ligne-annonce bord-rar-${rareteDe(objet)}`;
-      ligne.innerHTML = `<span class="annonce-objet">${objet.emoji} <strong>${objet.nom}</strong>
-        ${etiquetteRarete(objet)}${annonce.qte > 1 ? ` ×${annonce.qte}` : ''}
-        ${objet.bonus ? `<span class="annonce-bonus">${texteBonus(objet.bonus)}</span>` : ''}
-        ${objet.type === 'equipement' && objet.niveau ? `<span class="annonce-bonus">niv. ${objet.niveau} requis</span>` : ''}
-        ${objet.type === 'consommable' && objet.desc ? `<span class="annonce-bonus">${objet.desc}</span>` : ''}
-        ${texteSet(objet)}</span>
-        <span class="annonce-detail">${annonce.prix} po · par ${estMoi ? 'vous' : echapper(annonce.vendeur_nom)} · valeur revente : ${prixVenteDe(annonce.objet_id)} po</span>`;
-      const bouton = document.createElement('button');
-      bouton.className = 'btn-choix btn-compact';
-      if (estMoi) {
-        bouton.textContent = '↩️ Retirer';
-        bouton.addEventListener('click', () => annulerEchange(annonce));
-      } else {
-        bouton.textContent = `Acheter — ${annonce.prix} po`;
-        bouton.disabled = !p || p.po < annonce.prix;
-        bouton.addEventListener('click', () => acheterEchange(annonce));
-      }
-      ligne.appendChild(bouton);
-      zoneComptoir.appendChild(ligne);
+    // v19 : le comptoir adopte les CARTES de la boutique — on y voit enfin
+    // la rareté, les effets, la panoplie et ce que la pièce changerait.
+    rendreListeFiltrable({
+      cle: 'comptoir',
+      conteneur: zoneComptoir,
+      elements: annoncesVisibles,
+      texteDe: (annonce) => `${texteRecherchableObjet(OBJETS[annonce.objet_id])} ${annonce.vendeur_nom || ''}`,
+      tris: TRIS_OBJETS,
+      trierAvec: (annonce) => ({ objet: OBJETS[annonce.objet_id], prix: annonce.prix }),
+      classeListe: 'grille-inventaire',
+      placeholder: '🔎 Chercher une annonce, un vendeur…',
+      nomListe: 'annonces',
+      vide: 'Aucune annonce au comptoir. Soyez le premier marchand !',
+      rendre: (annonce) => {
+        const objet = OBJETS[annonce.objet_id];
+        const estMoi = p && p.cloud && annonce.vendeur_id === p.cloud.id;
+        const carte = document.createElement('div');
+        carte.className = `carte-objet bord-rar-${rareteDe(objet)}`;
+        carte.innerHTML = `
+          <div class="objet-entete">${objet.emoji} <strong>${objet.nom}</strong> ${etiquetteRarete(objet)}${annonce.qte > 1 ? ` <span class="objet-qte">×${annonce.qte}</span>` : ''}</div>
+          <div class="objet-desc">${objet.desc || ''}</div>
+          ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}
+          ${texteSet(objet)}
+          ${objet.type === 'equipement' && objet.niveau ? `<div class="objet-niveau ${p && p.niveau < objet.niveau ? 'niveau-insuffisant' : ''}">niv. ${objet.niveau} requis</div>` : ''}
+          ${p ? texteComparaison(p, objet) : ''}
+          <div class="annonce-detail">Vendu par ${estMoi ? '<strong>vous</strong>' : echapper(annonce.vendeur_nom)} · valeur de rachat : ${prixVenteDe(annonce.objet_id)} po</div>`;
+        const bouton = document.createElement('button');
+        bouton.className = 'btn-choix btn-compact btn-achat';
+        if (estMoi) {
+          bouton.textContent = '↩️ Retirer';
+          bouton.addEventListener('click', () => annulerEchange(annonce));
+        } else {
+          bouton.textContent = `Acheter — ${annonce.prix} po`;
+          bouton.disabled = !p || p.po < annonce.prix;
+          bouton.addEventListener('click', () => acheterEchange(annonce));
+        }
+        carte.appendChild(bouton);
+        return carte;
+      },
     });
   }
 }

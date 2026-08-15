@@ -61,20 +61,49 @@ function bossDeDonjon(donjon) {
 function rendreCartesDonjons(conteneur, p) {
   const sections = [
     {
+      court: '📜 Chroniques des terres',
       titre: '📜 <strong>Chroniques des terres</strong> — la petite histoire de chaque carte. Accès exigeant : niveau, caractéristique, objet-clé… et le boss de la carte vaincu.',
       liste: DONJONS.filter((d) => d.chronique),
     },
     {
+      court: '📖 Épopées de Valciel',
       titre: '📖 <strong>Épopées de Valciel</strong> — les grandes histoires. Une épopée terminée ouvre son <strong>Ascension éternelle</strong> : on y grimpe jusqu’à la mort ou l’abandon.',
       liste: DONJONS.filter((d) => !d.chronique),
     },
   ];
 
+  // v19 : chaque registre se replie. Les vingt-cinq donjons s'ajoutaient
+  // à la suite des cartes du monde, dans le même défilement sans fin —
+  // on ne les ouvre plus que quand on les cherche.
   sections.forEach((section) => {
-    const titre = document.createElement('div');
-    titre.className = 'separateur-donjons';
-    titre.innerHTML = section.titre;
-    conteneur.appendChild(titre);
+    const bloc = document.createElement('section');
+    bloc.className = 'acte-monde';
+
+    const entete = document.createElement('button');
+    entete.type = 'button';
+    entete.className = 'acte-entete';
+    entete.setAttribute('aria-expanded', 'false');
+    const ouverts = section.liste.filter((dj) => donjonDebloquePour(p, dj)).length;
+    entete.innerHTML = `
+      <span class="acte-titre">${section.court}</span>
+      <span class="acte-plage">${ouverts}/${section.liste.length} accessible${ouverts > 1 ? 's' : ''}</span>
+      <span class="acte-chevron">▸</span>`;
+
+    const contenu = document.createElement('div');
+    contenu.className = 'acte-cartes cache';
+    const intro = document.createElement('div');
+    intro.className = 'separateur-donjons';
+    intro.innerHTML = section.titre;
+    contenu.appendChild(intro);
+
+    entete.addEventListener('click', () => {
+      const replie = contenu.classList.toggle('cache');
+      entete.setAttribute('aria-expanded', String(!replie));
+      entete.querySelector('.acte-chevron').textContent = replie ? '▸' : '▾';
+    });
+    bloc.appendChild(entete);
+    bloc.appendChild(contenu);
+    conteneur.appendChild(bloc);
 
     section.liste.forEach((donjon) => {
       const prog = progresDonjon(p, donjon.id);
@@ -108,7 +137,7 @@ function rendreCartesDonjons(conteneur, p) {
         <div class="zone-plage">${etiquette}${record > 0 ? ` · ⛰️ record : étage ${record}` : ''} · ${texteRecommandation(p, donjon.defi || donjon.niveauMin)}</div>
         <div class="zone-desc">${verrouille ? action : `${donjon.resume}<br><em>${action}</em>`}</div>`;
       if (!verrouille) rendreCliquable(carte, () => ouvrirDonjon(donjon));
-      conteneur.appendChild(carte);
+      contenu.appendChild(carte);
     });
   });
 }

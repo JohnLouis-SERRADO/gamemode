@@ -26,7 +26,162 @@
   --xp-fond: #33253f;
   --danger: #d45050;
   --ok: #5abd7c;
+
+  /* ---------------------------------------------------------------
+     v19 — Le socle qui manquait.
+     Le thème n'avait que des couleurs : aucune échelle d'espacement,
+     de rayon ni de typographie. Tout était écrit en dur, ce qui rendait
+     chaque ajustement d'interface plus coûteux que le précédent.
+     --------------------------------------------------------------- */
+  --esp-1: 0.25rem;
+  --esp-2: 0.5rem;
+  --esp-3: 0.75rem;
+  --esp-4: 1rem;
+  --esp-5: 1.5rem;
+  --esp-6: 2rem;
+
+  --rayon-s: 4px;
+  --rayon-m: 8px;
+  --rayon-l: 14px;
+
+  --txt-xs: 0.72rem;
+  --txt-s: 0.82rem;
+  --txt-m: 0.95rem;
+  --txt-l: 1.1rem;
+  --txt-xl: 1.35rem;
+
+  --focus: var(--accent-clair);
+  --ombre-douce: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --ombre-forte: 0 6px 22px rgba(0, 0, 0, 0.5);
+
+  /* Cible tactile minimale : en dessous, on rate le bouton sur mobile. */
+  --cible-tactile: 44px;
 }
+
+/* Chaque élément interactif reste atteignable au doigt et au clavier. */
+button, input, select, [tabindex] {
+  min-height: var(--cible-tactile);
+}
+button.btn-compact, .chip, .btn-page {
+  min-height: 36px;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--rayon-s);
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =====================================================================
+   v19 — Listes parcourables : recherche, tris, pagination, comparaison.
+   ===================================================================== */
+.barre-recherche {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  margin: var(--esp-3) 0 var(--esp-2);
+}
+.champ-recherche {
+  flex: 1;
+  min-width: 0;
+  background: var(--panneau-clair);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-m);
+  color: var(--texte);
+  font: inherit;
+  padding: var(--esp-2) var(--esp-3);
+}
+.champ-recherche::placeholder { color: var(--texte-doux); }
+.champ-recherche:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(217, 164, 65, 0.25);
+}
+/* Chrome ajoute sa propre croix : la nôtre est plus lisible et plus grande. */
+.champ-recherche::-webkit-search-cancel-button { display: none; }
+.btn-effacer-recherche {
+  background: var(--panneau-clair);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-m);
+  color: var(--texte-doux);
+  cursor: pointer;
+  font-size: var(--txt-m);
+  padding: 0 var(--esp-3);
+}
+.btn-effacer-recherche:hover { color: var(--texte); border-color: var(--accent); }
+
+.rangee-tris {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-1);
+  margin-bottom: var(--esp-2);
+}
+.chip-tri { font-size: var(--txt-xs); }
+
+.compteur-liste {
+  color: var(--texte-doux);
+  font-size: var(--txt-s);
+  font-variant-numeric: tabular-nums;
+  margin: var(--esp-2) 0;
+}
+.etat-vide {
+  padding: var(--esp-5) var(--esp-3);
+  text-align: center;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--esp-3);
+  margin-top: var(--esp-4);
+  padding-top: var(--esp-3);
+  border-top: 1px solid var(--bordure);
+}
+.position-page {
+  color: var(--texte-doux);
+  font-size: var(--txt-s);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.btn-page[disabled] { opacity: 0.4; cursor: default; }
+
+/* --- Comparaison à la pièce équipée ------------------------------- */
+.comparaison {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-1) var(--esp-2);
+  margin-top: var(--esp-2);
+  padding: var(--esp-2);
+  border-radius: var(--rayon-s);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: var(--txt-xs);
+}
+.comparaison-mieux { background: rgba(90, 189, 124, 0.12); }
+.comparaison-moins { background: rgba(212, 80, 80, 0.1); }
+.comparaison-vide { color: var(--texte-doux); }
+.badge-mieux, .badge-moins {
+  font-weight: 700;
+  padding: 0.1em 0.45em;
+  border-radius: var(--rayon-s);
+}
+.badge-mieux { background: var(--ok); color: #10160f; }
+.badge-moins { background: var(--danger); color: #1a0f0f; }
+.ecart { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ecart-plus { color: var(--ok); }
+.ecart-moins { color: var(--danger); }
+
+/* --- Aperçu de mise en vente au comptoir --------------------------- */
+.apercu-vente { margin-top: var(--esp-3); }
+.apercu-vente .carte-objet { max-width: 32rem; }
 
 html {
   -webkit-text-size-adjust: 100%;
@@ -1901,3 +2056,57 @@ button:focus-visible,
   #navbar-bas .nav-libelle { font-size: 0.62rem; }
   #navbar-bas .nav-icone { font-size: 1.25rem; }
 }
+
+/* =====================================================================
+   v19 — La carte du monde, regroupée par acte.
+   Elle empilait cinquante entrées dans un seul défilement, verrouillées
+   comprises. Chaque acte se replie, et ceux qu'on n'a pas atteints
+   arrivent fermés.
+   ===================================================================== */
+.acte-monde {
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-m);
+  margin-bottom: var(--esp-3);
+  overflow: hidden;
+  background: var(--panneau);
+}
+.acte-entete {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-3);
+  width: 100%;
+  padding: var(--esp-3) var(--esp-4);
+  background: var(--panneau-clair);
+  border: none;
+  color: var(--texte);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.acte-entete:hover { background: var(--bordure); }
+.acte-titre { font-weight: 700; font-size: var(--txt-m); flex: 1; }
+.acte-plage {
+  color: var(--texte-doux);
+  font-size: var(--txt-xs);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.acte-chevron { color: var(--accent); font-size: var(--txt-m); }
+.acte-cartes { padding: var(--esp-3); }
+.acte-verrouille .acte-titre { color: var(--texte-doux); }
+
+/* Les blocs « replier » des listes : filtres et tris tiennent en une ligne
+   tant qu'on ne les ouvre pas, pour que la recherche reste en évidence. */
+.affiner { margin: var(--esp-2) 0; }
+.affiner > summary {
+  cursor: pointer;
+  color: var(--texte-doux);
+  font-size: var(--txt-s);
+  padding: var(--esp-2) 0;
+  list-style: none;
+  user-select: none;
+}
+.affiner > summary::-webkit-details-marker { display: none; }
+.affiner > summary:hover { color: var(--texte); }
+.affiner[open] > summary { color: var(--accent); }
+.bloc-liste { display: block; }
