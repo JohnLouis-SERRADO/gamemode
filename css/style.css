@@ -1297,6 +1297,11 @@ button:focus-visible,
 /* Doublement qualifié : sinon .champ-comptoir.large l'écrase à 90 px. */
 .champ-comptoir.champ-admin-objet { width: min(280px, 100%); }
 
+.tableau-bord-admin { margin-top: 10px; }
+.tableau-bord-admin .chip { font-size: 0.78rem; cursor: default; }
+
+#admin-zone { max-width: min(300px, 100%); }
+
 /* Bandeau du mode création admin */
 .bandeau-admin-creation {
   background: rgba(212, 160, 23, 0.12);

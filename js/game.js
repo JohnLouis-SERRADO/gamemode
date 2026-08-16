@@ -425,8 +425,19 @@ function normaliserPerso(p) {
   }
   // v13 : records d'Ascension éternelle par épopée.
   if (!p.ascensions || typeof p.ascensions !== 'object') p.ascensions = {};
-  // v17 : histoires uniques découvertes sur chaque carte.
-  if (!p.histoiresVues || typeof p.histoiresVues !== 'object') p.histoiresVues = {};
+  // v19 : la chronique suivie de chaque carte (nombre de chapitres lus) et
+  // la menace du boss, désormais attachées au héros — elles survivent au
+  // rechargement de la page et ne suivent pas un autre personnage.
+  if (!p.chapitres || typeof p.chapitres !== 'object') p.chapitres = {};
+  if (!p.menaces || typeof p.menaces !== 'object') p.menaces = {};
+  // Les anecdotes tirées au hasard de la v17 deviennent une progression
+  // dans le récit : autant de chapitres lus que d'anecdotes découvertes.
+  if (p.histoiresVues && typeof p.histoiresVues === 'object') {
+    Object.entries(p.histoiresVues).forEach(([idZone, vues]) => {
+      if (Array.isArray(vues) && !p.chapitres[idZone]) p.chapitres[idZone] = vues.length;
+    });
+    delete p.histoiresVues;
+  }
   // v17.1 : migration des objets disparus du catalogue (les légendaires du
   // marchand n'existent plus) vers leur équivalent de BUTIN de même rareté
   // et de même niveau — le héros ne perd rien, il y gagne même un peu.
@@ -654,7 +665,7 @@ function donneesCloud(p) {
     hautsFaits: p.hautsFaits, titre: p.titre, tourMax: p.tourMax, quetes: p.quetes,
     donjons: p.donjons, classe: p.classe, maitrise: p.maitrise, rangs: p.rangs,
     tourBoss: p.tourBoss, metiers: p.metiers, metierPrincipal: p.metierPrincipal,
-    ascensions: p.ascensions, histoiresVues: p.histoiresVues,
+    ascensions: p.ascensions, chapitres: p.chapitres, menaces: p.menaces,
   };
 }
 
@@ -1233,13 +1244,30 @@ function adminEquiperAuMieux(p) {
 }
 
 function rendreConsoleAdmin(zone, p) {
+  // Tableau de bord : l'état du héros d'un coup d'œil, avant de bidouiller.
+  const chapitresLus = ZONES.reduce((somme, z) => somme + chapitreLus(p, z.id), 0);
+  const chapitresTotal = ZONES.reduce((somme, z) => {
+    const arc = chroniqueDe(z.id);
+    return somme + (arc ? arc.chapitres.length : 0);
+  }, 0);
+  const menacesArmees = ZONES.filter((z) => menaceDe(p, z.id)).length;
   const entete = document.createElement('div');
   entete.className = 'panneau panneau-admin';
   entete.innerHTML = `<h3>🛠️ Console d'admin</h3>
     <p class="aide">Héros bac à sable : modifiez tout, testez tout, cassez tout.
     ${p.cloud
     ? '☁️ Ce héros est <strong>relié au monde</strong> : ses statistiques apparaissent à la taverne et dans les classements.'
-    : '📴 Ce héros est <strong>local</strong> : rien n’est publié en ligne. Le bouton « Relier au monde » vous attend dans l’onglet ☁️ Compte.'}</p>`;
+    : '📴 Ce héros est <strong>local</strong> : rien n’est publié en ligne. Le bouton « Relier au monde » vous attend dans l’onglet ☁️ Compte.'}</p>
+    <div class="rangee-chips tableau-bord-admin">
+      <span class="chip">📈 niveau ${p.niveau}/${NIVEAU_MAX}</span>
+      <span class="chip">⚡ ${puissanceDe(p).toLocaleString('fr-FR')} de puissance</span>
+      <span class="chip">💰 ${formatNombre(p.po)} po</span>
+      <span class="chip">👑 ${p.bossVaincus.length}/${ZONES.length} boss</span>
+      <span class="chip">📜 ${chapitresLus}/${chapitresTotal} chapitres</span>
+      <span class="chip${menacesArmees ? ' chip-boss' : ''}">⚠️ ${menacesArmees} menace${menacesArmees > 1 ? 's' : ''} armée${menacesArmees > 1 ? 's' : ''}</span>
+      <span class="chip">⚡ ${p.competences.length}/${MAX_COMPETENCES_ACTIVES} actives · 📚 ${p.grimoire.length} connues</span>
+      <span class="chip">🏅 ${p.hautsFaits.length}/${HAUTS_FAITS.length} hauts faits</span>
+    </div>`;
   zone.appendChild(entete);
 
   // Rafraîchit tout ce qui peut avoir changé, puis annonce le résultat.
@@ -1390,20 +1418,88 @@ function rendreConsoleAdmin(zone, p) {
     }, true],
   ]);
 
+  // ----- 📜 Chroniques et présages (v19) -----
+  const blocChroniques = section('📜 Chroniques & présages',
+    'Chaque carte porte une histoire suivie de 6 chapitres, découverts dans l’ordre au fil des '
+    + 'explorations ; le dernier chapitre lâche le présage et arme la traque du boss. '
+    + 'Ici, on avance le récit à la main et on déclenche les présages à volonté.', [
+      ['📜 Toutes les chroniques lues', () => {
+        p.chapitres = {};
+        ZONES.forEach((z) => {
+          const arc = chroniqueDe(z.id);
+          if (arc) p.chapitres[z.id] = arc.chapitres.length;
+        });
+      }],
+      ['⚠️ Armer une menace PARTOUT', () => {
+        if (!p.menaces || typeof p.menaces !== 'object') p.menaces = {};
+        ZONES.forEach((z) => { p.menaces[z.id] = { compteur: 0, declencheA: alea(1, 8) }; });
+      }],
+      ['⏱️ Menaces imminentes (prochaine explo.)', () => {
+        if (!p.menaces || typeof p.menaces !== 'object') p.menaces = {};
+        Object.keys(p.menaces).forEach((idZone) => { p.menaces[idZone] = { compteur: 0, declencheA: 1 }; });
+      }],
+      ['🕊️ Lever toutes les menaces', () => { p.menaces = {}; }],
+      ['↺ Oublier toutes les chroniques', () => { p.chapitres = {}; }, true],
+    ]);
+
+  // Actions ciblées sur UNE carte : le sélecteur rend la console utilisable
+  // pour tester une histoire précise sans toucher aux quinze autres.
+  const ligneCarte = document.createElement('div');
+  ligneCarte.className = 'rangee-boutons';
+  const choixZone = document.createElement('select');
+  choixZone.id = 'admin-zone';
+  choixZone.className = 'select-groupe';
+  ZONES.forEach((z) => {
+    const arc = chroniqueDe(z.id);
+    const option = document.createElement('option');
+    option.value = z.id;
+    option.textContent = `${z.emoji} ${z.nom} — ${chapitreLus(p, z.id)}/${arc ? arc.chapitres.length : 0}`
+      + `${menaceDe(p, z.id) ? ' ⚠️' : ''}${p.bossVaincus.includes(z.id) ? ' 🏆' : ''}`;
+    choixZone.appendChild(option);
+  });
+  const zoneChoisie = () => ZONES.find((z) => z.id === choixZone.value) || ZONES[0];
+  [
+    ['📖 Chapitre suivant', () => {
+      const z = zoneChoisie();
+      const arc = chroniqueDe(z.id);
+      if (!arc) return;
+      p.chapitres[z.id] = Math.min(arc.chapitres.length, chapitreLus(p, z.id) + 1);
+    }],
+    ['📜 Chronique complète ici', () => {
+      const z = zoneChoisie();
+      const arc = chroniqueDe(z.id);
+      if (arc) p.chapitres[z.id] = arc.chapitres.length;
+    }],
+    ['↺ Oublier cette chronique', () => { p.chapitres[zoneChoisie().id] = 0; }],
+    ['⚠️ Menace ici (surgit tout de suite)', () => {
+      if (!p.menaces || typeof p.menaces !== 'object') p.menaces = {};
+      p.menaces[zoneChoisie().id] = { compteur: 0, declencheA: 1 };
+    }],
+    ['🕊️ Lever la menace ici', () => { if (p.menaces) delete p.menaces[zoneChoisie().id]; }],
+    ['👑 Basculer « boss vaincu »', () => {
+      const id = zoneChoisie().id;
+      p.bossVaincus = p.bossVaincus.includes(id)
+        ? p.bossVaincus.filter((x) => x !== id)
+        : [...p.bossVaincus, id];
+    }],
+  ].forEach(([libelle, action]) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-choix btn-compact';
+    btn.textContent = libelle;
+    btn.addEventListener('click', () => { sansAnnonces(action); appliquer(libelle); });
+    ligneCarte.appendChild(btn);
+  });
+  ligneCarte.insertBefore(choixZone, ligneCarte.firstChild);
+  blocChroniques.appendChild(ligneCarte);
+
   // ----- 🌍 Monde et déblocages -----
-  section('🌍 Monde & déblocages', 'Boss, difficultés, histoires, donjons et records de tours.', [
+  section('🌍 Monde & déblocages', 'Boss, difficultés, donjons et records de tours.', [
     ['👑 Tous les boss de zone vaincus', () => {
       p.bossVaincus = ZONES.map((z) => z.id);
       ZONES.forEach((z) => { p.explorations[z.id] = Math.max(p.explorations[z.id] || 0, 10); });
     }],
     ['🗺️ +10 explorations partout', () => {
       ZONES.forEach((z) => { p.explorations[z.id] = (p.explorations[z.id] || 0) + 10; });
-    }],
-    ['📜 Toutes les histoires découvertes', () => {
-      p.histoiresVues = {};
-      Object.entries(HISTOIRES_ZONES).forEach(([idZone, liste]) => {
-        p.histoiresVues[idZone] = liste.map((_, i) => i);
-      });
     }],
     ['📖 Tous les donjons terminés', () => {
       DONJONS.forEach((d) => {
@@ -1419,9 +1515,8 @@ function rendreConsoleAdmin(zone, p) {
     ['↺ Effacer boss & explorations', () => {
       p.bossVaincus = [];
       p.explorations = {};
-      etat.menaces = {};
+      p.menaces = {};
     }, true],
-    ['↺ Oublier les histoires', () => { p.histoiresVues = {}; }, true],
   ]);
 
   // ----- 🧰 Métiers -----
@@ -1473,13 +1568,6 @@ function rendreConsoleAdmin(zone, p) {
           texte: 'Vérifiez le compteur « encore N » et le bouton « Tout fermer ».',
         }));
       }, 0);
-    }],
-    ['⚠️ Armer une menace de boss', () => {
-      const dispo = ZONES.filter((z) => p.niveau >= z.niveauMin);
-      const z = dispo[dispo.length - 1] || ZONES[0];
-      etat.menaces = etat.menaces || {};
-      etat.menaces[z.id] = { compteur: 0, declencheA: 1 };
-      afficherToast(`⚠️ Menace armée sur ${z.nom} : le boss surgira à la prochaine exploration.`);
     }],
   ]);
 
@@ -2335,6 +2423,8 @@ function chargerHerosImporte(donnees, id, token) {
   if (d.metiers && typeof d.metiers === 'object') p.metiers = d.metiers;
   if (d.metierPrincipal !== undefined) p.metierPrincipal = d.metierPrincipal;
   if (d.ascensions && typeof d.ascensions === 'object') p.ascensions = d.ascensions;
+  if (d.chapitres && typeof d.chapitres === 'object') p.chapitres = d.chapitres;
+  if (d.menaces && typeof d.menaces === 'object') p.menaces = d.menaces;
   if (d.histoiresVues && typeof d.histoiresVues === 'object') p.histoiresVues = d.histoiresVues;
   if (d.quetes && d.quetes.date) p.quetes = d.quetes;
   p.cloud = { id, token };

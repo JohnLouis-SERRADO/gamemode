@@ -115,8 +115,7 @@ function rendreZone(z) {
   const explorations = p.explorations[z.id] || 0;
   const bossVaincu = p.bossVaincus.includes(z.id);
   const boss = MONSTRES[z.boss];
-  etat.menaces = etat.menaces || {};
-  const menace = etat.menaces[z.id];
+  const menace = menaceDe(p, z.id);
   if (!DIFFICULTES[etat.difficulte] || !difficulteDebloquee(p, z, etat.difficulte)) {
     etat.difficulte = 'normal';
   }
@@ -188,16 +187,26 @@ function rendreZone(z) {
     return `<span class="chip chip-metier">${metier.emoji} ${metier.action} (niv. ${m.niveau}${p.metierPrincipal === idMetier ? ' ⭐' : ''})</span>${chips
       || `<span class="chip">${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom} (traces)</span>`}`;
   }).join(' ');
-  const histoires = HISTOIRES_ZONES[z.id] || [];
-  const vues = ((p.histoiresVues || {})[z.id] || []).length;
+  // La chronique de la carte : où en est le récit ?
+  const arc = chroniqueDe(z.id);
+  const lus = arc ? chapitreLus(p, z.id) : 0;
+  const chronique = arc
+    ? `<h3>📜 Chronique : « ${arc.titre} »</h3>
+      <div class="barre contrat"><div class="remplissage" style="width:${Math.round((lus / arc.chapitres.length) * 100)}%"></div>
+        <span>chapitre ${lus} / ${arc.chapitres.length}</span></div>
+      <p class="aide">${lus >= arc.chapitres.length
+    ? '✔️ Le récit de cette terre est complet — vous en connaissez enfin le fin mot.'
+    : 'Le prochain chapitre se dévoilera au hasard d’une exploration.'}</p>`
+    : '';
   infos.innerHTML = `
     <div class="panneau">
+      ${chronique}
       <h3>🐾 Créatures de la zone</h3>
       <div class="rangee-chips">${chipsMonstres}
         <span class="chip chip-boss">${boss.emoji} ${boss.nom} (boss)</span></div>
       <h3>⛏️ Matériaux (au fil de l'exploration) <span class="badge">🍀 la Chance enrichit la moisson</span></h3>
       <div class="rangee-chips">${chipsMateriaux}</div>
-      <p class="aide">📜 Histoires découvertes ici : ${vues}/${histoires.length} · Explorations : ${explorations}${bossVaincu ? ' · 🏆 boss vaincu — défi libre débloqué' : ''}</p>
+      <p class="aide">🗺️ Explorations ici : ${explorations}${bossVaincu ? ' · 🏆 boss vaincu — défi libre débloqué' : ''}</p>
     </div>`;
 }
 
@@ -258,12 +267,12 @@ function explorer(z) {
 
   // ⚠️ La menace est armée : le boss peut surgir À TOUT MOMENT, au plus
   // tard 8 explorations après l'avertissement. On ne sait jamais quand.
-  etat.menaces = etat.menaces || {};
-  const menace = etat.menaces[z.id];
+  const menace = menaceDe(p, z.id);
   if (menace) {
     menace.compteur++;
+    sauvegarder(p);
     if (menace.compteur >= menace.declencheA) {
-      delete etat.menaces[z.id];
+      leverMenace(p, z.id);
       const boss = MONSTRES[z.boss];
       afficherToast(`${boss.emoji} Le danger vous a trouvés !`);
       affronterBoss(z, true);
@@ -315,7 +324,7 @@ function explorer(z) {
   if (tirage < 0.33 && evenementHistoire(z)) {
     return;
   }
-  if (tirage < 0.38 && !p.bossVaincus.includes(z.id) && !etat.menaces[z.id]) {
+  if (tirage < 0.38 && !p.bossVaincus.includes(z.id) && !menaceDe(p, z.id)) {
     evenementMenaceBoss(z);
     return;
   }
@@ -357,6 +366,51 @@ function explorer(z) {
   }
 }
 
+// --- La menace du boss, attachée au HÉROS (elle survit au rechargement,
+// et ne suit pas un autre personnage). ---
+function menaceDe(p, idZone) {
+  if (!p || !p.menaces || typeof p.menaces !== 'object') return null;
+  return p.menaces[idZone] || null;
+}
+
+function armerMenace(p, idZone) {
+  if (!p.menaces || typeof p.menaces !== 'object') p.menaces = {};
+  // Entre 1 et 8 explorations : le héros ne sait JAMAIS quand ça tombe.
+  p.menaces[idZone] = { compteur: 0, declencheA: alea(1, 8) };
+  sauvegarder(p);
+}
+
+function leverMenace(p, idZone) {
+  if (p.menaces && p.menaces[idZone]) {
+    delete p.menaces[idZone];
+    sauvegarder(p);
+  }
+}
+
+// Les deux boutons du présage : rester (la menace s'arme) ou fuir.
+function boutonsPresage(z, phrase) {
+  const boss = MONSTRES[z.boss];
+  return [
+    {
+      texte: '⚔️ Rester malgré le présage',
+      classe: 'btn-principal',
+      action: () => {
+        armerMenace(persoActif(), z.id);
+        afficherToast(`⚠️ ${boss.nom} vous traque… Chaque pas peut être le dernier.`);
+        rendreZone(z);
+        montrerEcran('ecran-zone');
+      },
+    },
+    {
+      texte: '🏃 Fuir le mauvais présage',
+      action: () => {
+        afficherToast(`🏃 Vous quittez ${z.nom} — le danger reste derrière vous… pour cette fois.`);
+        naviguer('carte');
+      },
+    },
+  ];
+}
+
 // L'avertissement : un très grand danger approche. Rester… ou repartir ?
 // S'il reste, le boss frappera au plus tard 8 explorations plus tard —
 // sans prévenir.
@@ -367,30 +421,11 @@ function evenementMenaceBoss(z) {
     texte: `Le sol tremble. Les créatures fuient. ${boss.emoji} ${boss.nom}, le maître des lieux, a senti votre présence — il vous traque désormais. Personne ne sait quand il frappera… mais il frappera.`,
     lignes: [
       `${boss.emoji} ${boss.nom} peut surgir à CHAQUE exploration, à tout moment.`,
-      '⏳ Il attaquera au plus tard dans les 8 prochaines explorations.',
-      '🏃 Repartir maintenant vous met à l’abri — mais il faudra bien l’affronter un jour pour débloquer son défi.',
+      '⏳ Il attaquera au plus tard dans les 8 prochaines explorations — vous ne saurez jamais laquelle.',
+      '🏃 Fuir maintenant vous met à l’abri — mais il faudra bien l’affronter un jour pour débloquer son défi.',
     ],
     retour: 'zone',
-    boutons: [
-      {
-        texte: '⚔️ Rester malgré le danger',
-        classe: 'btn-principal',
-        action: () => {
-          etat.menaces = etat.menaces || {};
-          etat.menaces[z.id] = { compteur: 0, declencheA: alea(1, 8) };
-          afficherToast(`⚠️ ${boss.nom} vous traque… Chaque pas peut être le dernier.`);
-          rendreZone(z);
-          montrerEcran('ecran-zone');
-        },
-      },
-      {
-        texte: '🏃 Repartir vers la carte',
-        action: () => {
-          afficherToast('🏃 Vous quittez la zone — le danger reste derrière vous… pour cette fois.');
-          naviguer('carte');
-        },
-      },
-    ],
+    boutons: boutonsPresage(z),
   });
 }
 
@@ -420,20 +455,35 @@ function evenementRecolte(z, idMetier, titre, texte) {
   });
 }
 
-// 📜 Une histoire unique de la carte : chacune ne se vit qu'une fois.
+// =====================================================================
+// v19 : LA CHRONIQUE DE LA CARTE — chaque terre raconte UNE histoire,
+// chapitre après chapitre, dans l'ordre, au fil des explorations. Le
+// dernier chapitre désigne le boss et lâche le présage : à partir de là,
+// la créature traque le héros.
+// =====================================================================
+function chroniqueDe(idZone) {
+  const arc = HISTOIRES_ZONES[idZone];
+  return arc && Array.isArray(arc.chapitres) ? arc : null;
+}
+
+function chapitreLus(p, idZone) {
+  if (!p.chapitres || typeof p.chapitres !== 'object') p.chapitres = {};
+  return p.chapitres[idZone] || 0;
+}
+
 function evenementHistoire(z) {
   const p = persoActif();
-  const histoires = HISTOIRES_ZONES[z.id] || [];
-  if (!histoires.length) return false;
-  p.histoiresVues = p.histoiresVues || {};
-  const vues = p.histoiresVues[z.id] = p.histoiresVues[z.id] || [];
-  const restantes = histoires.map((h, i) => [h, i]).filter(([, i]) => !vues.includes(i));
-  if (!restantes.length) return false;
-  const [histoire, index] = restantes[alea(0, restantes.length - 1)];
-  vues.push(index);
+  const arc = chroniqueDe(z.id);
+  if (!arc) return false;
+  const lus = chapitreLus(p, z.id);
+  if (lus >= arc.chapitres.length) return false; // chronique achevée
+  const chapitre = arc.chapitres[lus];
+  const numero = lus + 1;
+  const dernier = numero === arc.chapitres.length;
+  p.chapitres[z.id] = numero;
 
   const lignes = [];
-  const r = histoire.recompense || {};
+  const r = chapitre.recompense || {};
   membresEquipe().forEach((m) => {
     if (r.po) { const gain = Math.round(r.po * multiplicateurOr(m)); m.po += gain; m.compteurs.orTotal += gain; }
     if (r.xp) gagnerXp(m, r.xp);
@@ -445,13 +495,28 @@ function evenementHistoire(z) {
   if (r.xp) lignes.push(`⭐ +${r.xp} XP pour chaque héros`);
   if (r.soinPct) lignes.push(`❤️ +${Math.round(r.soinPct * 100)} % de PV pour chaque héros`);
   if (r.materiau && OBJETS[r.materiau]) lignes.push(`${OBJETS[r.materiau].emoji} ${OBJETS[r.materiau].nom} ×1 pour chaque héros`);
-  lignes.push(`📜 Histoire ${vues.length}/${histoires.length} de ${z.nom} — chacune ne se vit qu'une fois.`);
-  afficherButin({
-    titre: `📜 ${histoire.titre}`,
-    texte: histoire.texte,
-    lignes,
-    retour: 'zone',
-  });
+  lignes.push(`📜 « ${arc.titre} » — chapitre ${numero} sur ${arc.chapitres.length}.`);
+  if (!dernier) lignes.push('➡️ La suite vous attend un peu plus loin sur cette carte…');
+
+  // Le dernier chapitre EST le présage : le boss a désormais un mobile,
+  // un nom, et le héros dans le nez.
+  if (dernier && !p.bossVaincus.includes(z.id) && !menaceDe(p, z.id)) {
+    afficherButin({
+      titre: `📜 ${chapitre.titre}`,
+      texte: chapitre.texte,
+      lignes: [...lignes, '', '⚠️ Le récit s’achève sur un très mauvais présage.'],
+      retour: 'zone',
+      boutons: boutonsPresage(z, `Vous savez enfin à qui vous avez affaire. Et ${MONSTRES[z.boss].nom} le sait aussi.`),
+    });
+  } else {
+    afficherButin({
+      titre: `📜 ${chapitre.titre}`,
+      texte: chapitre.texte,
+      lignes,
+      retour: 'zone',
+    });
+  }
+  sauvegarder(p);
   rendreTopbar();
   return true;
 }

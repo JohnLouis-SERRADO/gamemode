@@ -704,119 +704,192 @@ function zonePar(idZone) {
 // de secrets — et le dit.
 // recompense : { po?, xp?, soinPct?, materiau? (id de z.recolte) }
 // =====================================================================
+// =====================================================================
+// v19 : LES CHRONIQUES DES TERRES — chaque carte porte UNE histoire
+// suivie, en six chapitres qui se découvrent DANS L'ORDRE, au fil des
+// explorations. Un personnage récurrent, une intrigue qui monte, et un
+// dernier chapitre qui désigne le boss et lâche le présage : à partir de
+// là, la créature traque le héros et peut surgir à tout moment.
+//   { titre, chapitres: [{ titre, texte, recompense }] }
+//   recompense : { po?, xp?, soinPct?, materiau? }
+// =====================================================================
 const HISTOIRES_ZONES = {
-  plaines: [
-    { titre: 'Le puits aux offrandes', texte: 'Un vieux puits croule sous les piécettes. Une inscription : « Prends si tu oses, donne si tu peux. » Vous osez.', recompense: { po: 15 } },
-    { titre: 'L’épouvantail vétéran', texte: 'Un épouvantail porte un heaume cabossé et une médaille. Les corbeaux le saluent. Vous aussi, au cas où.', recompense: { xp: 25 } },
-    { titre: 'La bergère et le loup', texte: 'Une bergère partage son pain : « Le Loup alpha ? Il était l’agneau de mon troupeau, avant la nuit des étoiles rouges. »', recompense: { soinPct: 0.2 } },
-    { titre: 'Le marché fantôme', texte: 'À l’aube, des étals translucides vendent des souvenirs. Vous repartez avec une poignée de pièces très réelles.', recompense: { po: 25 } },
-    { titre: 'Le gobelin poète', texte: 'Un gobelin déclame des vers sur un tonneau. C’est mauvais, mais sincère. Il vous paie pour avoir applaudi.', recompense: { po: 10, xp: 15 } },
-  ],
-  foret: [
-    { titre: 'L’arbre à serments', texte: 'Un chêne couvert de rubans murmure les promesses qu’on lui a confiées. Vous en nouez un. La forêt approuve.', recompense: { xp: 35 } },
-    { titre: 'Le luthier disparu', texte: 'Une cabane abandonnée, un violon inachevé. Quand le vent passe, il joue tout seul — juste, en plus.', recompense: { po: 30 } },
-    { titre: 'Les toiles-cartes', texte: 'Les araignées tissent des toiles qui ressemblent à des cartes. L’une d’elles indique une cache de sève.', recompense: { materiau: 'seve-ambree' } },
-    { titre: 'Le cercle de champignons', texte: 'Vous dormez par erreur dans un cercle de champignons. Vous vous réveillez reposé, avec des souvenirs qui ne sont pas les vôtres.', recompense: { soinPct: 0.35 } },
-    { titre: 'Le bandit repenti', texte: 'Un bandit à la retraite garde un pont qui ne mène nulle part. Il paie les passants pour « garder la main ».', recompense: { po: 20, xp: 20 } },
-  ],
-  collines: [
-    { titre: 'La mine chantante', texte: 'Une galerie où le cuivre vibre comme une cloche. Les mineurs orcs y interdisent les jurons — « ça désaccorde ».', recompense: { materiau: 'minerai-cuivre' } },
-    { titre: 'Le duel de sommets', texte: 'Deux clans orcs règlent leurs différends à qui hurle le plus fort d’une colline à l’autre. On vous prend pour arbitre.', recompense: { po: 35, xp: 25 } },
-    { titre: 'Le golem jardinier', texte: 'Un golem mineur cultive des fleurs dans un casque rouillé. Il vous offre un caillou « qui lui ressemblait ».', recompense: { materiau: 'minerai-fer' } },
-    { titre: 'La forge froide', texte: 'Une forge abandonnée où le feu refuse de prendre depuis cent ans. Sur l’enclume, quelqu’un a laissé sa paie.', recompense: { po: 45 } },
-    { titre: 'L’écho fidèle', texte: 'Dans cette vallée, l’écho répond avec trois secondes de retard — et parfois de meilleures idées que vous.', recompense: { xp: 40 } },
-  ],
-  marais: [
-    { titre: 'Les lanternes des noyés', texte: 'Des feux follets alignés balisent un chemin sûr à travers la vase. Au bout, une bourse encore sèche.', recompense: { po: 40 } },
-    { titre: 'La sorcière de comptoir', texte: 'Une sorcière tient une échoppe de thés « légèrement prophétiques ». Le vôtre annonce : « grosse fatigue, belle victoire ».', recompense: { soinPct: 0.3 } },
-    { titre: 'Le lotus qui compte', texte: 'Un lotus noir n’éclot que si on lui récite la table de sept. Une grenouille vous souffle les réponses.', recompense: { materiau: 'lotus-noir' } },
-    { titre: 'Le radeau du cartographe', texte: 'Un radeau chargé de cartes détrempées. Toutes fausses, sauf une, qui mène à un coffre de brume.', recompense: { po: 30, xp: 30 } },
-    { titre: 'Le chœur des crapauds', texte: 'À la pleine lune, les crapauds chantent en canon. L’hydre, dit-on, garde le silence pour écouter.', recompense: { xp: 45 } },
-  ],
-  cryptes: [
-    { titre: 'Le bibliothécaire mort', texte: 'Un squelette range inlassablement des ossuaires par ordre alphabétique. Il vous paie pour un coup de main.', recompense: { po: 50 } },
-    { titre: 'La couronne d’essai', texte: 'Une couronne de plomb sur un coussin : « Essayez-moi. » Vous entendez trois secondes des pensées du Roi déchu. Ça suffit.', recompense: { xp: 55 } },
-    { titre: 'Les bougies loyales', texte: 'Des bougies s’allument sur votre passage et s’éteignent derrière vous. L’une d’elles vous suit. Elle fond en pièces d’or.', recompense: { po: 40, xp: 25 } },
-    { titre: 'Le gisant modeste', texte: '« Ci-gît quelqu’un de très bien, demandez autour. » La dalle sonne creux : quelqu’un de très bien cachait son épargne.', recompense: { po: 60 } },
-    { titre: 'La poussière qui se souvient', texte: 'La poussière de spectre dessine des scènes du royaume disparu. Vous en apprenez plus qu’aucun livre.', recompense: { materiau: 'poussiere-spectre' } },
-  ],
-  desert: [
-    { titre: 'L’oasis à l’envers', texte: 'Une oasis dont l’eau coule vers le haut. Les caravaniers y remplissent leurs gourdes en les tenant à l’envers.', recompense: { soinPct: 0.35 } },
-    { titre: 'Le sphinx bègue', texte: 'Un sphinx pose des énigmes, mais bégaie la réponse en même temps. Il paie pour votre discrétion.', recompense: { po: 55 } },
-    { titre: 'La dune roulante', texte: 'Une dune se déplace contre le vent. Sur son sommet, un mât de navire — et sa caisse de bord.', recompense: { po: 35, xp: 35 } },
-    { titre: 'Les perles de rosée', texte: 'À l’aube, le désert transpire des perles. Le Ver colossal les évite : « trop précieuses pour être digérées ».', recompense: { materiau: 'perle-des-sables' } },
-    { titre: 'Le cadran d’ombre', texte: 'Un obélisque projette l’ombre d’un autre lieu. Pendant une minute, vous voyez la mer. Vous en revenez grandi.', recompense: { xp: 60 } },
-  ],
-  pics: [
-    { titre: 'Le refuge du silence', texte: 'Un refuge où le blizzard n’entre pas, par politesse. Le livre d’or contient trois siècles de mercis — et des étrennes.', recompense: { po: 60 } },
-    { titre: 'La harpe de glace', texte: 'Des stalactites accordées jouent quand le vent tourne. Le yéti écoute, assis, presque délicat.', recompense: { xp: 65 } },
-    { titre: 'Le thé de l’ermite', texte: 'Un ermite vous sert un thé qui fume à l’envers. « Réchauffe pour trois jours. » Il dit vrai.', recompense: { soinPct: 0.4 } },
-    { titre: 'Le cristal boudeur', texte: 'Un cristal de givre refuse d’être ramassé — sauf si on lui présente les choses gentiment.', recompense: { materiau: 'cristal-givre' } },
-    { titre: 'La cordée fantôme', texte: 'Des alpinistes spectraux vous assurent dans un passage délicat. Au sommet, leur cairn contient leur dernière paie.', recompense: { po: 45, xp: 40 } },
-  ],
-  profondeurs: [
-    { titre: 'Le lac de verre', texte: 'Un lac de lave figée, poli comme un miroir. Votre reflet a une seconde de retard et l’air désolé.', recompense: { xp: 80 } },
-    { titre: 'La monnaie du Gardien', texte: 'Des pièces frappées d’un visage que personne ne connaît. Les collectionneurs de Valciel en raffolent.', recompense: { po: 80 } },
-    { titre: 'Le jardin d’obsidienne', texte: 'Des fleurs de verre noir poussent dans la chaleur. En cueillir une sans la briser porte chance — et rapporte.', recompense: { po: 50, xp: 50 } },
-    { titre: 'L’écaille votive', texte: 'Un autel dragon couvert d’écailles offertes. Le dragonnet de tête vous en tend une : « pour la route ».', recompense: { materiau: 'ecaille-draconique' } },
-    { titre: 'Le souffle du monde', texte: 'Une faille exhale un air brûlant à intervalles réguliers. Les anciens disaient : « le monde respire ». Vous respirez avec lui.', recompense: { soinPct: 0.5 } },
-  ],
-  'jungle-vai': [
-    { titre: 'Le pont de lianes tressées', texte: 'Un pont tissé par les hommes-lianes eux-mêmes. Le péage : une histoire drôle. La vôtre passe, de justesse.', recompense: { po: 70 } },
-    { titre: 'L’orchidée horloge', texte: 'Une orchidée qui s’ouvre à heure fixe. Les chasseurs règlent leurs montres dessus — et paient pour la garder secrète.', recompense: { materiau: 'orchidee-lunaire' } },
-    { titre: 'La pluie tiède', texte: 'Il pleut à travers trois étages de canopée : l’eau arrive triée — potable, tiède, presque sucrée.', recompense: { soinPct: 0.4 } },
-    { titre: 'Le temple aux singes', texte: 'Des singes gardent un temple et exigent un tribut de fruits. Ils rendent la monnaie en vieilles pièces d’or.', recompense: { po: 60, xp: 55 } },
-    { titre: 'Les lucioles cartographes', texte: 'La nuit, les lucioles dessinent la carte exacte de la jungle. La Matriarche les laisse faire : même elle s’y perd.', recompense: { xp: 90 } },
-  ],
-  'falaises-hurlantes': [
-    { titre: 'Le vent nominatif', texte: 'Le vent hurle des noms. Quand il crie le vôtre, les harpies s’écartent avec respect toute la journée.', recompense: { xp: 90 } },
-    { titre: 'Le nid de trop-plein', texte: 'Les rokhs jettent de leurs nids ce qui brille trop. En contrebas, ça fait un tas très intéressant.', recompense: { po: 75 } },
-    { titre: 'La gargouille mélomane', texte: 'Une gargouille fredonne du basalte — c’est une berceuse minérale. Vous dormez dix minutes, récupérez dix heures.', recompense: { soinPct: 0.45 } },
-    { titre: 'Le cristal accordeur', texte: 'Un cristal hurleur donne le « la » à toute la falaise. Il mue une fois l’an : la vieille peau se ramasse.', recompense: { materiau: 'cristal-hurleur' } },
-    { titre: 'L’escalier des paris', texte: 'Des marches taillées par des géants parieurs : chaque palier cache la mise d’un pari perdu.', recompense: { po: 55, xp: 60 } },
-  ],
-  'abysses-emeraude': [
-    { titre: 'Les lanternes patientes', texte: 'Les lanternes de la cité engloutie brûlent sous l’eau depuis mille ans. L’une s’éteint à votre passage — relève de la garde.', recompense: { xp: 110 } },
-    { titre: 'Le banc d’écailles', texte: 'Des poissons-miroirs vous escortent en reflétant un trésor. C’est une pub : le trésor existe, moyennant péage.', recompense: { po: 90 } },
-    { titre: 'La sirène enrouée', texte: 'Une sirène a perdu sa voix. Vous chantez à sa place — les abysses, bon public, applaudissent en perles.', recompense: { materiau: 'nacre-abyssale' } },
-    { titre: 'La bulle d’air ancien', texte: 'Une bulle d’air de l’ancien monde, prisonnière d’une arche. La respirer, c’est respirer l’an mille d’avant.', recompense: { soinPct: 0.5 } },
-    { titre: 'Le marché des méduses', texte: 'Des méduses-lanternes tiennent un marché nocturne. Votre monnaie ne vaut rien ici — la leur, beaucoup chez vous.', recompense: { po: 70, xp: 70 } },
-  ],
-  'steppe-cendres': [
-    { titre: 'Les fleurs de l’après', texte: 'Sur la cendre poussent des fleurs qui n’existent nulle part ailleurs. Les chacals les gardent — sauf une, pour vous.', recompense: { materiau: 'cendre-fertile' } },
-    { titre: 'Le feu de camp éternel', texte: 'Un feu de camp brûle sans bois ni fumée depuis la Grande Éruption. La marmite au-dessus est toujours pleine.', recompense: { soinPct: 0.5 } },
-    { titre: 'La caravane de verre', texte: 'La chaleur a vitrifié une caravane entière. Dans les coffres translucides, tout se voit — et se récupère.', recompense: { po: 95 } },
-    { titre: 'L’ogre comptable', texte: 'Un ogre magmatique compte les braises une à une : « l’inventaire du volcan ». Il paie les auditeurs externes.', recompense: { po: 65, xp: 75 } },
-    { titre: 'Le geyser ponctuel', texte: 'Un geyser de cendre chaude jaillit chaque heure pile. Le Béhémoth s’en sert de réveil.', recompense: { xp: 120 } },
-  ],
-  'foret-petrifiee': [
-    { titre: 'La sève de pierre', texte: 'Au cœur d’un tronc pétrifié, la sève coule encore — en pierre liquide. Une goutte tient dans une fiole, et vaut cher.', recompense: { po: 120 } },
-    { titre: 'Les feuilles gravées', texte: 'Chaque feuille de pierre porte une ligne de l’histoire de la nuit fatale. Vous en lisez un chapitre entier.', recompense: { xp: 150 } },
-    { titre: 'L’oiseau statue', texte: 'Un oiseau pétrifié en plein vol, suspendu à rien. Le toucher porte bonheur ; le dépoussiérer rapporte.', recompense: { po: 80, xp: 80 } },
-    { titre: 'L’ambre témoin', texte: 'Un bloc d’ambre noir enferme la dernière seconde d’avant la pétrification. Les runes du basilic y sont lisibles.', recompense: { materiau: 'ambre-noir' } },
-    { titre: 'La clairière épargnée', texte: 'Une clairière verte, intacte, au milieu de la pierre. Personne ne sait pourquoi. On y dort comme nulle part.', recompense: { soinPct: 0.6 } },
-  ],
-  'vallee-geants': [
-    { titre: 'La dent creuse', texte: 'Une molaire de géant, grande comme une maison — et aménagée en cache par des contrebandiers pressés.', recompense: { po: 130 } },
-    { titre: 'La berceuse tellurique', texte: 'La nuit, la vallée ronfle. Les anciens jurent que les géants ne sont pas morts — juste très fatigués.', recompense: { xp: 160 } },
-    { titre: 'L’os qui pousse', texte: 'Un fémur planté en terre a bourgeonné. Le chaman des os refuse d’en parler. Il en tombe des éclats précieux.', recompense: { materiau: 'os-de-geant' } },
-    { titre: 'Le gué des phalanges', texte: 'On traverse la rivière sur les phalanges d’une main de géant. La légende dit qu’elle se refermera un jour. Pas aujourd’hui.', recompense: { po: 85, xp: 90 } },
-    { titre: 'Le souffle chaud', texte: 'D’une gorge rocheuse monte un souffle tiède et régulier. Vous faites la sieste dedans. Meilleure sieste de votre vie.', recompense: { soinPct: 0.6 } },
-  ],
-  'citadelle-foudre': [
-    { titre: 'Les horloges folles', texte: 'Toutes les horloges de la citadelle donnent une heure différente — chacune l’heure d’un monde. La vôtre paie en avance.', recompense: { po: 150 } },
-    { titre: 'La bibliothèque conductrice', texte: 'Les livres se lisent en les touchant : le savoir passe en une décharge. Vous repartez les cheveux dressés et l’esprit plein.', recompense: { xp: 190 } },
-    { titre: 'Le paratonnerre fleuri', texte: 'Au sommet, un paratonnerre a fleuri en fragments de foudre. Le jardinier automate vous en offre une bouture.', recompense: { materiau: 'fragment-de-foudre' } },
-    { titre: 'La salle des échos', texte: 'Une salle qui rejoue les conversations d’il y a mille ans. Les Archontes y débattaient de vous. En bien, semble-t-il.', recompense: { po: 100, xp: 100 } },
-    { titre: 'Le bain d’orage', texte: 'Une cuve où l’orage se prend en bain. S’y tremper picote — puis répare tout ce qui doit l’être.', recompense: { soinPct: 0.7 } },
-  ],
-  'neant-scintillant': [
-    { titre: 'L’étoile apprivoisée', texte: 'Une petite étoile vous suit comme un chat. Elle repart en vous laissant une poignée de sa poussière.', recompense: { materiau: 'eclat-d-etoile' } },
-    { titre: 'La porte sans maison', texte: 'Une porte seule, debout dans le vide. Frapper est poli. On vous glisse un pourboire sous la porte.', recompense: { po: 170 } },
-    { titre: 'Le rivage du rien', texte: 'Le néant a une plage. Les vagues y déposent ce que les mondes perdent — aujourd’hui : une leçon, et des pièces.', recompense: { po: 110, xp: 120 } },
-    { titre: 'Votre constellation', texte: 'Les étoiles d’ici se réarrangent pour dessiner votre silhouette. Le Dévoreur trouve ça « de mauvais goût ».', recompense: { xp: 220 } },
-    { titre: 'Le silence habité', texte: 'Un silence si complet qu’il soigne. Vous restez une minute. Ou un an. Difficile à dire.', recompense: { soinPct: 0.75 } },
-  ],
+  'plaines': {
+    titre: 'La dette de la bergère',
+    chapitres: [
+      { titre: 'Chapitre 1 — Les épouvantails tournés', texte: 'Depuis trois nuits, tous les épouvantails des Plaines regardent l’ouest. Le vent vient du nord. Personne au village ne les a déplacés, et personne ne tient à s’en charger.', recompense: { po: 12 } },
+      { titre: 'Chapitre 2 — Le compte d’Aude', texte: 'Aude, bergère, compte ses bêtes deux fois par jour depuis qu’il en manque une à chaque pleine lune. Pas de sang, pas de laine aux ronces, pas de trace de lutte. « On ne me les prend pas », dit-elle sans quitter l’ouest des yeux. « Elles s’en vont. »', recompense: { xp: 20 } },
+      { titre: 'Chapitre 3 — Le sentier mâché', texte: 'Un camp de gobelins plié en hâte. Sur une peau tendue, un calendrier de nuits marquées à l’ocre : les dates sont celles d’Aude, ce qui ne rassure personne. Le long du sentier de l’ouest, l’herbe-lunaire est arrachée par touffes régulières, à hauteur de brebis.', recompense: { materiau: 'herbe-lunaire' } },
+      { titre: 'Chapitre 4 — Ce qu’Aude n’avait pas dit', texte: 'Aude finit par parler. La nuit des étoiles rouges, c’est elle qui a mené son agneau vers l’ouest, contre un hiver doux et un troupeau épargné. Depuis, elle honore l’échéance à chaque pleine lune. Le troupeau ne s’enfuit pas : il est livré. Elle recoud vos plaies pendant qu’elle raconte ; ça lui occupe les mains.', recompense: { soinPct: 0.25 } },
+      { titre: 'Chapitre 5 — Le bâton planté', texte: 'Cette lune-ci, Aude plante son bâton dans la terre et ne conduit personne. Les loups ont cessé de chasser : ils longent les haies sans hâte, comme on relève une garde. Les gobelins ont plié leurs tentes, les sangliers ont quitté les blés. La plaine n’a jamais été aussi calme.', recompense: { po: 18, xp: 25 } },
+      { titre: 'Chapitre 6 — L’agneau devenu grand', texte: 'L’agneau d’Aude a grandi : c’est le Loup alpha, et puisqu’on ne lui apporte plus son dû, il vient le prendre. Sur le sentier de l’ouest, il a flairé l’herbe coupée et la main qui l’a coupée. Il connaît votre odeur, maintenant. Il viendra à la prochaine lune, et il n’aura besoin de personne pour lui ouvrir l’enclos.', recompense: { xp: 45 } },
+    ],
+  },
+  'foret': {
+    titre: 'L’entonnoir de soie',
+    chapitres: [
+      { titre: 'Chapitre 1 — Les toiles vides', texte: 'Sur une demi-lieue, les arbres ont cessé de murmurer. À la place, des toiles neuves tendues d’un tronc à l’autre, larges comme des draps. Aucune n’abrite d’araignée. Aucune n’a pris la moindre mouche.', recompense: { po: 25 } },
+      { titre: 'Chapitre 2 — Les relevés de Perrin', texte: 'Perrin, cartographe, recopie les toiles depuis vingt ans et vend aux bûcherons les routes qu’il y lit. Cette année, ses clients ne repassent plus commander. Il vous montre ses derniers relevés : les fils ne dessinent plus des chemins, mais des cercles, et tous se resserrent vers le même point.', recompense: { xp: 35 } },
+      { titre: 'Chapitre 3 — Les larmes de sève', texte: 'Sur le terrain, les coupes fraîches s’alignent en un couloir bien droit, ce qui n’arrive jamais par hasard dans une forêt. Les tréants s’en sont écartés de trois pas dans le même mois — un arbre qui marche, ça se remarque. Là où ils se tenaient, la sève ambrée a coulé et durci en larmes grosses comme le poing.', recompense: { materiau: 'seve-ambree' } },
+      { titre: 'Chapitre 4 — Vingt ans de bons services', texte: 'Perrin superpose vingt ans de relevés sous sa lampe. Les toiles ne lui indiquaient pas des routes : elles lui indiquaient où faire couper, et il a obéi chaque fois, contre bon prix. Vingt ans à mesurer pour quelqu’un qui ne sait pas écrire mais qui tisse très bien. Il vous laisse son onguent de sève ; il dit qu’il n’en aura plus l’usage.', recompense: { soinPct: 0.3 } },
+      { titre: 'Chapitre 5 — Le col du couloir', texte: 'Les bandits ont déserté la route : la forêt « prend sa part » désormais, et ils n’ont pas les moyens de faire concurrence. Les araignées descendent le couloir en file, du haut vers le bas, sans se disputer un seul fil. Perrin brûle ses cartes, puis va se planter à l’entrée avec une lanterne, pour prévenir ceux qui passeraient encore.', recompense: { po: 38, xp: 50 } },
+      { titre: 'Chapitre 6 — Ce qui attend au fond', texte: 'Le couloir n’est pas un chemin : c’est un entonnoir, et la Matriarche soyeuse en occupe le fond depuis vingt ans. Elle n’a jamais eu à tisser grand. Il suffisait de faire abattre les arbres au bon endroit et d’attendre que la forêt descende. Vous avez tiré sur un de ses fils en récoltant la sève ; elle l’a senti bouger. Elle ne vous laissera pas le loisir d’arriver jusqu’au fond.', recompense: { xp: 90 } },
+    ],
+  },
+  'collines': {
+    titre: 'L’écho qui commande',
+    chapitres: [
+      { titre: 'Chapitre 1 — Un seul mot', texte: 'Les clans se défiaient d’une colline à l’autre à qui hurlerait le plus fort ; ce mois-ci, plus personne ne crie. L’écho de la vallée, lui, continue, avec ses trois secondes de retard habituelles. Il répète un seul mot, toujours le même : « encore ».', recompense: { po: 40 } },
+      { titre: 'Chapitre 2 — La colonne « ailleurs »', texte: 'Ordha pèse le minerai à la sortie des galeries depuis quinze ans, et ses registres sont d’une propreté exemplaire. Le cuivre part vers le marché, comme toujours. Le fer a triplé et ne descend plus. Elle vous montre la colonne des destinations, où elle a fini par écrire « ailleurs ». Quinze ans qu’elle n’avait pas eu à inventer une case.', recompense: { xp: 60 } },
+      { titre: 'Chapitre 3 — La galerie hors plan', texte: 'Les convois de fer montent au lieu de descendre, jusqu’à une galerie qui ne figure sur aucun plan de mine. Dedans, plus de pioches : des moules, des enclumes, et une chaleur qui ne vient pas de la roche. Ordha vous laisse emporter une gueuse de fer, à titre de pièce comptable, dit-elle.', recompense: { materiau: 'minerai-fer' } },
+      { titre: 'Chapitre 4 — La cadence', texte: 'Au fond de la galerie, un chaman gobelin frappe l’enclume à intervalles réguliers, et la vallée reprend le coup de versant en versant. L’écho fidèle n’a jamais été un écho : c’est un ordre relayé jusqu’aux dernières collines, que tous les clans reçoivent en même temps. Voilà pourquoi personne ne se défie plus — on ne se dispute pas quand on a la même consigne. Ordha soigne vos brûlures et referme son registre.', recompense: { soinPct: 0.35 } },
+      { titre: 'Chapitre 5 — La balance devant la porte', texte: 'Les convois ne cachent plus rien : haches neuves, plaques, mors de guerre, tout remonte vers le versant nord. Les golems mineurs ne creusent plus, ils portent, et ils ne redescendent pas. Ordha refuse de peser une charge de plus et pose sa balance en travers de l’entrée. On lui accorde une nuit pour changer d’avis.', recompense: { po: 60, xp: 80 } },
+      { titre: 'Chapitre 6 — Le compte est juste', texte: 'Le Chef de guerre orc n’a jamais voulu de mineurs : il voulait un arsenal, et il l’a fait sortir des collines cuillerée par cuillerée, sans qu’un clan songe à le contredire. La balance d’Ordha lui a appris qu’il manquait une gueuse au total, et qui l’avait emportée. Il a demandé votre nom au chaman, qui le lui a donné. La cadence a changé : le mot que la vallée répète, désormais, c’est le vôtre.', recompense: { xp: 150 } },
+    ],
+  },
+  'marais': {
+    titre: 'Le couvercle de Brumeciel',
+    chapitres: [
+      { titre: 'Chapitre 1 — L’eau qui baisse', texte: 'Le marais perd un pouce d’eau par semaine, sans que rien ne s’écoule nulle part. Les lotus noirs se retrouvent à sec sur la vase et fleurissent quand même, ce qui n’est pas dans leurs habitudes. Les crapauds, eux, ont cessé de chanter.', recompense: { po: 50 } },
+      { titre: 'Chapitre 2 — Le thé de Ganne', texte: 'Ganne tient son échoppe de thés légèrement prophétiques au bord du chenal. Elle a déménagé trois fois cette année, toujours pour suivre l’eau. Elle vous sert une tasse : au fond, les feuilles dessinent un cercle qui se referme. « Ça, dit-elle, ce n’est pas de la prophétie. C’est de l’arithmétique. »', recompense: { xp: 72 } },
+      { titre: 'Chapitre 3 — La rue basse', texte: 'La vase découverte n’est pas de la vase : ce sont des marches, un quai, une rue bordée de maisons. Un village entier, noyé volontairement, dit Ganne, « pour boucher quelque chose ». Sur les seuils, les lotus noirs ont pris racine dans les joints et fleurissent en rang. Vous en cueillez un ; Ganne détourne les yeux.', recompense: { materiau: 'lotus-noir' } },
+      { titre: 'Chapitre 4 — Ce que les lanternes balisent', texte: 'Ganne ouvre enfin le registre de sa lignée. Le marais n’est pas un marais, c’est un couvercle : on a noyé la vallée en une saison, il y a deux siècles, et les sorcières se relaient depuis pour tenir le niveau. Les lanternes des noyés ne balisent pas un chemin sûr, elles balisent la digue. L’eau qui baisse n’est donc pas un phénomène, c’est une fuite. Elle vous soigne, puis vous conseille de dormir tant que c’est encore une option.', recompense: { soinPct: 0.4 } },
+      { titre: 'Chapitre 5 — La brume tiède', texte: 'La brume monte à mesure que l’eau descend, tiède, régulière, et elle sent l’haleine. Les serpents des voiles quittent les roseaux par centaines, tous dans le même sens, et les grenouilles colossales ne mangent plus rien. Ganne verse ses réserves de lotus noir dans le chenal — trois générations de récolte en une nuit — puis reste debout sur son ponton pour voir si ça tient.', recompense: { po: 75, xp: 100 } },
+      { titre: 'Chapitre 6 — Ce qu’on avait mis dessous', texte: 'Ce n’est pas la digue qui perd son eau : c’est l’Hydre des brumes qui la boit, tête après tête, depuis qu’elle a fini de dormir. On ne l’a pas enfermée dans le marais — on a fait le marais autour d’elle, et deux siècles durant, cela a suffi. Le silence des crapauds s’explique enfin : elle écoute. Elle vous a entendu descendre la rue basse, et elle remonte déjà le chenal.', recompense: { xp: 180 } },
+    ],
+  },
+  'cryptes': {
+    titre: 'Le compte des bougies',
+    chapitres: [
+      { titre: 'Chapitre 1 — Les mèches taillées', texte: 'Dans la crypte basse, toutes les bougies sont neuves. Cire fraîche, mèches taillées net, pas une coulure. Les morts n’ont pas besoin de lumière, et pourtant quelqu’un paie l’éclairage.', recompense: { po: 60 } },
+      { titre: 'Chapitre 2 — La cirière Ombeline', texte: 'À l’entrée de la nécropole, Ombeline vend des cierges depuis quarante ans. Elle en livre trois cents par mois à un client qu’elle n’a jamais vu, payés d’avance en pièces à l’effigie d’un roi que personne ne reconnaît. « Bon payeur », dit-elle. Puis, plus bas : « Mauvais voisin. »', recompense: { xp: 85 } },
+      { titre: 'Chapitre 3 — Le registre d’Ombeline', texte: 'Son livre de comptes remonte à sa grand-mère : même commande, même écriture, même main qui ne tremble pas. Depuis que les dalles se descellent, la commande a doublé. Vous recopiez les chiffres au dos d’un fémur, faute de papier dans la région.', recompense: { materiau: 'os-ancien' } },
+      { titre: 'Chapitre 4 — Ce que les bougies éclairent', texte: 'Vous recomptez les flammes, couloir par couloir, et Ombeline pointe avec vous. Aucune ne balise un chemin : chacune brûle devant un cercueil vide. Ce n’est pas un éclairage, c’est un inventaire. Pour réfléchir, vous vous asseyez dans l’un des cercueils, remarquablement confortable ; elle vous laisse une heure et un bandage.', recompense: { soinPct: 0.4 } },
+      { titre: 'Chapitre 5 — Ombeline ferme boutique', texte: 'Les bougies s’allument devant vous et ne s’éteignent plus derrière. Ombeline cloue ses volets : elle a enfin reconnu le sceau qui timbre ses commandes, celui du couronnement. Elle vous règle ses arriérés d’un coup — elle ne compte plus tenir de comptes.', recompense: { po: 90, xp: 115 } },
+      { titre: 'Chapitre 6 — L’appel du Roi déchu', texte: 'Le Roi déchu n’a jamais abdiqué : il fait l’appel. Une bougie par soldat retrouvé, un cercueil refermé par nom prononcé, et l’armée est presque au complet. Il en reste une, à l’écart, posée sur un couvercle taillé à votre mesure. Elle vient de s’allumer.', recompense: { xp: 210 } },
+    ],
+  },
+  'desert': {
+    titre: 'Les bornes penchées',
+    chapitres: [
+      { titre: 'Chapitre 1 — Le sable remonte le vent', texte: 'Les dunes d’Ambrezine migrent contre le vent, de trois pas par nuit. Les bornes de la route caravanière penchent toutes du même côté, vers un point du désert où il n’y a rien. Rien, précisément : c’est ce qui intrigue.', recompense: { po: 70 } },
+      { titre: 'Chapitre 2 — Nazir le borneur', texte: 'Nazir replante les bornes que le sable avale, une saison sur deux, payé par les caravanes. Cette année, il les a replantées trois fois. « Elles glissent toutes vers le même endroit, dit-il. Moi je borne, je ne discute pas. »', recompense: { xp: 95 } },
+      { titre: 'Chapitre 3 — Le tracé', texte: 'Vous relevez avec lui la dérive de chaque borne, puis vous joignez les points : ce n’est pas une ligne, c’est une spirale. En son centre, le sable est trié si finement que les perles remontent seules. Nazir refuse d’en ramasser. Vous n’avez pas ses scrupules.', recompense: { materiau: 'perle-des-sables' } },
+      { titre: 'Chapitre 4 — La règle des caravaniers', texte: 'Nazir récite la vieille consigne des convois : ne jamais planter une borne droite. On croyait à une astuce contre le vent ; c’était un code, et l’inclinaison disait de quel côté la chose tournait, dessous. Sous chaque borne, les anciens avaient creusé une citerne pour les guetteurs. La vôtre est encore pleine, et l’eau est bonne.', recompense: { soinPct: 0.45 } },
+      { titre: 'Chapitre 5 — Nazir arrache', texte: 'À l’aube, le sable bourdonne : les élémentaires quittent la plaine pour les rochers, et les bandits des dunes lèvent le camp sans rien voler. Nazir, lui, s’est mis à arracher ses bornes. « On ne borne pas un lit. On le quitte. » Il vous verse sa saison entière pour l’escorter jusqu’à la roche.', recompense: { po: 105, xp: 130 } },
+      { titre: 'Chapitre 6 — Ce qu’il refuse de digérer', texte: 'Le Ver des sables colossal tourne dans son lit depuis toujours, lentement, et la spirale se resserre parce qu’on lui prend ses perles — les seules choses qu’il recrache. Chaque poignée emportée le fait remonter d’une coudée. Ce matin, le centre du tracé a bougé : il est exactement sous vos pieds.', recompense: { xp: 240 } },
+    ],
+  },
+  'pics': {
+    titre: 'La carte de givre',
+    chapitres: [
+      { titre: 'Chapitre 1 — Le dessin du matin', texte: 'Chaque matin, le givre dessine sur les volets du refuge la même carte du massif : arêtes, cols, glaciers, tout y est. Tout, sauf une vallée, laissée blanche. Le givre a le droit de mal dessiner ; il n’a pas le droit d’être aussi précis.', recompense: { po: 85 } },
+      { titre: 'Chapitre 2 — Hesva, gardienne des Trois-Vents', texte: 'Hesva tient le refuge des Trois-Vents et découpe ses volets gelés depuis dix-huit ans, une planche par hiver, rangées au grenier. On les compare : le blanc n’est pas au même endroit d’une année sur l’autre. Il se rapproche du refuge, régulièrement, comme un rendez-vous qu’on aurait pris sans elle.', recompense: { xp: 110 } },
+      { titre: 'Chapitre 3 — La vallée blanche', texte: 'Vous montez jusqu’à la tache. Le blizzard s’arrête net à son entrée et n’y entre pas, par égard pour quelque chose. À l’intérieur, pas un flocon : des cristaux de givre alignés en rangs réguliers, taillés à la même hauteur. On ne récolte pas ça. On l’élève.', recompense: { materiau: 'cristal-givre' } },
+      { titre: 'Chapitre 4 — Le grenier', texte: 'Hesva monte voir de ses yeux et comprend avant vous. Le froid du massif ne tombe pas du ciel : il est prélevé, rangé, mis en réserve. Les cristaux ne sont pas des pierres précieuses, c’est du froid en bocal, et la vallée blanche est un grenier. Vous y dormez sans grelotter pour la première fois depuis des semaines. Le silence, en revanche, ne rassure personne.', recompense: { soinPct: 0.45 } },
+      { titre: 'Chapitre 5 — Hesva rentre son bois', texte: 'Les rangs se vident vite désormais : trois par nuit, puis dix. Les loups des glaces descendent, les yétis suivent, et le blizzard qui contournait le refuge par politesse a cessé d’être poli. Hesva rentre son bois et vous confie la caisse du livre d’or — trois siècles de mercis, en pièces. « Je tiens la porte. Vous, montez. »', recompense: { po: 125, xp: 150 } },
+      { titre: 'Chapitre 6 — L’inventaire', texte: 'L’Élémentaire ancien a été tout ce froid, autrefois, avant de se disperser. Depuis, il se rassemble, cristal par cristal, hiver après hiver. Ce qu’on lui prend, il le recompte, et la montagne a beaucoup donné ces temps-ci, à un visiteur en particulier. Ce matin, le givre a dessiné le refuge, et sur le seuil une silhouette à votre taille.', recompense: { xp: 270 } },
+    ],
+  },
+  'profondeurs': {
+    titre: 'Le moule-mère',
+    chapitres: [
+      { titre: 'Chapitre 1 — Sept minutes, puis six', texte: 'La faille du Cœur expire un air brûlant toutes les sept minutes, depuis qu’on la mesure. Cette semaine : six minutes quarante, puis six minutes dix. Rien d’autre n’a changé dans les Profondeurs. Le monde respire simplement plus vite, et personne en bas ne trouve cela inquiétant — ce qui est inquiétant.', recompense: { po: 100 } },
+      { titre: 'Chapitre 2 — Damaris, fondeuse', texte: 'Damaris tient la seule forge assez chaude du monde et règle ses coulées sur le souffle de la faille depuis quarante ans. Depuis peu, ses bronzes sortent faux : jamais ratés, toujours autres. Chaque pièce porte le même visage, qu’elle n’a pas gravé et que personne ne connaît. Elle l’appelle « le client ».', recompense: { xp: 120 } },
+      { titre: 'Chapitre 3 — Le relèvement', texte: 'Les golems anciens ont interrompu leurs rondes et se sont tournés dans la même direction ; les dragonnets ont déserté leur autel. Vous prenez les alignements avec Damaris : tout vise un point sous le lac de lave figée. En chemin, un golem immobile s’ouvre proprement en deux, comme un moule qu’on démoule. À l’intérieur, un noyau encore tiède, frappé du même visage.', recompense: { materiau: 'noyau-golem' } },
+      { titre: 'Chapitre 4 — Pièces de rechange', texte: 'Les golems ne gardent pas les Profondeurs : ils en sortent. Les monnaies au visage inconnu, les coulées fausses de Damaris, les golems eux-mêmes — une seule matrice, en dessous, qui fabrique ses propres pièces détachées. Le Cœur n’abrite pas un gardien : le Cœur est le gardien, et il s’entretient. Il répare d’ailleurs tout ce qui traîne dans son ventre, vous compris, le temps d’un souffle.', recompense: { soinPct: 0.5 } },
+      { titre: 'Chapitre 5 — Damaris casse ses moules', texte: 'Quatre minutes entre deux souffles. Les golems s’agenouillent en rang, les ombres se plaquent aux parois, et le lac de verre reflète des gestes que vous n’avez pas encore faits. Damaris brise ses moules un à un et pousse son feu au maximum : « S’il se lève, il voudra une forge chaude. Autant qu’il la trouve. » Elle vous confie quarante ans d’économies pour tenir la galerie.', recompense: { po: 150, xp: 165 } },
+      { titre: 'Chapitre 6 — Le Gardien éternel', texte: 'Il n’est pas éternel par miracle, mais par entretien : il se refond, se recompte, se remplace. Depuis des mois l’inventaire ne tombe plus juste — noyaux, écailles, poussière, tout ce qu’un visiteur remonte à la surface. Ce matin, la dernière coulée de Damaris est sortie avec un autre visage : le vôtre, en creux, prêt à servir. Le Gardien éternel a un moule à votre nom, et il monte le chercher.', recompense: { xp: 300 } },
+    ],
+  },
+  'jungle-vai': {
+    titre: 'L’heure des orchidées',
+    chapitres: [
+      { titre: 'Chapitre 1 — Quatre heures d’avance', texte: 'Les orchidées lunaires se sont toutes ouvertes en même temps, quatre heures trop tôt. Les chasseurs qui règlent leurs montres dessus ont manqué leurs rendez-vous, et le font savoir. Personne ne demande ce qui a pu avancer l’horloge d’une jungle entière.', recompense: { po: 115 } },
+      { titre: 'Chapitre 2 — Le recenseur', texte: 'Fenn Orsat compte les orchidées de Vaï-Sombre depuis dix-neuf ans, pour la guilde, à la fleur près. Il ouvre son registre : c’est la troisième avance de la saison, et chacune est plus grande que la précédente. « Elles ne se trompent pas, dit-il. Elles se dépêchent. »', recompense: { xp: 135 } },
+      { titre: 'Chapitre 3 — Le cercle qui se ferme', texte: 'Vous reportez les avances de Fenn sur sa carte : elles dessinent un anneau, et l’anneau se resserre. Les panthères ont quitté le centre, les hommes-lianes ont déplacé leurs ponts vers l’extérieur. Fenn vous confie une fleur marquée à son encre, au cas où vous iriez voir au milieu.', recompense: { materiau: 'orchidee-lunaire' } },
+      { titre: 'Chapitre 4 — Ce que comptait Fenn', texte: 'Au centre, un couloir de végétation écartée, droit, large comme une route. Fenn compare ses relevés et pâlit : l’orchidée ne pousse que là où le grand serpent est passé, son venin fertilise la terre. Depuis dix-neuf ans, il dressait la carte des allées et venues d’une seule bête. Vous vous asseyez dans le couloir pour digérer la nouvelle ; la terre y est tiède, et curieusement réparatrice.', recompense: { soinPct: 0.5 } },
+      { titre: 'Chapitre 5 — Les ponts coupés', texte: 'Les grenouilles-dards ont migré vers la canopée, les hommes-lianes ont tranché leurs propres ponts derrière eux. L’anneau s’est refermé cette nuit : il ne fait plus qu’une fleur de large. Fenn refuse de redescendre, s’installe à la dernière orchidée et taille sa plume. « Quelqu’un doit noter l’heure. »', recompense: { po: 175, xp: 190 } },
+      { titre: 'Chapitre 6 — Celle qui revient pondre', texte: 'La Matriarche Sarpense est revenue pondre au centre de sa spirale, là où elle est née : la jungle a poussé sur son venin, elle reprend son bien. Les orchidées ne mesuraient pas le temps, elles mesuraient son souffle. Elle a reniflé le vôtre sur le registre de Fenn, et elle vient. À côté de vous, une fleur s’ouvre : il n’est pas l’heure.', recompense: { xp: 340 } },
+    ],
+  },
+  'falaises-hurlantes': {
+    titre: 'Le nom que le vent apprend',
+    chapitres: [
+      { titre: 'Chapitre 1 — Onze minutes de silence', texte: 'À l’aube, les Falaises Hurlantes se sont tues. Onze minutes exactement : les cristaux hurleurs ont retenu leur souffle et les gargouilles ont toutes tourné la tête du même côté. De mémoire de berger, la falaise n’avait jamais rien fait d’aussi impoli.', recompense: { po: 115 } },
+      { titre: 'Chapitre 2 — L’accordeuse', texte: 'Mirande Sault accorde la falaise : elle égalise les cristaux pour que les bergers se repèrent au son. Selon elle, la roche ne s’est pas tue — elle a perdu une note, la plus grave. « Quelque chose chante en dessous, dit-elle. Trop bas pour vos oreilles. Pas pour les miennes. »', recompense: { xp: 135 } },
+      { titre: 'Chapitre 3 — La note d’en dessous', texte: 'La note manquante revient chaque aube, un peu plus grave. Les harpies ont cessé de répéter des noms pour l’imiter ; les gargouilles-vigies ne surveillent plus l’horizon, elles regardent le vide sous elles. Mirande vous donne un cristal fendu par cette note : « gardez-le, il a entendu avant nous ».', recompense: { materiau: 'cristal-hurleur' } },
+      { titre: 'Chapitre 4 — Le registre des noms', texte: 'Mirande tient aussi le registre des noms que le vent hurle. Vous les recoupez avec la liste des disparus de la côte : ils correspondent tous, à un an près. Le vent n’invente rien, il répète ; la falaise récite l’inventaire de ce qui a été emporté. Vous passez la nuit dans son abri, du bon côté de la roche, et vous dormez mieux que la nouvelle ne le mérite.', recompense: { soinPct: 0.5 } },
+      { titre: 'Chapitre 5 — La mue', texte: 'Les plumes de rokh tombent par dizaines : c’est la mue, et la mue précède le nid. Les gargouilles ont quitté leurs corniches pour la première fois en trois cents ans. Mirande plante son diapason dans le basalte et refuse de descendre. « La note est presque un nom. Deux syllabes. Comme le vôtre. »', recompense: { po: 175, xp: 190 } },
+      { titre: 'Chapitre 6 — Le Rokh Tempétueux', texte: 'Le Rokh Tempétueux a creusé ces falaises lui-même, corniche après corniche, et il revient y couver quand l’orage tourne. Il apprend à la roche le nom de ses prises, pour que ses petits chassent au son. Ce matin, la note grave s’est résolue : c’est votre nom, et il est parfaitement accordé. Mirande l’a inscrit au registre, par acquit de conscience.', recompense: { xp: 340 } },
+    ],
+  },
+  'abysses-emeraude': {
+    titre: 'La cité qui repousse',
+    chapitres: [
+      { titre: 'Chapitre 1 — Des rues trop propres', texte: 'Dans la cité engloutie, les rues sont nettes. Pas de vase, pas d’épaves, pas un limon : balayées. Le corail sanglant pousse le long des murs en ligne droite, au cordeau, comme si un maçon le guidait.', recompense: { po: 140 } },
+      { titre: 'Chapitre 2 — Le releveur de lanternes', texte: 'Vasco Thièle compte les lanternes de la cité depuis trente ans, sans que personne le lui demande ni le lui paie. Il déplie ses vieux plans : trois places ont disparu, les portes ouvertes se sont refermées, les ruelles se resserrent d’une coudée par saison. « On ne nettoie pas la ville, dit-il. On la referme. »', recompense: { xp: 160 } },
+      { titre: 'Chapitre 3 — Tout converge au port', texte: 'Vous suivez les lignes de corail : toutes descendent vers le grand bassin du port. Les murènes ont quitté les murs, les crabes cuirassés émigrent au large avec leurs œufs, et les sirènes chantent partout sauf au-dessus du bassin. Vasco casse pour vous une branche rouge : « la preuve, si on ne me croit pas ».', recompense: { materiau: 'corail-sanglant' } },
+      { titre: 'Chapitre 4 — La ville n’a jamais été bâtie', texte: 'Le plan de Vasco, posé sur le tracé du corail, ne donne pas une ville : il donne une croissance. Les murs n’ont pas été montés, ils ont poussé ; les lanternes ne sont pas des lampes mais des polypes, et elles brûlent depuis mille ans parce qu’elles sont vivantes. Personne n’a fondé les Abysses d’Émeraude : on s’y est installé, comme on s’installe chez un absent. Vasco vous pousse dans une bulle d’air ancien, le temps de reprendre votre souffle et vos idées.', recompense: { soinPct: 0.55 } },
+      { titre: 'Chapitre 5 — L’eau tiède', texte: 'L’eau du bassin est tiède, à cette profondeur, et personne ne tient à expliquer pourquoi. Chaque soir, toutes les lanternes faiblissent ensemble puis reprennent : le rythme d’un poumon. Sur les seuils, on ramasse les larmes de sirène à la poignée — elles pleurent avant que ça bouge. Vasco amarre sa barque au-dessus du port, décroche son enseigne et cloue son plan au mât, « pour ceux qui remonteront ».', recompense: { po: 210, xp: 220 } },
+      { titre: 'Chapitre 6 — Le Léviathan Corallien', texte: 'Le Léviathan Corallien revient tous les mille ans reprendre la couronne de corail qu’il a laissée pousser, puis en faire une neuve. La cité était son ancienne écaille, et ses habitants des locataires qui n’ont jamais lu le bail. Il vous a senti marcher sur lui : au fond, un cœur qui bat sur son dos, cela ne passe pas inaperçu. Devant vous, une lanterne se rallume — on éclaire la pièce quand on attend quelqu’un.', recompense: { xp: 400 } },
+    ],
+  },
+  'steppe-cendres': {
+    titre: 'La cendre de quelqu’un',
+    chapitres: [
+      { titre: 'Chapitre 1 — Il neige de la cendre', texte: 'Il neige de la cendre depuis trois nuits. Le ciel est clair, les cônes sont froids, rien ne brûle nulle part. La cendre tombe tiède et sent le fer. Dans la steppe, personne ne pose la question à voix haute.', recompense: { po: 140 } },
+      { titre: 'Chapitre 2 — Le trieur', texte: 'Otar Vesle trie la cendre au grain et la vend aux fermiers, qui la paient cher et ne discutent pas. Il fait rouler celle-ci entre ses doigts et cesse de plaisanter : trop fine, trop grasse, ce n’est pas de la cendre de pierre. « Ça, c’est de la cendre de quelqu’un. »', recompense: { xp: 160 } },
+      { titre: 'Chapitre 3 — Trente et un ans', texte: 'Otar ressort ses vieux sacs étiquetés : le même grain est tombé il y a trente et un ans, et trente et un ans avant. Depuis, les chacals éventrent les anciennes fosses et les salamandres ne répondent plus au feu qu’on leur tend. Le geyser ponctuel, lui, jaillit avec deux minutes de retard, puis quatre. Otar vous met de côté un sachet du bon millésime.', recompense: { materiau: 'cendre-fertile' } },
+      { titre: 'Chapitre 4 — Personne n’a vu l’éruption', texte: 'Vous cherchez avec Otar le récit de la Grande Éruption dans les registres des villages. Il n’y en a aucun : pas de coulée, pas de cratère, pas de témoin — seulement de la cendre, un beau matin. La steppe n’a pas survécu à un volcan : elle est grise parce qu’une bête y mue depuis des siècles, et les fleurs de l’après poussent sur de la peau. Vous dormez dans la cendre tiède, qui reste, malgré tout, d’un confort remarquable.', recompense: { soinPct: 0.55 } },
+      { titre: 'Chapitre 5 — Le feu de camp s’éteint', texte: 'Le feu de camp éternel s’est éteint cette nuit, pour la première fois depuis qu’on en parle. L’obsidienne du sol se fend en lignes parallèles, exactement comme une peau trop tendue. Les ogres magmatiques ont abandonné leur inventaire et marchent vers l’est, en file. Otar vide son étal, vous laisse son meilleur grain et garde sa balance : il veut peser la dernière.', recompense: { po: 210, xp: 220 } },
+      { titre: 'Chapitre 6 — Le Béhémoth de Cendre', texte: 'Tous les trente et un ans, le Béhémoth de Cendre remonte des feux profonds pour laisser sa croûte sur la plaine : la steppe est son aire de mue, et la cendre fertile, sa peau. Cette fois il a du retard, et la croûte pèse. Il vous a senti, forcément : vous transportez des sacs de lui depuis des semaines. Le geyser vient de jaillir avec vingt minutes d’avance — le réveil a sonné.', recompense: { xp: 400 } },
+    ],
+  },
+  'foret-petrifiee': {
+    titre: 'Le compte n’y est pas',
+    chapitres: [
+      { titre: 'Chapitre 1 — L’arbre trop jeune', texte: 'Un tronc de pierre parmi mille autres, sauf que sa cassure est encore blanche et qu’aucun lichen ne l’a trouvé. On y compte quarante cernes. La forêt, elle, a été changée en pierre il y a dix siècles. Quelqu’un est en retard, ou quelque chose continue.', recompense: { po: 170 } },
+      { titre: 'Chapitre 2 — La compteuse', texte: 'Mahaut la Compteuse marque les troncs à la craie depuis trente ans. Son registre dit 1 397, puis 1 398, puis 1 400 : toujours dans le même sens. Elle vous paie pour recompter, et espère très fort que vous vous tromperez.', recompense: { xp: 180 } },
+      { titre: 'Chapitre 3 — Sous l’écorce', texte: 'Vous recomptez : 1 401. Sous l’écorce du dernier venu, la pierre a gardé la forme d’une besace et d’une botte ; dans la besace, une sphère runique intacte, que son propriétaire n’a pas eu le temps de vendre. Mahaut ouvre alors son second carnet, celui des bûcherons qui ne sont pas rentrés. Les deux listes ont exactement la même longueur.', recompense: { materiau: 'sphere-runique' } },
+      { titre: 'Chapitre 4 — Ce que la nuit n’a pas fait', texte: 'Le regard du basilic étourdit ; il ne fabrique pas de bois. Mahaut relève les inclinaisons avec vous : tous les troncs, les anciens comme les neufs, penchent vers le même point au centre de la forêt. La nuit fatale n’a donc rien maudit du tout : elle a seulement été le premier repas. Depuis, on mange lentement, et poliment. Elle vous laisse souffler dans sa cabane de lisière, et vous ressort une couverture.', recompense: { soinPct: 0.6 } },
+      { titre: 'Chapitre 5 — Trois de plus', texte: 'Trois troncs neufs en une seule saison : le compte s’emballe. Les moissonneurs runiques convoient des éclats de quartz vers le centre, en file, comme on nourrit quelqu’un. Mahaut plante ses jalons à la lisière de la clairière et vous laisse son registre : « Quelqu’un doit continuer à compter. »', recompense: { po: 255, xp: 250 } },
+      { titre: 'Chapitre 6 — L’Avatar de Quartz', texte: 'Au centre siège l’Avatar de Quartz : pas un gardien, un appétit avec des angles. Chaque facette est quelqu’un, et la forêt entière est son inventaire, à raison d’un promeneur par an. Il en tourne une vers vous ; votre reflet y est déjà, avec un peu d’avance. Sur le registre, Mahaut a écrit « 1 402 ? » et laissé la ligne libre.', recompense: { xp: 450 } },
+    ],
+  },
+  'vallee-geants': {
+    titre: 'Un géant de bonne facture',
+    chapitres: [
+      { titre: 'Chapitre 1 — La côte recousue', texte: 'Sur une cage thoracique grande comme une grange, une côte porte encore les traces de scie des récolteurs. Elle est pourtant à sa place. L’entaille s’est refermée proprement, comme une cicatrice sur quelqu’un de patient.', recompense: { po: 170 } },
+      { titre: 'Chapitre 2 — Sidoine la rebouteuse', texte: 'Sidoine remet les épaules des vivants et remonte les squelettes des morts, ce qui fait d’elle la meilleure comptable d’os de la vallée. Ses relevés sont formels : les réparations suivent un ordre, les pieds d’abord, puis les jambes. Quelqu’un travaille de bas en haut. Elle vous envoie vérifier le squelette voisin.', recompense: { xp: 180 } },
+      { titre: 'Chapitre 3 — La récolte du soir', texte: 'L’os repoussé est tiède et trop léger. Au crépuscule, les chamans des os plantent des esquilles dans les tombes ; à l’aube, ils remportent ce qui a poussé. Ce n’est pas de la nécromancie, c’est de l’agriculture. Un panier renversé vous laisse une relique antique que personne ne réclame — et tout le reste part vers le nord, toujours vers le nord.', recompense: { materiau: 'relique-antique' } },
+      { titre: 'Chapitre 4 — Les meilleures pièces', texte: 'Sidoine étale ses relevés côte à côte, et rien ne va plus. Aucun squelette n’est réparé en entier : chacun ne rend que sa plus belle pièce, le fémur ici, la mâchoire là-bas, la cage la plus large au fond. Ce n’est pas une restauration, c’est une sélection. Et le ronflement qu’on entend la nuit n’est pas celui des morts : c’est un corps neuf qui apprend à respirer. Elle vous remet debout sans cesser de parler ; ses mains, elles, savent ce qu’elles font.', recompense: { soinPct: 0.6 } },
+      { titre: 'Chapitre 5 — Le gué du nord', texte: 'Une tombe se vide désormais en une nuit. Les mammouths spectraux cessent de paître et se tournent tous vers le nord, comme des girouettes bien élevées. Sidoine ferme son atelier, garde un maillet et s’installe au gué des phalanges : « J’ai monté trop de squelettes pour laisser passer celui-là. »', recompense: { po: 255, xp: 250 } },
+      { titre: 'Chapitre 6 — Le Roi des Ossements', texte: 'Au nord, l’assemblage est terminé. Le Roi des Ossements n’est pas ressuscité : il a été bâti, avec le meilleur de cent géants, et les chamans n’étaient que ses mains. Il est ici parce que la vallée est la seule carrière à sa taille, et il n’a pas fini. Il essaie une mâchoire qui n’est pas la sienne, puis vous regarde comme on regarde une pièce qui manque.', recompense: { xp: 450 } },
+    ],
+  },
+  'citadelle-foudre': {
+    titre: 'Ce qui frappe depuis mille ans',
+    chapitres: [
+      { titre: 'Chapitre 1 — Trois brûlures régulières', texte: 'La foudre ne tombe pas sur la citadelle : elle y entre, par trois ouvertures, toujours les mêmes. Les brûlures sont fraîches et se superposent, une par semaine, avec la régularité d’une livraison. Personne ici n’a rien commandé.', recompense: { po: 210 } },
+      { titre: 'Chapitre 2 — L’accordeur', texte: 'Ancelin parcourt les couloirs avec un diapason d’acier céleste : il accorde la forteresse comme on accorde un instrument. « Il y a vingt ans, elle donnait un ré grave. Aujourd’hui, on approche du la. » Il vous confie ses carnets et la liste des étages où il ne monte plus.', recompense: { xp: 210 } },
+      { titre: 'Chapitre 3 — La cale et les câbles', texte: 'En bas, la citadelle n’est pas une ruine : c’est une pile. Des lieues de câble d’acier céleste convergent vers la quille, et les forgerons foudroyés ne se battent pas pour le métal — ils soudent. Ils sont de service depuis mille ans et personne n’est venu les relever. Ancelin sectionne une longueur de câble détendu et vous la tend : « celui-ci ne tient plus rien ».', recompense: { materiau: 'acier-celeste' } },
+      { titre: 'Chapitre 4 — Le sabordage', texte: 'La salle des cartes tranche la question : la citadelle ne s’est pas écrasée, on l’a sabordée. L’équipage a coupé ses propres amarres et l’a couchée entre deux nuages, exprès. Les câbles ne sont pas un moteur, c’est une serrure. Et la note qu’Ancelin surveille depuis vingt ans n’est pas un accord : c’est la tension du verrou. Il vous installe pour la nuit entre deux tables à cartes ; on dort étonnamment bien dans la cale.', recompense: { soinPct: 0.65 } },
+      { titre: 'Chapitre 5 — Sept coups dans la nuit', texte: 'Sept impacts en une nuit. Les sentinelles d’acier quittent leurs postes et s’alignent face au ciel, toutes dans le même sens ; pour la première fois, les horloges folles tombent d’accord sur l’heure. Ancelin brise son diapason « pour ne plus être tenté de répondre », puis monte se poster sur le toit.', recompense: { po: 315, xp: 290 } },
+      { titre: 'Chapitre 6 — L’Archonte de la Tempête', texte: 'Celui qui frappe est celui qu’on fuyait : l’Archonte de la Tempête. La citadelle est à lui, l’équipage la lui a volée puis cachée dans le mauvais temps, et il cogne poliment depuis mille ans. Le dernier éclair n’a pas visé la serrure : il a suivi votre ombre, au trait près. La note de la forteresse a baissé d’un ton — une courtoisie, pour que vous soyez réveillé quand il se posera.', recompense: { xp: 520 } },
+    ],
+  },
+  'neant-scintillant': {
+    titre: 'Ce que la marée rend',
+    chapitres: [
+      { titre: 'Chapitre 1 — Le poteau indicateur', texte: 'Sur la plage du néant s’échouent les épaves des mondes morts. Ce matin, entre deux carcasses sans nom, un poteau indicateur de Valciel, peinture fraîche, qui désigne un village encore debout. Il n’a pas été perdu. Il est pourtant rendu.', recompense: { po: 210 } },
+      { titre: 'Chapitre 2 — La greffière des échouages', texte: 'Eudoxie tient le registre des échouages depuis quarante ans, en deux colonnes : « perdu », « rendu ». Depuis peu, la seconde se remplit d’objets de chez nous que personne n’a encore égarés. Elle vous paie pour aller vérifier le poteau. Il est toujours planté à son carrefour, et il est aussi ici.', recompense: { xp: 210 } },
+      { titre: 'Chapitre 3 — Le fil en trop', texte: 'Les tisseuses d’étoiles ne tissent pas des toiles, elles tissent des doublures : l’étoffe du néant se prend brin par brin aux constellations. Chaque objet échoué en porte un fil de trop, et Eudoxie vous laisse dévider celui du poteau. Les échos du néant, eux, répètent avec un peu d’avance des phrases que personne n’a encore dites.', recompense: { materiau: 'etoffe-du-neant' } },
+      { titre: 'Chapitre 4 — L’assiette rendue', texte: 'Rien, sur cette plage, n’est brisé par la chute : tout est poli de la même façon, comme des noyaux recrachés. La marée n’apporte pas, elle refuse. La colonne « rendu » d’Eudoxie n’annonce donc aucune perte : c’est la liste de ce qu’on a goûté et laissé. Ce qui inquiète, c’est ce qui n’y figure pas. Elle vous fait asseoir sous son auvent, verse deux tasses, et le silence d’ici répare le reste.', recompense: { soinPct: 0.7 } },
+      { titre: 'Chapitre 5 — Les étoiles s’éteignent en ligne', texte: 'La marée passe à deux fois par jour, puis trois. Les horreurs du vide reculent devant l’eau, ce qu’elles n’avaient jamais fait. Les étoiles qui ne sont pas les nôtres s’éteignent une à une, en ligne droite, de l’horizon vers le rivage : quelqu’un marche. Eudoxie clôt son registre, écrit « fin des échouages », et reste sur le sable avec sa lanterne.', recompense: { po: 315, xp: 290 } },
+      { titre: 'Chapitre 6 — Le Dévoreur de Mondes', texte: 'Ce qui raye les étoiles porte un nom : le Dévoreur de Mondes. Il est là parce qu’un monde ne se mange que par le bord, et que la déchirure est le bord de Valciel : la plage n’est que sa desserte, des siècles de dégustation. Hier, la marée a rendu votre gant, poli comme un noyau — un essai. Ce matin, elle n’a rien rendu du tout.', recompense: { xp: 520 } },
+    ],
+  },
 };
 
 // =====================================================================
