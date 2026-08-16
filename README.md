@@ -111,6 +111,7 @@ Le jeu détecte tout seul s'il peut joindre le monde en ligne (un backend Supaba
 
 - **En ligne** : héros synchronisés, taverne active, boss du monde commun, groupes multi-appareils, échanges entre joueurs. Toutes les écritures passent par des fonctions RPC vérifiant un token secret par personnage (avec plafonds anti-triche). Le token n'est jamais lisible publiquement.
 - **Les expéditions de groupe** (jusqu'à 4 appareils) proposent six genres : explorer une zone, son boss, un étage de la **Tour Sans Fin**, la **Tour des Boss**, l'**assaut du boss final d'un donjon**, ou l'**Ascension éternelle d'une épopée**. C'est la **progression du chef** qui ouvre les expéditions — chacun combat à pleine puissance, et le record de chacun progresse. La défaite est mortelle, comme en solo.
+- **Le groupe vit en direct** : chaque héros republie son état tant qu'il est au salon — l'**auberge**, un **niveau gagné**, une **compétence apprise** ou une **pièce d'équipement** arrivent sur les écrans des autres tout seuls, et c'est cet état-là que le chef fait combattre. On peut même quitter l'écran du groupe pour filer au Bourg : la veille continue en arrière-plan et ramène au combat quand le chef le lance. Et **recharger la page ne coûte plus le groupe** : on le retrouve au démarrage. Une expédition lancée fige les combattants — personne ne se soigne au milieu d'un combat.
 - **Hors ligne** : tout le reste du jeu fonctionne normalement, sauvegardé sur l'appareil.
 
 Aucun compte, aucun mot de passe : on crée un héros et on joue.
@@ -131,7 +132,7 @@ Le jeu embarque sa propre page de tests, qui charge exactement les mêmes fichie
 npx serve .   # puis ouvrir /tests.html
 ```
 
-**216 tests** en 19 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, les cinq raretés d'Éveil tirables restent dans un écart de 10 %, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, et aucun service de la Tour ne vide un grimoire.
+**232 tests** en 21 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, les cinq raretés d'Éveil tirables restent dans un écart de 10 %, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, aucun service de la Tour ne vide un grimoire, et l'instantané publié au groupe est toujours le héros tel qu'il est *maintenant*.
 
 ## 🗂️ Structure du projet
 
@@ -170,5 +171,7 @@ js/ville.js                      — le Bourg : boutiques, artisans, Arcanium, G
 js/combat.js                     — combat tour par tour (initiative, critiques, statuts, boss)
 js/groupe.js                     — expéditions en ligne à plusieurs appareils
 js/reseau.js                     — client REST Supabase, taverne, fiches publiques, échanges
-js/tests.js                      — les 168 tests
+js/tests.js                      — les 232 tests
+
+sql/                             — les fonctions RPC du backend Supabase, versionnées ici
 ```

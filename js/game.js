@@ -3036,7 +3036,14 @@ function initialiser() {
 
   rendreTitre();
   montrerEcran('ecran-titre');
-  if (typeof demarrerReseau === 'function') demarrerReseau();
+  if (typeof demarrerReseau === 'function') {
+    const reseau = demarrerReseau();
+    // v20 : recharger la page ne coûte plus le groupe — dès que le monde
+    // répond, on retrouve l'expédition en cours s'il y en a une.
+    if (reseau && reseau.then && typeof restaurerGroupeLigne === 'function') {
+      reseau.then(() => restaurerGroupeLigne()).catch(() => {});
+    }
+  }
 }
 
 // La page de tests (tests.html) charge les mêmes scripts que le jeu, mais

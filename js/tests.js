@@ -2428,6 +2428,91 @@ suite('Accès admin par le portrait', () => {
 });
 
 // =====================================================================
+// Expéditions de groupe : l'instantané publié aux autres écrans
+//
+// La règle : ce que le salon montre et ce que le chef fait combattre,
+// c'est le héros TEL QU'IL EST MAINTENANT. L'auberge, un niveau gagné,
+// une compétence apprise, une pièce d'équipement — tout doit passer,
+// sans recharger la page.
+// =====================================================================
+suite('Expéditions de groupe', () => {
+  function herosRelie(surcharges = {}) {
+    const p = herosTest(surcharges);
+    p.cloud = { id: '11111111-1111-1111-1111-111111111111', token: '2222' };
+    bornerVie(p);
+    return p;
+  }
+
+  test('l\'instantané publie les PV et PM du moment, pas ceux de l\'arrivée', () => {
+    const p = herosRelie();
+    p.hp = 3;
+    p.mp = 0;
+    egal(snapshotPourGroupe(p).hp, 3, 'PV blessés');
+    // Le passage à l'auberge, exactement comme en ville.
+    p.hp = p.maxHp;
+    p.mp = p.maxMp;
+    const apresAuberge = snapshotPourGroupe(p);
+    egal(apresAuberge.hp, p.maxHp, 'PV rendus par l\'auberge');
+    egal(apresAuberge.mp, p.maxMp, 'PM rendus par l\'auberge');
+  });
+
+  test('l\'instantané suit le niveau, les compétences et la puissance', () => {
+    const p = herosRelie();
+    const avant = snapshotPourGroupe(p);
+    const nouvelle = Object.keys(COMPETENCES).find((id) => !p.competences.includes(id));
+    apprendreCompetence(p, nouvelle, true);
+    adminFixerNiveau(p, 30);
+    const apres = snapshotPourGroupe(p);
+    egal(apres.niveau, 30, 'le niveau gagné part au groupe');
+    verifier(apres.maxHp > avant.maxHp, 'les PV maximum suivent le niveau');
+    verifier(apres.competences.includes(nouvelle),
+      `la compétence « ${nouvelle} » apprise doit partir au groupe`);
+  });
+
+  test('les maximums de l\'instantané sont recalculés, jamais lus tels quels', () => {
+    const p = herosRelie();
+    // Un maxHp périmé traîne sur le héros (équipement changé sans bornage).
+    p.maxHp = 1;
+    p.maxMp = 1;
+    const s = snapshotPourGroupe(p);
+    egal(s.maxHp, maxHpDe(p), 'maxHp recalculé');
+    egal(s.maxMp, maxMpDe(p), 'maxMp recalculé');
+    verifier(s.hp <= s.maxHp && s.mp <= s.maxMp, 'PV/PM bornés par les maximums publiés');
+  });
+
+  test('la spécialité voyage avec l\'instantané (passif de l\'Invocateur)', () => {
+    const p = herosRelie();
+    p.sousClasse = 'invocateur';
+    const distant = creerJoueurDistant(snapshotPourGroupe(p));
+    egal(distant.sousClasse, 'invocateur',
+      'sans elle, un Invocateur distant perdrait sa deuxième créature');
+  });
+
+  test('le héros distant se reconstruit avec les stats effectives reçues', () => {
+    const p = herosRelie();
+    adminFixerNiveau(p, 20);
+    const distant = creerJoueurDistant(snapshotPourGroupe(p));
+    verifier(distant.distant === true, 'un distant est marqué comme tel');
+    egal(distant.bid, p.cloud.id, 'identifiant de combat = identifiant cloud');
+    egal(distant.maxHp, maxHpDe(p), 'PV maximum transmis');
+    Object.keys(CARACS).forEach((cle) => {
+      egal(statsEffectives(distant)[cle], statsEffectives(p)[cle],
+        `caractéristique « ${cle} » transmise sans perte`);
+    });
+  });
+
+  test('la signature de l\'instantané change dès que le héros change', () => {
+    const p = herosRelie();
+    const avant = JSON.stringify(snapshotPourGroupe(p));
+    egal(JSON.stringify(snapshotPourGroupe(p)), avant,
+      'un héros inchangé ne republie rien (pas de martèlement du serveur)');
+    p.hp = Math.max(1, p.hp - 1);
+    verifier(JSON.stringify(snapshotPourGroupe(p)) !== avant,
+      'un seul PV de différence doit déclencher la republication');
+  });
+});
+
+// =====================================================================
 // Exécution et rapport
 // =====================================================================
 function lancerTests() {

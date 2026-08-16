@@ -64,6 +64,8 @@ async function demarrerReseau() {
         clearInterval(minuterieReconnexion);
         minuterieReconnexion = null;
         majUiReseau();
+        // Le monde revient : on récupère l'expédition laissée en plan.
+        if (typeof restaurerGroupeLigne === 'function') restaurerGroupeLigne();
       } catch (e) { /* toujours hors ligne */ }
     }, 60000);
   }

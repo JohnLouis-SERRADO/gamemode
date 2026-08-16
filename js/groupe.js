@@ -9,10 +9,17 @@
 
 let minuterieLobby = null;
 let minuterieCombatDistant = null;
+let minuterieVeilleGroupe = null;
+
+// v20 : le groupe survit à un rechargement de page. Sans ça, le seul moyen
+// de rafraîchir un héros était de recharger — ce qui faisait perdre le
+// groupe et obligeait à en recréer un.
+const CLE_STOCKAGE_GROUPE = 'gamemode2.groupe';
 
 function arreterSondagesGroupe() {
   if (minuterieLobby) { clearInterval(minuterieLobby); minuterieLobby = null; }
   if (minuterieCombatDistant) { clearInterval(minuterieCombatDistant); minuterieCombatDistant = null; }
+  if (minuterieVeilleGroupe) { clearInterval(minuterieVeilleGroupe); minuterieVeilleGroupe = null; }
 }
 
 async function lireGroupe(idGroupe) {
@@ -25,19 +32,30 @@ async function lireGroupe(idGroupe) {
 }
 
 // Instantané du héros envoyé au groupe (stats effectives précalculées).
+//
+// v20 : cet instantané est REJOUÉ en continu (voir pousserSnapshotGroupe).
+// Les maximums sont recalculés ici plutôt que lus tels quels : équiper une
+// arme ou monter de niveau change maxHp/maxMp, et le salon doit le voir.
 function snapshotPourGroupe(p) {
+  const maxHp = maxHpDe(p);
+  const maxMp = maxMpDe(p);
   return {
     id: p.cloud.id,
     nom: p.nom,
     avatar: p.avatar,
     race: p.race || 'humain',
     classe: p.classe || 'aventurier',
+    // v20 : la spécialité voyage avec le héros — le passif de l'Invocateur
+    // (deux créatures au lieu d'une) dépend de sa sous-classe.
+    sousClasse: p.sousClasse || null,
+    voie: p.voie || null,
+    eveil: p.eveil && p.eveil.id ? { id: p.eveil.id } : null,
     niveau: p.niveau,
     statsEff: statsEffectives(p),
-    maxHp: p.maxHp,
-    maxMp: p.maxMp,
-    hp: p.hp,
-    mp: p.mp,
+    maxHp,
+    maxMp,
+    hp: Math.max(0, Math.min(maxHp, Math.round(p.hp))),
+    mp: Math.max(0, Math.min(maxMp, Math.round(p.mp))),
     competences: p.competences,
     rangs: p.rangs || {},
     bossVaincus: p.bossVaincus,
@@ -61,7 +79,11 @@ function creerJoueurDistant(m) {
     id: 'distant-' + m.id, bid: m.id,
     nom: m.nom, avatar: m.avatar, race: m.race || 'humain', niveau: m.niveau,
     classe: m.classe || 'aventurier',
-    stats: { for: m.statsEff.for, int: m.statsEff.int, dex: m.statsEff.dex, vit: m.statsEff.vit, cha: m.statsEff.cha || 0 },
+    sousClasse: m.sousClasse || null, voie: m.voie || null, eveil: m.eveil || null,
+    stats: {
+      for: m.statsEff.for, int: m.statsEff.int, dex: m.statsEff.dex,
+      esp: m.statsEff.esp || 0, vit: m.statsEff.vit, cha: m.statsEff.cha || 0,
+    },
     statsEff: m.statsEff,
     maxHp: m.maxHp, maxMp: m.maxMp, hp: m.hp, mp: m.mp,
     competences: m.competences || [],
@@ -71,6 +93,102 @@ function creerJoueurDistant(m) {
     explorations: {}, bossVaincus: m.bossVaincus || [], familiers: m.familiers || [],
     pointsEnAttente: 0, competencesEnAttente: 0, po: 0, xp: 0,
   };
+}
+
+// =====================================================================
+// v20 : le héros vit, le salon suit.
+//
+// Avant, l'instantané n'était envoyé qu'une fois — à la création ou à
+// l'arrivée. Passer à l'auberge, gagner un niveau, apprendre une
+// compétence ou changer d'équipement ne changeait rien pour les autres :
+// le chef lançait l'expédition avec des héros figés. On ne pouvait s'en
+// sortir qu'en rechargeant la page… ce qui faisait perdre le groupe.
+//
+// Désormais l'instantané est republié dès qu'il change, tant qu'on est
+// au salon. La signature évite de bombarder le serveur pour rien.
+// =====================================================================
+async function pousserSnapshotGroupe(force) {
+  const groupe = etat.groupeLigne;
+  const p = persoActif();
+  if (!groupe || !p || !p.cloud || !etat.enLigne) return false;
+  const snapshot = snapshotPourGroupe(p);
+  const signature = JSON.stringify(snapshot);
+  if (!force && signature === groupe.signatureSnapshot) return false;
+  const ok = await apiRequete('/rest/v1/rpc/groupe_maj_snapshot', {
+    methode: 'POST',
+    corps: {
+      p_id: p.cloud.id, p_token: p.cloud.token,
+      p_groupe: groupe.id, p_snapshot: snapshot,
+    },
+  }).catch(() => null);
+  // Un refus (expédition déjà lancée, ancien serveur) ne mémorise rien :
+  // le prochain battement réessaiera.
+  if (ok === true) groupe.signatureSnapshot = signature;
+  return ok === true;
+}
+
+// --- Mémoire du groupe (survit au rechargement de page) ---------------
+function memoriserGroupeLigne() {
+  try {
+    const groupe = etat.groupeLigne;
+    const p = persoActif();
+    if (groupe && p) {
+      localStorage.setItem(CLE_STOCKAGE_GROUPE, JSON.stringify({
+        id: groupe.id, code: groupe.code, heros: p.id,
+      }));
+    } else {
+      localStorage.removeItem(CLE_STOCKAGE_GROUPE);
+    }
+  } catch (e) { /* stockage indisponible : le groupe vit en mémoire */ }
+}
+
+function oublierGroupeLigne() {
+  arreterSondagesGroupe();
+  etat.groupeLigne = null;
+  memoriserGroupeLigne();
+}
+
+function estMembreDuGroupe(ligne, p) {
+  return !!(ligne && p && p.cloud
+    && (ligne.membres || []).some((m) => m.id === p.cloud.id));
+}
+
+// Au démarrage : si le héros était dans un groupe encore vivant, on le
+// retrouve. Recharger la page ne coûte donc plus le groupe.
+async function restaurerGroupeLigne() {
+  if (etat.groupeLigne || !etat.enLigne) return;
+  let memo = null;
+  try { memo = JSON.parse(localStorage.getItem(CLE_STOCKAGE_GROUPE) || 'null'); } catch (e) { memo = null; }
+  if (!memo || !memo.id) return;
+  const p = persoActif();
+  if (!p || !p.cloud || (memo.heros && memo.heros !== p.id)) return;
+  const ligne = await lireGroupe(memo.id);
+  if (!ligne || ligne.statut === 'clos' || !estMembreDuGroupe(ligne, p)) {
+    try { localStorage.removeItem(CLE_STOCKAGE_GROUPE); } catch (e) { /* rien à oublier */ }
+    return;
+  }
+  etat.groupeLigne = {
+    id: ligne.id, code: ligne.code, chef: ligne.chef_id === p.cloud.id,
+    zoneChoisie: ligne.zone_id || ZONES[0].id,
+    difficulteChoisie: ligne.difficulte || 'normal',
+    genreChoisi: ligne.genre || 'exploration',
+    seqTraite: 0, signatureLobby: '', signatureSnapshot: '',
+  };
+  memoriserGroupeLigne();
+  // Un chef qui recharge en pleine expédition emporte la simulation avec
+  // lui : le groupe resterait bloqué en « aventure », impossible à
+  // relancer. On le ramène au salon, tout le monde s'y retrouve.
+  if (ligne.statut === 'aventure' && etat.groupeLigne.chef) {
+    await apiRequete('/rest/v1/rpc/groupe_publier', {
+      methode: 'POST',
+      corps: {
+        p_id: p.cloud.id, p_token: p.cloud.token, p_groupe: ligne.id,
+        p_etat: null, p_seq_traite: Number.MAX_SAFE_INTEGER, p_statut: 'lobby',
+      },
+    }).catch(() => {});
+  }
+  afficherToast(`↩️ Votre groupe ${ligne.code} vous attend — Taverne › « Retrouver mon groupe ».`);
+  demarrerVeilleGroupe();
 }
 
 // =====================================================================
@@ -112,8 +230,9 @@ async function creerGroupeLigne() {
   etat.groupeLigne = {
     id: resultat.groupe_id, code: resultat.code, chef: true,
     zoneChoisie: 'plaines', difficulteChoisie: 'normal', genreChoisi: 'exploration',
-    seqTraite: 0, signatureLobby: '',
+    seqTraite: 0, signatureLobby: '', signatureSnapshot: '',
   };
+  memoriserGroupeLigne();
   ouvrirLobbyGroupe();
 }
 
@@ -128,15 +247,18 @@ async function rejoindreGroupeLigne(code) {
     afficherToast(resultat && resultat.erreur ? `❌ ${resultat.erreur}` : 'Impossible de rejoindre ce groupe.');
     return;
   }
-  etat.groupeLigne = { id: resultat.groupe_id, code: resultat.code, chef: false, seqTraite: 0, signatureLobby: '' };
+  etat.groupeLigne = {
+    id: resultat.groupe_id, code: resultat.code, chef: false,
+    seqTraite: 0, signatureLobby: '', signatureSnapshot: '',
+  };
+  memoriserGroupeLigne();
   ouvrirLobbyGroupe();
 }
 
 async function quitterGroupeLigne() {
   const p = persoActif();
   const groupe = etat.groupeLigne;
-  arreterSondagesGroupe();
-  etat.groupeLigne = null;
+  oublierGroupeLigne();
   if (groupe && p && p.cloud) {
     apiRequete('/rest/v1/rpc/groupe_quitter', {
       methode: 'POST',
@@ -157,16 +279,20 @@ function ouvrirLobbyGroupe() {
     const groupe = etat.groupeLigne;
     if (!groupe) { arreterSondagesGroupe(); return; }
     if (!el('ecran-groupe-ligne').classList.contains('actif')) {
-      // Le joueur a navigué ailleurs : on met le salon en pause
-      // (il peut revenir via la taverne).
-      arreterSondagesGroupe();
+      // Le joueur a navigué ailleurs (auberge, boutique, temple…) : le
+      // salon passe en veille — il continue de publier l'état du héros et
+      // de guetter le départ de l'expédition. v20 : plus besoin de rester
+      // planté devant l'écran du groupe pour aller se soigner.
+      demarrerVeilleGroupe();
       return;
     }
+    // On publie AVANT de lire : la liste affichée contient déjà nos
+    // propres PV/PM/niveau à jour.
+    await pousserSnapshotGroupe();
     const ligne = await lireGroupe(groupe.id);
     if (!ligne || ligne.statut === 'clos') {
       afficherToast('Le groupe a été dissous.');
-      arreterSondagesGroupe();
-      etat.groupeLigne = null;
+      oublierGroupeLigne();
       naviguer('taverne');
       return;
     }
@@ -181,11 +307,49 @@ function ouvrirLobbyGroupe() {
   minuterieLobby = setInterval(tick, 2000);
 }
 
+// =====================================================================
+// v20 : la veille de groupe — le groupe vit même quand on regarde
+// ailleurs. Le héros peut filer à l'auberge, à la boutique ou au temple :
+// son instantané continue de partir, et si le chef lance l'expédition,
+// son écran le rejoint tout seul.
+// =====================================================================
+function demarrerVeilleGroupe() {
+  arreterSondagesGroupe();
+  if (!etat.groupeLigne) return;
+  const tick = async () => {
+    const groupe = etat.groupeLigne;
+    if (!groupe) { arreterSondagesGroupe(); return; }
+    const p = persoActif();
+    const ligne = await lireGroupe(groupe.id);
+    if (!ligne || ligne.statut === 'clos') {
+      oublierGroupeLigne();
+      afficherToast('Le groupe a été dissous.');
+      return;
+    }
+    // Exclu par le chef, ou héros changé entre-temps : on oublie sans bruit.
+    if (!estMembreDuGroupe(ligne, p)) { oublierGroupeLigne(); return; }
+    if (ligne.statut === 'aventure' && !groupe.chef) {
+      // On ne détourne ni un combat en cours ni l'écran-titre : la place
+      // reste tenue, le chef patiente 60 s avant de mettre en garde.
+      if (!combatEnCours() && !el('ecran-titre').classList.contains('actif')) {
+        demarrerSuiviCombatDistant();
+      }
+      return;
+    }
+    if (ligne.statut === 'lobby') await pousserSnapshotGroupe();
+  };
+  tick();
+  minuterieVeilleGroupe = setInterval(tick, 3000);
+}
+
 function rendreLobbyGroupe(ligne) {
   const groupe = etat.groupeLigne;
   const p = persoActif();
-  // Ne re-rend que si quelque chose a changé (préserve les sélecteurs)
-  const signature = JSON.stringify([ligne.statut, ligne.membres.map((m) => m.nom + m.niveau)]);
+  // Ne re-rend que si quelque chose a changé (préserve les sélecteurs).
+  // v20 : PV, PM et compétences entrent dans la signature — sortir de
+  // l'auberge doit se VOIR sur l'écran de tout le monde.
+  const signature = JSON.stringify([ligne.statut, ligne.membres.map(
+    (m) => [m.nom, m.niveau, m.hp, m.maxHp, m.mp, m.maxMp, (m.competences || []).length])]);
   if (signature === groupe.signatureLobby) return;
   groupe.signatureLobby = signature;
 
@@ -209,10 +373,18 @@ function rendreLobbyGroupe(ligne) {
   ligne.membres.forEach((m) => {
     const chip = document.createElement('span');
     chip.className = 'chip';
-    chip.textContent = `${m.avatar || '⚔️'} ${m.nom} (niv. ${m.niveau})${m.id === ligne.chef_id ? ' 👑' : ''}`;
+    // La forme réelle de chacun, en direct : on voit son compagnon
+    // remonter ses PV à l'auberge sans quitter le salon.
+    chip.textContent = `${m.avatar || '⚔️'} ${m.nom} (niv. ${m.niveau})${m.id === ligne.chef_id ? ' 👑' : ''}`
+      + ` · ❤️ ${m.hp}/${m.maxHp} · 💙 ${m.mp}/${m.maxMp}`;
     chips.appendChild(chip);
   });
   panneauMembres.appendChild(chips);
+  const aideFraicheur = document.createElement('p');
+  aideFraicheur.className = 'aide';
+  aideFraicheur.textContent = '🔄 Chaque héros est publié en direct : auberge, niveaux, compétences et '
+    + 'équipement arrivent ici tout seuls — inutile de recharger la page.';
+  panneauMembres.appendChild(aideFraicheur);
   zone.appendChild(panneauMembres);
 
   if (groupe.chef) {
@@ -484,6 +656,9 @@ async function lancerExpeditionGroupe(ligne) {
   groupe.seqTraite = 0;
 
   // Le chef héberge le combat : son vrai héros + les instantanés distants.
+  // La lecture vient APRÈS groupe_lancer : le groupe n'est plus au salon,
+  // plus aucun instantané ne peut atterrir — ce qu'on lit est définitif,
+  // et c'est bien la dernière version publiée par chacun (auberge comprise).
   const membresFrais = (await lireGroupe(groupe.id)).membres;
   const equipe = membresFrais.map((m) => {
     if (m.id === p.cloud.id) { p.bid = p.cloud.id; return p; }
@@ -908,9 +1083,8 @@ function demarrerSuiviCombatDistant() {
     if (!groupe) { arreterSondagesGroupe(); return; }
     const ligne = await lireGroupe(groupe.id);
     if (!ligne || ligne.statut === 'clos') {
-      arreterSondagesGroupe();
       etat.combat = null;
-      etat.groupeLigne = null;
+      oublierGroupeLigne();
       afficherToast('Le groupe a été dissous.');
       naviguer('taverne');
       return;
