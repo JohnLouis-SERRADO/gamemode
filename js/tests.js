@@ -1929,6 +1929,18 @@ suite('Audit de partie', () => {
     aucun(fautes, 'histoires de carte mal formées');
   });
 
+  test('le nom d\'une carte se contracte correctement après « de »', () => {
+    egal(deLaCarte('Les Marches Grises'), 'des Marches Grises', 'article pluriel');
+    egal(deLaCarte('Le Trône du Premier Roi'), 'du Trône du Premier Roi', 'article masculin');
+    egal(deLaCarte('La Mer de Verre'), 'de la Mer de Verre', 'article féminin');
+    egal(deLaCarte('L’Ossuaire des Dieux'), 'de l’Ossuaire des Dieux', 'article élidé');
+    egal(deLaCarte('Pics Gelés'), 'de Pics Gelés', 'sans article');
+    // « de la Mer » et « de l’Ossuaire » sont corrects ; c'est l'article
+    // resté en capitale — « de Le », « de Les » — qu'on traque.
+    const laids = ZONES.map((z) => deLaCarte(z.nom)).filter((t) => /^de (Le|La|Les|L[’'])/.test(t));
+    aucun(laids, 'cartes dont le nom donne du « de Le » ou du « de Les »');
+  });
+
   test('un matériau offert par une histoire se récolte bien sur cette carte', () => {
     const hors = [];
     ZONES.forEach((z) => {

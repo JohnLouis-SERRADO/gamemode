@@ -118,7 +118,7 @@ Le jeu embarque sa propre page de tests, qui charge exactement les mêmes fichie
 npx serve .   # puis ouvrir /tests.html
 ```
 
-**192 tests** en 17 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, les cinq raretés d'Éveil tirables restent dans un écart de 10 %, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, et aucun service de la Tour ne vide un grimoire.
+**204 tests** en 18 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, les cinq raretés d'Éveil tirables restent dans un écart de 10 %, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, et aucun service de la Tour ne vide un grimoire.
 
 ## 🗂️ Structure du projet
 

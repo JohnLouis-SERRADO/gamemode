@@ -141,6 +141,20 @@ function zonePar(idZone) {
 // de secrets — et le dit.
 // recompense : { po?, xp?, soinPct?, materiau? (id de z.recolte) }
 // =====================================================================
+
+// « Histoire 1/5 de Le Trône du Premier Roi » : les cartes des Marches
+// et de la Couture portent presque toutes un article, et le « de » collé
+// devant donnait du « de Le » et du « de Les ». On contracte comme on
+// parle. Les noms sans article (Plaines de l'Aube, Pics Gelés) gardent
+// leur « de » tout simple.
+function deLaCarte(nom) {
+  if (/^Les\s+/i.test(nom)) return `des ${nom.replace(/^Les\s+/i, '')}`;
+  if (/^Le\s+/i.test(nom)) return `du ${nom.replace(/^Le\s+/i, '')}`;
+  if (/^La\s+/i.test(nom)) return `de la ${nom.replace(/^La\s+/i, '')}`;
+  if (/^L[’']/i.test(nom)) return `de l’${nom.replace(/^L[’']/i, '')}`;
+  return `de ${nom}`;
+}
+
 const HISTOIRES_ZONES = {
   plaines: [
     { titre: 'Le puits aux offrandes', texte: 'Un vieux puits croule sous les piécettes. Une inscription : « Prends si tu oses, donne si tu peux. » Vous osez.', recompense: { po: 15 } },

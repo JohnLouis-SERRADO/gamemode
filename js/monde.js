@@ -486,7 +486,7 @@ function evenementHistoire(z) {
   if (r.xp) lignes.push(`⭐ ${texteGainXp(equipe, r.xp)} pour chaque héros`);
   if (r.soinPct) lignes.push(`❤️ +${Math.round(r.soinPct * 100)} % de PV pour chaque héros`);
   if (r.materiau && OBJETS[r.materiau]) lignes.push(`${OBJETS[r.materiau].emoji} ${OBJETS[r.materiau].nom} ×1 pour chaque héros`);
-  lignes.push(`📜 Histoire ${vues.length}/${histoires.length} de ${z.nom} — chacune ne se vit qu'une fois.`);
+  lignes.push(`📜 Histoire ${vues.length}/${histoires.length} ${deLaCarte(z.nom)} — chacune ne se vit qu'une fois.`);
   afficherButin({
     titre: `📜 ${histoire.titre}`,
     texte: histoire.texte,
