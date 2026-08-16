@@ -2605,10 +2605,16 @@ function rendreSac() {
     rangeeFiltres.appendChild(chip);
   });
   // v17 : filtre par rareté, comme dans les boutiques.
+  // v21 : et comme dans les boutiques, seules les raretés RÉELLEMENT
+  // présentes dans le sac sont proposées — plus celle qui est active, pour
+  // qu'on puisse toujours la désélectionner. Filtrer sur « Divin » quand on
+  // n'en possède aucun ne renvoyait qu'un sac vide et un doute.
   const sep = document.createElement('span');
   sep.className = 'separateur-chips';
   rangeeFiltres.appendChild(sep);
-  [['tous', '✨ Toutes raretés'], ...Object.keys(RARETES).map((r) => [r, RARETES[r].nom])].forEach(([id, nom]) => {
+  const raretesDuSac = new Set(p.inventaire.map((e) => OBJETS[e.id]).filter(Boolean).map((o) => rareteDe(o)));
+  if (sousFiltreSacRarete !== 'tous') raretesDuSac.add(sousFiltreSacRarete);
+  [['tous', '✨ Toutes raretés'], ...Object.keys(RARETES).filter((r) => raretesDuSac.has(r)).map((r) => [r, RARETES[r].nom])].forEach(([id, nom]) => {
     const chip = document.createElement('button');
     chip.className = `chip chip-filtre chip-rar-${id}` + (sousFiltreSacRarete === id ? ' active' : '');
     chip.textContent = nom;

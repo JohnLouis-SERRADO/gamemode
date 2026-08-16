@@ -1218,22 +1218,28 @@ button:focus-visible,
 
 .heros-vitaux { color: var(--texte-doux); font-size: 0.9rem; margin-top: 6px; }
 
+/* v21 : les huit emplacements tiennent sur quatre rangées de deux, même
+   sur un téléphone. Empilés en pleine largeur, ils occupaient mille
+   pixels pour dire huit fois « vide ». */
 .grille-equipement {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
 }
 
 .case-equipement {
   background: var(--panneau-clair);
   border: 1px dashed var(--bordure);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-height: 96px;
+  gap: 3px;
+  min-height: 62px;
 }
+
+/* Un emplacement rempli a plus à dire : il reprend sa place. */
+.case-equipement.occupee { min-height: 96px; }
 
 .case-equipement.occupee { border-style: solid; border-color: var(--accent); }
 
@@ -1246,7 +1252,7 @@ button:focus-visible,
 
 .case-objet { font-size: 0.92rem; }
 .case-bonus { color: var(--ok); font-size: 0.8rem; }
-.case-vide { color: var(--texte-doux); font-style: italic; padding: 8px 0; }
+.case-vide { color: var(--texte-doux); font-style: italic; padding: 2px 0; font-size: 0.88rem; }
 .case-equipement button { margin-top: auto; align-self: flex-start; }
 
 .ligne-code {
@@ -2135,7 +2141,9 @@ button:focus-visible,
   .grille-zones { grid-template-columns: 1fr; }
   .barre-actions { grid-template-columns: 1fr; }
   .grille-competences { grid-template-columns: 1fr; }
-  .grille-equipement { grid-template-columns: 1fr; }
+  /* Les emplacements d'équipement restent à deux de front : ils sont
+     courts, et huit lignes de « vide » n'apprennent rien à personne. */
+  .grille-equipement { grid-template-columns: 1fr 1fr; }
 
   /* topbar très étroite : tout doit tenir sans chevauchement */
   #topbar { padding: 6px 8px; gap: 4px; }
