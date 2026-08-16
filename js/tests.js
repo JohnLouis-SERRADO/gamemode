@@ -2179,6 +2179,59 @@ suite('Régressions v22', () => {
     aucun(fautives, 'histoires qui promettent un matériau étranger à leur carte');
   });
 
+  // Les sept classements de la taverne lisent des champs APLATIS par le
+  // serveur (dstats, dpo, dtour, dtb, dhf), pas le héros local. Le jour où
+  // l'un d'eux manque, le classement affiche « NaN » ou « undefined » à
+  // tous les joueurs sans que rien ne plante. Ce test le voit venir.
+  test('les sept classements de la taverne tiennent debout, même sur une ligne creuse', () => {
+    const complet = {
+      id: 'x1', nom: 'Complet', avatar: '🧝', niveau: 80, xp: 299203,
+      degats_boss_total: 4200, dpo: 12345, dtour: 60,
+      dtb: { normal: 40, heroique: 10, cauchemar: 0 }, dhf: ['a', 'b', 'c'],
+      dstats: { for: 40, int: 10, dex: 12, vit: 30, cha: 8, esp: 9 },
+      dequip: {}, dfam: null,
+    };
+    // La ligne creuse : un héros tout juste créé, dont le serveur n'a
+    // encore rien à dire. Aucun classement ne doit s'y casser les dents.
+    const creux = { id: 'x2', nom: 'Creux', avatar: '🧝', niveau: 1 };
+    const fautifs = [];
+    CLASSEMENTS_TAVERNE.forEach((c) => {
+      [complet, creux].forEach((j) => {
+        let valeur;
+        try { valeur = c.valeur(j); } catch (e) {
+          fautifs.push(`${c.id}/${j.nom} : valeur() lève « ${e.message} »`);
+          return;
+        }
+        if (!Number.isFinite(valeur)) {
+          fautifs.push(`${c.id}/${j.nom} : valeur non numérique (${valeur})`);
+          return;
+        }
+        let texte;
+        try { texte = c.texte(valeur, j); } catch (e) {
+          fautifs.push(`${c.id}/${j.nom} : texte() lève « ${e.message} »`);
+          return;
+        }
+        if (/NaN|undefined|null|Infinity/.test(texte)) {
+          fautifs.push(`${c.id}/${j.nom} : « ${texte} »`);
+        }
+      });
+    });
+    verifier(CLASSEMENTS_TAVERNE.length === 7, `sept classements attendus, ${CLASSEMENTS_TAVERNE.length} trouvés`);
+    aucun(fautifs, 'classements qui affichent n\'importe quoi');
+  });
+
+  test('le chat et les noms de héros ne peuvent pas injecter de HTML', () => {
+    // La taverne est partagée : un nom ou un message piégé s'afficherait
+    // chez TOUS les joueurs. Éprouvé à deux navigateurs — voici le garde-fou.
+    const piege = '<img src=x onerror="pwn()"><b>gras</b>';
+    const echappe = echapper(piege);
+    const fautifs = [];
+    if (/<img/i.test(echappe)) fautifs.push('la balise <img> survit à l\'échappement');
+    if (/<b>/i.test(echappe)) fautifs.push('la balise <b> survit à l\'échappement');
+    if (!/&lt;/.test(echappe)) fautifs.push('les chevrons ne sont pas échappés');
+    aucun(fautifs, 'défauts d\'échappement');
+  });
+
   test('la récolte de Sceaux commence bien au niveau annoncé par les Tours', () => {
     // Les deux Tours annoncent désormais le seuil. Ce test lie l'affiche à
     // la règle : si recolterSceaux change d'avis, le texte devient faux et

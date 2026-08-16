@@ -315,8 +315,17 @@ function puissancePublique(j) {
   });
 }
 
+// v22 — Ces sept classements ne lisent PAS le héros local : ils lisent la
+// ligne renvoyée par le serveur, dont les colonnes peuvent être vides. Un
+// héros vient d'être créé en ligne, sa première sauvegarde n'est pas encore
+// passée (ou a échoué sur une coupure réseau) : sa ligne existe, mais sans
+// XP — `creer_personnage` n'envoie ni niveau ni XP, c'est la sauvegarde
+// suivante qui les pose. Le classement Niveau défendait sa VALEUR
+// (`j.xp || 0`) et oubliait son TEXTE : la taverne affichait alors
+// « niv. 1 (NaN XP) » à tous les joueurs. Chaque texte se défend
+// désormais comme sa valeur.
 const CLASSEMENTS_TAVERNE = [
-  { id: 'niveau', nom: '🏆 Niveau', valeur: (j) => (j.niveau || 0) * 1e9 + (j.xp || 0), texte: (v, j) => `niv. ${j.niveau} (${formatNombre(j.xp)} XP)` },
+  { id: 'niveau', nom: '🏆 Niveau', valeur: (j) => (j.niveau || 0) * 1e9 + (j.xp || 0), texte: (v, j) => `niv. ${j.niveau || 1} (${formatNombre(j.xp || 0)} XP)` },
   { id: 'puissance', nom: '⚡ Puissance', valeur: (j) => puissancePublique(j), texte: (v) => `⚡ ${formatNombre(v)} de puissance` },
   { id: 'fortune', nom: '💰 Fortune', valeur: (j) => j.dpo || 0, texte: (v) => `${formatNombre(v)} po en bourse` },
   { id: 'bossmonde', nom: '🌍 Boss du monde', valeur: (j) => j.degats_boss_total || 0, texte: (v) => `${formatNombre(v)} dégâts au boss du monde` },

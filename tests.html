@@ -107,9 +107,12 @@
   <!-- La ville : ses écrans ne se dessinent pas ici, mais ses règles
        (prix des grimoires, raretés en rayon) se vérifient. -->
   <script src="js/ville.js"></script>
-  <!-- Le multijoueur : groupe.js ne contient que des déclarations, il se
-       charge sans rien démarrer. Ce qui s'y vérifie ici, c'est la fidélité
-       d'un héros transmis à l'écran d'un autre joueur. -->
+  <!-- Le multijoueur : reseau.js et groupe.js ne contiennent que des
+       déclarations, ils se chargent sans rien démarrer (le réseau ne part
+       qu'à l'initialisation du jeu). Ce qui s'y vérifie ici : la fidélité
+       d'un héros transmis à l'écran d'un autre joueur, et les classements
+       de la taverne, qui lisent des champs venus du serveur. -->
+  <script src="js/reseau.js"></script>
   <script src="js/groupe.js"></script>
   <script src="js/tests.js"></script>
 </body>
