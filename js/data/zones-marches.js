@@ -467,3 +467,91 @@ SETS_CRAFT.push(
 // pièces : il tourne à la fin de objets-craft.js, avant ce fichier.
 construireSeriesCraft(SETS_CRAFT.slice(-5));
 RECETTES.sort((a, b) => a.niveau - b.niveau);
+
+// =====================================================================
+// v22 — LES HISTOIRES DES MARCHES ET DE LA COUTURE.
+//
+// Les seize cartes des actes I et II avaient chacune leurs cinq
+// histoires d'exploration ; les dix cartes des actes III et IV n'en
+// avaient aucune. La moitié haute du monde était muette : on y explorait
+// cent fois sans jamais rien apprendre, alors que le fil conducteur s'y
+// joue tout entier. Cinquante histoires y remédient — et elles avancent
+// le fil plutôt que de le décorer.
+//
+// Les récompenses suivent l'échelle des cartes précédentes (le Néant
+// Scintillant, niveau 46, donnait 110-170 po et 120-220 XP) : elles
+// montent avec le niveau de la carte, sans jamais dépasser ce qu'un
+// combat de la même zone rapporte.
+// =====================================================================
+Object.assign(HISTOIRES_ZONES, {
+  'marches-grises': [
+    { titre: 'La borne qui recule', texte: 'Une borne gravée « Fin du royaume ». Vous la dépassez. Le lendemain, elle est de nouveau devant vous, avec la même inscription et un peu plus de cendre.', recompense: { po: 240 } },
+    { titre: 'La colonne silencieuse', texte: 'Une file de voyageurs marche vers l’ouest. Aucun ne sait pourquoi, aucun ne s’arrête. L’un d’eux vous tend sa bourse : « Là où je vais, ça ne servira pas. »', recompense: { po: 150, xp: 180 } },
+    { titre: 'Celui qui compte à voix basse', texte: 'Très loin, une voix récite des nombres, dans l’ordre, sans jamais se tromper. Elle en est à quatre millions. Vous préférez ne pas savoir ce qu’elle compte.', recompense: { xp: 300 } },
+    { titre: 'Le foyer sans feu', texte: 'Un âtre tiède au milieu de nulle part, plein d’une cendre qui n’a jamais brûlé. Vous en remplissez une fiole ; l’âtre reste aussi plein qu’avant.', recompense: { materiau: 'cendre-grise' } },
+    { titre: 'La carte honnête', texte: 'Un cartographe vous montre son œuvre : une feuille entièrement blanche. « Elle est juste, dit-il. C’est le pays qui bouge. » Il vous offre le gîte.', recompense: { soinPct: 0.7 } },
+  ],
+  'chant-ruines': [
+    { titre: 'Le concert de sept heures', texte: 'Chaque soir, la cité rejoue un concert qu’elle n’a jamais donné. Le public manque, la musique s’en passe. On laisse toujours un siège au bord de l’allée.', recompense: { xp: 320 } },
+    { titre: 'La note qui manque', texte: 'Tout le morceau est là, sauf une note. Vous la chantez sans y penser. Les ruines se taisent une seconde — puis reprennent, soulagées.', recompense: { po: 160, xp: 200 } },
+    { titre: 'Le plan d’une autre ville', texte: 'Sous le lierre, un plan gravé : mêmes rues, mêmes places, mais un fleuve qui n’a jamais coulé ici. La légende indique « Valciel — sixième ».', recompense: { materiau: 'echo-fossilise' } },
+    { titre: 'La veuve qui applaudit', texte: 'Une silhouette applaudit seule, à chaque fin de morceau, depuis très longtemps. Elle vous cède sa place et sa recette du soir.', recompense: { po: 260 } },
+    { titre: 'L’acoustique parfaite', texte: 'Au centre de la nef effondrée, un point où l’on s’entend penser. Une heure y vaut une nuit de sommeil, et personne ne sait pourquoi.', recompense: { soinPct: 0.72 } },
+  ],
+  'mer-de-verre': [
+    { titre: 'La ville sous vos pieds', texte: 'À travers le verre, une cité intacte, éclairée. Quelqu’un y lève la tête et vous fait signe. Vous ne faites pas signe en retour.', recompense: { xp: 400 } },
+    { titre: 'La vague de trop', texte: 'Une vague arrêtée plus haut que les autres, comme prise en faute. À son sommet, une cargaison que la mer n’a jamais eu le temps d’avaler.', recompense: { po: 380 } },
+    { titre: 'Le noyé courtois', texte: 'Un noyé debout vous cède le passage d’un pas de côté, avec une politesse d’un autre siècle. Il vous glisse un éclat de sa poche.', recompense: { materiau: 'verre-de-mer' } },
+    { titre: 'La marée d’encre', texte: 'Une nappe d’encre affleure et écrit toute seule, très lentement. Elle rédige la liste des choses que la mer a emportées. Votre nom n’y figure pas.', recompense: { materiau: 'encre-noyee' } },
+    { titre: 'Le phare à l’envers', texte: 'Un phare éclaire vers le fond plutôt que vers le large. Son gardien vous explique que c’est en bas qu’on se perd, désormais. Il vous héberge.', recompense: { po: 220, xp: 260 } },
+  ],
+  'jardins-renverses': [
+    { titre: 'Le jardinier patient', texte: 'Un jardinier taille une haie qui pousse vers le ciel. « Quand le monde sera remis à l’endroit, elle sera parfaite. » Il attend depuis quatre cents ans.', recompense: { po: 360 } },
+    { titre: 'La fleur qui vous suit', texte: 'Une corolle tournée vers le sol pivote pour vous garder en vue. Vous vous éloignez ; elle vous regarde encore. Vous emportez sa graine, par courtoisie.', recompense: { materiau: 'graine-renversee' } },
+    { titre: 'Le verger d’en bas', texte: 'Les fruits mûrissent sous la terre et il faut creuser pour la cueillette. Ils sont excellents, et ils réparent ce qui fait mal.', recompense: { soinPct: 0.75 } },
+    { titre: 'L’allée qui compte les pas', texte: 'Une allée gravée de chiffres : le nombre exact de fois où chacun l’a parcourue. En face de votre nom, un « 1 » se grave pendant que vous lisez.', recompense: { xp: 420 } },
+    { titre: 'La serre du dernier printemps', texte: 'Sous verre, un carré de jardin poussant à l’endroit — le seul. Les jardiniers y entrent tête nue, et n’en parlent qu’à voix basse.', recompense: { po: 230, xp: 280 } },
+  ],
+  'ossuaire-dieux': [
+    { titre: 'L’atelier des dieux', texte: 'Les ossements sont rangés par taille, étiquetés, numérotés. Ce n’est pas un charnier : c’est un magasin de pièces détachées, et l’inventaire est à jour.', recompense: { xp: 620 } },
+    { titre: 'La côte qui respire', texte: 'Une côte grande comme un pont se soulève, très lentement, une fois par heure. Ce qui l’anime n’a plus de poumons depuis longtemps.', recompense: { materiau: 'os-divin' } },
+    { titre: 'Le prieur sans dieu', texte: 'Un prieur récite un office pour une divinité dont il ne reste que le fémur. Il accepte votre écoute comme on accepte une aumône, et vous paie en retour.', recompense: { po: 520 } },
+    { titre: 'Les mêmes points', texte: 'Sur chaque os, la même couture qu’aux fêlures des Terres lointaines — juste plus grande. La même main, la même hâte. Vous en gardez un fil.', recompense: { materiau: 'fil-de-suture' } },
+    { titre: 'Le reliquaire hospitalier', texte: 'Un reliquaire marcheur s’ouvre devant vous et vous offre l’abri de sa cage thoracique pour la nuit. On y dort étonnamment bien.', recompense: { soinPct: 0.78 } },
+  ],
+  'bibliotheque-noyee': [
+    { titre: 'Le catalogue complet', texte: 'Sept entrées, sept versions du monde, chacune avec sa date de fin. Celle de Valciel est renseignée. Elle est proche. L’encre en est encore fraîche.', recompense: { xp: 680 } },
+    { titre: 'Le copiste consciencieux', texte: 'Un copiste recopie sous l’eau depuis des siècles, sans une rature. Il vous confie une page en double : « Deux exemplaires, c’est de l’imprudence. »', recompense: { materiau: 'encre-noyee' } },
+    { titre: 'Le rayon qui mord', texte: 'Un rayonnage claque comme une mâchoire au passage. Il recrache ce qu’il n’aime pas : une bourse, un peigne, et un os qui n’est pas humain.', recompense: { po: 560 } },
+    { titre: 'L’index vous connaît', texte: 'Vous cherchez votre nom dans l’index. Il y est. Le renvoi indique un volume qui n’a pas encore été écrit.', recompense: { po: 300, xp: 380 } },
+    { titre: 'La salle au sec', texte: 'Une salle où l’eau s’arrête à la porte, sans raison. On y respire, on y sèche, on y guérit. Les livres y sont vierges — tous.', recompense: { soinPct: 0.8 } },
+  ],
+  'rempart-crepuscule': [
+    { titre: 'La relève qui ne vient pas', texte: 'La garnison monte la garde depuis la première reconstruction. Aucun ordre n’est arrivé depuis. Ils n’en attendent plus : ils savent ce qu’il y a en face.', recompense: { xp: 900 } },
+    { titre: 'Le soleil coincé', texte: 'Le soleil tombe sans jamais se coucher. Les sentinelles règlent leur service sur autre chose, et refusent de dire sur quoi.', recompense: { po: 780 } },
+    { titre: 'La lanterne qu’on se passe', texte: 'Une lanterne circule de main en main depuis si longtemps qu’aucun porteur n’a connu le précédent. On vous la confie une heure. Sa braise est à vous.', recompense: { materiau: 'braise-crepusculaire' } },
+    { titre: 'La brèche polie', texte: 'Une brèche ambulante s’écarte pour vous laisser passer, puis reprend sa place dans le mur. Le capitaine hausse les épaules : « Elle fait son travail. »', recompense: { po: 420, xp: 520 } },
+    { titre: 'Le vin de garnison', texte: 'Une réserve tenue pour le jour où les ordres arriveraient. On en ouvre une bouteille pour vous. Elle remet debout n’importe qui.', recompense: { soinPct: 0.82 } },
+  ],
+  'terres-recousues': [
+    { titre: 'Le point qui lâche', texte: 'Une couture cède devant vous : une plaine se décolle d’une falaise, proprement, comme un ourlet. Par la fente, on aperçoit un ciel qui n’est pas le nôtre.', recompense: { xp: 950 } },
+    { titre: 'Le fleuve qui s’arrête', texte: 'Un fleuve butte contre un désert et s’interrompt net, à la verticale. Les poissons font demi-tour sans étonnement, depuis des générations.', recompense: { po: 820 } },
+    { titre: 'La bobine abandonnée', texte: 'Une bobine de fil grande comme une roue de charrette, laissée en plein champ. Il en reste peu. Quelqu’un a cousu jusqu’au bout de son fil.', recompense: { materiau: 'fil-de-suture' } },
+    { titre: 'Le paysage en double', texte: 'La même colline, deux fois, côte à côte, au point près. Sur l’une pousse un arbre ; sur l’autre, la place où il devrait être.', recompense: { materiau: 'graine-renversee' } },
+    { titre: 'La maison recousue', texte: 'Une ferme faite de trois maisons différentes, assemblées sans façon. La famille qui l’habite ne s’en est jamais aperçue et vous offre le couvert.', recompense: { po: 450, xp: 560 } },
+  ],
+  'couture-monde': [
+    { titre: 'Le compte à rebours', texte: 'La suture maîtresse cède, point par point, à intervalles réguliers. Ce n’est pas une menace, c’est un calendrier — et il a commencé avant votre naissance.', recompense: { xp: 1400 } },
+    { titre: 'Les six d’avant', texte: 'Sous la couture, six épaisseurs de monde, empilées comme des draps. La cinquième porte encore des lumières allumées.', recompense: { po: 1150 } },
+    { titre: 'L’aiguille laissée là', texte: 'Une aiguille plantée dans la couture, à mi-ouvrage, comme si l’on avait été interrompu. Elle est tiède. Vous la prenez.', recompense: { materiau: 'aiguille-premiere' } },
+    { titre: 'La mémoire du monde ancien', texte: 'Une créature vous récite votre enfance sans se tromper d’un mot — puis celle de quelqu’un d’autre, dans un monde qui n’existe plus.', recompense: { po: 620, xp: 780 } },
+    { titre: 'Le repos du couturier', texte: 'Un fauteuil élimé, face à l’ouvrage. On s’y assoit ; on y comprend la fatigue de celui qui a recousu le monde six fois. On s’y remet aussi.', recompense: { soinPct: 0.85 } },
+  ],
+  'trone-premier-roi': [
+    { titre: 'La salle d’avant', texte: 'Une salle du trône bâtie avant Valciel, dans un style qu’aucune de nos écoles n’enseigne. La poussière y est plus vieille que le monde qu’elle recouvre.', recompense: { xp: 1500 } },
+    { titre: 'Le conseiller de la première heure', texte: 'Il conseille le Roi depuis la première reconstruction. Interrogé sur la septième, il répond : « On ne m’a jamais demandé mon avis. À vous non plus. »', recompense: { po: 640, xp: 820 } },
+    { titre: 'Les six couronnes', texte: 'Six couronnes alignées, une par monde recousu. La septième est en cours de fabrication. Un éclat en est tombé, et personne ne l’a ramassé.', recompense: { materiau: 'eclat-de-couronne' } },
+    { titre: 'Le héraut sans voix', texte: 'Un héraut annonce votre arrivée sans émettre un son. Toute la cour se lève quand même. On vous traite en invité, ce qui est pire qu’une menace.', recompense: { po: 1250 } },
+    { titre: 'La question jamais posée', texte: 'Gravée derrière le trône, dans une langue morte : « Fallait-il continuer ? » Personne n’a jamais répondu. La lire fait un bien étrange.', recompense: { soinPct: 0.88 } },
+  ],
+});

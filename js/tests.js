@@ -2097,6 +2097,105 @@ suite('Régressions v19.1', () => {
 });
 
 // =====================================================================
+// Régressions v22 — relevées en jouant, chiffres à l'appui
+// =====================================================================
+suite('Régressions v22', () => {
+  // Le défaut : « Équiper au mieux » classait les pièces sur le seul
+  // couple (niveau, rareté). À niveau et rareté égaux la première venue
+  // gagnait — d'où un Guerrier en robe de tissu, et un héros qui
+  // s'affaiblissait en montant de niveau.
+  test('« Équiper au mieux » ne pose que des pièces autorisées', () => {
+    const fautifs = [];
+    Object.keys(CLASSES_BASE).forEach((classe) => {
+      const p = herosTest({ classe });
+      adminFixerNiveau(p, 60);
+      adminEquiperAuMieux(p);
+      Object.entries(p.equipement).forEach(([slot, id]) => {
+        const objet = id && OBJETS[id];
+        if (objet && !peutPorter(p, objet)) fautifs.push(`${classe}/${slot} : ${id}`);
+      });
+    });
+    aucun(fautifs, 'pièces équipées que la classe n\'a pas le droit de porter');
+  });
+
+  test('« Équiper au mieux » sert la caractéristique de métier', () => {
+    const fautifs = [];
+    Object.entries(CLASSES_BASE).forEach(([classe, base]) => {
+      const p = herosTest({ classe });
+      adminFixerNiveau(p, 60);
+      adminEquiperAuMieux(p);
+      const arme = OBJETS[p.equipement.arme];
+      // L'arme posée doit apporter la caractéristique qui fait la classe :
+      // une lame +Force pour un Guerrier, un focus +Intelligence pour un
+      // Arcaniste — jamais l'inverse.
+      if (!arme || !arme.bonus || !arme.bonus[base.stat]) {
+        fautifs.push(`${classe} : arme sans ${base.stat} (${p.equipement.arme})`);
+      }
+    });
+    aucun(fautifs, 'armes qui ne servent pas la classe');
+  });
+
+  test('monter de niveau ne rend jamais plus faible', () => {
+    // Le symptôme exact : au niveau 46 puis 50, « au mieux » choisissait
+    // une pièce signature faiblarde et le héros perdait la moitié de sa
+    // Force et un quart de ses PV en gagnant un niveau.
+    const reculs = [];
+    let precedent = null;
+    for (let n = 40; n <= 60; n++) {
+      const p = herosTest();
+      adminFixerNiveau(p, n);
+      adminEquiperAuMieux(p);
+      const s = statsEffectives(p);
+      const courant = { niveau: n, for: s.for, pv: p.maxHp };
+      if (precedent && (courant.for < precedent.for || courant.pv < precedent.pv)) {
+        reculs.push(`niv ${precedent.niveau}→${n} : Force ${precedent.for}→${courant.for}, PV ${precedent.pv}→${courant.pv}`);
+      }
+      precedent = courant;
+    }
+    aucun(reculs, 'niveaux où le héros recule');
+  });
+
+  // Le second défaut : la moitié haute du monde n'a aucune histoire
+  // d'exploration. Ce test ne se contente pas de compter les tables — il
+  // vérifie que chaque zone jouable a bien de quoi raconter.
+  test('chaque zone du monde a ses histoires d\'exploration', () => {
+    const muettes = ZONES
+      .filter((z) => !(HISTOIRES_ZONES[z.id] || []).length)
+      .map((z) => `${z.nom} (niv. ${z.niveauMin})`);
+    aucun(muettes, 'zones sans la moindre histoire d\'exploration');
+  });
+
+  test('une histoire ne promet que des matériaux de sa propre carte', () => {
+    const fautives = [];
+    ZONES.forEach((z) => {
+      const recoltables = (z.recolte || []).map((r) => r.id);
+      (HISTOIRES_ZONES[z.id] || []).forEach((h) => {
+        const mat = (h.recompense || {}).materiau;
+        if (!mat) return;
+        if (!OBJETS[mat]) fautives.push(`${z.id}/${h.titre} : ${mat} inconnu`);
+        else if (!recoltables.includes(mat)) fautives.push(`${z.id}/${h.titre} : ${mat} ne se récolte pas ici`);
+      });
+    });
+    aucun(fautives, 'histoires qui promettent un matériau étranger à leur carte');
+  });
+
+  test('les histoires ne rapportent jamais plus qu\'un combat de leur carte', () => {
+    // Garde-fou d'équilibrage : une histoire est une respiration, pas une
+    // source d'or. Elle reste sous ce que le boss de la carte rapporte.
+    const abus = [];
+    ZONES.forEach((z) => {
+      const boss = MONSTRES[z.boss];
+      (HISTOIRES_ZONES[z.id] || []).forEach((h) => {
+        const r = h.recompense || {};
+        if (r.po && r.po > boss.po[1]) abus.push(`${z.id}/${h.titre} : ${r.po} po > ${boss.po[1]}`);
+        if (r.xp && r.xp > boss.xp) abus.push(`${z.id}/${h.titre} : ${r.xp} XP > ${boss.xp}`);
+      });
+    });
+    aucun(abus, 'histoires plus rentables que le boss de leur carte');
+  });
+});
+
+// =====================================================================
 // Exécution et rapport
 // =====================================================================
 function lancerTests() {

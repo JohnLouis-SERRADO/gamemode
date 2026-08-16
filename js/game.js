@@ -1677,12 +1677,31 @@ function adminFixerNiveau(p, n) {
 // Équipe le héros avec ce que le catalogue offre de mieux à son niveau.
 // Les pièces remplacées retournent au sac, et les deux accessoires sont
 // DISTINCTS (deux fois le même gonflerait artificiellement les panoplies).
+//
+// v22 — « au mieux » se mesurait sur le niveau et la rareté seuls. Deux
+// pièces de même niveau et de même rareté étaient donc réputées égales,
+// et c'est la première rencontrée qui l'emportait : un Guerrier finissait
+// habillé de tissu, +Intelligence de la tête aux pieds, sans même avoir
+// le DROIT de le porter — et un héros passé du niveau 45 au niveau 46 en
+// ressortait plus faible qu'avant. On applique maintenant la règle du jeu
+// (`peutPorter`) et on classe sur ce que la pièce apporte VRAIMENT au
+// métier de la classe.
 function adminEquiperAuMieux(p) {
-  const poids = (o) => (o.niveau || 1) * (MULT_RARETE_CRAFT[rareteDe(o)] || 1);
+  const principale = (CLASSES_BASE[p.classe] || {}).stat || 'for';
+  const poids = (o) => {
+    const b = o.bonus || {};
+    // La caractéristique de métier pèse le plus lourd ; la survie ensuite ;
+    // les sous-caractéristiques départagent les ex æquo.
+    return (b[principale] || 0) * 3
+      + (b.vit || 0) * 1.5 + (b.pvMax || 0) * 0.05
+      + ((b.crit || 0) + (b.direct || 0) + (b.deter || 0)
+        + (b.tenacite || 0) + (b.celerite || 0) + (b.piete || 0)) * 0.5;
+  };
   const parSlot = {};
   const accessoires = [];
   Object.entries(OBJETS).forEach(([id, o]) => {
     if (o.type !== 'equipement' || (o.niveau || 1) > p.niveau) return;
+    if (!peutPorter(p, o)) return;   // on n'équipe jamais ce qui est interdit
     if (o.slot === 'accessoire') { accessoires.push(id); return; }
     const meilleur = parSlot[o.slot];
     if (!meilleur || poids(o) > poids(OBJETS[meilleur])) parSlot[o.slot] = id;
