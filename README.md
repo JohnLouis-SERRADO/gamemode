@@ -102,7 +102,8 @@ Le coût suit la gravité du changement, et **aucun service ne retire quoi que c
 - **Tours sans fin** : la Tour Sans Fin et la Tour des Boss (16 boss, Normal/Héroïque/Cauchemar).
 - **Taverne** : chat, sept classements, boss du monde à barre de vie partagée, comptoir d'échange.
 - **37 hauts faits**, 6 races à passifs, 13 familiers à bonus.
-- **Un bac à sable admin** 🛠️ : taper `admin-valciel` dans « Reprendre un héros » ouvre une console rangée en 9 sections. Local par défaut.
+- **Un bac à sable admin** 🛠️ : **cliquer sur le portrait du héros**, en haut à gauche, ouvre un verrou — le code donne accès à une console rangée en 9 sections, qui règle à la main le niveau (à la hausse comme à la baisse), les points de caractéristiques et de maîtrise, l'or, les Sceaux, les objets, les compétences, les métiers et les donjons. Le statut reste acquis au héros : le portrait mène ensuite droit à la console, et la « Zone rouge » permet d'y renoncer. L'autre porte existe toujours : taper `admin-valciel` dans « Reprendre un héros » crée un héros admin de zéro, local par défaut.
+  Le verrou est un garde-fou de confort, pas une sécurité : tout le jeu tourne dans le navigateur du joueur.
 
 ## 🌍 Multijoueur : comment ça marche
 

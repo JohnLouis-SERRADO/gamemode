@@ -2359,6 +2359,74 @@ suite('Graphe des donjons', () => {
   });
 });
 
+suite('Accès admin par le portrait', () => {
+  test('seul le code exact ouvre la porte', () => {
+    verifier(codeAdminValide('Silka2026'), 'le code exact doit passer');
+    verifier(codeAdminValide('  Silka2026  '),
+      'les espaces collés par un clavier mobile ne doivent pas bloquer');
+  });
+
+  test('un code approchant reste refusé', () => {
+    ['silka2026', 'SILKA2026', 'Silka202', 'Silka20266', 'admin-valciel', '', ' ']
+      .forEach((essai) => {
+        verifier(!codeAdminValide(essai), `« ${essai} » ne devrait pas ouvrir la console`);
+      });
+  });
+
+  test('une saisie qui n\'est pas du texte ne fait pas planter le verrou', () => {
+    [null, undefined, 0, {}, []].forEach((essai) => {
+      verifier(!codeAdminValide(essai), 'une valeur non-texte doit être refusée sans erreur');
+    });
+  });
+
+  test('un héros ordinaire n\'est pas admin tant qu\'on ne lui donne rien', () => {
+    verifier(!herosTest().admin, 'la console ne doit pas être ouverte par défaut');
+  });
+
+  test('monter puis redescendre ne double pas les points', () => {
+    const p = herosTest();
+    const pointsDepart = p.pointsEnAttente;
+    const maitriseDepart = p.maitrise || 0;
+    adminFixerNiveau(p, 30);
+    adminFixerNiveau(p, p.niveau - 10);
+    adminFixerNiveau(p, 30);
+    egal(p.niveau, 30, 'niveau après l\'aller-retour');
+    egal(p.pointsEnAttente, pointsDepart + pointsCumules(30) - pointsCumules(1),
+      'points à répartir après un aller-retour 30 → 20 → 30');
+    egal(p.maitrise, maitriseDepart + pointsMaitrisePourNiveau(30) - pointsMaitrisePourNiveau(1),
+      'points de maîtrise après un aller-retour');
+  });
+
+  test('descendre ne reprend jamais plus que le crédit non dépensé', () => {
+    const p = herosTest();
+    adminFixerNiveau(p, 40);
+    p.pointsEnAttente = 0; // tout a été placé dans les caractéristiques
+    p.maitrise = 0;        // et tous les rangs achetés
+    adminFixerNiveau(p, 1);
+    egal(p.pointsEnAttente, 0, 'les points déjà placés ne repartent pas en négatif');
+    egal(p.maitrise, 0, 'la maîtrise déjà dépensée ne repart pas en négatif');
+    egal(p.niveau, 1, 'le niveau descend bien jusqu\'à 1');
+  });
+
+  test('le niveau reste borné entre 1 et le maximum', () => {
+    const p = herosTest();
+    adminFixerNiveau(p, -50);
+    egal(p.niveau, 1, 'plancher');
+    adminFixerNiveau(p, NIVEAU_MAX + 500);
+    egal(p.niveau, NIVEAU_MAX, 'plafond');
+  });
+
+  test('fixer un niveau remet le héros d\'aplomb', () => {
+    const p = herosTest();
+    p.hp = 1;
+    p.mp = 0;
+    adminFixerNiveau(p, 25);
+    egal(p.hp, p.maxHp, 'PV pleins');
+    egal(p.mp, p.maxMp, 'PM pleins');
+    egal(p.xp, seuilXp(25), 'l\'XP colle au palier du niveau');
+  });
+});
+
 // =====================================================================
 // Exécution et rapport
 // =====================================================================

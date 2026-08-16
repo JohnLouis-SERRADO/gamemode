@@ -684,6 +684,134 @@ function ouvrirDetailMonde() {
   document.body.appendChild(voile);
 }
 
+// =====================================================================
+// v20 — Le portrait du héros, porte d'entrée de la console d'admin.
+//
+// En haut à gauche du header, le portrait n'était qu'une image. Il devient
+// la seule entrée de la console : un clic, un code, et le héros gagne son
+// statut d'admin. Le statut est PERSISTANT — le portrait mène ensuite
+// directement à la console, et la « Zone rouge » de celle-ci permet d'y
+// renoncer pour de bon.
+//
+// Tant que le code n'a pas été donné, la porte ne dit même pas ce qu'il y a
+// derrière : le titre du bouton reste « Espace réservé ».
+//
+// À dire franchement, plutôt que de le laisser croire : ce verrou est un
+// garde-fou de confort, pas un coffre-fort. Tout le jeu tourne dans le
+// navigateur du joueur, et rien de ce qui s'exécute chez lui ne peut lui
+// être réellement caché.
+// =====================================================================
+const CODE_ADMIN = 'Silka2026';
+
+// Tolérant aux espaces que les claviers mobiles collent en fin de saisie,
+// strict sur la casse : « silka2026 » n'ouvre pas la porte.
+function codeAdminValide(saisie) {
+  return typeof saisie === 'string' && saisie.trim() === CODE_ADMIN;
+}
+
+// Le héros devient admin. Deux précautions sur sa liaison au monde :
+//  • déjà publié en ligne, il le reste — le couper le figerait pour
+//    toujours dans les classements (cf. herosLocalSeulement) ;
+//  • encore local, il le reste — la console ne relie personne au monde
+//    dans son dos. Le bouton « Relier au monde » de l'onglet ☁️ Compte
+//    demeure le seul à décider de ça.
+function accorderAdmin(p) {
+  p.admin = true;
+  if (p.cloud) p.relieAuMonde = true;
+  sauvegarder(p);
+  afficherToast(`🛠️ Console d’admin déverrouillée pour ${p.nom}.`);
+  rendreTopbar();
+}
+
+function allerConsoleAdmin() {
+  ongletHeros = 'admin';
+  rendreHeros();
+  montrerEcran('ecran-heros');
+}
+
+function ouvrirAccesAdmin() {
+  const p = persoActif();
+  if (!p) return;
+  // Mêmes garde-fous que la barre de navigation : on ne quitte pas un
+  // combat ni une fenêtre bloquante par la petite porte.
+  if (combatEnCours() || modaleBloquanteOuverte()) return;
+  if (p.admin) { allerConsoleAdmin(); return; }
+  ouvrirVerrouAdmin(p);
+}
+
+function ouvrirVerrouAdmin(p) {
+  if (document.getElementById('voile-admin')) return;
+  const voile = document.createElement('div');
+  voile.id = 'voile-admin';
+  voile.className = 'voile-leger';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-verrou';
+  modale.innerHTML = `
+    <h2>🔒 Espace réservé</h2>
+    <p class="aide">Derrière cette porte, la <strong>console d’admin</strong> : niveaux à la hausse
+      comme à la baisse, points de caractéristiques, points de maîtrise, or, objets, compétences,
+      métiers, donjons… tout devient réglable à la main sur
+      <strong>${echapper(p.nom)}</strong>.</p>
+    <label class="champ-nom">Code d’accès
+      <input id="champ-code-admin" type="password" autocomplete="off" autocapitalize="off"
+        autocorrect="off" spellcheck="false" placeholder="••••••••">
+    </label>
+    <p id="message-verrou" class="message-verrou" role="status" aria-live="polite"></p>
+    ${p.cloud ? `<p class="aide avert-verrou">☁️ <strong>${echapper(p.nom)} est relié au monde.</strong>
+      Ce que vous lui donnerez ici remontera à la taverne et aux classements, sous les yeux des
+      autres joueurs. Pour tester sans rien fausser, un héros neuf se crée en trente secondes depuis
+      l’écran d’accueil.</p>` : ''}
+    <p class="aide">Ce verrou évite les mauvaises manipulations — ce n’est pas un coffre-fort :
+      la console tourne dans votre navigateur.</p>`;
+
+  const rangee = document.createElement('div');
+  rangee.className = 'rangee-boutons';
+  const valider = document.createElement('button');
+  valider.className = 'btn-principal btn-compact';
+  valider.textContent = '🔓 Déverrouiller';
+  const annuler = document.createElement('button');
+  annuler.className = 'btn-choix btn-compact';
+  annuler.textContent = 'Annuler';
+  rangee.appendChild(valider);
+  rangee.appendChild(annuler);
+  modale.appendChild(rangee);
+
+  const fermer = () => {
+    document.removeEventListener('keydown', surEchap);
+    voile.remove();
+  };
+  const surEchap = (e) => { if (e.key === 'Escape') fermer(); };
+
+  const tenter = () => {
+    const champ = modale.querySelector('#champ-code-admin');
+    const message = modale.querySelector('#message-verrou');
+    if (!codeAdminValide(champ.value)) {
+      champ.value = '';
+      message.textContent = '❌ Code incorrect.';
+      // On relance l'animation même sur deux refus d'affilée.
+      modale.classList.remove('verrou-refuse');
+      void modale.offsetWidth;
+      modale.classList.add('verrou-refuse');
+      champ.focus();
+      return;
+    }
+    fermer();
+    accorderAdmin(p);
+    allerConsoleAdmin();
+  };
+
+  valider.addEventListener('click', tenter);
+  annuler.addEventListener('click', fermer);
+  modale.querySelector('#champ-code-admin').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); tenter(); }
+  });
+  voile.addEventListener('click', (e) => { if (e.target === voile) fermer(); });
+  document.addEventListener('keydown', surEchap);
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+  modale.querySelector('#champ-code-admin').focus();
+}
+
 // v17 : le header d'un vrai jeu vidéo — nom, niveau, puissance, PV, mana.
 function rendreTopbar() {
   const p = persoActif();
@@ -692,7 +820,9 @@ function rendreTopbar() {
   const pctHp = Math.max(0, Math.round((p.hp / p.maxHp) * 100));
   const pctMp = Math.max(0, Math.round((p.mp / p.maxMp) * 100));
   zone.innerHTML = `
-    <span class="topbar-avatar">${p.avatar}</span>
+    <button type="button" id="btn-portrait" class="topbar-avatar${p.admin ? ' est-admin' : ''}"
+      title="${p.admin ? '\u{1F6E0}\uFE0F Console d\u2019admin' : '\u{1F512} Espace r\u00E9serv\u00E9'}"
+      aria-label="Portrait de ${echapper(p.nom)}${p.admin ? ' \u2014 ouvrir la console d\u2019admin' : ' \u2014 espace r\u00E9serv\u00E9'}">${p.avatar}</button>
     <div class="topbar-infos">
       <div class="topbar-nom">${echapper(p.nom)} <span class="niveau">niv. ${p.niveau}</span>
         <span class="topbar-puissance" title="Puissance (stats + équipement)">⚡ ${puissanceDe(p).toLocaleString('fr-FR')}</span></div>
@@ -706,6 +836,8 @@ function rendreTopbar() {
     ${blocMondeVivant()}`;
   const zoneMonde = zone.querySelector('.topbar-monde');
   if (zoneMonde) zoneMonde.addEventListener('click', ouvrirDetailMonde);
+  const portrait = zone.querySelector('#btn-portrait');
+  if (portrait) portrait.addEventListener('click', ouvrirAccesAdmin);
   const badge = el('badge-heros');
   if (badge) badge.classList.toggle('cache', !(p.pointsEnAttente > 0 || p.maitrise > 0));
   const point = el('point-en-ligne');
@@ -1665,11 +1797,17 @@ function adminFixerNiveau(p, n) {
   const avant = p.niveau;
   p.xp = seuilXp(n);
   p.niveau = n;
-  if (n > avant) {
-    p.pointsEnAttente += pointsCumules(n) - pointsCumules(avant);
-    p.maitrise = (p.maitrise || 0) + pointsMaitrisePourNiveau(n) - pointsMaitrisePourNiveau(avant);
-    debloquerCompetencesClasse(p, false);
-  }
+  // v20 : le crédit de points suit le niveau dans les DEUX sens. Avant, la
+  // descente ne reprenait rien : un aller-retour 20 → 10 → 20 doublait la
+  // mise, et « niveau à la baisse » ne baissait en réalité que l'étiquette.
+  // À la descente on ne reprend que ce qui n'a pas encore été dépensé —
+  // jamais de solde négatif, et les caractéristiques déjà placées comme les
+  // rangs déjà achetés restent acquis : personne ne perd ce qu'il a investi.
+  p.pointsEnAttente = Math.max(0, (p.pointsEnAttente || 0)
+    + pointsCumules(n) - pointsCumules(avant));
+  p.maitrise = Math.max(0, (p.maitrise || 0)
+    + pointsMaitrisePourNiveau(n) - pointsMaitrisePourNiveau(avant));
+  if (n > avant) debloquerCompetencesClasse(p, false);
   bornerVie(p);
   p.hp = p.maxHp;
   p.mp = p.maxMp;
@@ -1771,15 +1909,25 @@ function rendreConsoleAdmin(zone, p) {
   };
 
   // ----- 📈 Progression -----
-  const blocNiveau = section('📈 Progression', 'Niveau, caractéristiques et maîtrise.', [
+  const blocNiveau = section('📈 Progression',
+    'Niveau, caractéristiques et maîtrise — dans les deux sens. Monter rend les points du palier, '
+    + 'redescendre reprend ceux qui n’ont pas encore été dépensés ; ce qui est déjà placé reste acquis.', [
     ['⬆️ Niveau +1', () => adminFixerNiveau(p, p.niveau + 1)],
     ['⬆️ +5', () => adminFixerNiveau(p, p.niveau + 5)],
     ['⬆️ +10', () => adminFixerNiveau(p, p.niveau + 10)],
     [`🌟 Niveau ${NIVEAU_MAX}`, () => adminFixerNiveau(p, NIVEAU_MAX)],
     ['⬇️ Niveau −1', () => adminFixerNiveau(p, p.niveau - 1)],
+    ['⬇️ −5', () => adminFixerNiveau(p, p.niveau - 5)],
+    ['⬇️ −10', () => adminFixerNiveau(p, p.niveau - 10)],
+    ['🌱 Niveau 1', () => adminFixerNiveau(p, 1), true],
     ['💪 +5 à toutes les caracs', () => { Object.keys(CARACS).forEach((cle) => { p.stats[cle] += 5; }); }],
+    ['💪 −5 à toutes les caracs', () => {
+      Object.keys(CARACS).forEach((cle) => { p.stats[cle] = Math.max(STAT_BASE, p.stats[cle] - 5); });
+    }],
     ['🎯 +10 points à répartir', () => { p.pointsEnAttente += 10; }],
+    ['🎯 −10 points', () => { p.pointsEnAttente = Math.max(0, p.pointsEnAttente - 10); }],
     ['🏅 +5 points de maîtrise', () => { p.maitrise = (p.maitrise || 0) + 5; }],
+    ['🏅 −5 points de maîtrise', () => { p.maitrise = Math.max(0, (p.maitrise || 0) - 5); }],
     ['🏅 Signatures au rang max', () => {
       p.grimoire.forEach((id) => { if (COMPETENCES[id] && COMPETENCES[id].classe) p.rangs[id] = RANG_SIGNATURE_MAX; });
     }],
@@ -1790,12 +1938,26 @@ function rendreConsoleAdmin(zone, p) {
   ]);
   ligneValeur(blocNiveau, 'admin-niveau', '📈 Fixer le niveau', `Niveau exact (1-${NIVEAU_MAX})`,
     (v) => adminFixerNiveau(p, v));
+  ligneValeur(blocNiveau, 'admin-points', '🎯 Fixer les points à répartir', 'Points exacts',
+    (v) => { p.pointsEnAttente = Math.max(0, v); });
+  ligneValeur(blocNiveau, 'admin-maitrise', '🏅 Fixer la maîtrise', 'Maîtrise exacte',
+    (v) => { p.maitrise = Math.max(0, v); });
 
   // ----- 💰 Richesse et objets -----
-  const blocOr = section('💰 Richesse & objets', 'Bourse, matériaux, potions et équipement.', [
+  const blocOr = section('💰 Richesse & objets',
+    'Bourse, Sceaux de la Tour, matériaux, potions et équipement.', [
     ['💰 +1 000 po', () => { p.po += 1000; }],
     ['💰 +10 000 po', () => { p.po += 10000; }],
     ['💰 +100 000 po', () => { p.po += 100000; }],
+    ['💰 −1 000 po', () => { p.po = Math.max(0, p.po - 1000); }],
+    ['💰 −10 000 po', () => { p.po = Math.max(0, p.po - 10000); }],
+    ['🕳️ Bourse à zéro', () => { p.po = 0; }, true],
+    ['🗝️ +10 Sceaux', () => { sceauxDe(p).normaux += 10; }],
+    ['🗝️ +3 Sceaux Majeurs', () => { sceauxDe(p).majeurs += 3; }],
+    ['🗝️ −10 Sceaux', () => {
+      const bourse = sceauxDe(p);
+      bourse.normaux = Math.max(0, bourse.normaux - 10);
+    }],
     ['⛏️ Tous les matériaux ×25', () => { Object.entries(OBJETS).forEach(([id, o]) => { if (o.type === 'materiau') ajouterObjet(p, id, 25); }); }],
     ['⛏️ Matériaux ×99', () => { Object.entries(OBJETS).forEach(([id, o]) => { if (o.type === 'materiau') ajouterObjet(p, id, 99); }); }],
     ['🧪 Toutes les potions ×10', () => { Object.entries(OBJETS).forEach(([id, o]) => { if (o.type === 'consommable') ajouterObjet(p, id, 10); }); }],
