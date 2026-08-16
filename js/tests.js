@@ -2179,6 +2179,24 @@ suite('Régressions v22', () => {
     aucun(fautives, 'histoires qui promettent un matériau étranger à leur carte');
   });
 
+  test('tout matériau exigé par une recette s\'achète bien quelque part', () => {
+    // La Halle aux matières l'affiche noir sur blanc : « TOUT ce qui sert
+    // au craft s'achète ». Un matériau sans famille n'est au rayon
+    // d'aucun des trois fournisseurs — la promesse tombe.
+    const familles = Object.values(FOURNISSEURS).map((f) => f.famille);
+    const invendables = [];
+    RECETTES.forEach((rec) => {
+      Object.keys(rec.materiaux || {}).forEach((mat) => {
+        const famille = FAMILLE_MATERIAU[mat];
+        if (!famille || !familles.includes(famille)) {
+          const ligne = `${mat} (exigé par ${rec.resultat})`;
+          if (!invendables.includes(ligne)) invendables.push(ligne);
+        }
+      });
+    });
+    aucun(invendables, 'matériaux de craft qu\'aucun fournisseur ne vend');
+  });
+
   // Le défaut mesuré : entre les niveaux 52 et 90, un boss tombait en 19
   // manches puis en 36 — la fin de partie s'allongeait au lieu de se
   // durcir, parce que les PV du contenu couraient bien plus vite que les

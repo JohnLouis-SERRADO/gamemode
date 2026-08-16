@@ -152,6 +152,13 @@ const FAMILLE_MATERIAU = {
   'fragment-de-foudre': 'mine', 'acier-celeste': 'mine', 'eclat-d-etoile': 'mine', 'relique-antique': 'mine',
   'pierre-magique': 'mine',
   // 🔪 dépouilles de bêtes et de monstres (tanneur)
+  // v22 : la défense de sanglier manquait à l'appel. Vingt-sept recettes
+  // l'exigent — les séries « du sanglier » et « du cuivre », soit tout le
+  // craft du début de partie —, elle ne tombe que du sanglier des Plaines
+  // et ne se récolte nulle part. Sans famille, aucun fournisseur ne la
+  // vendait : la Halle aux matières promettait pourtant que « TOUT ce qui
+  // sert au craft s'achète ». Elle le tient enfin.
+  'defense-sanglier': 'peau',
   'peau-de-loup': 'peau', 'soie-araignee': 'peau', 'os-ancien': 'peau', 'poussiere-spectre': 'peau',
   'ecaille-draconique': 'peau', 'venin-concentre': 'peau', 'plume-de-rokh': 'peau', 'corail-sanglant': 'peau',
   'os-de-geant': 'peau', 'peau-de-mammouth': 'peau', 'plume-d-archon': 'peau', 'cuir-primal': 'peau',
