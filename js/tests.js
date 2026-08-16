@@ -1664,6 +1664,14 @@ suite('Fin de combat', () => {
     verifier(Object.keys(enChassant.objets).length >= 1, 'la peau tombe quand c\'est la filière en cours');
   });
 
+  test('un donjon et une tour gardent leur butin de matériaux', () => {
+    ['donjon', 'tour', 'tourBoss'].forEach((genre) => {
+      const butin = tirerButinCombat(combatFactice({ genre }));
+      verifier(Object.keys(butin.objets).length >= 1,
+        `« ${genre} » ne doit pas perdre ses drops de matériaux`);
+    });
+  });
+
   test('la moisson déjà ramassée survit à l\'embuscade', () => {
     // lootRecolte, c'est ce qu'on avait dans les mains quand on s'est
     // fait surprendre : le filtre de filière ne doit pas le manger.
@@ -2104,8 +2112,21 @@ suite('Modes de zone', () => {
     // de la filière ramassée, jusque dans le butin des monstres.
     egal(filiereAutorisee({ genre: 'chasse' }), 'peau', 'la battue rapporte des peaux');
     egal(filiereAutorisee({ genre: 'embuscade', filiereRecolte: 'mine' }), 'mine', 'l\'embuscade suit la récolte en cours');
-    ['exploration', 'boss', 'tour', 'tourBoss', 'donjon', 'bossMonde'].forEach((genre) => {
+    ['exploration', 'boss'].forEach((genre) => {
       egal(filiereAutorisee({ genre }), null, `« ${genre} » ne doit ouvrir aucune filière`);
+    });
+  });
+
+  test('la règle des modes s\'arrête aux frontières de la carte', () => {
+    // Donjons, tours et boss du monde ne sont pas des modes de carte :
+    // leurs tables de butin restent intactes. Les filtrer aurait été un
+    // effet de bord, pas la demande.
+    ['tour', 'tourBoss', 'donjon', 'bossMonde'].forEach((genre) => {
+      egal(filiereAutorisee({ genre }), 'toutes', `« ${genre} » garde son butin`);
+    });
+    GENRES_DE_CARTE.forEach((genre) => {
+      verifier(filiereAutorisee({ genre, filiereRecolte: 'mine' }) !== 'toutes',
+        `« ${genre} » est un mode de carte : il doit être filtré`);
     });
   });
 

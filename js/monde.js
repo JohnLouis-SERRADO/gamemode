@@ -740,14 +740,19 @@ function demarrerCombatBossMonde(boss) {
 // =====================================================================
 // v20 : quelle filière de matériaux un combat a-t-il le droit de rendre ?
 //
-// C'est le mode qui l'a déclenché qui décide, et lui seul :
+// La règle des cinq modes vaut sur une CARTE du monde, et là seulement :
 //   • une battue (Chasse) rapporte des peaux ;
 //   • une embuscade rapporte la filière qu'on était en train de récolter ;
-//   • une expédition, un boss, une tour ou un donjon ne sont pas des
-//     modes de récolte : ils rapportent de l'or, de l'XP et de
-//     l'équipement, jamais de matériau d'artisanat.
-// Renvoie null quand aucune filière n'est autorisée.
+//   • une expédition et un boss de carte n'en rapportent aucune — l'un
+//     paie en or et en vivres, l'autre en coffre et en trophée.
+//
+// Les donjons, les deux tours et le boss du monde ne sont pas des modes
+// d'une carte : ils gardent leurs propres tables de butin, intactes.
+// Renvoie 'toutes' quand rien n'est filtré, null quand tout l'est.
+const GENRES_DE_CARTE = ['exploration', 'embuscade', 'chasse', 'boss'];
+
 function filiereAutorisee(cb) {
+  if (!GENRES_DE_CARTE.includes(cb.genre)) return 'toutes';
   if (cb.genre === 'chasse') return METIERS.tanneur.famille;
   if (cb.genre === 'embuscade') return cb.filiereRecolte || null;
   return null;
@@ -782,7 +787,7 @@ function tirerButinCombat(cb) {
       // embuscade pendant qu'on mine rapporte du minerai, et une
       // expédition ne rapporte aucun matériau d'artisanat.
       const famille = FAMILLE_MATERIAU[d.id];
-      if (famille && famille !== filiere) return;
+      if (famille && filiere !== 'toutes' && famille !== filiere) return;
       const chanceMonde = d.chance * difficulte.drop * evenement.drop * chanceEquipe
         * (monde.effets.butin || 1);
       if (Math.random() < Math.min(1, chanceMonde)) {
