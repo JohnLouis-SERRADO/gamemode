@@ -979,6 +979,60 @@ suite('Classes et sous-classes', () => {
 // =====================================================================
 // 9. Typage de l'équipement et économie (v19)
 // =====================================================================
+// =====================================================================
+// La ville tient-elle ses promesses ? Chaque échoppe annonce ce qu'elle
+// vend, en toutes lettres, sur son propre écran. Ces tests vérifient que
+// l'annonce et le rayon disent la même chose.
+// =====================================================================
+suite('Ville', () => {
+  test('LE DÉFAUT : l\'Arcanium ne vend que des compétences COMMUNES', () => {
+    // Son filtre ne regardait que `comp.classe` et laissait donc en vente
+    // libre 216 compétences de spécialité, les 81 de Voie (niveau 50), les
+    // 324 d'Éveil (niveau 80) et les 27 signatures — triées par prix
+    // croissant, donc en tête de rayon. Un héros de niveau 1 pouvait
+    // acheter un sort d'Éveil pour quelques pièces d'or.
+    const enVente = Object.entries(COMPETENCES).filter(([, c]) => competenceCommune(c));
+    const fautives = enVente
+      .filter(([, c]) => c.classe || c.sousClasse || c.voie || c.eveil || c.signature)
+      .map(([id]) => id);
+    aucun(fautives, 'compétences réservées vendues en grimoire');
+    verifier(enVente.length >= 12, `l'Arcanium doit garder un vrai rayon (${enVente.length} grimoires)`);
+  });
+
+  test('les grimoires couvrent plusieurs écoles, à des prix croissants', () => {
+    const enVente = Object.entries(COMPETENCES).filter(([, c]) => competenceCommune(c));
+    const ecoles = new Set(enVente.map(([, c]) => c.categorie));
+    verifier(ecoles.size >= 3, `trop peu d'écoles en rayon : ${[...ecoles].join(', ')}`);
+    const prix = enVente.map(([, c]) => prixGrimoire(c));
+    verifier(Math.min(...prix) > 0, 'un grimoire gratuit n\'a pas de sens');
+    verifier(Math.max(...prix) > Math.min(...prix), 'tous les grimoires au même prix');
+  });
+
+  test('les échoppes tiennent leur promesse : rien au-dessus du légendaire', () => {
+    // Les trois vitrines annoncent « du commun au légendaire — le mythique
+    // et le divin se méritent ». Le rayon doit le respecter.
+    const trop = Object.entries(OBJETS)
+      .filter(([, o]) => o.prix != null && !o.vendeur && o.type === 'equipement')
+      .filter(([, o]) => ['mythique', 'divin'].includes(rareteDe(o)))
+      .map(([id]) => id);
+    aucun(trop, 'équipements mythiques ou divins en vente libre');
+  });
+
+  test('un étal ne propose que les raretés qu\'il a réellement en stock', () => {
+    // Un filtre qui ne peut rien trouver n'est pas un filtre, c'est un piège :
+    // les vitrines offraient les puces Mythique et Divin pour zéro résultat.
+    const rayonArmes = Object.values(OBJETS)
+      .filter((o) => o.prix != null && !o.vendeur && o.type === 'equipement' && o.slot === 'arme');
+    const proposees = raretesPresentes(rayonArmes);
+    aucun(proposees.filter((r) => !rayonArmes.some((o) => rareteDe(o) === r)),
+      'raretés proposées sans un seul article');
+    verifier(!proposees.includes('mythique') && !proposees.includes('divin'),
+      `l'armurerie ne devrait pas proposer ${proposees.join(', ')}`);
+    verifier(proposees.includes('commun') && proposees.includes('legendaire'),
+      'l\'armurerie devrait couvrir du commun au légendaire');
+  });
+});
+
 suite('Équipement et économie', () => {
   test('les quatre catégories d\'armure et les six familles d\'arme existent', () => {
     egal(Object.keys(CATEGORIES_ARMURE).length, 4, 'catégories d\'armure');

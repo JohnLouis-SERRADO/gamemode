@@ -15,6 +15,24 @@
 // doit pas se réveiller diminué : tant qu'il n'a pas réagencé ses points,
 // c'est la meilleure des deux qui compte. Personne ne perd ses soins.
 // =====================================================================
+// =====================================================================
+// v21 — Ce qu'un grimoire a le droit d'enseigner.
+//
+// L'Arcanium annonce, en toutes lettres : « chaque grimoire enseigne une
+// compétence COMMUNE ; les compétences de classe ne s'achètent jamais ».
+// Son filtre, lui, ne regardait que `comp.classe` — et laissait donc en
+// rayon les 216 compétences de spécialité, les 81 compétences de Voie
+// (niveau 50), les 324 compétences d'Éveil (niveau 80) et les 27
+// signatures : 621 sorts réservés, en vente libre, triés par prix
+// croissant. Un héros de niveau 1 pouvait acheter un sort d'Éveil pour
+// quatre-vingt-dix pièces d'or.
+//
+// Une seule définition, lue par la boutique ET par le harnais.
+// =====================================================================
+function competenceCommune(comp) {
+  return !!comp && !comp.classe && !comp.sousClasse && !comp.voie && !comp.eveil && !comp.signature;
+}
+
 function estCompetenceDeSoutien(comp) {
   if (comp.type === 'soin') return true;
   const effet = comp.effet && comp.effet.type;

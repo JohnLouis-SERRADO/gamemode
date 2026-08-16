@@ -187,7 +187,16 @@ const SOUS_TYPES = {
 
 let sousFiltres = { rarete: 'tous', type: 'tous', maClasse: false };
 
-function rendreChipsFiltres(conteneur, contexte, surChangement) {
+// v21 : les raretés réellement présentes sur un étal. L'armurerie annonce
+// « du commun au légendaire » — mais proposait quand même les puces
+// Mythique et Divin, qui ne renvoyaient jamais rien. Un filtre qui ne peut
+// pas trouver n'est pas un filtre, c'est un piège.
+function raretesPresentes(objets) {
+  const vues = new Set(objets.map((o) => rareteDe(o)));
+  return RARETES_FILTRABLES.filter((r) => vues.has(r));
+}
+
+function rendreChipsFiltres(conteneur, contexte, surChangement, raretes) {
   // Les puces de rareté débordaient sur trois lignes avant même qu'on
   // voie un objet. Elles se replient, et le résumé dit ce qui est actif.
   const repli = document.createElement('details');
@@ -216,7 +225,12 @@ function rendreChipsFiltres(conteneur, contexte, surChangement) {
     separateur.className = 'separateur-chips';
     rangee.appendChild(separateur);
   }
-  [['tous', '✨ Toutes raretés'], ...RARETES_FILTRABLES.map((r) => [r, RARETES[r].nom])].forEach(([id, nom]) => {
+  // On ne propose que les raretés que cet étal peut réellement montrer —
+  // plus celle qui est active, pour qu'on puisse toujours la désélectionner.
+  const raretesUtiles = (raretes && raretes.length ? raretes : RARETES_FILTRABLES)
+    .concat(sousFiltres.rarete !== 'tous' ? [sousFiltres.rarete] : []);
+  const listeRaretes = RARETES_FILTRABLES.filter((r) => raretesUtiles.includes(r));
+  [['tous', '✨ Toutes raretés'], ...listeRaretes.map((r) => [r, RARETES[r].nom])].forEach(([id, nom]) => {
     const chip = document.createElement('button');
     chip.className = `chip chip-filtre chip-rar-${id}` + (sousFiltres.rarete === id ? ' active' : '');
     chip.textContent = nom;
@@ -285,12 +299,14 @@ function rendreBoutique() {
   }
 
   const onglet = ONGLETS_BOUTIQUE.find((o) => o.id === ongletBoutique);
-  rendreChipsFiltres(contenu, ongletBoutique, () => rendreBoutique());
   // Le stock s'étoffe avec le niveau : articles jusqu'à niveau+2, aperçus
   // verrouillés jusqu'à niveau+8 pour donner envie de progresser.
-  const visibles = Object.entries(OBJETS)
+  const enRayon = Object.entries(OBJETS)
     .filter(([, o]) => o.prix != null && !o.vendeur && onglet.filtre(o))
-    .filter(([, o]) => !o.niveau || o.niveau <= p.niveau + 8)
+    .filter(([, o]) => !o.niveau || o.niveau <= p.niveau + 8);
+  rendreChipsFiltres(contenu, ongletBoutique, () => rendreBoutique(),
+    raretesPresentes(enRayon.map(([, o]) => o)));
+  const visibles = enRayon
     .filter(([, o]) => passeSousFiltres(o, ongletBoutique))
     .sort((a, b) => (a[1].niveau || 0) - (b[1].niveau || 0) || a[1].prix - b[1].prix);
 
@@ -371,7 +387,10 @@ function rendreVente(contenu, p) {
   note.className = 'aide';
   note.textContent = `Les équipements et potions se revendent ${Math.round(PART_REVENTE * 100)} % de leur prix — un peu moins encore pour les grandes raretés ; les matériaux, à leur juste valeur.`;
   contenu.appendChild(note);
-  rendreChipsFiltres(contenu, 'vente', () => rendreBoutique());
+  // À la vente, les raretés proposées sont celles du SAC : filtrer sur une
+  // rareté qu'on ne possède pas n'a jamais rien donné.
+  rendreChipsFiltres(contenu, 'vente', () => rendreBoutique(),
+    raretesPresentes(p.inventaire.map((e) => OBJETS[e.id]).filter(Boolean)));
 
   // Vente groupée des matériaux : le petit confort des grandes fortunes.
   const materiaux = p.inventaire.filter((e) => OBJETS[e.id] && OBJETS[e.id].type === 'materiau');
@@ -461,10 +480,12 @@ function rendreAntiquaire() {
   el('antiquaire-po').textContent = `💰 ${formatNombre(p.po)} po`;
   const zone = el('antiquaire-contenu');
   zone.innerHTML = '';
-  rendreChipsFiltres(zone, 'antiquaire', () => rendreAntiquaire());
-  const visibles = Object.entries(OBJETS)
+  const enRayon = Object.entries(OBJETS)
     .filter(([, o]) => o.vendeur === 'antiquaire')
-    .filter(([, o]) => !o.niveau || o.niveau <= p.niveau + 8)
+    .filter(([, o]) => !o.niveau || o.niveau <= p.niveau + 8);
+  rendreChipsFiltres(zone, 'antiquaire', () => rendreAntiquaire(),
+    raretesPresentes(enRayon.map(([, o]) => o)));
+  const visibles = enRayon
     .filter(([, o]) => passeSousFiltres(o, 'antiquaire'))
     .sort((a, b) => (a[1].niveau || 0) - (b[1].niveau || 0) || a[1].prix - b[1].prix);
   // v19.1 : le même composant que partout ailleurs — recherche, tri,
@@ -563,13 +584,16 @@ function rendreFournisseur() {
   zone.innerHTML = `<p class="sous-titre gauche">${f.accueil}</p>
     <p class="aide">Prix fournisseur : <strong>4× la valeur de rachat</strong> — la récolte reste la voie du malin. Le comptoir reprend aussi vos surplus de la filière, au prix plein.</p>`;
 
-  // v17 : filtre de rareté sur l'étal du fournisseur.
-  rendreChipsFiltres(zone, null, () => rendreFournisseur());
   const signature = SIGNATURE_FILIERE[f.famille];
   // v17 : TOUT ce qui sert au craft s'achète — bruts, raffinés et même
   // les signatures (au prix fort, niveau 20+), selon le niveau du joueur.
-  const matieres = Object.entries(OBJETS)
-    .filter(([id, o]) => o.type === 'materiau' && FAMILLE_MATERIAU[id] === f.famille)
+  const enRayon = Object.entries(OBJETS)
+    .filter(([id, o]) => o.type === 'materiau' && FAMILLE_MATERIAU[id] === f.famille);
+  // v17 : filtre de rareté sur l'étal du fournisseur — bornÉ, depuis la
+  // v21, aux raretés que cette filière propose réellement.
+  rendreChipsFiltres(zone, null, () => rendreFournisseur(),
+    raretesPresentes(enRayon.map(([, o]) => o)));
+  const matieres = enRayon
     .filter(([, o]) => passeSousFiltres(o, null))
     .sort((a, b) => niveauMateriau(a[0]) - niveauMateriau(b[0]) || prixVenteDe(a[0]) - prixVenteDe(b[0]));
 
@@ -723,7 +747,7 @@ function rendreArcanium() {
 
   const stats = statsEffectives(p);
   const inconnues = Object.entries(COMPETENCES)
-    .filter(([id, comp]) => !p.grimoire.includes(id) && !comp.classe)
+    .filter(([id, comp]) => !p.grimoire.includes(id) && competenceCommune(comp))
     .filter(([, comp]) => filtreArcanium === 'tous' || comp.categorie === filtreArcanium)
     .sort((a, b) => prixGrimoire(a[1]) - prixGrimoire(b[1]));
   rendreListeFiltrable({
