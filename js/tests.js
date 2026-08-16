@@ -2179,6 +2179,35 @@ suite('Régressions v22', () => {
     aucun(fautives, 'histoires qui promettent un matériau étranger à leur carte');
   });
 
+  // Le défaut mesuré : entre les niveaux 52 et 90, un boss tombait en 19
+  // manches puis en 36 — la fin de partie s'allongeait au lieu de se
+  // durcir, parce que les PV du contenu couraient bien plus vite que les
+  // dégâts d'un héros. Ces deux tests tiennent la pente.
+  test('les PV des Marches ne distancent pas les dégâts d\'un héros', () => {
+    // Sur la tranche 52-100, les dégâts d'un héros correctement équipé
+    // progressent d'environ 1,3 % par niveau. Les PV du contenu doivent
+    // rester dans le même ordre de grandeur : au-delà, chaque niveau
+    // gagné rallonge les combats au lieu de les rendre plus tendus.
+    verifier(CROISSANCE_MARCHES.hp <= 1.022,
+      `les PV composent à ${CROISSANCE_MARCHES.hp} par niveau — au-delà de 1.022, les combats s'allongent sans fin`);
+    // …et l'attaque doit monter AU MOINS aussi vite que les PV, sinon le
+    // contenu grossit sans jamais devenir menaçant.
+    verifier(CROISSANCE_MARCHES.atk >= CROISSANCE_MARCHES.hp,
+      `l'attaque (${CROISSANCE_MARCHES.atk}) doit progresser au moins comme les PV (${CROISSANCE_MARCHES.hp})`);
+  });
+
+  test('un boss de la Couture ne fait pas trois fois la durée d\'un boss des Marches', () => {
+    // On compare les PV des deux bouts de la tranche à dégâts constants :
+    // le rapport borne directement le rapport des durées de combat.
+    const bas = statsMonstreMarches(52, true).hp;
+    const haut = statsMonstreMarches(100, true).hp;
+    // Les dégâts d'un héros font environ ×1,9 entre 52 et 100 : si les PV
+    // font plus de ×3, le combat du niveau 100 dure plus longtemps que
+    // celui du niveau 52, à compétence égale.
+    entre(haut / bas, 1.5, 3,
+      `PV du boss ×${(haut / bas).toFixed(1)} entre les niveaux 52 et 100`);
+  });
+
   test('les histoires ne rapportent jamais plus qu\'un combat de leur carte', () => {
     // Garde-fou d'équilibrage : une histoire est une respiration, pas une
     // source d'or. Elle reste sous ce que le boss de la carte rapporte.

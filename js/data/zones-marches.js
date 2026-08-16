@@ -46,10 +46,30 @@ Object.assign(FAMILLE_MATERIAU, {
 //
 // Écrire quarante blocs de chiffres à la main, c'est quarante occasions
 // de se tromper et aucune garantie de cohérence. La courbe est donc
-// dérivée de celle des Terres lointaines : à 3,6 % de PV, 1,9 % d'attaque
-// et 7,5 % d'XP par niveau, le raccord au niveau 52 est invisible.
+// dérivée de celle des Terres lointaines : le raccord au niveau 52 est
+// invisible, seule la pente change ensuite.
+//
+// v22 — LA PENTE DES PV ÉTAIT FAUSSE, et c'est mesurable.
+//
+// Relevé en jouant, héros solo en équipement légendaire de son niveau,
+// vingt combats par carte : le boss du niveau 52 tombait en 19 manches,
+// celui du niveau 90 en 36 — et dans les deux cas le héros gagnait
+// vingt fois sur vingt, en finissant à la moitié de ses PV. La fin de
+// partie ne devenait pas plus DURE, elle devenait plus LONGUE.
+//
+// La cause est ici. Les PV composaient à 3,6 % par niveau quand les
+// dégâts du héros, eux, ne progressent que de 1,3 % par niveau sur la
+// même tranche (1 653 → 2 732 entre 52 et 90) : les PV du contenu
+// couraient 2,7 fois plus vite que ce qui peut les entamer. Le monde
+// répondait à la puissance du héros en gonflant, pas en menaçant.
+//
+// On aligne donc les PV sur la progression réelle des dégâts (1,8 %,
+// un peu au-dessus pour garder une montée sensible) et on redresse
+// l'attaque (3,0 %) pour que le danger, lui, suive vraiment. Les
+// combats de fin de partie sont deux fois plus courts sans être plus
+// faciles — c'est la manche gagnée sur le clic, pas sur l'adversaire.
 // ---------------------------------------------------------------------
-const CROISSANCE_MARCHES = { hp: 1.036, atk: 1.019, xp: 1.075, po: 1.05 };
+const CROISSANCE_MARCHES = { hp: 1.018, atk: 1.030, xp: 1.075, po: 1.05 };
 const REFERENCE_MARCHES = { niveau: 52, hp: 2550, atk: 79, xp: 879, po: 52 };
 
 function statsMonstreMarches(niveau, boss) {
