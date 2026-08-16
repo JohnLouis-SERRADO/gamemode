@@ -183,6 +183,7 @@ function demarrerCombat(options) {
     equipe,
     monstres,
     lootRecolte: options.lootRecolte || null,
+    filiereRecolte: options.filiereRecolte || null,
     manchesMax: options.manchesMax || null,
     manche: 0,
     file: [],
@@ -204,6 +205,7 @@ function demarrerCombat(options) {
   const titres = {
     exploration: () => `${options.zone.emoji} ${options.zone.nom}`,
     embuscade: () => `⚠️ Embuscade — ${options.zone.nom}`,
+    chasse: () => `🔪 Battue — ${options.zone.nom}`,
     boss: () => `👑 ${monstres[0].nom} — ${options.zone.nom}`,
     bossMonde: () => `🌍 ${monstres[0].nom} — assaut du monde`,
     tour: () => `🗼 Tour Sans Fin — Étage ${options.tourEtage}`,
@@ -218,6 +220,7 @@ function demarrerCombat(options) {
   const intros = {
     exploration: 'Des créatures hostiles surgissent !',
     embuscade: 'On vous tombe dessus en pleine récolte !',
+    chasse: 'Vous levez le gibier de la carte : la battue est engagée !',
     boss: 'Le maître des lieux se dresse devant vous…',
     bossMonde: `Vous avez ${options.manchesMax || 6} manches pour infliger un maximum de dégâts !`,
   };
@@ -655,7 +658,7 @@ function rendreActions(j) {
   barre.className = 'barre-actions';
 
   if (cb.modeActions === 'objet') {
-    const genreFuyable = cb.genre === 'exploration' || cb.genre === 'embuscade';
+    const genreFuyable = ['exploration', 'embuscade', 'chasse'].includes(cb.genre);
     consommablesDe(j).forEach((entree) => {
       const objet = OBJETS[entree.id];
       const inutile = (objet.effet.type === 'pv' && j.hp >= j.maxHp)
@@ -728,7 +731,7 @@ function rendreActions(j) {
   btnObjet.addEventListener('click', () => { cb.modeActions = 'objet'; rendreActions(j); });
   barre.appendChild(btnObjet);
 
-  if (cb.genre === 'exploration' || cb.genre === 'embuscade') {
+  if (['exploration', 'embuscade', 'chasse'].includes(cb.genre)) {
     const btnFuite = document.createElement('button');
     btnFuite.className = 'btn-action';
     btnFuite.innerHTML = '💨 <strong>Fuir</strong><span class="action-detail">65 % de réussite</span>';

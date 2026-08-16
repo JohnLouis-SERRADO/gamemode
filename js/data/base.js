@@ -152,7 +152,8 @@ const FAMILLE_MATERIAU = {
   'fragment-de-foudre': 'mine', 'acier-celeste': 'mine', 'eclat-d-etoile': 'mine', 'relique-antique': 'mine',
   'pierre-magique': 'mine',
   // 🔪 dépouilles de bêtes et de monstres (tanneur)
-  'peau-de-loup': 'peau', 'soie-araignee': 'peau', 'os-ancien': 'peau', 'poussiere-spectre': 'peau',
+  'peau-de-loup': 'peau', 'defense-sanglier': 'peau', 'soie-araignee': 'peau',
+  'os-ancien': 'peau', 'poussiere-spectre': 'peau',
   'ecaille-draconique': 'peau', 'venin-concentre': 'peau', 'plume-de-rokh': 'peau', 'corail-sanglant': 'peau',
   'os-de-geant': 'peau', 'peau-de-mammouth': 'peau', 'plume-d-archon': 'peau', 'cuir-primal': 'peau',
   // 🌿 plantes, fibres et étoffes (tisseur)

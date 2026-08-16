@@ -150,6 +150,60 @@ function rendreCarte() {
 // =====================================================================
 // Écran de zone
 // =====================================================================
+// =====================================================================
+// v20 — LES CINQ MODES D'UNE CARTE
+//
+// « Explorer » faisait tout : combats, filons, herbes, histoires,
+// champions, dépeçage. On ne savait plus ce qu'on venait chercher, et
+// une carte riche en minerai se jouait exactement comme une carte riche
+// en plantes — puisque tout tombait du même bouton.
+//
+// Chaque carte propose désormais les MÊMES cinq modes, et chaque mode a
+// SA ressource :
+//
+//   🧭 Expédition — l'aventure : combats, histoires uniques, champions,
+//                   marchand nomade, menace du boss. Aucun matériau de
+//                   récolte : l'expédition rapporte de l'or et des vivres.
+//   ⛏️ Miner      — filière « mine »   : pierres, minerais, cristaux
+//   🌿 Récolte    — filière « plante » : plantes, fibres, étoffes
+//   🔪 Chasse     — filière « peau »   : cuirs, os, dépouilles. Une battue
+//                   se gagne au combat : les peaux se prennent sur la bête.
+//   👑 Boss       — le maître des lieux
+//
+// Les trois modes de récolte lisent la MÊME table (z.recolte), filtrée
+// par la famille du métier. Attribuer un matériau à un mode, c'est donc
+// simplement l'ajouter à la carte : la répartition suit toute seule.
+// =====================================================================
+const MODES_ZONE = [
+  {
+    id: 'expedition', emoji: '🧭', nom: 'Expédition',
+    detail: 'L’aventure : combats, histoires uniques 📜, champions ⭐, marchand nomade 🛒.',
+  },
+  { id: 'mine', emoji: '⛏️', nom: 'Miner', metier: 'mineur', aide: '⚠️ une embuscade est toujours possible' },
+  { id: 'plante', emoji: '🌿', nom: 'Récolte', metier: 'tisseur', aide: '⚠️ une embuscade est toujours possible' },
+  { id: 'peau', emoji: '🔪', nom: 'Chasse', metier: 'tanneur', aide: '⚔️ une battue : les peaux se prennent au combat' },
+  { id: 'boss', emoji: '👑', nom: 'Boss' },
+];
+
+// Ce qu'un mode de récolte rapporte sur CETTE carte.
+function materiauxDuMode(z, mode) {
+  const metier = METIERS[mode.metier];
+  if (!metier) return [];
+  return (z.recolte || []).filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
+}
+
+// Les vivres d'une trouvaille d'expédition : jamais des matériaux
+// d'artisanat — ceux-là appartiennent aux trois modes de récolte.
+const VIVRES_EXPEDITION = [
+  { id: 'potion-soin', niveauMin: 1 },
+  { id: 'potion-mana', niveauMin: 6 },
+  { id: 'grande-potion-soin', niveauMin: 14 },
+  { id: 'grande-potion-mana', niveauMin: 22 },
+  { id: 'potion-supreme-soin', niveauMin: 38 },
+  { id: 'potion-supreme-mana', niveauMin: 52 },
+  { id: 'elixir-vie', niveauMin: 70 },
+];
+
 function rendreZone(z) {
   const p = persoActif();
   const explorations = p.explorations[z.id] || 0;
@@ -193,39 +247,53 @@ function rendreZone(z) {
   const actions = el('zone-actions-liste');
   actions.innerHTML = '';
 
-  // v17 : UNE seule action d'exploration — combats (avec dépeçage), filons
-  // à miner, herbes à cueillir, histoires uniques, mini-boss… et parfois
-  // le maître des lieux en personne.
-  const explorer_ = document.createElement('button');
-  explorer_.className = 'btn-action-zone exploration-unifiee';
-  explorer_.innerHTML = `<span class="action-zone-emoji">🧭</span><strong>Explorer${menace ? ' ⚠️' : ''}</strong>
-    <span class="action-zone-detail">Combats (et dépeçage 🔪), filons à miner ⛏️, herbes à cueillir 🌿,
-    histoires uniques 📜, champions ⭐${bossVaincu ? '' : '… et le maître des lieux rôde 👑'}</span>`;
-  explorer_.addEventListener('click', () => explorer(z));
-  actions.appendChild(explorer_);
+  MODES_ZONE.forEach((mode) => {
+    const bouton = document.createElement('button');
+    bouton.className = `btn-action-zone mode-${mode.id}`;
 
-  const bossBtn = document.createElement('button');
-  bossBtn.className = 'btn-action-zone boss' + (bossVaincu ? '' : ' action-verrouillee');
-  bossBtn.disabled = !bossVaincu;
-  bossBtn.innerHTML = `<span class="action-zone-emoji">${bossVaincu ? boss.emoji : '🔒'}</span><strong>Défier ${boss.nom}</strong>
-    <span class="action-zone-detail">${bossVaincu
-      ? '🏆 Boss vaincu : re-combattez-le autant que vous voulez !'
-      : '🔒 Vainquez-le une première fois pour débloquer le défi — il rôde quelque part dans la zone…'}</span>`;
-  bossBtn.addEventListener('click', () => affronterBoss(z));
-  actions.appendChild(bossBtn);
+    if (mode.id === 'expedition') {
+      bouton.innerHTML = `<span class="action-zone-emoji">${mode.emoji}</span><strong>${mode.nom}${menace ? ' ⚠️' : ''}</strong>
+        <span class="action-zone-detail">${mode.detail}${bossVaincu ? '' : ' Et le maître des lieux rôde 👑…'}</span>`;
+      bouton.addEventListener('click', () => explorer(z));
+    } else if (mode.id === 'boss') {
+      bouton.classList.toggle('action-verrouillee', !bossVaincu);
+      bouton.disabled = !bossVaincu;
+      bouton.innerHTML = `<span class="action-zone-emoji">${bossVaincu ? boss.emoji : '🔒'}</span><strong>Défier ${boss.nom}</strong>
+        <span class="action-zone-detail">${bossVaincu
+    ? '🏆 Boss vaincu : re-combattez-le autant que vous voulez !'
+    : '🔒 Vainquez-le une première fois pour débloquer le défi — il rôde quelque part dans la zone…'}</span>`;
+      bouton.addEventListener('click', () => affronterBoss(z));
+    } else {
+      // Les trois modes de récolte : chacun ANNONCE ce qu'il rapporte ici.
+      const metier = METIERS[mode.metier];
+      const m = metierDe(p, mode.metier);
+      const specialiste = p.metierPrincipal === mode.metier;
+      const butin = materiauxDuMode(z, mode)
+        .map((e) => `${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}`).join(' · ');
+      bouton.innerHTML = `<span class="action-zone-emoji">${mode.emoji}</span><strong>${mode.nom}</strong>
+        <span class="action-zone-detail">${butin}</span>
+        <span class="action-zone-meta">
+          <span class="chip chip-metier">${metier.emoji} ${metier.nom} niv. ${m.niveau}${specialiste ? ' ⭐' : ''}</span>
+          <span class="action-zone-aide">${mode.aide}</span>
+        </span>`;
+      bouton.addEventListener('click', () => (mode.id === 'peau' ? chasser(z) : recolter(z, mode.metier)));
+    }
+    actions.appendChild(bouton);
+  });
 
   const infos = el('zone-infos');
   const chipsMonstres = z.monstres
     .map((cle) => `<span class="chip">${MONSTRES[cle].emoji} ${MONSTRES[cle].nom}</span>`)
     .join('');
-  // Matériaux groupés par métier : on sait tout de suite quoi venir y faire.
-  const chipsMateriaux = Object.entries(METIERS).map(([idMetier, metier]) => {
-    const m = metierDe(p, idMetier);
-    const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
-    const chips = pool
+  // Les matériaux de la carte, rangés sous le mode qui les rapporte : on
+  // sait d'un coup d'œil quoi venir y chercher, et par quelle porte.
+  const chipsMateriaux = MODES_ZONE.filter((mode) => mode.metier).map((mode) => {
+    const metier = METIERS[mode.metier];
+    const m = metierDe(p, mode.metier);
+    const chips = materiauxDuMode(z, mode)
       .map((e) => `<span class="chip">${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}</span>`)
       .join('');
-    return `<span class="chip chip-metier">${metier.emoji} ${metier.action} (niv. ${m.niveau}${p.metierPrincipal === idMetier ? ' ⭐' : ''})</span>${chips
+    return `<span class="chip chip-metier">${mode.emoji} ${mode.nom} · ${metier.nom} niv. ${m.niveau}${p.metierPrincipal === mode.metier ? ' ⭐' : ''}</span>${chips
       || `<span class="chip">${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom} (traces)</span>`}`;
   }).join(' ');
   const histoires = HISTOIRES_ZONES[z.id] || [];
@@ -235,9 +303,9 @@ function rendreZone(z) {
       <h3>🐾 Créatures de la zone</h3>
       <div class="rangee-chips">${chipsMonstres}
         <span class="chip chip-boss">${boss.emoji} ${boss.nom} (boss)</span></div>
-      <h3>⛏️ Matériaux (au fil de l'exploration) <span class="badge">🍀 la Chance enrichit la moisson</span></h3>
+      <h3>🎒 Matériaux, par mode de récolte <span class="badge">🍀 la Chance enrichit la moisson</span></h3>
       <div class="rangee-chips">${chipsMateriaux}</div>
-      <p class="aide">📜 Histoires découvertes ici : ${vues}/${histoires.length} · Explorations : ${explorations}${bossVaincu ? ' · 🏆 boss vaincu — défi libre débloqué' : ''}</p>
+      <p class="aide">📜 Histoires découvertes ici : ${vues}/${histoires.length} · Expéditions : ${explorations}${bossVaincu ? ' · 🏆 boss vaincu — défi libre débloqué' : ''}</p>
     </div>`;
 }
 
@@ -311,8 +379,11 @@ function explorer(z) {
     }
   }
 
+  // v20 : l'expédition ne récolte plus. Les filons appartiennent à Miner,
+  // les herbes à Récolte, les peaux à Chasse. Ce qui reste ici, c'est
+  // l'aventure — et ce qu'on trouve en chemin : de l'or et des vivres.
   const tirage = Math.random();
-  if (tirage < 0.05) {
+  if (tirage < 0.06) {
     // 🌟 Un monstre doré surgit : redoutable, mais le butin est triplé.
     const cle = z.monstres[alea(0, z.monstres.length - 1)];
     const base = MONSTRES[cle];
@@ -331,43 +402,34 @@ function explorer(z) {
     demarrerCombatZone(z, 'exploration', [], { monstresDef: [dore] });
     return;
   }
-  if (tirage < 0.09) {
+  if (tirage < 0.11) {
     marchandNomade(z);
     return;
   }
-  if (tirage < 0.14) {
+  if (tirage < 0.18) {
     // ⭐ Un mini-boss : le champion local, plus coriace, mieux garni.
     const champion = miniBossDe(z);
     afficherToast(`⭐ ${champion.emoji} ${champion.nom} vous barre la route !`);
     demarrerCombatZone(z, 'exploration', [], { monstresDef: [champion] });
     return;
   }
-  if (tirage < 0.2) {
-    evenementRecolte(z, 'mineur', '⛏️ Un filon affleure !',
-      'La roche s’ouvre sur un filon prometteur. Le temps de sortir la pioche ?');
+  if (tirage < 0.30 && evenementHistoire(z)) {
     return;
   }
-  if (tirage < 0.26) {
-    evenementRecolte(z, 'tisseur', '🌿 Un coin d’herboriste !',
-      'Plantes rares, fibres et étoffes sauvages à portée de main. On cueille ?');
-    return;
-  }
-  if (tirage < 0.33 && evenementHistoire(z)) {
-    return;
-  }
-  if (tirage < 0.38 && !p.bossVaincus.includes(z.id) && !etat.menaces[z.id]) {
+  if (tirage < 0.36 && !p.bossVaincus.includes(z.id) && !etat.menaces[z.id]) {
     evenementMenaceBoss(z);
     return;
   }
-  if (tirage < 0.75) {
+  if (tirage < 0.82) {
     const cles = composerPack(z, tailleDuPack(membresEquipe()));
     demarrerCombatZone(z, 'exploration', cles);
-  } else if (tirage < 0.91) {
-    // Trouvaille
+  } else if (tirage < 0.93) {
+    // 🎁 Une trouvaille : de l'or, et des vivres pour la route. Plus
+    // aucun matériau de récolte — ceux-là se méritent au bon mode.
     const objets = {};
-    z.recolte.forEach((entree) => {
-      if (Math.random() < entree.chance * 0.8) objets[entree.id] = (objets[entree.id] || 0) + 1;
-    });
+    const vivres = VIVRES_EXPEDITION.filter((v) => v.niveauMin <= z.niveauMin);
+    const vivre = vivres[vivres.length - 1];
+    if (vivre && Math.random() < 0.6) objets[vivre.id] = alea(1, 2);
     const po = alea(3, 6 + 3 * z.niveauMin);
     const lignes = [`💰 +${po} pièces d'or pour chaque héros`];
     membresEquipe().forEach((m) => {
@@ -378,7 +440,7 @@ function explorer(z) {
     Object.entries(objets).forEach(([id, qte]) => lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}`));
     afficherButin({
       titre: '🎁 Une trouvaille !',
-      texte: 'Au détour du chemin, un coffre abandonné et quelques ressources.',
+      texte: 'Au détour du chemin, un coffre abandonné : de la monnaie, et de quoi tenir la route.',
       lignes,
       retour: 'zone',
     });
@@ -435,28 +497,27 @@ function evenementMenaceBoss(z) {
 }
 
 // Filon ou coin d'herboriste : on récolte (métier concerné), ou on passe.
-function evenementRecolte(z, idMetier, titre, texte) {
-  const metier = METIERS[idMetier];
-  const m = metierDe(persoActif(), idMetier);
-  const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
-  const noms = pool.map((e) => `${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}`).join(', ')
-    || `${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom} (traces)`;
-  afficherButin({
-    titre,
-    texte,
-    lignes: [`${metier.emoji} ${metier.nom} niv. ${m.niveau} · en vue : ${noms}`, '⚠️ Récolter peut attirer une embuscade…'],
-    retour: 'zone',
-    boutons: [
-      {
-        texte: `${metier.emoji} ${metier.action}`,
-        classe: 'btn-principal',
-        action: () => recolter(z, idMetier),
-      },
-      {
-        texte: '🚶 Passer son chemin',
-        action: () => { rendreZone(z); montrerEcran('ecran-zone'); },
-      },
-    ],
+// 🔪 LA CHASSE — le mode de la filière « peau ».
+//
+// Miner et Récolter se font au calme, la pioche ou le panier à la main.
+// Les cuirs, eux, sont sur la bête : la chasse est donc une BATTUE. On
+// piste le gibier de la carte, on l'affronte, et les dépouilles se
+// dépècent sur place — automatiquement, puisque c'est tout l'objet du
+// mode (voir apresVictoire).
+function chasser(z) {
+  const p = persoActif();
+  progresserQuete(p, 'recolte', 1);
+  sauvegarder(p);
+  const membres = membresEquipe();
+  // Une battue lève plus de gibier qu'une rencontre de hasard.
+  const cles = composerPack(z, Math.max(2, Math.min(5, tailleDuPack(membres) + 1)));
+  const metier = METIERS.tanneur;
+  const gibier = materiauxDuMode(z, { metier: 'tanneur' })
+    .map((e) => `${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}`).join(', ')
+    || `${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom}`;
+  afficherToast(`🔪 La battue commence — on chasse pour : ${gibier}`);
+  demarrerCombatZone(z, 'chasse', cles, {
+    intro: 'Vous levez le gibier de la carte : la battue est engagée !',
   });
 }
 
@@ -506,6 +567,9 @@ function evenementHistoire(z) {
 function recolter(z, idMetier) {
   const p = persoActif();
   const metier = METIERS[idMetier] || METIERS.tisseur;
+  // L'écran de butin parle le langage des MODES, pas celui des métiers :
+  // le joueur a cliqué « Récolte », il ne doit pas lire « Herboriser ».
+  const mode = MODES_ZONE.find((x) => x.metier === idMetier) || MODES_ZONE[2];
   progresserQuete(p, 'recolte', 1);
 
   const s = statsEffectives(p);
@@ -546,7 +610,7 @@ function recolter(z, idMetier) {
     const membres = membresEquipe();
     const cles = composerPack(z, Math.max(1, Math.min(5, membres.length + bonusTaillePack(membres))));
     afficherToast(`⚠️ ${metier.emoji} Une embuscade pendant la récolte !`);
-    demarrerCombatZone(z, 'embuscade', cles, { lootRecolte: objets });
+    demarrerCombatZone(z, 'embuscade', cles, { lootRecolte: objets, filiereRecolte: metier.famille });
   } else {
     const lignes = [];
     membresEquipe().forEach((m) => {
@@ -557,7 +621,7 @@ function recolter(z, idMetier) {
     const mProg = metierDe(p, idMetier);
     lignes.push(`${metier.emoji} ${metier.nom} niv. ${mProg.niveau}${mProg.niveau < NIVEAU_MAX_METIER ? ` (${mProg.xp}/${seuilXpMetier(mProg.niveau)} XP)` : ' (maître)'}${specialiste ? ' · ⭐ spécialité : moisson enrichie, progression ×2' : ''}`);
     afficherButin({
-      titre: `${metier.emoji} ${metier.action} : belle moisson`,
+      titre: `${mode.emoji} ${mode.nom} : belle moisson`,
       texte: membresEquipe().length > 1 ? 'Chaque héros remplit son sac.' : 'Vous remplissez votre sac.',
       lignes,
       retour: 'zone',
@@ -636,6 +700,7 @@ function demarrerCombatZone(z, genre, cles, options = {}) {
     difficulte: etat.difficulte,
     monstresDef: defs,
     lootRecolte: options.lootRecolte || null,
+    filiereRecolte: options.filiereRecolte || null,
     intro: options.intro || null,
     equipe: membresEquipe(),
   });
@@ -673,6 +738,21 @@ function demarrerCombatBossMonde(boss) {
 // =====================================================================
 // Fin de combat : récompenses, défaite, fuite
 // =====================================================================
+// v20 : quelle filière de matériaux un combat a-t-il le droit de rendre ?
+//
+// C'est le mode qui l'a déclenché qui décide, et lui seul :
+//   • une battue (Chasse) rapporte des peaux ;
+//   • une embuscade rapporte la filière qu'on était en train de récolter ;
+//   • une expédition, un boss, une tour ou un donjon ne sont pas des
+//     modes de récolte : ils rapportent de l'or, de l'XP et de
+//     l'équipement, jamais de matériau d'artisanat.
+// Renvoie null quand aucune filière n'est autorisée.
+function filiereAutorisee(cb) {
+  if (cb.genre === 'chasse') return METIERS.tanneur.famille;
+  if (cb.genre === 'embuscade') return cb.filiereRecolte || null;
+  return null;
+}
+
 function tirerButinCombat(cb) {
   const difficulte = DIFFICULTES[cb.difficulte] || DIFFICULTES.normal;
   const evenement = multiplicateursEvenement();
@@ -689,6 +769,7 @@ function tirerButinCombat(cb) {
   // (déclaré AVANT la boucle des drops, qui s'en sert : le déclarer après
   // figeait tout écran de victoire — zone morte temporelle.)
   const monde = mondeMaintenant();
+  const filiere = filiereAutorisee(cb);
   let xp = 0;
   let po = 0;
   const objets = {};
@@ -696,6 +777,12 @@ function tirerButinCombat(cb) {
     xp += m.xp || 0;
     if (m.po) po += alea(m.po[0], m.po[1]);
     (m.drops || []).forEach((d) => {
+      // v20 : c'est le MODE qui décide de la filière ramassée, jusque
+      // dans le butin des monstres. Une battue rapporte des peaux, une
+      // embuscade pendant qu'on mine rapporte du minerai, et une
+      // expédition ne rapporte aucun matériau d'artisanat.
+      const famille = FAMILLE_MATERIAU[d.id];
+      if (famille && famille !== filiere) return;
       const chanceMonde = d.chance * difficulte.drop * evenement.drop * chanceEquipe
         * (monde.effets.butin || 1);
       if (Math.random() < Math.min(1, chanceMonde)) {
@@ -1129,41 +1216,33 @@ function apresVictoire(cb) {
     });
   }
 
-  // v17 : après un combat d'exploration, on peut DÉPECER les dépouilles
-  // (récolte du tanneur) avant de reprendre la route.
-  const boutons = [];
-  if ((cb.genre === 'exploration' || cb.genre === 'embuscade') && cb.zone) {
-    boutons.push({
-      texte: '🔪 Dépecer les dépouilles',
-      classe: 'btn-choix',
-      action: (e) => depecerDepouilles(cb, e && e.currentTarget),
-    });
-    boutons.push({
-      texte: 'Continuer ➜',
-      classe: 'btn-principal',
-      action: () => continuerApresButin(),
-    });
-  }
+  // v20 : le dépeçage appartient à la CHASSE, et à elle seule. Il n'est
+  // plus un bouton optionnel après n'importe quel combat : c'est la
+  // récolte du mode, elle tombe donc d'office et sans qu'on la demande.
+  if (cb.genre === 'chasse' && cb.zone) depecerDepouilles(cb, null, lignes);
 
   afficherButin({
-    titre: cb.monstres.some((m) => m.miniBoss) ? '⭐ Champion vaincu !' : '🏆 Victoire !',
-    texte: cb.genre === 'boss' ? 'Un exploit qui restera dans les chroniques de Valciel.' : 'Le champ de bataille vous appartient.',
+    titre: cb.genre === 'chasse' ? '🔪 Battue réussie !'
+      : (cb.monstres.some((m) => m.miniBoss) ? '⭐ Champion vaincu !' : '🏆 Victoire !'),
+    texte: cb.genre === 'boss' ? 'Un exploit qui restera dans les chroniques de Valciel.'
+      : (cb.genre === 'chasse' ? 'Les bêtes sont à terre : on dépèce sur place.' : 'Le champ de bataille vous appartient.'),
     lignes,
     retour: 'zone',
-    boutons: boutons.length ? boutons : undefined,
   });
 }
 
 // 🔪 Le dépeçage : la récolte du tanneur, à même les dépouilles du combat.
-function depecerDepouilles(cb, bouton) {
+// v20 : le dépeçage est la récolte du mode Chasse. Il se fait d'office
+// à la fin de la battue et pousse ses lignes dans le butin — c'est la
+// raison d'être du mode, plus un bonus qu'on pouvait oublier de cliquer.
+function depecerDepouilles(cb, bouton, lignes) {
   if (cb.depece) return;
   cb.depece = true;
   const z = cb.zone;
   const metier = METIERS.tanneur;
   const pool = (z.recolte || []).filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
   const nb = cb.monstres.length;
-  const details = el('butin-details');
-  const xpBase = alea(2, 4);
+  const xpBase = alea(3, 5);
   cb.equipe.filter((m) => m.type !== 'invocation' && !m.distant).forEach((m) => {
     const s = statsEffectives(m);
     const specialiste = m.metierPrincipal === 'tanneur';
@@ -1171,27 +1250,36 @@ function depecerDepouilles(cb, bouton) {
     const multSpec = specialiste ? multSpecialite(s.cha) : 1;
     const gains = {};
     for (let i = 0; i < nb; i++) {
-      if (pool.length && Math.random() < Math.min(0.95, 0.55 * multChanceDrop(s.cha) * multSpec)) {
+      if (pool.length && Math.random() < Math.min(0.95, 0.75 * multChanceDrop(s.cha) * multSpec)) {
         const entree = pool[alea(0, pool.length - 1)];
-        gains[entree.id] = (gains[entree.id] || 0) + 1 + Math.floor(niveauM / 4);
+        gains[entree.id] = (gains[entree.id] || 0) + 1 + Math.floor(niveauM / 3);
       }
     }
-    const chanceExclusif = Math.min(0.6, (0.06 + niveauM * 0.03) * multChanceDrop(s.cha) * multSpec);
+    const chanceExclusif = Math.min(0.9, (0.1 + niveauM * 0.04) * multChanceDrop(s.cha) * multSpec);
     if (!Object.keys(gains).length || Math.random() < chanceExclusif) {
-      gains[metier.exclusif] = (gains[metier.exclusif] || 0) + 1;
+      gains[metier.exclusif] = (gains[metier.exclusif] || 0) + 1 + (specialiste ? 1 : 0);
     }
     gagnerXpMetier(m, 'tanneur', specialiste ? xpBase * 2 : xpBase);
-    progresserQuete(m, 'recolte', 1);
     Object.entries(gains).forEach(([id, qte]) => ajouterObjet(m, id, qte));
     sauvegarder(m);
-    if (details) {
-      const div = document.createElement('div');
-      div.className = 'ligne-butin';
-      div.textContent = `🔪 ${m.avatar} ${m.nom} dépèce : ${Object.entries(gains)
-        .map(([id, qte]) => `${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}`).join(', ')}`;
-      details.appendChild(div);
+    const texte = `🔪 ${m.avatar} ${m.nom} dépèce : ${Object.entries(gains)
+      .map(([id, qte]) => `${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}`).join(', ')}`;
+    if (lignes) lignes.push(texte);
+    else {
+      const details = el('butin-details');
+      if (details) {
+        const div = document.createElement('div');
+        div.className = 'ligne-butin';
+        div.textContent = texte;
+        details.appendChild(div);
+      }
     }
   });
+  const mProg = metierDe(persoActif(), 'tanneur');
+  if (lignes) {
+    lignes.push(`${metier.emoji} ${metier.nom} niv. ${mProg.niveau}${mProg.niveau < NIVEAU_MAX_METIER
+      ? ` (${mProg.xp}/${seuilXpMetier(mProg.niveau)} XP)` : ' (maître)'}`);
+  }
   if (bouton) {
     bouton.disabled = true;
     bouton.textContent = '🔪 Dépouilles récupérées ✓';

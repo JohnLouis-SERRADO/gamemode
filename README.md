@@ -52,7 +52,19 @@ Le header affiche en permanence **l'heure du jour** (🌅 aube · ☀️ jour ·
 
 ### Explorer, raconter, mourir
 
-- **26 zones** (niveaux 1 à 90) en **quatre actes** qui se répondent, du champ de blé des Plaines de l'Aube jusqu'au Trône du Premier Roi. Combats, filons à ⛏️ miner, coins d'🌿 herboriste, histoires uniques par carte, mini-boss champions, marchand nomade — et la **menace du boss** qui tombe sans prévenir.
+- **26 zones** (niveaux 1 à 90) en **quatre actes** qui se répondent, du champ de blé des Plaines de l'Aube jusqu'au Trône du Premier Roi.
+
+  Chaque carte se joue par **cinq modes** — les mêmes partout, et **chacun avec sa ressource** :
+
+  | Mode | Ce qu'on y fait | Ce qu'on en rapporte |
+  | --- | --- | --- |
+  | 🧭 **Expédition** | L'aventure : combats, histoires uniques, champions, marchand nomade | De l'or et des vivres — **aucun matériau d'artisanat** |
+  | ⛏️ **Miner** | On sort la pioche | Pierres, minerais, cristaux |
+  | 🌿 **Récolte** | On cueille | Plantes, fibres, étoffes |
+  | 🔪 **Chasse** | Une **battue** : les peaux se prennent sur la bête, au combat | Cuirs, os, dépouilles |
+  | 👑 **Boss** | Le maître des lieux, une fois vaincu la première fois | Son coffre et son trophée |
+
+  La règle vaut jusque dans le butin des monstres : une battue rapporte des peaux, une embuscade rend la filière qu'on était en train de récolter, et une expédition ne rend **jamais** de matériau. Et la **menace du boss** tombe toujours sans prévenir.
 - **35 donjons d'histoire** écrits comme des aventures de *Donjons & Dragons* : dialogues, choix à conséquences, **votes d'équipe**, **épreuves au d20**, boss à phases et épilogues à variantes.
   - 📜 **26 Chroniques des terres** — une par carte, avec son PNJ, son dilemme et son boss renforcé. Accès exigeant : niveau, caractéristique minimum, objet-clé en poche, boss de la carte vaincu.
   - 📖 **9 Épopées de Valciel** — les grandes histoires. Une épopée terminée ouvre son **Ascension éternelle** : des étages sans fin, **sans soin entre les salles**, jusqu'à la mort ou l'abandon.
@@ -118,7 +130,7 @@ Le jeu embarque sa propre page de tests, qui charge exactement les mêmes fichie
 npx serve .   # puis ouvrir /tests.html
 ```
 
-**204 tests** en 18 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, les cinq raretés d'Éveil tirables restent dans un écart de 10 %, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, et aucun service de la Tour ne vide un grimoire.
+**216 tests** en 19 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, les cinq raretés d'Éveil tirables restent dans un écart de 10 %, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, et aucun service de la Tour ne vide un grimoire.
 
 ## 🗂️ Structure du projet
 

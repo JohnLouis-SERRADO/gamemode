@@ -1618,15 +1618,21 @@ suite('Fin de combat', () => {
     window.multiplicateursEvenement = () => ({ xp: 1, po: 1, drop: 1 });
   }
 
+  // Un matériau de la filière « peau » : celui que la battue rapporte.
+  const MATERIAU_PEAU = Object.keys(OBJETS)
+    .find((id) => OBJETS[id].type === 'materiau' && FAMILLE_MATERIAU[id] === 'peau');
+
   function combatFactice(surcharges = {}) {
     const heros = herosTest({ niveau: 10 });
     return {
-      genre: 'exploration',
+      // v20 : une battue, car c'est le seul genre de combat qui ouvre la
+      // filière « peau » — une expédition ne rapporte plus de matériau.
+      genre: 'chasse',
       difficulte: 'normal',
       equipe: [heros],
       monstres: [{
         nom: 'Cobaye', xp: 40, po: [5, 9],
-        drops: [{ id: Object.keys(OBJETS).find((id) => OBJETS[id].type === 'materiau'), chance: 1 }],
+        drops: [{ id: MATERIAU_PEAU, chance: 1 }],
       }],
       ...surcharges,
     };
@@ -1640,6 +1646,31 @@ suite('Fin de combat', () => {
     verifier(butin.xp > 0, `l'XP du butin devrait être positive (${butin.xp})`);
     verifier(butin.po >= 5, `l'or du butin devrait suivre la fourchette (${butin.po})`);
     verifier(Object.keys(butin.objets).length >= 1, 'le drop garanti devrait tomber');
+  });
+
+  test('une expédition ne ramasse aucun matériau, même sur un drop à 100 %', () => {
+    // La règle des modes descend jusqu'au butin : les peaux ne tombent
+    // que d'une battue, jamais d'un combat d'expédition.
+    const butin = tirerButinCombat(combatFactice({ genre: 'exploration' }));
+    verifier(butin.xp > 0, 'l\'XP tombe toujours');
+    egal(Object.keys(butin.objets).length, 0,
+      `une expédition ne doit rendre aucun matériau (${Object.keys(butin.objets).join(', ')})`);
+  });
+
+  test('une embuscade ne rend que la filière qu\'on récoltait', () => {
+    const enMinant = tirerButinCombat(combatFactice({ genre: 'embuscade', filiereRecolte: 'mine' }));
+    egal(Object.keys(enMinant.objets).length, 0, 'une peau ne tombe pas pendant qu\'on mine');
+    const enChassant = tirerButinCombat(combatFactice({ genre: 'embuscade', filiereRecolte: 'peau' }));
+    verifier(Object.keys(enChassant.objets).length >= 1, 'la peau tombe quand c\'est la filière en cours');
+  });
+
+  test('la moisson déjà ramassée survit à l\'embuscade', () => {
+    // lootRecolte, c'est ce qu'on avait dans les mains quand on s'est
+    // fait surprendre : le filtre de filière ne doit pas le manger.
+    const butin = tirerButinCombat(combatFactice({
+      genre: 'embuscade', filiereRecolte: 'mine', lootRecolte: { [MATERIAU_PEAU]: 3 },
+    }));
+    egal(butin.objets[MATERIAU_PEAU], 3, 'la récolte déjà en poche est conservée');
   });
 
   test('le butin traverse les trois moments du monde vivant', () => {
@@ -1998,6 +2029,114 @@ suite('Audit de partie', () => {
     const dit = /(une|deux|trois|quatre|cinq|six) propositions?/i.exec(SERVICES_TOUR['relancer-eveil'].desc);
     verifier(!!dit, 'le service de relance doit annoncer combien de propositions il tire');
     egal(chiffres[dit[1].toLowerCase()], PROPOSITIONS_PAR_TIRAGE, 'propositions annoncées par la Tour');
+  });
+});
+
+// =====================================================================
+// Les cinq modes d'une carte.
+//
+// Expédition · Miner · Récolte · Chasse · Boss. Le même modèle sur les
+// 26 cartes, et chaque mode avec SA ressource : c'est tout l'objet de la
+// refonte, donc c'est ce qu'on verrouille.
+// =====================================================================
+suite('Modes de zone', () => {
+  const modesRecolte = () => MODES_ZONE.filter((m) => m.metier);
+
+  test('le modèle est le même partout : cinq modes, dans le même ordre', () => {
+    egal(MODES_ZONE.length, 5, 'nombre de modes');
+    egal(MODES_ZONE.map((m) => m.id).join(' '), 'expedition mine plante peau boss', 'ordre des modes');
+    aucun(MODES_ZONE.filter((m) => !m.nom || !m.emoji).map((m) => m.id), 'modes sans nom ou sans emoji');
+  });
+
+  test('les trois modes de récolte pointent vers un métier réel', () => {
+    aucun(modesRecolte().filter((m) => !METIERS[m.metier]).map((m) => m.id), 'modes liés à un métier inconnu');
+    egal(modesRecolte().length, Object.keys(METIERS).length, 'un mode de récolte par métier');
+    const familles = modesRecolte().map((m) => METIERS[m.metier].famille).sort().join(',');
+    egal(familles, 'mine,peau,plante', 'les trois filières sont couvertes');
+  });
+
+  test('chaque carte alimente les trois modes de récolte', () => {
+    const vides = [];
+    ZONES.forEach((z) => {
+      modesRecolte().forEach((mode) => {
+        if (!materiauxDuMode(z, mode).length) vides.push(`${z.id}/${mode.nom}`);
+      });
+    });
+    aucun(vides, 'modes de récolte sans la moindre ressource sur leur carte');
+  });
+
+  test('un matériau n\'appartient qu\'à un seul mode', () => {
+    const doublons = [];
+    ZONES.forEach((z) => {
+      const vu = {};
+      modesRecolte().forEach((mode) => {
+        materiauxDuMode(z, mode).forEach((e) => {
+          if (vu[e.id]) doublons.push(`${z.id} : ${e.id} dans ${vu[e.id]} et ${mode.nom}`);
+          vu[e.id] = mode.nom;
+        });
+      });
+    });
+    aucun(doublons, 'matériaux rattachés à deux modes à la fois');
+  });
+
+  test('aucune ressource de carte n\'est orpheline d\'un mode', () => {
+    // Un matériau sans filière ne tomberait d'aucun des cinq modes : il
+    // serait annoncé sur la carte et introuvable en jeu.
+    const orphelins = [];
+    ZONES.forEach((z) => {
+      (z.recolte || []).forEach((e) => {
+        if (!FAMILLE_MATERIAU[e.id]) orphelins.push(`${z.id} : ${e.id}`);
+      });
+    });
+    aucun(orphelins, 'ressources de carte qu\'aucun mode ne rapporte');
+  });
+
+  test('tout matériau récoltable du catalogue a sa filière', () => {
+    const sans = Object.entries(OBJETS)
+      .filter(([, o]) => o.type === 'materiau')
+      .filter(([id]) => !FAMILLE_MATERIAU[id])
+      .map(([id]) => id);
+    aucun(sans, 'matériaux sans filière de métier');
+  });
+
+  test('une filière de récolte ne s\'ouvre que par son mode', () => {
+    // filiereAutorisee() est la règle unique : c'est le mode qui décide
+    // de la filière ramassée, jusque dans le butin des monstres.
+    egal(filiereAutorisee({ genre: 'chasse' }), 'peau', 'la battue rapporte des peaux');
+    egal(filiereAutorisee({ genre: 'embuscade', filiereRecolte: 'mine' }), 'mine', 'l\'embuscade suit la récolte en cours');
+    ['exploration', 'boss', 'tour', 'tourBoss', 'donjon', 'bossMonde'].forEach((genre) => {
+      egal(filiereAutorisee({ genre }), null, `« ${genre} » ne doit ouvrir aucune filière`);
+    });
+  });
+
+  test('l\'expédition ne distribue aucun matériau d\'artisanat', () => {
+    // Les vivres d'une trouvaille sont des consommables, jamais des
+    // matériaux : ceux-là appartiennent aux trois modes de récolte.
+    const fautes = VIVRES_EXPEDITION.filter((v) => !OBJETS[v.id] || OBJETS[v.id].type !== 'consommable'
+      || FAMILLE_MATERIAU[v.id]).map((v) => v.id);
+    aucun(fautes, 'vivres d\'expédition qui ne sont pas de simples consommables');
+    verifier(VIVRES_EXPEDITION.some((v) => v.niveauMin <= 1), 'une trouvaille doit être possible dès la première carte');
+    for (let i = 1; i < VIVRES_EXPEDITION.length; i++) {
+      verifier(VIVRES_EXPEDITION[i].niveauMin > VIVRES_EXPEDITION[i - 1].niveauMin,
+        'les vivres doivent monter en gamme avec le niveau de la carte');
+    }
+  });
+
+  test('les modes annoncent ce qu\'ils rapportent, sans mentir', () => {
+    // Le libellé d'un mode liste les matériaux de SA filière : si un
+    // matériau change de filière, l'affichage suit tout seul.
+    const fautes = [];
+    ZONES.forEach((z) => {
+      modesRecolte().forEach((mode) => {
+        materiauxDuMode(z, mode).forEach((e) => {
+          if (!OBJETS[e.id]) fautes.push(`${z.id}/${mode.nom} : ${e.id} absent du catalogue`);
+          else if (FAMILLE_MATERIAU[e.id] !== METIERS[mode.metier].famille) {
+            fautes.push(`${z.id}/${mode.nom} : ${e.id} est de filière ${FAMILLE_MATERIAU[e.id]}`);
+          }
+        });
+      });
+    });
+    aucun(fautes, 'modes annonçant une ressource qu\'ils ne rapportent pas');
   });
 });
 
