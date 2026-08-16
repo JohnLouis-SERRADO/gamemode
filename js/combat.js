@@ -44,7 +44,9 @@ function initiativeDe(c) {
   if (c.type === 'monstre') return (c.dex || 0) * 2 + alea(1, 10);
   const base = statDe(c, 'dex') * 2 + alea(1, 10);
   if (c.type !== 'joueur') return base;
-  return Math.round(base * (1 + sousCarac(statsEffectives(c), 'celerite')));
+  // La Célérité de l'équipement, plus celle qu'apportent les passifs.
+  const celerite = sousCarac(statsEffectives(c), 'celerite') + (passifsDe(c).celeriteBonus || 0) / 100;
+  return Math.round(base * (1 + celerite));
 }
 
 function tirageAuPoids(liste) {
@@ -173,6 +175,13 @@ function demarrerCombat(options) {
   equipe.forEach((j) => {
     j.bid = j.bid || (j.cloud && j.cloud.id) || j.id;
     j.neufViesUtilisees = false; // le passif félin se recharge à chaque combat
+    // Les compteurs des passifs se remettent à zéro : l'embuscade
+    // (premier coup critique), l'élan (charges) et le serment du Paladin
+    // valent une fois par combat, pas une fois dans une vie.
+    j.premierCoupJoue = false;
+    j.chargesElan = 0;
+    j.serment = false;
+    j.pasUtilise = false;
   });
 
   etat.combat = {
@@ -311,10 +320,31 @@ async function boucleTour() {
 function debutTour(c) {
   const cb = etat.combat;
   c.defense = false;
+  c.pasUtilise = false; // le pas gratuit de la Danselame, une fois par tour
 
   if (c.type === 'joueur' || c.type === 'invocation') {
     Object.keys(c.cooldowns).forEach((k) => { if (c.cooldowns[k] > 0) c.cooldowns[k]--; });
-    c.mp = Math.min(c.maxMp, c.mp + 2);
+    // 2 PM de base, plus ce que le Flux de l'Arcaniste et ses Voies ajoutent.
+    const pass = c.type === 'joueur' ? passifsDe(c) : {};
+    c.mp = Math.min(c.maxMp, c.mp + 2 + (pass.manaParTour || 0));
+    // La sève : régénération passive, en part des PV maximum.
+    if (pass.regenParTour > 0 && c.hp > 0 && c.hp < c.maxHp) {
+      const rendu = Math.min(c.maxHp - c.hp, Math.max(1, Math.round(c.maxHp * pass.regenParTour)));
+      c.hp += rendu;
+      journal(`🌿 ${c.nom} régénère ${rendu} PV (passif).`);
+    }
+    // Le serment du Paladin : le premier allié en danger reçoit un
+    // bouclier gratuit, une fois par combat et par allié protégé.
+    if (pass.bouclierGratuit > 0 && cb) {
+      const s = statsEffectives(c);
+      cb.equipe.forEach((allie) => {
+        if (estMort(allie) || allie.serment || allie.hp > allie.maxHp * pass.bouclierGratuit) return;
+        allie.serment = true;
+        const valeur = Math.round((10 + Math.max(s.esp || 0, s.int || 0) * 1.5) * (pass.bouclierMult || 1));
+        poserStatut(allie, { type: 'bouclier', duree: 3, valeur });
+        journal(`🕊️ Le serment de ${c.nom} couvre ${allie.nom} (${valeur} points de bouclier).`);
+      });
+    }
   }
 
   const poison = c.statuts.find((s) => s.type === 'poison');
@@ -408,6 +438,10 @@ function verifierFin() {
 function infligerDegats(source, cible, brut, options = {}) {
   const cb = etat.combat;
   let d = varie(brut);
+  // v21 : les passifs (classe, spécialité, Voie, Éveil) entrent enfin dans
+  // le calcul. Ils étaient jusqu'ici de simples phrases sur une fiche.
+  const passifs = source.type === 'joueur' ? passifsDe(source) : {};
+  const passifsCible = cible.type === 'joueur' ? passifsDe(cible) : {};
   // v19 : le ciel entre dans l'équation. Sous la pluie le feu prend mal,
   // sous l'orage la foudre porte. Le physique reste neutre — le temps
   // qu'il fait ne change rien à un coup d'épée.
@@ -429,6 +463,7 @@ function infligerDegats(source, cible, brut, options = {}) {
   // pointes de dégâts absurdes et garde les combats lisibles.
   let chanceCrit = 0.05 + (options.critBonus || 0);
   let chanceDirect = 0;
+  let critForce = false;
   if (source.type === 'joueur') {
     const s = statsEffectives(source);
     chanceCrit += sousCarac(s, 'crit');
@@ -438,8 +473,43 @@ function infligerDegats(source, cible, brut, options = {}) {
     // celui qui tient la ligne au lieu de la fuir.
     d *= 1 + sousCarac(s, 'tenacite') * 0.5;
     if (source.race === 'elfe') chanceCrit += 0.05; // Précision millénaire
+
+    // ----- Les passifs offensifs -----
+    if (passifs.degatsMult) d *= passifs.degatsMult;
+    // La rage : les dégâts montent avec les blessures (Berserker, Voie de la Rage).
+    if (passifs.degatsManquants && source.maxHp > 0) {
+      d *= 1 + passifs.degatsManquants * (1 - Math.max(0, source.hp) / source.maxHp);
+    }
+    // La chasse : le Rôdeur et les siens contre tout ce qui grouille.
+    if (passifs.degatsCreatures && cible.type === 'monstre') d *= 1 + passifs.degatsCreatures;
+    // Le givre : frapper ce qui ne bouge plus.
+    if (passifs.degatsEtourdis && cible.statuts.some((st) => st.type === 'etourdi')) {
+      d *= 1 + passifs.degatsEtourdis;
+    }
+    // La moisson : le champ de bataille nourrit le Nécromancien.
+    if (passifs.degatsParMort && cb) {
+      d *= 1 + passifs.degatsParMort * cb.monstres.filter((m) => m.mort).length;
+    }
+    // La masse : le Colosse frappe avec ce qu'il pèse.
+    if (passifs.degatsParCentPv) {
+      d *= 1 + Math.min(0.6, passifs.degatsParCentPv * (source.maxHp / 100));
+    }
+    chanceCrit += passifs.critBonus || 0;
+    // L'embuscade : le premier coup du combat, une fois par combat.
+    if (passifs.critPremierCoup && !source.premierCoupJoue) {
+      source.premierCoupJoue = true;
+      critForce = true;
+    }
+    // L'élan : une frappe sur N est critique d'office.
+    if (passifs.chargesCritique) {
+      source.chargesElan = (source.chargesElan || 0) + 1;
+      if (source.chargesElan >= passifs.chargesCritique) {
+        source.chargesElan = 0;
+        critForce = true;
+      }
+    }
   }
-  const crit = Math.random() < chanceCrit;
+  const crit = critForce || Math.random() < chanceCrit;
   let direct = false;
   if (crit) {
     d *= 1.5;
@@ -459,6 +529,17 @@ function infligerDegats(source, cible, brut, options = {}) {
       reduit = true;
       d *= 1 - tenacite;
     }
+    // Les passifs défensifs de la cible elle-même…
+    if (passifsCible.reductionDegats > 0) {
+      reduit = true;
+      d *= 1 - passifsCible.reductionDegats;
+    }
+    // …et le rempart d'un allié qui couvre tout le monde (Templier).
+    const couverture = protectionEquipe(cible);
+    if (couverture > 0) {
+      reduit = true;
+      d *= 1 - couverture;
+    }
   }
   // La nuit, ce qui rôde frappe plus fort — c'est le prix du butin majoré.
   if (source.type === 'monstre' && cible.type === 'joueur') {
@@ -469,7 +550,9 @@ function infligerDegats(source, cible, brut, options = {}) {
   // v16 : les lignes de combat — un coup PHYSIQUE perd 40 % quand il part
   // de la ligne arrière ou qu'il la vise. La magie ignore les lignes.
   if (!options.magique) {
-    if (source.ligne === 'arriere') d *= 0.6;
+    // La ligne de tir : le Franc-tireur et ses Voies ne perdent rien à
+    // frapper de loin — c'est tout leur métier.
+    if (source.ligne === 'arriere' && !passifs.ignoreLigneArriere) d *= 0.6;
     if (cible.ligne === 'arriere') d *= 0.6;
   }
   d = Math.max(1, Math.round(d));
@@ -494,7 +577,41 @@ function infligerDegats(source, cible, brut, options = {}) {
     cible.hp = 1;
     journal(`🐱 ${cible.nom} retombe sur ses pattes : Neuf vies le laisse à 1 PV !`);
   }
+
+  // Le vol de vie passif (Runelame, Chevalier Noir, Voies du Sang) : il
+  // s'ajoute au drain d'une compétence, il ne le remplace pas.
+  if (passifs.drainPart > 0 && d > 0 && cible.type === 'monstre' && source.hp > 0) {
+    const rendu = Math.max(1, Math.round(d * passifs.drainPart));
+    const avant = source.hp;
+    source.hp = Math.min(source.maxHp, source.hp + rendu);
+    if (source.hp > avant) journal(`🩸 ${source.nom} reprend ${source.hp - avant} PV à ${cible.nom}.`);
+  }
+
+  // La sentence : ce qui n'est pas un boss et qui tient à un fil tombe.
+  if (passifs.execution > 0 && cible.type === 'monstre' && !cible.boss
+    && cible.hp > 0 && cible.hp <= cible.maxHp * passifs.execution) {
+    if (cb && cb.genre === 'bossMonde') cb.degatsBossMonde += cible.hp;
+    cible.hp = 0;
+    journal(`⚖️ ${source.nom} achève ${cible.nom} : la sentence tombe.`);
+  }
+
   return { degats: d, crit, direct, absorbe, reduit };
+}
+
+// La part de dégâts qu'un allié épargne à toute l'équipe (Templier,
+// Voie du Bastion). Elle ne se cumule pas entre deux protecteurs : c'est
+// la meilleure garde qui compte, sinon quatre Templiers rendaient un
+// groupe intouchable.
+function protectionEquipe(cible) {
+  const cb = etat.combat;
+  if (!cb || !cb.equipe) return 0;
+  let meilleure = 0;
+  cb.equipe.forEach((allie) => {
+    if (allie === cible || allie.type !== 'joueur' || estMort(allie)) return;
+    const part = passifsDe(allie).reductionEquipe || 0;
+    if (part > meilleure) meilleure = part;
+  });
+  return Math.min(0.2, meilleure);
 }
 
 function texteDegats(r) {
@@ -506,10 +623,40 @@ function texteDegats(r) {
   return t;
 }
 
-function soigner(cible, brut) {
-  const soin = Math.max(1, Math.round(varie(brut)));
+// v21 : le soigneur compte. Ses passifs majorent ce qu'il rend, et le
+// surplus n'est plus perdu s'il sait en faire un bouclier (Oracle, Devin,
+// Voie de la Sève). `source` est facultatif : un soin de monstre ou un
+// drain sans porteur passe simplement à côté de ces bonus.
+function soigner(cible, brut, source) {
+  const passifs = source && source.type === 'joueur' ? passifsDe(source) : {};
+  let montant = brut * (passifs.soinMult || 1);
+  const soin = Math.max(1, Math.round(varie(montant)));
+  const avant = cible.hp;
   cible.hp = Math.min(cible.maxHp, cible.hp + soin);
+  const rendu = cible.hp - avant;
+
+  // Le surplus devient un bouclier, plafonné en part des PV de la cible.
+  const surplus = soin - rendu;
+  if (surplus > 0 && passifs.surplusBouclier > 0) {
+    const plafond = Math.round(cible.maxHp * passifs.surplusBouclier);
+    const existant = cible.statuts.find((st) => st.type === 'bouclier');
+    const valeur = Math.min(plafond, (existant ? existant.valeur : 0) + surplus);
+    poserStatut(cible, { type: 'bouclier', duree: Math.max(3, existant ? existant.duree : 0), valeur });
+    journal(`🛡️ Le surplus de soin protège ${cible.nom} (${valeur} points de bouclier).`);
+  }
   return soin;
+}
+
+// La curée : certains passifs rendent des PV à chaque mise à mort
+// (Berserker, Voie du Carnage). Appelée juste après gererMort, là où l'on
+// sait ENCORE qui a porté le coup.
+function recompenserMiseAMort(source, cible) {
+  if (!source || source.type !== 'joueur' || cible.type !== 'monstre' || !cible.mort) return;
+  const part = passifsDe(source).soinParKill || 0;
+  if (part <= 0 || source.hp <= 0 || source.hp >= source.maxHp) return;
+  const rendu = Math.min(source.maxHp - source.hp, Math.max(1, Math.round(source.maxHp * part)));
+  source.hp += rendu;
+  journal(`🍖 ${source.nom} se repaît de sa victoire : +${rendu} PV.`);
 }
 
 function gererMort(c) {
@@ -535,18 +682,26 @@ function poserStatut(cible, statut) {
 }
 
 function appliquerEffet(source, cible, effet, resultatDegats) {
+  // v21 : les passifs allongent les effets et gonflent les boucliers du
+  // lanceur. Un Barde qui « fait durer ses bénédictions 2 tours de plus »
+  // les fait vraiment durer 2 tours de plus.
+  const pass = source && source.type === 'joueur' ? passifsDe(source) : {};
+  const dureeBuff = (base) => base + (pass.dureeBuff || 0);
+  const dureeMalus = (base) => base + (pass.dureeStatut || 0);
   switch (effet.type) {
     case 'poison': {
       const valeur = effet.degats != null
         ? effet.degats
         : Math.round(3 + statDe(source, effet.stat || 'dex') * (effet.stat === 'int' ? 0.5 : 0.6));
-      poserStatut(cible, { type: 'poison', duree: effet.duree, valeur });
-      journal(`🧪 ${cible.nom} est empoisonné (${valeur} dégâts par tour, ${effet.duree} tours).`);
+      const duree = dureeMalus(effet.duree);
+      poserStatut(cible, { type: 'poison', duree, valeur });
+      journal(`🧪 ${cible.nom} est empoisonné (${valeur} dégâts par tour, ${duree} tours).`);
       break;
     }
     case 'affaibli': {
-      poserStatut(cible, { type: 'affaibli', duree: effet.duree });
-      journal(`⬇️ ${cible.nom} est affaibli : −30 % de dégâts pendant ${effet.duree} tours.`);
+      const duree = dureeMalus(effet.duree);
+      poserStatut(cible, { type: 'affaibli', duree });
+      journal(`⬇️ ${cible.nom} est affaibli : −30 % de dégâts pendant ${duree} tours.`);
       break;
     }
     case 'pacte': {
@@ -567,14 +722,16 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
       break;
     }
     case 'bouclier': {
-      const valeur = Math.round(8 + statDe(source, effet.stat || 'int') * 1.5);
-      poserStatut(cible, { type: 'bouclier', duree: effet.duree, valeur });
+      const valeur = Math.round((8 + statDe(source, effet.stat || 'int') * 1.5) * (pass.bouclierMult || 1));
+      const duree = dureeBuff(effet.duree);
+      poserStatut(cible, { type: 'bouclier', duree, valeur });
       journal(`🛡️ ${cible.nom} est protégé par un bouclier (${valeur} points).`);
       break;
     }
     case 'benediction': {
-      poserStatut(cible, { type: 'benediction', duree: effet.duree });
-      journal(`🙏 ${cible.nom} est béni : +30 % de dégâts pendant ${effet.duree} tours.`);
+      const duree = dureeBuff(effet.duree);
+      poserStatut(cible, { type: 'benediction', duree });
+      journal(`🙏 ${cible.nom} est béni : +30 % de dégâts pendant ${duree} tours.`);
       break;
     }
     case 'provocation': {
@@ -585,9 +742,10 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
       break;
     }
     case 'regen': {
-      const valeur = Math.round(3 + statDe(source, effet.stat || 'int') * 0.8);
-      poserStatut(cible, { type: 'regen', duree: effet.duree, valeur });
-      journal(`💧 ${cible.nom} régénérera ${valeur} PV par tour pendant ${effet.duree} tours.`);
+      const valeur = Math.round((3 + statDe(source, effet.stat || 'int') * 0.8) * (pass.soinMult || 1));
+      const duree = dureeBuff(effet.duree);
+      poserStatut(cible, { type: 'regen', duree, valeur });
+      journal(`💧 ${cible.nom} régénérera ${valeur} PV par tour pendant ${duree} tours.`);
       break;
     }
     case 'mana': {
@@ -597,7 +755,10 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
     }
     case 'drain': {
       if (resultatDegats && resultatDegats.degats > 0) {
-        const soin = soigner(source, resultatDegats.degats * effet.part);
+        // Le drain d'un sort rend des PV bruts : il ne passe pas par les
+        // bonus de SOIN, sinon un soigneur-drainer cumulerait deux fois.
+        const soin = Math.max(1, Math.round(varie(resultatDegats.degats * effet.part)));
+        source.hp = Math.min(source.maxHp, source.hp + soin);
         journal(`🧛 ${source.nom} draine ${soin} PV.`);
       }
       break;
@@ -709,13 +870,16 @@ function rendreActions(j) {
     btn.className = 'btn-action competence';
     const cd = j.cooldowns[compId] || 0;
     const cout = coutMpDe(comp, statsJoueur, j.maxMp);
+    // Le pacte de sang : à court de mana, certains paient en PV.
+    const enSang = j.mp < cout && passifsDe(j).manaEnPv && j.hp > 1;
     // Détails chiffrés : dégâts/soins estimés, effets, coût, recharge.
-    let detail = detailsCompetence(comp, statsJoueur, rangDe(j, compId), j.maxMp).join(' · ');
+    let detail = detailsCompetence(comp, statsJoueur, rangDe(j, compId), j.maxMp, j).join(' · ');
     if (cd > 0) detail = `⏳ Encore ${cd} tour${cd > 1 ? 's' : ''}`;
+    else if (enSang) detail = `🩸 ${cout} PM — payés en PV, faute de mana`;
     else if (j.mp < cout) detail = `${cout} PM — pas assez de mana`;
     btn.innerHTML = `${comp.emoji} <strong>${comp.nom}</strong><span class="action-detail">${detail}</span>`;
     btn.title = comp.desc;
-    btn.disabled = cd > 0 || j.mp < cout;
+    btn.disabled = cd > 0 || (j.mp < cout && !enSang);
     btn.addEventListener('click', () => surActionChoisie(j, { genre: 'competence', compId }));
     barre.appendChild(btn);
   });
@@ -817,6 +981,7 @@ function executerActionCoeur(j, action, cible) {
     const r = infligerDegats(j, cible, brut);
     journal(`⚔️ ${j.nom} attaque ${cible.nom} : ${texteDegats(r)}`);
     gererMort(cible);
+    recompenserMiseAMort(j, cible);
   } else if (action.genre === 'ligne') {
     // v16 : se déplacer est un tour à part entière.
     j.ligne = j.ligne === 'arriere' ? 'avant' : 'arriere';
@@ -868,8 +1033,34 @@ function executerAction(j, action, cible) {
     setTimeout(() => (issue === 'retraite' ? apresBossMonde(cb) : apresFuite(cb)), 800);
     return;
   }
+  // Le pas de la Danselame : changer de ligne ne lui coûte pas son tour.
+  // Une seule fois par tour, sinon on peut danser à l'infini.
+  if (action.genre === 'ligne' && !cb.distant && !j.pasUtilise && passifsDe(j).ligneGratuite) {
+    j.pasUtilise = true;
+    cb.finTour = finir;
+    journal(`🌸 ${j.nom} se replace sans perdre son tour.`);
+    rendreCombat();
+    rendreActions(j);
+    return;
+  }
   rendreCombat();
   finir();
+}
+
+// Payer un sort. Le Chevalier Noir et ses semblables peuvent puiser dans
+// leur propre sang quand la réserve de mana ne suffit plus — le pacte ne
+// les tue jamais, il les laisse à 1 PV au pire.
+function payerCout(j, cout) {
+  if (cout <= 0) return;
+  const manque = cout - j.mp;
+  j.mp = Math.max(0, j.mp - cout);
+  if (manque > 0 && passifsDe(j).manaEnPv) {
+    const prix = Math.min(Math.max(0, j.hp - 1), Math.round(manque * 2));
+    if (prix > 0) {
+      j.hp -= prix;
+      journal(`🩸 ${j.nom} paie ${manque} PM manquants avec ${prix} PV.`);
+    }
+  }
 }
 
 function lancerCompetence(j, compId, cible) {
@@ -877,7 +1068,7 @@ function lancerCompetence(j, compId, cible) {
   const comp = COMPETENCES[compId];
   if (comp.type === 'invocation') { lancerInvocation(j, compId); return; }
   const s = statsEffectives(j);
-  j.mp = Math.max(0, j.mp - coutMpDe(comp, s, j.maxMp));
+  payerCout(j, coutMpDe(comp, s, j.maxMp));
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
 
   // Rang de maîtrise (compétences signatures) : +15 % par rang.
@@ -894,6 +1085,7 @@ function lancerCompetence(j, compId, cible) {
         const r = infligerDegats(j, c, brut, { critBonus: comp.critBonus || 0, magique: comp.stat === 'int' });
         journal(`→ ${c.nom} subit ${texteDegats(r)}`);
         gererMort(c);
+        recompenserMiseAMort(j, c);
         // Le drain soigne le lanceur même si le coup achève la cible ;
         // les autres effets (poison, étourdissement…) ne s'appliquent qu'aux vivants.
         if (comp.effet && (comp.effet.type === 'drain' || !estMort(c))) {
@@ -904,7 +1096,7 @@ function lancerCompetence(j, compId, cible) {
   } else if (comp.type === 'soin') {
     const cibles = comp.cible === 'allies' ? cb.equipe.filter((x) => !x.ko) : [cible];
     cibles.forEach((c) => {
-      const soin = soigner(c, (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang);
+      const soin = soigner(c, (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang, j);
       journal(`${comp.emoji} ${j.nom} rend ${soin} PV à ${c === j ? 'lui-même' : c.nom}.`);
       if (comp.effet) appliquerEffet(j, c, comp.effet, null);
     });
@@ -925,17 +1117,16 @@ function lancerCompetence(j, compId, cible) {
 function lancerInvocation(j, compId) {
   const cb = etat.combat;
   const comp = COMPETENCES[compId];
-  // v16 : les invocations traversent désormais les expéditions en ligne —
-  // le chef héberge la simulation, la créature vit sur son écran.
-  // v15.2 : l'Invocateur, maître des liens, entretient DEUX créatures à
-  // la fois — tout autre héros n'en contrôle qu'une. (v19 : l'Invocateur
-  // est devenu une SOUS-classe d'Arcaniste — tester p.classe ne matchait
-  // plus jamais, et son passif emblématique était silencieusement mort.)
-  const limite = j.sousClasse === 'invocateur' ? 2 : 1;
+  // v21 : le nombre d'invocations est un PASSIF, et un seul — celui de la
+  // source la plus généreuse (spécialité, Voie ou Éveil). Elles ne se
+  // cumulent jamais : c'est ce cumul qui donnait quatre créatures à un
+  // Invocateur qui n'aurait dû en tenir que deux. Aucun sort, jamais, ne
+  // change ce nombre.
+  const limite = limiteInvocations(j);
   const vivantes = cb.equipe.filter((x) => x.type === 'invocation' && x.maitre === j.bid && !estMort(x));
   if (vivantes.length >= limite) {
     journal(limite > 1
-      ? `🐾 ${j.nom} tient déjà ${vivantes.map((x) => x.nom).join(' et ')} — même un Invocateur s'arrête à deux !`
+      ? `🐾 ${j.nom} tient déjà ${vivantes.map((x) => x.nom).join(' et ')} — son lien n'en supporte pas plus de ${limite} !`
       : `🐾 ${j.nom} a déjà ${vivantes[0].nom} au combat — une seule invocation par héros !`);
     return;
   }
@@ -944,11 +1135,13 @@ function lancerInvocation(j, compId) {
 
   const modele = INVOCATIONS[comp.invocation];
   const sm = statsEffectives(j);
-  // Les stats de la créature sont des fractions de celles du maître —
-  // et ne peuvent JAMAIS les dépasser.
+  // Les stats de la créature sont des fractions de celles du maître, que
+  // le passif peut renforcer ou brider (une horde de six frappe moins fort
+  // qu'une créature unique) — et ne peuvent JAMAIS dépasser le maître.
+  const multStats = passifsDe(j).invocationStats || 1;
   const stats = {};
   Object.keys(CARACS).forEach((cle) => {
-    const voulu = Math.round((sm[cle] || 0) * modele.stats[cle]);
+    const voulu = Math.round((sm[cle] || 0) * modele.stats[cle] * multStats);
     stats[cle] = Math.max(1, Math.min(voulu, sm[cle] || 1));
   });
   const maxHp = Math.max(10, Math.round(j.maxHp * modele.pvPct));

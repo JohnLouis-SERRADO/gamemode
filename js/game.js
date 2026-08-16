@@ -1221,7 +1221,9 @@ function xpReelle(p, xp) {
     const objet = id && OBJETS[id];
     if (objet && objet.bonus && objet.bonus.xpBonus) xp = Math.round(xp * (1 + objet.bonus.xpBonus));
   });
-  return xp;
+  // Les passifs de savoir (Voleur, Voie de la Fortune) comptent aussi.
+  const passif = typeof passifsDe === 'function' ? (passifsDe(p).xpMult || 1) : 1;
+  return Math.max(1, Math.round(xp * passif));
 }
 
 // Texte honnête d'un gain partagé : une valeur unique si toute l'équipe
@@ -1981,6 +1983,27 @@ function rendreConsoleAdmin(zone, p) {
 let brouillonRepartition = null; // { persoId, points: { for: 1, ... } }
 let ongletHeros = 'apercu'; // v17 : onglet actif de la fiche du héros
 
+// v21 : le bandeau des passifs. Il liste ce que le héros gagne VRAIMENT
+// de sa classe, de sa spécialité, de sa Voie et de son Éveil — la même
+// phrase que celle calculée par le moteur, jamais une promesse à part.
+function passifsHerosHtml(p) {
+  if (typeof textePassifsHeros !== 'function') return '';
+  const texte = textePassifsHeros(p);
+  if (!texte) return '';
+  const sources = [];
+  const classe = CLASSES_BASE[p.classe];
+  if (classe) sources.push(`${classe.emoji} ${classe.nom}`);
+  const sc = sousClasseDe(p);
+  if (sc) sources.push(`${sc.emoji} ${sc.nom}`);
+  const voie = voieDe(p);
+  if (voie) sources.push(`${voie.emoji} ${voie.nom}`);
+  const eveil = eveilDe(p);
+  if (eveil) sources.push(`${eveil.emoji} ${eveil.nom}`);
+  return `<div class="heros-passifs" title="Cumul de vos passifs — c'est exactement ce que le combat applique">
+    ✨ <strong>Passifs</strong> <span class="passifs-sources">${sources.join(' + ')}</span>
+    <span class="passifs-texte">${texte}</span></div>`;
+}
+
 function rendreHeros() {
   const p = persoActif();
   if (!p) return;
@@ -2009,6 +2032,7 @@ function rendreHeros() {
         <button id="btn-valider-renommage" class="btn-choix btn-compact">Valider</button>
       </div>
       <div class="heros-race">${race.emoji} ${race.nom} — <em>${race.passif}</em> : ${race.desc}</div>
+      ${passifsHerosHtml(p)}
       <div class="barre xp"><div class="remplissage" style="width:${pctXp}%"></div>
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
       <div class="heros-puissance">⚡ Puissance : <strong>${puissanceDe(p).toLocaleString('fr-FR')}</strong>

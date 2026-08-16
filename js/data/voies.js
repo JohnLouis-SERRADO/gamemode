@@ -16,6 +16,30 @@
 
 const NIVEAU_VOIE = 50;
 
+// v21 — Ce que fait vraiment chaque profil, en une phrase.
+//
+// Jusqu'ici, la description d'une compétence de Voie recopiait la phrase
+// du PASSIF de la Voie. Résultat : la barre d'action affichait un sort
+// nommé « Légion » annonçant « Quatre invocations simultanées » — alors
+// que ce sort est une salve de dégâts, et que le nombre d'invocations est
+// un passif. Une compétence décrit désormais la compétence, un point
+// c'est tout ; le passif se lit sur la fiche de la Voie.
+const DESC_PROFIL_VOIE = {
+  frappe: 'Une frappe unique et lourde sur un seul ennemi.',
+  salve: 'Une déflagration qui touche tous les ennemis à la fois.',
+  rafale: 'Trois coups enchaînés sur la même cible.',
+  execution: 'Un coup préparé pour achever : forte chance de critique.',
+  drain: 'Un coup qui vous rend la moitié des dégâts infligés en PV.',
+  fleau: 'Une nappe qui blesse tous les ennemis et les empoisonne.',
+  brise: 'Un coup qui casse la garde : la cible frappe 30 % moins fort.',
+  fracas: 'Une onde de choc sur tous les ennemis, qui peut les étourdir.',
+  soin: 'Un soin qui couvre tout le groupe.',
+  grandSoin: 'Un soin majeur, concentré sur un seul allié.',
+  egide: 'Un bouclier posé sur tout le groupe.',
+  ferveur: 'Tout le groupe frappe 30 % plus fort pendant trois tours.',
+  souffle: 'Une régénération sur soi, plusieurs tours durant.',
+};
+
 // Les profils : ce que fait la compétence, et ce que ça coûte.
 const PROFILS_VOIE = {
   frappe:   { type: 'degats', cible: 'ennemi',  puissance: 17, ratio: 2.05, coutMp: 12, cooldown: 4 },
@@ -213,7 +237,7 @@ Object.entries(TABLE_VOIES).forEach(([idSousClasse, liste]) => {
       voie: idVoie,
       niveauRequis: NIVEAU_VOIE,
       stat: modele.type === 'utilitaire' ? undefined : stat,
-      desc: `${passif.split('.')[0]}. La compétence de la ${nomVoie}.`,
+      desc: `${DESC_PROFIL_VOIE[profil]} La compétence de la ${nomVoie}.`,
     };
     // Les effets de soutien lisent la statistique de la famille aussi.
     if (COMPETENCES[idComp].effet && ['bouclier', 'regen'].includes(COMPETENCES[idComp].effet.type)) {

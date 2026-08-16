@@ -143,7 +143,11 @@ function sousCarac(s, cle) {
 
 function maxHpDe(p) {
   const s = statsEffectives(p);
-  return 25 + s.vit * 7 + (p.niveau - 1) * 6 + s.pvMax;
+  const base = 25 + s.vit * 7 + (p.niveau - 1) * 6 + s.pvMax;
+  // Les passifs qui promettent des PV maximum (Colosse, Voie du Géant,
+  // Titan de Guerre) les donnent vraiment.
+  const mult = typeof passifsDe === 'function' ? (passifsDe(p).pvMaxMult || 1) : 1;
+  return Math.round(base * mult);
 }
 
 // La Piété gonfle la réserve de mana : c'est la sous-caractéristique des

@@ -65,7 +65,7 @@ function texteEffetCompetence(effet, s) {
 
 // Renvoie des lignes chiffrées (dégâts, soins, effets, coût) calculées
 // avec les stats effectives fournies.
-function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
+function detailsCompetence(comp, s, rang = 0, maxMp = 0, heros = null) {
   const parts = [];
   const multRang = 1 + 0.15 * rang;
   if (comp.type === 'degats') {
@@ -77,7 +77,12 @@ function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
     const modele = INVOCATIONS[comp.invocation];
     parts.push(`🐾 invoque ${modele.emoji} ${modele.nom} (jusqu'à sa mort ou la fin du combat)`);
     parts.push('🤖 agit seul · stats ≤ les vôtres · 50 % de votre mana');
-    parts.push('☝️ 1 invocation à la fois — 2 pour l’Invocateur 🐉');
+    // Le nombre d'invocations vient du PASSIF du héros, jamais du sort :
+    // on lit donc le vrai chiffre quand on connaît le héros.
+    const limite = heros && typeof limiteInvocations === 'function' ? limiteInvocations(heros) : 1;
+    parts.push(limite > 1
+      ? `☝️ ${limite} invocations à la fois (passif de votre spécialité)`
+      : '☝️ 1 invocation à la fois — un passif peut relever ce plafond');
   }
   if (rang > 0) parts.push(`🏅 rang ${rang} (+${Math.round(rang * 15)} %)`);
   if (comp.critBonus) parts.push(`💥 +${Math.round(comp.critBonus * 100)} % crit.`);

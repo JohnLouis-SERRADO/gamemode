@@ -114,6 +114,26 @@ const PROFILS_EVEIL = {
   souffle:   { type: 'utilitaire', cible: 'soi',    coutMp: 12, cooldown: 4, effet: { type: 'regen', duree: 4 } },
 };
 
+// v21 — Ce que fait la compétence, et rien d'autre. Comme pour les Voies,
+// la description recopiait la phrase du PASSIF de l'Éveil : un sort y
+// promettait « Six invocations » alors qu'il lançait une salve. Le passif
+// se lit sur la fiche de l'Éveil, la compétence se décrit elle-même.
+const DESC_PROFIL_EVEIL = {
+  frappe: 'Une frappe unique, d’une violence de niveau 80, sur un ennemi.',
+  salve: 'Une déflagration qui balaie tous les ennemis.',
+  rafale: 'Trois coups enchaînés sur la même cible.',
+  execution: 'Un coup taillé pour achever : très forte chance de critique.',
+  drain: 'Un coup qui vous rend plus de la moitié des dégâts en PV.',
+  fleau: 'Une nappe qui blesse et empoisonne tous les ennemis.',
+  brise: 'Un coup qui brise la garde : la cible frappe 30 % moins fort.',
+  fracas: 'Une onde de choc sur tous les ennemis, qui peut les étourdir.',
+  soin: 'Un soin majeur sur tout le groupe.',
+  grandSoin: 'Un très grand soin, concentré sur un seul allié.',
+  egide: 'Un bouclier d’Éveil posé sur tout le groupe.',
+  ferveur: 'Tout le groupe frappe 30 % plus fort pendant trois tours.',
+  souffle: 'Une régénération sur soi, plusieurs tours durant.',
+};
+
 // La valeur d'un profil, dans l'unité du budget. Utilisée par le harnais.
 function valeurProfilEveil(comp, statReference) {
   if (comp.type === 'utilitaire') return BUDGET_EVEIL;
@@ -376,6 +396,7 @@ Object.entries(TABLE_EVEILS).forEach(([idSousClasse, liste]) => {
     const idEveil = `${idSousClasse}-${identifiantEveil(nom)}`;
 
     const competences = [profilA, profilB].map((profil, i) => {
+      const description = DESC_PROFIL_EVEIL[profil];
       const idComp = `eveil-${idEveil}-${i + 1}`;
       const modele = PROFILS_EVEIL[profil];
       COMPETENCES[idComp] = {
@@ -387,7 +408,7 @@ Object.entries(TABLE_EVEILS).forEach(([idSousClasse, liste]) => {
         eveil: idEveil,
         niveauRequis: NIVEAU_EVEIL,
         stat: modele.type === 'utilitaire' ? undefined : stat,
-        desc: `${effet} Compétence d’Éveil de ${nom}.`,
+        desc: `${description} ${i === 0 ? 'Première' : 'Seconde'} compétence de l’Éveil « ${nom} ».`,
       };
       return idComp;
     });

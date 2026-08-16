@@ -444,6 +444,27 @@ h4 { margin-bottom: 6px; }
   margin: 2px 0 6px;
 }
 
+.heros-passifs {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0 0 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--bordure);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.heros-passifs .passifs-sources {
+  color: var(--accent-clair);
+  margin-left: 4px;
+}
+
+.heros-passifs .passifs-texte {
+  display: block;
+  color: var(--texte-doux);
+  margin-top: 3px;
+}
+
 .titre-heros {
   color: var(--accent-clair);
   font-style: italic;

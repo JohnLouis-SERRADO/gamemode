@@ -218,7 +218,9 @@ function multiplicateurOr(p) {
     const objet = id && OBJETS[id];
     return somme + ((objet && objet.bonus && objet.bonus.poBonus) || 0);
   }, 0);
-  return 1 + ((familier && familier.bonus.poBonus) || 0) + bonusSetActifs(p).poBonus + equipement;
+  // Les passifs de fortune (Voleur, Voie du Détrousseur) multiplient le tout.
+  const passif = typeof passifsDe === 'function' ? (passifsDe(p).orMult || 1) : 1;
+  return (1 + ((familier && familier.bonus.poBonus) || 0) + bonusSetActifs(p).poBonus + equipement) * passif;
 }
 
 // Ligne d'affichage de la panoplie d'un objet (cartes d'inventaire/boutique).

@@ -1612,6 +1612,132 @@ suite('Éveil', () => {
   });
 });
 
+// =====================================================================
+// 13 bis. Les passifs (v21) — la promesse et le code
+//
+// La règle que cette suite défend tient en une phrase : rien ne doit
+// être écrit sur une fiche qui ne soit pas calculé par le moteur, et
+// aucune compétence ne doit décrire autre chose qu'elle-même.
+// =====================================================================
+suite('Passifs', () => {
+  test('chaque classe, spécialité, Voie et Éveil porte des effets réels', () => {
+    const fautifs = [];
+    Object.keys(CLASSES_BASE).forEach((id) => {
+      if (!PASSIFS_CLASSES[id] || !Object.keys(PASSIFS_CLASSES[id]).length) fautifs.push(`classe ${id}`);
+    });
+    Object.entries(SOUS_CLASSES).forEach(([id, sc]) => {
+      if (!sc.effets || !Object.keys(sc.effets).length) fautifs.push(`spécialité ${id}`);
+    });
+    Object.entries(VOIES).forEach(([id, v]) => {
+      if (!v.effets || !Object.keys(v.effets).length) fautifs.push(`Voie ${id}`);
+    });
+    Object.entries(EVEILS).forEach(([id, e]) => {
+      if (!e.effets || !Object.keys(e.effets).length) fautifs.push(`Éveil ${id}`);
+    });
+    aucun(fautifs, 'passifs sans aucun effet mécanique');
+  });
+
+  test('le texte affiché est exactement ce que le moteur calcule', () => {
+    const fautifs = [];
+    Object.values(VOIES).forEach((v) => {
+      if (v.passif !== texteEffetsPassif(v.effets)) fautifs.push(`Voie ${v.nom}`);
+    });
+    Object.values(EVEILS).forEach((e) => {
+      if (e.effet !== texteEffetsPassif(e.effets)) fautifs.push(`Éveil ${e.nom}`);
+    });
+    aucun(fautifs, 'passifs dont la phrase ne correspond plus aux effets');
+  });
+
+  test('aucune compétence ne décrit un passif à la place de son propre effet', () => {
+    // Le défaut signalé en jeu : la compétence « Légion » annonçait
+    // « Quatre invocations simultanées » alors qu'elle lance une salve.
+    const suspects = ['invocations simultanées', 'invocations à la fois', '% de PV maximum',
+      'Trois invocations', 'Quatre invocations', 'Six invocations'];
+    const fautives = Object.entries(COMPETENCES)
+      .filter(([, c]) => c.type !== 'invocation'
+        && suspects.some((mot) => (c.desc || '').includes(mot)))
+      .map(([id]) => id);
+    aucun(fautives, 'compétences qui décrivent un passif');
+  });
+
+  test('LE BUG : les invocations ne se cumulent jamais d\'une source à l\'autre', () => {
+    // Spécialité (2) + Voie de la Horde (4) + Éveil Légion (6) donnait
+    // douze créatures. C'est la source la plus généreuse qui décide, seule.
+    const p = herosTest({ niveau: 90, classe: 'arcaniste', sousClasse: 'invocateur' });
+    egal(limiteInvocations(p), 2, 'un Invocateur nu');
+
+    const horde = SOUS_CLASSES.invocateur.voies
+      .map((id) => VOIES[id]).find((v) => (v.effets || {}).invocations === 4);
+    verifier(!!horde, 'la Voie de la Horde devrait exister');
+    p.voie = horde.id;
+    egal(limiteInvocations(p), 4, 'avec la Voie de la Horde');
+
+    const legion = SOUS_CLASSES.invocateur.eveils
+      .map((id) => EVEILS[id]).find((e) => (e.effets || {}).invocations === 6);
+    verifier(!!legion, 'l\'Éveil Légion devrait exister');
+    p.eveil = { id: legion.id, rarete: legion.rarete, relances: 0 };
+    egal(limiteInvocations(p), 6, 'avec l\'Éveil Légion — et pas 2 + 4 + 6');
+  });
+
+  test('un héros sans spécialité tient exactement une invocation', () => {
+    const p = herosTest({ niveau: 20, classe: 'arcaniste', sousClasse: null });
+    egal(limiteInvocations(p), 1, 'sans passif d\'invocation');
+  });
+
+  test('une horde nombreuse frappe moins fort qu\'une créature unique', () => {
+    // Sinon « six invocations » serait strictement meilleur que « deux ».
+    const fautifs = [];
+    Object.values(PROFILS_PASSIFS).forEach((profil) => {
+      ['voie', 'eveil'].forEach((cran) => {
+        const e = profil[cran] || {};
+        if (e.invocations >= 4 && (e.invocationStats == null || e.invocationStats >= 1)) {
+          fautifs.push(`${e.invocations} invocations à ${e.invocationStats}`);
+        }
+      });
+    });
+    aucun(fautifs, 'hordes non bridées');
+  });
+
+  test('aucun empilement ne dépasse les plafonds de sécurité', () => {
+    // On empile le pire cas possible : toutes les sources à la fois.
+    const fautifs = [];
+    Object.entries(SOUS_CLASSES).forEach(([idSc, sc]) => {
+      (sc.voies || []).forEach((idVoie) => {
+        (sc.eveils || []).forEach((idEveil) => {
+          const p = herosTest({ niveau: 100, classe: sc.classe, sousClasse: idSc });
+          p.voie = idVoie;
+          p.eveil = { id: idEveil, rarete: EVEILS[idEveil].rarete, relances: 0 };
+          const total = passifsDe(p);
+          Object.entries(PLAFONDS_PASSIFS).forEach(([cle, plafond]) => {
+            if (total[cle] > plafond + 1e-9) fautifs.push(`${idSc}/${cle} = ${total[cle]}`);
+          });
+        });
+      });
+    });
+    aucun(fautifs, 'passifs au-delà du plafond');
+  });
+
+  test('un héros distant garde ses passifs, il ne les recalcule pas', () => {
+    const distant = { type: 'joueur', distant: true, passifsEff: { degatsMult: 1.5 } };
+    egal(passifsDe(distant).degatsMult, 1.5, 'passifs transmis');
+  });
+
+  test('les PV maximum suivent vraiment le passif qui les promet', () => {
+    // On compare chaque héros à SA propre formule de base : le bonus de
+    // caractéristiques de la spécialité entre déjà dans statsEffectives.
+    const brut = (p) => {
+      const s = statsEffectives(p);
+      return 25 + s.vit * 7 + (p.niveau - 1) * 6 + s.pvMax;
+    };
+    const sans = herosTest({ niveau: 60, classe: 'gardien', sousClasse: 'templier' });
+    egal(maxHpDe(sans), Math.round(brut(sans)), 'un Templier n\'a pas de bonus de PV');
+
+    const avec = herosTest({ niveau: 60, classe: 'runelame', sousClasse: 'metamorphe' });
+    egal(passifsDe(avec).pvMaxMult, 1.15, 'le passif du Métamorphe');
+    egal(maxHpDe(avec), Math.round(brut(avec) * 1.15), 'le +15 % du Métamorphe');
+  });
+});
+
 suite('Fin de combat', () => {
   // La page de tests ne charge pas reseau.js : on remplace le multiplicateur
   // d'événement mondial par sa valeur neutre (1 partout), comme hors ligne.

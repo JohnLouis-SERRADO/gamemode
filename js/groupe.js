@@ -34,6 +34,10 @@ function snapshotPourGroupe(p) {
     classe: p.classe || 'aventurier',
     niveau: p.niveau,
     statsEff: statsEffectives(p),
+    // v21 : les passifs voyagent avec le héros. Sans eux, un Invocateur
+    // invité chez quelqu'un d'autre perdait sa seconde créature et un
+    // Colosse ses PV — l'écran du chef ne connaît pas sa Voie.
+    passifsEff: typeof passifsDe === 'function' ? passifsDe(p) : {},
     maxHp: p.maxHp,
     maxMp: p.maxMp,
     hp: p.hp,
@@ -63,6 +67,7 @@ function creerJoueurDistant(m) {
     classe: m.classe || 'aventurier',
     stats: { for: m.statsEff.for, int: m.statsEff.int, dex: m.statsEff.dex, vit: m.statsEff.vit, cha: m.statsEff.cha || 0 },
     statsEff: m.statsEff,
+    passifsEff: m.passifsEff || {},
     maxHp: m.maxHp, maxMp: m.maxMp, hp: m.hp, mp: m.mp,
     competences: m.competences || [],
     rangs: m.rangs || {},
@@ -637,6 +642,7 @@ function serialiserCombat(cb) {
       race: j.race, niveau: j.niveau, ligne: j.ligne || null,
       hp: j.hp, maxHp: j.maxHp, mp: j.mp, maxMp: j.maxMp,
       statsEff: j.type === 'invocation' ? j.stats : statsEffectives(j),
+      passifsEff: j.type === 'invocation' ? {} : passifsDe(j),
       statuts: j.statuts, ko: j.ko, mort: j.mort || false, defense: j.defense,
       cooldowns: j.cooldowns, competences: j.competences,
       potions: (j.inventaire || [])
