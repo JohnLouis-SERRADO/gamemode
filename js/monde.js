@@ -193,16 +193,33 @@ function rendreZone(z) {
   const actions = el('zone-actions-liste');
   actions.innerHTML = '';
 
-  // v17 : UNE seule action d'exploration — combats (avec dépeçage), filons
-  // à miner, herbes à cueillir, histoires uniques, mini-boss… et parfois
-  // le maître des lieux en personne.
+  // v21 : retour au modèle d'origine — CHAQUE activité a son bouton.
+  // L'exploration cherche le danger et l'histoire ; la récolte se choisit
+  // métier par métier (⛏️ miner, 🔪 dépecer, 🌿 herboriser). Tout mélanger
+  // dans une seule action privait le joueur de son choix.
   const explorer_ = document.createElement('button');
-  explorer_.className = 'btn-action-zone exploration-unifiee';
+  explorer_.className = 'btn-action-zone exploration';
   explorer_.innerHTML = `<span class="action-zone-emoji">🧭</span><strong>Explorer${menace ? ' ⚠️' : ''}</strong>
-    <span class="action-zone-detail">Combats (et dépeçage 🔪), filons à miner ⛏️, herbes à cueillir 🌿,
-    histoires uniques 📜, champions ⭐${bossVaincu ? '' : '… et le maître des lieux rôde 👑'}</span>`;
+    <span class="action-zone-detail">Combats ⚔️, champions ⭐, histoires 📜, trouvailles 🎁${bossVaincu ? '' : '… et le maître des lieux rôde 👑'}</span>`;
   explorer_.addEventListener('click', () => explorer(z));
   actions.appendChild(explorer_);
+
+  // Les trois métiers de récolte : chacun sa moisson, chacun son bouton.
+  // La spécialité du héros s'annonce d'une étoile — c'est là qu'il récolte
+  // le plus, et qu'il progresse deux fois plus vite.
+  Object.entries(METIERS).forEach(([idMetier, metier]) => {
+    const m = metierDe(p, idMetier);
+    const specialite = p.metierPrincipal === idMetier;
+    const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
+    const noms = pool.map((e) => `${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}`).join(', ');
+    const btn = document.createElement('button');
+    btn.className = 'btn-action-zone recolte';
+    btn.innerHTML = `<span class="action-zone-emoji">${metier.emoji}</span><strong>${metier.action}${specialite ? ' ⭐' : ''}</strong>
+      <span class="action-zone-detail">${noms || `${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom} (traces à débusquer)`}
+      · ${metier.nom} niv. ${m.niveau}${specialite ? ' · ⭐ spécialité : moisson enrichie, progression ×2' : ''}</span>`;
+    btn.addEventListener('click', () => recolter(z, idMetier));
+    actions.appendChild(btn);
+  });
 
   const bossBtn = document.createElement('button');
   bossBtn.className = 'btn-action-zone boss' + (bossVaincu ? '' : ' action-verrouillee');
@@ -235,7 +252,7 @@ function rendreZone(z) {
       <h3>🐾 Créatures de la zone</h3>
       <div class="rangee-chips">${chipsMonstres}
         <span class="chip chip-boss">${boss.emoji} ${boss.nom} (boss)</span></div>
-      <h3>⛏️ Matériaux (au fil de l'exploration) <span class="badge">🍀 la Chance enrichit la moisson</span></h3>
+      <h3>⛏️ Matériaux (une action de récolte par métier) <span class="badge">🍀 la Chance enrichit la moisson</span></h3>
       <div class="rangee-chips">${chipsMateriaux}</div>
       <p class="aide">📜 Histoires découvertes ici : ${vues}/${histoires.length} · Explorations : ${explorations}${bossVaincu ? ' · 🏆 boss vaincu — défi libre débloqué' : ''}</p>
     </div>`;
@@ -287,9 +304,10 @@ function composerPack(z, nb) {
   return cles;
 }
 
-// v17 : l'exploration unifiée — UNE action, tous les visages de la carte.
-// Combats (avec dépeçage), filons, herbes, histoires uniques, mini-boss,
-// marchand, trouvailles… et la menace du boss, qui frappe sans prévenir.
+// Explorer : chercher le danger et l'histoire. Combats, champions,
+// monstre doré, marchand nomade, chapitre de la chronique, trouvailles…
+// et la menace du boss, qui frappe sans prévenir. La récolte, elle, a ses
+// propres actions (⛏️ 🔪 🌿) — on choisit ce qu'on vient faire.
 function explorer(z) {
   const p = persoActif();
   p.explorations[z.id] = (p.explorations[z.id] || 0) + 1;
@@ -335,34 +353,27 @@ function explorer(z) {
     marchandNomade(z);
     return;
   }
-  if (tirage < 0.14) {
+  if (tirage < 0.15) {
     // ⭐ Un mini-boss : le champion local, plus coriace, mieux garni.
     const champion = miniBossDe(z);
     afficherToast(`⭐ ${champion.emoji} ${champion.nom} vous barre la route !`);
     demarrerCombatZone(z, 'exploration', [], { monstresDef: [champion] });
     return;
   }
-  if (tirage < 0.2) {
-    evenementRecolte(z, 'mineur', '⛏️ Un filon affleure !',
-      'La roche s’ouvre sur un filon prometteur. Le temps de sortir la pioche ?');
+  // v21 : l'exploration ne récolte plus à la place du joueur — miner,
+  // dépecer et herboriser sont redevenus trois actions à part entière,
+  // sur l'écran de la zone. Ce qui restait ici part vers l'histoire.
+  if (tirage < 0.26 && evenementHistoire(z)) {
     return;
   }
-  if (tirage < 0.26) {
-    evenementRecolte(z, 'tisseur', '🌿 Un coin d’herboriste !',
-      'Plantes rares, fibres et étoffes sauvages à portée de main. On cueille ?');
-    return;
-  }
-  if (tirage < 0.33 && evenementHistoire(z)) {
-    return;
-  }
-  if (tirage < 0.38 && !p.bossVaincus.includes(z.id) && !etat.menaces[z.id]) {
+  if (tirage < 0.32 && !p.bossVaincus.includes(z.id) && !etat.menaces[z.id]) {
     evenementMenaceBoss(z);
     return;
   }
-  if (tirage < 0.75) {
+  if (tirage < 0.78) {
     const cles = composerPack(z, tailleDuPack(membresEquipe()));
     demarrerCombatZone(z, 'exploration', cles);
-  } else if (tirage < 0.91) {
+  } else if (tirage < 0.92) {
     // Trouvaille
     const objets = {};
     z.recolte.forEach((entree) => {
@@ -434,31 +445,6 @@ function evenementMenaceBoss(z) {
   });
 }
 
-// Filon ou coin d'herboriste : on récolte (métier concerné), ou on passe.
-function evenementRecolte(z, idMetier, titre, texte) {
-  const metier = METIERS[idMetier];
-  const m = metierDe(persoActif(), idMetier);
-  const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
-  const noms = pool.map((e) => `${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}`).join(', ')
-    || `${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom} (traces)`;
-  afficherButin({
-    titre,
-    texte,
-    lignes: [`${metier.emoji} ${metier.nom} niv. ${m.niveau} · en vue : ${noms}`, '⚠️ Récolter peut attirer une embuscade…'],
-    retour: 'zone',
-    boutons: [
-      {
-        texte: `${metier.emoji} ${metier.action}`,
-        classe: 'btn-principal',
-        action: () => recolter(z, idMetier),
-      },
-      {
-        texte: '🚶 Passer son chemin',
-        action: () => { rendreZone(z); montrerEcran('ecran-zone'); },
-      },
-    ],
-  });
-}
 
 // 📜 Une histoire unique de la carte : chacune ne se vit qu'une fois.
 function evenementHistoire(z) {

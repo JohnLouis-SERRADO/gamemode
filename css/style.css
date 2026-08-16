@@ -852,6 +852,8 @@ button:focus-visible,
 }
 
 .btn-action-zone:not(:disabled):hover { border-color: var(--accent); transform: translateY(-2px); }
+.btn-action-zone.exploration:not(:disabled) { border-color: #3b5a72; }
+.btn-action-zone.recolte:not(:disabled) { border-color: #3d5b3d; }
 .btn-action-zone.boss:not(:disabled) { border-color: #6e3434; }
 .btn-action-zone.boss:not(:disabled):hover { border-color: var(--danger); }
 

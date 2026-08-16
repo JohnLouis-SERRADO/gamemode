@@ -304,13 +304,14 @@ suite('Progression', () => {
 // 3. Combat
 // =====================================================================
 suite('Combat', () => {
-  test('le coût en mana ne dépasse jamais 30 % de la réserve', () => {
-    const stats = { for: 60, int: 60, dex: 60, vit: 60, cha: 60 };
-    const maxMp = 100;
+  test('le coût affiché est le coût payé : aucune majoration liée aux stats', () => {
+    const faibles = { for: 0, int: 0, dex: 0, vit: 0, cha: 0, esp: 0 };
+    const fortes = { for: 99, int: 99, dex: 99, vit: 99, cha: 99, esp: 99 };
     const fautives = Object.entries(COMPETENCES)
-      .filter(([, c]) => coutMpDe(c, stats, maxMp) > Math.max(c.coutMp || 0, Math.round(maxMp * 0.3)))
+      .filter(([, c]) => coutMpDe(c, faibles, 100) !== (c.coutMp || 0)
+        || coutMpDe(c, fortes, 100) !== (c.coutMp || 0))
       .map(([id]) => id);
-    aucun(fautives, 'compétences qui dépassent le plafond de mana');
+    aucun(fautives, 'compétences dont le coût varie avec les caractéristiques');
   });
 
   test('le coût en mana n\'est jamais négatif', () => {

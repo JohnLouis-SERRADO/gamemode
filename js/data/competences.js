@@ -87,26 +87,24 @@ function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
   }
   parts.push(`🎯 ${TEXTE_CIBLE[comp.cible]}`);
   const cout = coutMpDe(comp, s, maxMp);
-  parts.push(cout > 0 ? `💧 ${cout} PM${cout > (comp.coutMp || 0) ? ` (${comp.coutMp} +${cout - comp.coutMp} lié aux stats)` : ''}` : '💧 gratuit');
+  parts.push(cout > 0 ? `💧 ${cout} PM` : '💧 gratuit');
   if (comp.cooldown) parts.push(`⏳ ${comp.cooldown} t.`);
   return parts;
 }
 
 // =====================================================================
-// v17 : coût en mana ÉVOLUTIF. Plus la stat qui porte la compétence est
-// haute (donc plus elle frappe/soigne fort), plus elle coûte un peu de
-// mana. Garde-fou : le coût ne dépasse jamais 30 % du mana maximum —
-// aucune compétence ne vide la réserve d'un coup.
+// v21 : le coût d'un sort est un CHIFFRE FIXE, celui qui est écrit sur
+// la carte. Le surcoût lié aux caractéristiques de la v17 est retiré :
+// monter son Intelligence rendait ses propres sorts plus chers, ce que
+// personne n'attend d'une montée en puissance. Un sort à 7 PM coûte 7 PM,
+// au niveau 1 comme au niveau 100.
+//
+// La signature garde ses paramètres (stats, mana max) : des dizaines
+// d'appels les passent déjà, et une réduction de coût pourra s'y brancher
+// plus tard sans toucher à tous les appelants.
 // =====================================================================
-function coutMpDe(comp, s, maxMp) {
-  let cout = comp.coutMp || 0;
-  if (cout > 0 && comp.stat && comp.ratio && (comp.type === 'degats' || comp.type === 'soin')) {
-    cout += Math.floor(((s && s[comp.stat]) || 0) * comp.ratio * 0.08);
-  }
-  if (maxMp > 0 && cout > (comp.coutMp || 0)) {
-    cout = Math.min(cout, Math.max(comp.coutMp || 0, Math.round(maxMp * 0.3)));
-  }
-  return cout;
+function coutMpDe(comp) {
+  return comp.coutMp || 0;
 }
 
 // cible : 'ennemi' | 'ennemis' | 'allie' | 'allies' | 'soi'
