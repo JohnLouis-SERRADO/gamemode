@@ -5,6 +5,24 @@
 // =====================================================================
 
 // =====================================================================
+// Qu'est-ce qu'une compétence COMMUNE ?
+//
+// Celle qui n'appartient à personne : ni à une classe, ni à une
+// spécialité, ni à une Voie, ni à un Éveil. C'est le seul pool qui
+// s'achète et se choisit librement — tout le reste se mérite à son
+// palier d'identité.
+//
+// Deux écrans testaient seulement `comp.classe`, et laissaient donc
+// passer les 216 compétences de spécialité, les 81 de Voie et les 324
+// d'Éveil, qui portent `sousClasse` / `voie` / `eveil` mais jamais
+// `classe` : la création en proposait 50 au niveau 1, et l'Arcanium
+// vendait les 645. Une règle, un seul endroit.
+// =====================================================================
+function estCompetenceCommune(comp) {
+  return !!comp && !comp.classe && !comp.sousClasse && !comp.voie && !comp.eveil;
+}
+
+// =====================================================================
 // Détails chiffrés d'une compétence pour un jeu de stats donné
 // =====================================================================
 // =====================================================================

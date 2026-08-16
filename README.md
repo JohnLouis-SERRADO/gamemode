@@ -28,9 +28,9 @@ Les six classes couvrent la trinité MMORPG au complet :
 - ✨ **Devin** *(soigneur, tissu)* — Barde · Chaman · Druide · Oracle
 - 🌑 **Runelame** *(DPS mêlée magique, maille)* — Faucheur · Corrupteur · Métamorphe · Runemaître · Vibrelame
 
-**L'Éveil** est le seul palier qu'on ne choisit pas librement : au niveau 80, cinq propositions sont tirées au sort parmi les six Éveils de votre spécialité, en six raretés (Rare → Épique → Légendaire → Mythique → Divin, plus un **Éveil caché** qui ne sort d'aucun tirage et se mérite par une condition secrète). Les cinq raretés tirables sont **équilibrées à 10 % près** — un Divin n'est pas plus fort, il est plus *singulier*. Cinq relances sans Légendaire ? La sixième le garantit.
+**L'Éveil** est le seul palier qu'on ne choisit pas librement : au niveau 80, **trois propositions** sont tirées au sort parmi les six Éveils de votre spécialité, en six raretés (Rare → Épique → Légendaire → Mythique → Divin, plus un **Éveil caché** qui ne sort d'aucun tirage et se mérite par une condition secrète). Pourquoi trois et pas cinq : chaque spécialité ne compte que cinq Éveils tirables, et un tirage de cinq les aurait tous sortis à chaque fois — relances, verrou et garantie n'auraient servi à rien. Les cinq raretés tirables sont **équilibrées à 10 % près** — un Divin n'est pas plus fort, il est plus *singulier*. Cinq relances sans Mythique ? La sixième le garantit.
 
-**701 compétences** au total : 48 de classe, 216 de spécialité, 81 de Voie, 324 d'Éveil et 32 du pool commun acheté à l'Arcanium. Toujours **8 sorts équipés au maximum** — l'arbitrage ne disparaît jamais.
+**701 compétences** au total : 56 de classe (48 pour les six classes jouables, plus les 8 de l'Aventurier historique, gardées pour les vieilles sauvegardes), 216 de spécialité, 81 de Voie, 324 d'Éveil et 24 du pool commun acheté à l'Arcanium. Ce pool commun est le seul qui s'achète : les compétences de spécialité, de Voie et d'Éveil se méritent à leur palier, jamais en boutique. Toujours **8 sorts équipés au maximum** — l'arbitrage ne disparaît jamais.
 
 ### Les caractéristiques, modèle Final Fantasy XIV
 
@@ -44,7 +44,7 @@ Un coup peut être **critique** (×1,5) *ou* **direct** (×1,25), jamais les deu
 
 Un mage ne porte pas d'armure de fer. Quatre **catégories d'armure** (tissu · cuir · maille · plaque) et six **familles d'arme** (lame · arc · bâton · calice · runique · pavois), chacune réservée aux classes qui en ont l'usage — et l'inventaire dit *pourquoi* un objet vous est refusé plutôt que de le griser en silence.
 
-**18 297 objets** en 7 raretés (jusqu'au Divin ✨), dont **5 313 en boutique** et **386 recettes** d'artisanat. Chaque objet affiche, en face de ce que vous portez déjà, l'écart exact : `+3 💪 / −2 ❤️ ▲ mieux que l'équipé`.
+**18 298 objets** en 7 raretés (jusqu'au Divin ✨), dont **5 314 en boutique** et **386 recettes** d'artisanat. Chaque objet affiche, en face de ce que vous portez déjà, l'écart exact : `+3 💪 / −2 ❤️ ▲ mieux que l'équipé`.
 
 ### Un monde qui tourne sans vous
 
@@ -62,7 +62,7 @@ Le header affiche en permanence **l'heure du jour** (🌅 aube · ☀️ jour ·
 
 Au niveau 60 s'ouvre la contrepartie de tout ce qui précède : **tout choix définitif a une porte de sortie payante**. Sept services, réglés en **Sceaux** — une monnaie qui ne s'achète pas et se gagne uniquement en grimpant la Tour Sans Fin et la Tour des Boss (un Sceau Majeur à chaque étage multiple de dix) :
 
-changer de Voie · changer de spécialité · changer de rôle · relancer son Éveil · verrouiller une proposition · forcer une rareté Légendaire · révéler un Éveil caché.
+changer de Voie · changer de spécialité · changer de rôle · relancer son Éveil · verrouiller une proposition · forcer une rareté Mythique · révéler un Éveil caché.
 
 Le coût suit la gravité du changement, et **aucun service ne retire quoi que ce soit du grimoire** : rechoisir sa spécialité ne fait oublier aucune compétence apprise.
 
@@ -89,7 +89,7 @@ Le coût suit la gravité du changement, et **aucun service ne retire quoi que c
 - **Invocations** 🐾 : six créatures qui combattent seules, en payant leur mana — puis les PV de leur maître.
 - **Tours sans fin** : la Tour Sans Fin et la Tour des Boss (16 boss, Normal/Héroïque/Cauchemar).
 - **Taverne** : chat, sept classements, boss du monde à barre de vie partagée, comptoir d'échange.
-- **36 hauts faits**, 6 races à passifs, 13 familiers à bonus.
+- **37 hauts faits**, 6 races à passifs, 13 familiers à bonus.
 - **Un bac à sable admin** 🛠️ : taper `admin-valciel` dans « Reprendre un héros » ouvre une console rangée en 9 sections. Local par défaut.
 
 ## 🌍 Multijoueur : comment ça marche
@@ -118,7 +118,7 @@ Le jeu embarque sa propre page de tests, qui charge exactement les mêmes fichie
 npx serve .   # puis ouvrir /tests.html
 ```
 
-**168 tests** en 14 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, les cinq raretés d'Éveil tirables restent dans un écart de 10 %, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, et aucun service de la Tour ne vide un grimoire.
+**192 tests** en 17 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, les cinq raretés d'Éveil tirables restent dans un écart de 10 %, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, et aucun service de la Tour ne vide un grimoire.
 
 ## 🗂️ Structure du projet
 

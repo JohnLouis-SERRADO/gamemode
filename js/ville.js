@@ -669,9 +669,20 @@ function rendreFournisseur() {
 }
 
 // =====================================================================
-// L'Arcanium : la boutique de magie — tous les grimoires de compétences
+// L'Arcanium : la boutique de magie — les grimoires du POOL COMMUN
 // =====================================================================
 let filtreArcanium = 'tous';
+
+// Ce qui se vend chez Dame Sibylle, et rien d'autre : le pool commun.
+//
+// L'étal ne se filtrait que sur `comp.classe`. Les compétences de
+// spécialité, de Voie et d'Éveil ne portent pas ce champ-là — elles
+// portent `sousClasse`, `voie` et `eveil` — et se retrouvaient donc
+// toutes en vente libre : un Gardien de niveau 1 achetait pour 525 po
+// les sorts d'Éveil d'un Templier, la Voie d'un Pyromancien et les huit
+// compétences de n'importe quelle spécialité. Les quatre paliers
+// d'identité s'achetaient à la boutique, et les Sceaux de la Tour de
+// l'Éveil ne servaient plus à rien. Voir estCompetenceCommune().
 
 // Prix d'un grimoire de compétence : selon son coût en mana et sa recharge.
 // La recharge est plafonnée à 6 tours dans le calcul : les invocations
@@ -723,7 +734,7 @@ function rendreArcanium() {
 
   const stats = statsEffectives(p);
   const inconnues = Object.entries(COMPETENCES)
-    .filter(([id, comp]) => !p.grimoire.includes(id) && !comp.classe)
+    .filter(([id, comp]) => !p.grimoire.includes(id) && estCompetenceCommune(comp))
     .filter(([, comp]) => filtreArcanium === 'tous' || comp.categorie === filtreArcanium)
     .sort((a, b) => prixGrimoire(a[1]) - prixGrimoire(b[1]));
   rendreListeFiltrable({

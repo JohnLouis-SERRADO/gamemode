@@ -1878,6 +1878,316 @@ suite('Régressions v19.1', () => {
 });
 
 // =====================================================================
+// Audit joué : ce qu'une partie complète, du niveau 1 au niveau 100, a
+// fait remonter. Chaque test ci-dessous a d'abord été un défaut visible
+// à l'écran.
+// =====================================================================
+suite('Audit de partie', () => {
+  test('les paliers d\'identité ne s\'achètent pas : le pool commun n\'appartient à personne', () => {
+    const intrus = Object.entries(COMPETENCES)
+      .filter(([, c]) => estCompetenceCommune(c))
+      .filter(([, c]) => c.classe || c.sousClasse || c.voie || c.eveil)
+      .map(([id]) => id);
+    aucun(intrus, 'compétences dites communes alors qu\'elles appartiennent à un palier');
+  });
+
+  test('aucune compétence de spécialité, de Voie ou d\'Éveil n\'est commune', () => {
+    // C'est LE test qui ferme la brèche : la création en proposait 50 au
+    // niveau 1 et l'Arcanium en vendait 645, faute de regarder autre
+    // chose que `comp.classe`.
+    const reserves = Object.entries(COMPETENCES)
+      .filter(([, c]) => c.sousClasse || c.voie || c.eveil)
+      .filter(([, c]) => estCompetenceCommune(c))
+      .map(([id]) => id);
+    aucun(reserves, 'compétences réservées passées dans le pool commun');
+    const communes = Object.values(COMPETENCES).filter(estCompetenceCommune).length;
+    entre(communes, 1, 60, 'le pool commun doit rester un petit pool');
+  });
+
+  test('chaque carte du monde a ses histoires uniques', () => {
+    const sans = ZONES.filter((z) => !(HISTOIRES_ZONES[z.id] || []).length).map((z) => z.id);
+    aucun(sans, 'cartes sans la moindre histoire — le compteur afficherait 0/0');
+  });
+
+  test('les histoires de carte ne promettent que des récompenses réelles', () => {
+    const fautes = [];
+    Object.entries(HISTOIRES_ZONES).forEach(([zone, histoires]) => {
+      const titres = new Set();
+      histoires.forEach((h) => {
+        if (!h.titre || !h.texte) fautes.push(`${zone} : histoire sans titre ou sans texte`);
+        if (titres.has(h.titre)) fautes.push(`${zone} : titre en double « ${h.titre} »`);
+        titres.add(h.titre);
+        const r = h.recompense || {};
+        if (!Object.keys(r).length) fautes.push(`${zone}/${h.titre} : aucune récompense`);
+        if (r.materiau && !OBJETS[r.materiau]) fautes.push(`${zone}/${h.titre} : matériau inconnu « ${r.materiau} »`);
+        if (r.soinPct != null && !(r.soinPct > 0 && r.soinPct <= 1)) fautes.push(`${zone}/${h.titre} : soinPct hors ]0,1]`);
+        ['po', 'xp'].forEach((cle) => {
+          if (r[cle] != null && !(r[cle] > 0)) fautes.push(`${zone}/${h.titre} : ${cle} invalide`);
+        });
+      });
+    });
+    aucun(fautes, 'histoires de carte mal formées');
+  });
+
+  test('un matériau offert par une histoire se récolte bien sur cette carte', () => {
+    const hors = [];
+    ZONES.forEach((z) => {
+      const locaux = new Set((z.recolte || []).map((r) => r.id));
+      (HISTOIRES_ZONES[z.id] || []).forEach((h) => {
+        const mat = (h.recompense || {}).materiau;
+        if (mat && !locaux.has(mat)) hors.push(`${z.id}/${h.titre} → ${mat}`);
+      });
+    });
+    aucun(hors, 'histoires offrant un matériau étranger à leur carte');
+  });
+
+  test('terminer toutes les Chroniques a son haut fait, et il compte juste', () => {
+    const total = DONJONS.filter((d) => d.chronique).length;
+    const complet = HAUTS_FAITS.find((h) => h.id === 'chroniques-toutes');
+    verifier(!!complet, 'un haut fait doit récompenser la complétion des Chroniques');
+    const p = herosTest({ niveau: 100 });
+    p.donjons = {};
+    DONJONS.filter((d) => d.chronique).slice(0, total - 1).forEach((d) => { p.donjons[d.id] = { fini: 1 }; });
+    verifier(!complet.cond(p), `le haut fait ne doit pas tomber à ${total - 1}/${total} Chroniques`);
+    DONJONS.filter((d) => d.chronique).forEach((d) => { p.donjons[d.id] = { fini: 1 }; });
+    verifier(complet.cond(p), `le haut fait doit tomber à ${total}/${total} Chroniques`);
+  });
+
+  test('aucun haut fait ne promet un décompte que le monde a dépassé', () => {
+    const chroniques = DONJONS.filter((d) => d.chronique).length;
+    const fautes = HAUTS_FAITS
+      .filter((h) => /Terminer les (\d+) Chroniques/.test(h.desc))
+      .filter((h) => Number(/Terminer les (\d+) Chroniques/.exec(h.desc)[1]) !== chroniques)
+      .map((h) => `${h.id} : « ${h.desc} » pour ${chroniques} Chroniques`);
+    aucun(fautes, 'hauts faits annonçant une complétion qui n\'en est pas une');
+  });
+
+  test('les ids de hauts faits restent uniques — un id perdu, un titre perdu', () => {
+    const vus = new Set();
+    const doublons = [];
+    HAUTS_FAITS.forEach((h) => { if (vus.has(h.id)) doublons.push(h.id); vus.add(h.id); });
+    aucun(doublons, 'ids de hauts faits en double');
+  });
+
+  test('la garantie d\'Éveil dit partout la même rareté', () => {
+    // Le commentaire du tirage annonçait « Légendaire » quand le code
+    // garantit un Mythique. Les textes de la Tour lisent la constante.
+    verifier(!!RARETES_EVEIL[RARETE_GARANTIE], 'RARETE_GARANTIE doit être une rareté connue');
+    const service = SERVICES_TOUR['forcer-rarete'];
+    verifier(service.desc.includes(RARETES_EVEIL[RARETE_GARANTIE].nom),
+      `« ${service.desc} » doit parler de ${RARETES_EVEIL[RARETE_GARANTIE].nom}`);
+    const relance = SERVICES_TOUR['relancer-eveil'];
+    verifier(relance.desc.includes(RARETES_EVEIL[RARETE_GARANTIE].nom),
+      `« ${relance.desc} » doit parler de ${RARETES_EVEIL[RARETE_GARANTIE].nom}`);
+  });
+
+  test('le nombre de propositions annoncé par la Tour est celui du tirage', () => {
+    const chiffres = { une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6 };
+    const dit = /(une|deux|trois|quatre|cinq|six) propositions?/i.exec(SERVICES_TOUR['relancer-eveil'].desc);
+    verifier(!!dit, 'le service de relance doit annoncer combien de propositions il tire');
+    egal(chiffres[dit[1].toLowerCase()], PROPOSITIONS_PAR_TIRAGE, 'propositions annoncées par la Tour');
+  });
+});
+
+// =====================================================================
+// Le graphe des 35 histoires.
+//
+// Un donjon est un graphe d'étapes reliées par `suite`. Une flèche vers
+// une étape qui n'existe pas, une étape qu'aucun chemin n'atteint, ou
+// une scène sans sortie, et le joueur reste coincé dans le récit — sans
+// aucun message d'erreur pour le prévenir. Ces tests parcourent le
+// graphe complet de chaque histoire.
+// =====================================================================
+suite('Graphe des donjons', () => {
+  // Toutes les flèches sortantes d'une étape, quel que soit son type.
+  function sortiesDe(etape) {
+    const s = [];
+    if (etape.suite) s.push(etape.suite);
+    if (etape.reussite && etape.reussite.suite) s.push(etape.reussite.suite);
+    if (etape.echec && etape.echec.suite) s.push(etape.echec.suite);
+    (etape.options || []).forEach((o) => {
+      if (o.suite) s.push(o.suite);
+      (o.resultats || []).forEach((r) => { if (r.suite) s.push(r.suite); });
+    });
+    return s;
+  }
+
+  test('chaque histoire part d\'une étape qui existe', () => {
+    aucun(DONJONS.filter((d) => !d.etapes[d.depart]).map((d) => `${d.id} → ${d.depart}`),
+      'histoires dont l\'étape de départ est introuvable');
+  });
+
+  test('aucune flèche ne mène à une étape inexistante', () => {
+    const cassees = [];
+    DONJONS.forEach((d) => {
+      Object.entries(d.etapes).forEach(([id, etape]) => {
+        sortiesDe(etape).forEach((cible) => {
+          if (!d.etapes[cible]) cassees.push(`${d.id}/${id} → ${cible}`);
+        });
+      });
+    });
+    aucun(cassees, 'flèches vers une étape inexistante');
+  });
+
+  test('aucune étape n\'est un cul-de-sac (sauf les fins)', () => {
+    const impasses = [];
+    DONJONS.forEach((d) => {
+      Object.entries(d.etapes).forEach(([id, etape]) => {
+        if (etape.type === 'fin') return;
+        if (!sortiesDe(etape).length) impasses.push(`${d.id}/${id}`);
+      });
+    });
+    aucun(impasses, 'étapes sans aucune sortie — le joueur y reste bloqué');
+  });
+
+  test('toute étape écrite est atteignable depuis le départ', () => {
+    const orphelines = [];
+    DONJONS.forEach((d) => {
+      const vus = new Set();
+      const pile = [d.depart];
+      while (pile.length) {
+        const cur = pile.pop();
+        if (!cur || vus.has(cur) || !d.etapes[cur]) continue;
+        vus.add(cur);
+        sortiesDe(d.etapes[cur]).forEach((s) => pile.push(s));
+      }
+      Object.keys(d.etapes).forEach((id) => { if (!vus.has(id)) orphelines.push(`${d.id}/${id}`); });
+    });
+    aucun(orphelines, 'étapes écrites mais qu\'aucun chemin n\'atteint');
+  });
+
+  test('chaque histoire a une fin qu\'on peut atteindre', () => {
+    const sansFin = [];
+    DONJONS.forEach((d) => {
+      const vus = new Set();
+      const pile = [d.depart];
+      while (pile.length) {
+        const cur = pile.pop();
+        if (!cur || vus.has(cur) || !d.etapes[cur]) continue;
+        vus.add(cur);
+        sortiesDe(d.etapes[cur]).forEach((s) => pile.push(s));
+      }
+      if (![...vus].some((id) => d.etapes[id].type === 'fin')) sansFin.push(d.id);
+    });
+    aucun(sansFin, 'histoires sans aucune fin atteignable');
+  });
+
+  test('les monstres et boss des histoires existent tous', () => {
+    const inconnus = [];
+    DONJONS.forEach((d) => {
+      Object.entries(d.etapes).forEach(([id, etape]) => {
+        (etape.monstres || []).forEach((m) => {
+          if (!MONSTRES[m] && !MONSTRES_DONJONS[m]) inconnus.push(`${d.id}/${id} → ${m}`);
+        });
+        if (etape.monstre && !MONSTRES[etape.monstre] && !MONSTRES_DONJONS[etape.monstre]) {
+          inconnus.push(`${d.id}/${id} → ${etape.monstre}`);
+        }
+      });
+    });
+    aucun(inconnus, 'monstres d\'histoire absents du bestiaire');
+  });
+
+  test('tout objet distribué par une histoire existe au catalogue', () => {
+    const inconnus = [];
+    const verifEffet = (effet, ou) => {
+      Object.keys((effet || {}).objets || {}).forEach((id) => {
+        if (!OBJETS[id]) inconnus.push(`${ou} → ${id}`);
+      });
+    };
+    DONJONS.forEach((d) => {
+      Object.entries(d.etapes).forEach(([id, etape]) => {
+        verifEffet(etape.effet, `${d.id}/${id}`);
+        ['reussite', 'echec'].forEach((k) => verifEffet((etape[k] || {}).effet, `${d.id}/${id}/${k}`));
+        (etape.options || []).forEach((o, i) => {
+          verifEffet(o.effet, `${d.id}/${id}/option ${i + 1}`);
+          (o.resultats || []).forEach((r) => verifEffet(r.effet, `${d.id}/${id}/option ${i + 1}`));
+        });
+      });
+      const rec = d.recompenses || {};
+      if (rec.objet && !OBJETS[rec.objet]) inconnus.push(`${d.id}/récompense → ${rec.objet}`);
+      Object.keys(rec.objets || {}).forEach((id) => { if (!OBJETS[id]) inconnus.push(`${d.id}/récompense → ${id}`); });
+      Object.values(rec.objetParDrapeau || {}).forEach((id) => { if (!OBJETS[id]) inconnus.push(`${d.id}/épilogue → ${id}`); });
+    });
+    aucun(inconnus, 'objets d\'histoire absents du catalogue');
+  });
+
+  test('aucun drapeau n\'est lu sans être posable', () => {
+    // Un drapeau lu mais jamais posé, c'est une variante d'épilogue ou un
+    // affaiblissement de boss auquel le joueur n'a jamais accès.
+    const fantomes = [];
+    DONJONS.forEach((d) => {
+      const poses = new Set();
+      const lus = new Map();
+      const noterPose = (effet) => { if (effet && effet.drapeau) poses.add(effet.drapeau); };
+      Object.entries(d.etapes).forEach(([id, etape]) => {
+        noterPose(etape.effet);
+        ['reussite', 'echec'].forEach((k) => noterPose((etape[k] || {}).effet));
+        (etape.options || []).forEach((o) => {
+          noterPose(o.effet);
+          (o.resultats || []).forEach((r) => noterPose(r.effet));
+        });
+        (etape.modificateurs || []).forEach((m) => { if (m.drapeau) lus.set(m.drapeau, `${id} (modificateur)`); });
+        (etape.variantes || []).forEach((v) => { if (v.drapeau) lus.set(v.drapeau, `${id} (variante)`); });
+        (etape.options || []).forEach((o, i) => {
+          const c = o.condition || {};
+          if (c.drapeau) lus.set(c.drapeau, `${id}/option ${i + 1}`);
+          if (c.sansDrapeau) lus.set(c.sansDrapeau, `${id}/option ${i + 1}`);
+        });
+      });
+      Object.keys(d.recompenses.objetParDrapeau || {}).forEach((dr) => lus.set(dr, 'récompense'));
+      lus.forEach((ou, dr) => { if (!poses.has(dr)) fantomes.push(`${d.id} : « ${dr} » lu par ${ou}`); });
+    });
+    aucun(fantomes, 'drapeaux lus mais qu\'aucun choix ne pose');
+  });
+
+  test('les épreuves au d20 testent un attribut réel, avec un seuil', () => {
+    const fautes = [];
+    DONJONS.forEach((d) => {
+      Object.entries(d.etapes).forEach(([id, etape]) => {
+        if (etape.type !== 'epreuve') return;
+        if (!CARACS[etape.stat]) fautes.push(`${d.id}/${id} : attribut « ${etape.stat} »`);
+        if (!(etape.difficulte > 0)) fautes.push(`${d.id}/${id} : difficulté ${etape.difficulte}`);
+        ['reussite', 'echec'].forEach((k) => {
+          if (!etape[k]) fautes.push(`${d.id}/${id} : issue « ${k} » manquante`);
+        });
+      });
+      Object.entries(d.etapes).forEach(([id, etape]) => {
+        (etape.options || []).forEach((o, i) => {
+          const c = o.condition;
+          if (c && c.stat && !CARACS[c.stat]) fautes.push(`${d.id}/${id}/option ${i + 1} : attribut « ${c.stat} »`);
+          if (c && c.stat && c.min == null) fautes.push(`${d.id}/${id}/option ${i + 1} : seuil absent`);
+        });
+      });
+    });
+    aucun(fautes, 'épreuves ou conditions mal formées');
+  });
+
+  test('l\'accès à une Chronique reste ouvrable : zone, boss et objet-clé réels', () => {
+    const fautes = [];
+    DONJONS.filter((d) => d.chronique).forEach((d) => {
+      const zone = ZONES.find((z) => z.id === d.zone);
+      if (!zone) { fautes.push(`${d.id} : zone « ${d.zone} » inconnue`); return; }
+      const a = d.acces || {};
+      if (a.objet && !OBJETS[a.objet]) fautes.push(`${d.id} : objet-clé « ${a.objet} » inconnu`);
+      if (a.objet && !(zone.recolte || []).some((r) => r.id === a.objet)) {
+        fautes.push(`${d.id} : l'objet-clé « ${a.objet} » ne se récolte pas sur sa propre carte`);
+      }
+      if (a.stat && !CARACS[a.stat]) fautes.push(`${d.id} : attribut « ${a.stat} » inconnu`);
+      if (a.bossZone && !ZONES.some((z) => z.id === a.bossZone)) fautes.push(`${d.id} : boss de zone « ${a.bossZone} » inconnu`);
+    });
+    aucun(fautes, 'Chroniques dont l\'accès ne peut pas se remplir');
+  });
+
+  test('chaque carte du monde a exactement une Chronique', () => {
+    const fautes = ZONES
+      .map((z) => [z.id, DONJONS.filter((d) => d.chronique && d.zone === z.id).length])
+      .filter(([, n]) => n !== 1)
+      .map(([id, n]) => `${id} : ${n}`);
+    aucun(fautes, 'cartes sans Chronique, ou avec plusieurs');
+  });
+});
+
+// =====================================================================
 // Exécution et rapport
 // =====================================================================
 function lancerTests() {

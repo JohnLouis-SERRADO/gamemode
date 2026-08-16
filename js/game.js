@@ -1491,8 +1491,11 @@ function rendreCreation() {
     grille.className = 'grille-competences';
     // v17 : le choix ne porte que sur le POOL COMMUN — les compétences de
     // classe (signature, voies, arbre) arrivent automatiquement avec la classe.
+    // Le filtre ne regardait que `comp.classe` et laissait donc passer
+    // 50 compétences de spécialité : un héros de niveau 1 pouvait partir
+    // avec le Châtiment sacré du Paladin. estCompetenceCommune tranche.
     Object.entries(COMPETENCES)
-      .filter(([, comp]) => comp.categorie === catCle && !comp.classe)
+      .filter(([, comp]) => comp.categorie === catCle && estCompetenceCommune(comp))
       .forEach(([id, comp]) => {
         grille.appendChild(carteCompetence(id, comp, {
           selectionnee: b.competences.has(id),

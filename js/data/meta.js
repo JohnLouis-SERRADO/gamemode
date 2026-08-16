@@ -65,7 +65,14 @@ const HAUTS_FAITS = [
   { id: 'donjon-temps-brise', nom: 'Maître des heures', emoji: '⏰', titre: 'Hors du Temps', desc: 'Terminer le défi 60 « La Forteresse du Temps Brisé »', cond: (p) => donjonFini(p, 'temps-brise') },
   { id: 'donjon-neant',       nom: 'Face au Néant', emoji: '👁️', titre: 'Fin des Histoires', desc: 'Terminer le défi 70 « L’Œil du Néant »', cond: (p) => donjonFini(p, 'neant') },
   { id: 'chroniques-5',       nom: 'Conteur des terres', emoji: '📜', titre: 'le Conteur', desc: 'Terminer 5 Chroniques des terres', cond: (p) => DONJONS.filter((d) => d.chronique && donjonFini(p, d.id)).length >= 5 },
-  { id: 'chroniques-16',      nom: 'Mémoire des Royaumes', emoji: '📚', titre: 'Mémoire Vivante', desc: 'Terminer les 16 Chroniques des terres', cond: (p) => DONJONS.filter((d) => d.chronique && donjonFini(p, d.id)).length >= 16 },
+  // Ce haut fait s'appelait « les 16 Chroniques » — il y en a 26 depuis
+  // les Marches Fêlées, et il se décrochait donc aux deux tiers du
+  // chemin en annonçant la fin. Il redevient ce qu'il est : un palier.
+  // La complétion, elle, a désormais son propre haut fait, compté sur
+  // le nombre RÉEL de Chroniques : ajouter une carte au monde ajoutera
+  // sa Chronique au décompte sans qu'il faille y repenser.
+  { id: 'chroniques-16',      nom: 'Mémoire des Royaumes', emoji: '📚', titre: 'Mémoire Vivante', desc: 'Terminer 16 Chroniques des terres', cond: (p) => DONJONS.filter((d) => d.chronique && donjonFini(p, d.id)).length >= 16 },
+  { id: 'chroniques-toutes',  nom: 'Toutes les terres racontées', emoji: '🗺️', titre: 'le Grand Chroniqueur', desc: 'Terminer la Chronique de chaque carte du monde', cond: (p) => DONJONS.filter((d) => d.chronique).every((d) => donjonFini(p, d.id)) },
   { id: 'ascension-10',       nom: 'Dix étages plus haut', emoji: '⛰️', titre: 'l’Ascensionniste', desc: 'Atteindre l’étage 10 d’une Ascension éternelle', cond: (p) => p.ascensions && Object.values(p.ascensions).some((e) => e >= 10) },
   { id: 'tour-boss-8',        nom: 'Fléau des seigneurs', emoji: '🏯', titre: 'Tueur de Rois', desc: 'Atteindre l’étage 8 de la Tour des Boss', cond: (p) => p.tourBoss && Math.max(p.tourBoss.normal, p.tourBoss.heroique, p.tourBoss.cauchemar) >= 8 },
   { id: 'niveau-35',          nom: 'Au-delà des Royaumes', emoji: '🌅', titre: 'des Terres lointaines', desc: 'Atteindre le niveau 35', cond: (p) => p.niveau >= 35 },

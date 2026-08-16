@@ -429,7 +429,8 @@ function eveilDe(p) {
 // vrai tirage.
 //
 // Garantie anti-frustration (§5.1) : au bout de cinq relances, le tirage
-// suivant contient obligatoirement une proposition Légendaire ou mieux.
+// suivant contient obligatoirement une proposition d'au moins la rareté
+// RARETE_GARANTIE — voir juste en dessous pourquoi c'est le Mythique.
 // =====================================================================
 const PROPOSITIONS_PAR_TIRAGE = 3;
 const RELANCES_AVANT_GARANTIE = 5;
