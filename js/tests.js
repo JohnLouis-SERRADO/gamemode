@@ -2179,6 +2179,23 @@ suite('Régressions v22', () => {
     aucun(fautives, 'histoires qui promettent un matériau étranger à leur carte');
   });
 
+  test('la récolte de Sceaux commence bien au niveau annoncé par les Tours', () => {
+    // Les deux Tours annoncent désormais le seuil. Ce test lie l'affiche à
+    // la règle : si recolterSceaux change d'avis, le texte devient faux et
+    // le test doit tomber avec lui.
+    const bourse = (niveau) => {
+      const p = herosTest();
+      adminFixerNiveau(p, niveau);
+      const avant = sceauxDe(p).normaux;
+      recolterSceaux(p, 10, []);
+      return sceauxDe(p).normaux - avant;
+    };
+    egal(bourse(NIVEAU_TOUR_EVEIL - 1), 0,
+      `sous le niveau ${NIVEAU_TOUR_EVEIL}, une ascension ne doit rapporter aucun Sceau`);
+    verifier(bourse(NIVEAU_TOUR_EVEIL) > 0,
+      `au niveau ${NIVEAU_TOUR_EVEIL}, l'ascension doit enfin rapporter des Sceaux`);
+  });
+
   // Éprouvé à deux vrais écrans : un héros de niveau 60, Berserker sur la
   // Voie de la Rage, envoyé dans le groupe d'un autre joueur. Ses PV, ses
   // caractéristiques effectives et ses passifs doivent traverser intacts —

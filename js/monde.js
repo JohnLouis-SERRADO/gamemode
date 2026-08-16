@@ -116,6 +116,14 @@ function rendreCarte() {
 
   // La Tour Sans Fin : combats enchaînés sans repos, de plus en plus durs.
   const tourVerrouillee = p.niveau < 3;
+  // v22 : les Sceaux ne se récoltent qu'à partir du niveau de la Tour de
+  // l'Éveil (recolterSceaux repart sans rien donner en dessous). Rien ne le
+  // disait : on pouvait grimper cinquante étages avant 60 et découvrir, en
+  // arrivant à la Tour, que pas un Sceau n'avait été mis de côté. La carte
+  // le dit maintenant, avant l'ascension plutôt qu'après.
+  const noteSceaux = p.niveau < NIVEAU_TOUR_EVEIL
+    ? ` 🔹 Les Sceaux ne se récoltent qu'à partir du niveau ${NIVEAU_TOUR_EVEIL} — avant, l'ascension ne rapporte que butin et record.`
+    : ' 🔹 Chaque étage rapporte des Sceaux pour la Tour de l’Éveil.';
   const tour = document.createElement('div');
   tour.className = 'carte-zone tour-sans-fin' + (tourVerrouillee ? ' verrouillee' : '');
   tour.innerHTML = `
@@ -124,7 +132,7 @@ function rendreCarte() {
     <div class="zone-plage">défi — expédition solo ou locale · ${texteRecommandation(p, 3)}</div>
     <div class="zone-desc">${tourVerrouillee
     ? '🔒 Atteignez le niveau 3 pour tenter l’ascension.'
-    : 'Des étages infinis, aucun repos entre les combats, un butin qui grimpe à chaque palier. Jusqu’où monterez-vous ?'}</div>`;
+    : `Des étages infinis, aucun repos entre les combats, un butin qui grimpe à chaque palier. Jusqu’où monterez-vous ?${noteSceaux}`}</div>`;
   if (!tourVerrouillee) rendreCliquable(tour, () => demarrerTour());
   zone.appendChild(tour);
 
@@ -139,7 +147,7 @@ function rendreCarte() {
     <div class="zone-plage">défi — solo ou équipe · 3 difficultés · ${texteRecommandation(p, 10)}</div>
     <div class="zone-desc">${tourBossVerrouillee
     ? '🔒 Atteignez le niveau 10 pour défier les seigneurs des Royaumes.'
-    : 'Un boss par étage, du premier loup au Dévoreur de Mondes. Normal, Héroïque puis Cauchemar : chaque difficulté a son record.'}</div>`;
+    : `Un boss par étage, du premier loup au Dévoreur de Mondes. Normal, Héroïque puis Cauchemar : chaque difficulté a son record.${noteSceaux}`}</div>`;
   if (!tourBossVerrouillee) rendreCliquable(tourBoss, () => ouvrirTourBoss());
   zone.appendChild(tourBoss);
 
