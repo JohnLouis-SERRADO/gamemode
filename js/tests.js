@@ -2179,6 +2179,60 @@ suite('Régressions v22', () => {
     aucun(fautives, 'histoires qui promettent un matériau étranger à leur carte');
   });
 
+  test('les difficultés promettent des récompenses que le moteur applique', () => {
+    // Chaque difficulté affiche « récompenses ×N ». Ce test lie l'affiche
+    // au moteur : les multiplicateurs annoncés doivent être ceux que le
+    // butin utilise, et une difficulté plus dure doit toujours rapporter
+    // davantage que la précédente.
+    const ordre = ['normal', 'heroique', 'cauchemar'];
+    const fautifs = [];
+    ordre.forEach((cle, i) => {
+      const d = DIFFICULTES[cle];
+      verifier(!!d, `la difficulté ${cle} doit exister`);
+      ['hp', 'atk', 'xp', 'po', 'drop'].forEach((champ) => {
+        if (!Number.isFinite(d[champ]) || d[champ] <= 0) fautifs.push(`${cle}.${champ} = ${d[champ]}`);
+      });
+      if (i === 0) return;
+      const precedente = DIFFICULTES[ordre[i - 1]];
+      ['hp', 'atk', 'xp', 'po', 'drop'].forEach((champ) => {
+        if (d[champ] < precedente[champ]) {
+          fautifs.push(`${cle}.${champ} (${d[champ]}) sous ${ordre[i - 1]} (${precedente[champ]})`);
+        }
+      });
+      // Le marché : on accepte de souffrir davantage SI l'on gagne
+      // davantage. Une difficulté qui durcit sans mieux payer est un piège.
+      if (d.xp <= precedente.xp || d.po <= precedente.po) {
+        fautifs.push(`${cle} durcit sans mieux payer`);
+      }
+    });
+    aucun(fautifs, 'incohérences dans la table des difficultés');
+  });
+
+  test('une difficulté verrouillée ne s\'ouvre jamais par la bande', () => {
+    const z = ZONES.find((x) => x.niveauMin >= 10) || ZONES[0];
+    const fautifs = [];
+    // Boss non vaincu : rien d'autre que Normal.
+    const debutant = herosTest();
+    adminFixerNiveau(debutant, z.niveauMin + 20); // même très haut niveau
+    debutant.bossVaincus = [];
+    if (difficulteDebloquee(debutant, z, 'heroique')) fautifs.push('Héroïque ouvert sans avoir vaincu le boss');
+    if (difficulteDebloquee(debutant, z, 'cauchemar')) fautifs.push('Cauchemar ouvert sans avoir vaincu le boss');
+    // Boss vaincu mais niveau insuffisant : Héroïque seulement.
+    const vainqueur = herosTest();
+    adminFixerNiveau(vainqueur, z.niveauMin);
+    vainqueur.bossVaincus = [z.id];
+    if (!difficulteDebloquee(vainqueur, z, 'heroique')) fautifs.push('Héroïque fermé alors que le boss est vaincu');
+    if (difficulteDebloquee(vainqueur, z, 'cauchemar')) {
+      fautifs.push(`Cauchemar ouvert au niveau ${z.niveauMin}, alors qu'il en demande ${z.niveauMin + 6}`);
+    }
+    // Les deux conditions réunies : tout s'ouvre.
+    const chevronne = herosTest();
+    adminFixerNiveau(chevronne, z.niveauMin + 6);
+    chevronne.bossVaincus = [z.id];
+    if (!difficulteDebloquee(chevronne, z, 'cauchemar')) fautifs.push('Cauchemar fermé alors que les deux conditions sont remplies');
+    aucun(fautifs, 'défauts de verrouillage des difficultés');
+  });
+
   test('un héros rapatrié garde EXACTEMENT ses compétences', () => {
     // Le défaut : `nouveauPersonnage` normalise le héros qu'il fabrique.
     // Tant qu'on ne lui disait pas sa classe, il naissait Aventurier de

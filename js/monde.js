@@ -180,23 +180,43 @@ function rendreZone(z) {
   el('zone-retour').addEventListener('click', () => naviguer('carte'));
 
   // Sélecteur de difficulté
+  //
+  // v22 — Une difficulté verrouillée ne portait ni cadenas ni explication
+  // visible : juste une pastille à demi effacée, et sa condition rangée
+  // dans une INFOBULLE. Sur un téléphone, où se joue l'essentiel de ce
+  // jeu, une infobulle ne s'ouvre jamais — le joueur voyait donc un
+  // bouton mort sans savoir ni pourquoi ni comment l'ouvrir. Le cadenas
+  // rejoint la convention du reste du jeu (zones et tours en portent un),
+  // et la condition s'affiche en clair sous la rangée.
   const zoneDiff = el('zone-difficultes');
+  const conditionDe = (cle) => (cle === 'heroique'
+    ? `Vainquez ${boss.emoji} ${boss.nom} pour ouvrir l'Héroïque.`
+    : `Cauchemar demande ${boss.emoji} ${boss.nom} vaincu et le niveau ${z.niveauMin + 6}.`);
+  const verrouillees = [];
   Object.entries(DIFFICULTES).forEach(([cle, d]) => {
     const debloquee = difficulteDebloquee(p, z, cle);
+    if (!debloquee) verrouillees.push(conditionDe(cle));
     const chip = document.createElement('button');
     chip.className = 'chip chip-difficulte' + (etat.difficulte === cle ? ' active' : '') + (debloquee ? '' : ' verrouillee');
     chip.disabled = !debloquee;
-    chip.textContent = `${d.emoji} ${d.nom}`;
+    chip.textContent = debloquee ? `${d.emoji} ${d.nom}` : `🔒 ${d.emoji} ${d.nom}`;
     chip.title = debloquee
       ? (cle === 'normal' ? 'Difficulté de base' : `Monstres renforcés, récompenses ×${d.xp}`)
-      : (cle === 'heroique' ? 'Vainquez le boss de la zone pour débloquer'
-        : `Boss vaincu + niveau ${z.niveauMin + 6} requis`);
+      : conditionDe(cle);
     chip.addEventListener('click', () => {
       etat.difficulte = cle;
       rendreZone(z);
     });
     zoneDiff.appendChild(chip);
   });
+  // La condition, en clair et sans survol : une seule ligne, celle de la
+  // difficulté la plus proche d'être ouverte.
+  if (verrouillees.length) {
+    const aide = document.createElement('p');
+    aide.className = 'aide gauche aide-difficulte';
+    aide.textContent = `🔒 ${verrouillees[0]}`;
+    zoneDiff.insertAdjacentElement('afterend', aide);
+  }
 
   const actions = el('zone-actions-liste');
   actions.innerHTML = '';
