@@ -776,8 +776,43 @@ function ouvrirCoffreBoss(p, zone, difficulte) {
 // =====================================================================
 // La Tour Sans Fin : étages enchaînés sans repos
 // =====================================================================
-function zonePourEtage(etage) {
-  return ZONES[Math.min(ZONES.length - 1, Math.floor((etage - 1) / 2.5))];
+// v20 : la Tour s'adapte au HÉROS, pas seulement à l'étage. Avant, elle
+// piochait ses monstres par étage sec : un héros de niveau 3 (le niveau
+// de déblocage !) tombait sur la Matriarche soyeuse à l'étage 5 — un mur
+// infranchissable, sanctionné par la mort et ses pertes définitives.
+// Désormais on part du niveau de l'équipe, et on monte d'un cran de zone
+// tous les 3 étages : la Tour reste rude, mais elle est jouable.
+function zoneDeDepartTour(membres) {
+  const equipe = membres && membres.length ? membres : membresEquipe();
+  const niveau = equipe.length
+    ? Math.round(equipe.reduce((somme, m) => somme + m.niveau, 0) / equipe.length)
+    : 1;
+  let eligible = 0;
+  ZONES.forEach((z, i) => { if (niveau >= z.niveauMin) eligible = i; });
+  // Un cran de marge : une zone tout juste ouverte est déjà rude en
+  // exploration, elle serait mortelle en Tour (aucun soin entre les étages).
+  // On part donc du terrain que l'équipe a réellement maîtrisé.
+  return Math.max(0, eligible - 1);
+}
+
+function zonePourEtage(etage, membres) {
+  // On monte d'un cran de terrain tous les 4 étages, sans jamais dépasser
+  // de plus de 4 zones le terrain de chasse naturel de l'équipe : au-delà,
+  // c'est le multiplicateur d'étage qui fait grimper la difficulté.
+  const base = zoneDeDepartTour(membres);
+  const avance = Math.min(4, Math.floor((etage - 1) / 4));
+  return ZONES[Math.min(ZONES.length - 1, base + avance)];
+}
+
+// Le boss d'un palier reste UN CRAN EN DESSOUS du terrain courant : c'est
+// une récompense de parcours, pas une exécution. Sans ce recul, un héros
+// de niveau 3 (le niveau de déblocage) tombait sur un boss de niveau 6 à
+// l'étage 5, et la Tour devenait un mur infranchissable.
+function bossPourPalier(z, etage, membres) {
+  const courant = Math.max(0, ZONES.findIndex((x) => x.id === z.id));
+  const base = zoneDeDepartTour(membres);
+  const index = Math.max(0, Math.min(courant - 1, base + Math.floor(etage / 10)));
+  return ZONES[index].boss;
 }
 
 function demarrerTour() {
@@ -788,21 +823,26 @@ function demarrerTour() {
 
 function demarrerCombatTourEtage(etage) {
   etat.tour = { etage };
-  const z = zonePourEtage(etage);
+  const membres = membresEquipe();
+  const z = zonePourEtage(etage, membres);
   const mult = 1 + etage * 0.06;
   const estPalier = etage % 5 === 0;
-  const cles = estPalier ? [z.boss] : composerPack(z, tailleDuPack(membresEquipe()));
+  // v20 : les paliers tenaient compte de l'étage mais PAS de l'équipe —
+  // ils étaient donc les combats les plus faciles d'une montée à trois.
+  const multEquipe = 1 + 0.35 * (membres.length - 1);
+  const multAtkEquipe = 1 + 0.1 * (membres.length - 1);
+  const cles = estPalier ? [bossPourPalier(z, etage, membres)] : composerPack(z, tailleDuPack(membres));
   const defs = cles.map((cle) => ({
     ...MONSTRES[cle], cle,
-    hp: Math.round(MONSTRES[cle].hp * mult),
-    atk: Math.round(MONSTRES[cle].atk * mult),
+    hp: Math.round(MONSTRES[cle].hp * mult * (estPalier ? multEquipe : 1)),
+    atk: Math.round(MONSTRES[cle].atk * mult * (estPalier ? multAtkEquipe : 1)),
   }));
   demarrerCombat({
     genre: 'tour',
     zone: z,
     tourEtage: etage,
     monstresDef: defs,
-    equipe: membresEquipe(),
+    equipe: membres,
   });
 }
 
@@ -925,21 +965,34 @@ function demarrerTourBoss(difficulte) {
 }
 
 function demarrerCombatTourBossEtage(etage) {
-  const contexte = etat.tourBoss;
+  // Sans ce filet, revenir sur un étage après un rechargement plantait.
+  const contexte = etat.tourBoss || (etat.tourBoss = { etage, difficulte: 'normal' });
   contexte.etage = etage;
   const membres = membresEquipe();
-  const diff = DIFFICULTES[contexte.difficulte];
+  const diff = DIFFICULTES[contexte.difficulte] || DIFFICULTES.normal;
   const cle = CYCLE_TOUR_BOSS[(etage - 1) % CYCLE_TOUR_BOSS.length];
   const cycle = Math.floor((etage - 1) / CYCLE_TOUR_BOSS.length);
   const base = MONSTRES[cle];
-  // Chaque étage renforce le boss ; chaque cycle complet le transcende.
-  const multHp = diff.hp * (1 + etage * 0.08 + cycle * 0.6) * (1 + 0.35 * (membres.length - 1));
+  // v20 : le cycle repartait du Loup alpha (95 PV) après le Dévoreur de
+  // Mondes (9 916 PV) : la difficulté s'effondrait ×80 tous les 16 étages,
+  // et la Tour devenait une ferme à butin pendant que la prime, elle, ne
+  // redescendait jamais. On impose désormais un PLANCHER : un étage vaut
+  // au moins la fin du cycle précédent, majorée à chaque palier franchi.
+  const multEquipe = 1 + 0.35 * (membres.length - 1);
+  const multAtkEquipe = 1 + 0.1 * (membres.length - 1); // le boss est seul contre l'équipe
+  const robustesse = (e) => {
+    const c = Math.floor((e - 1) / CYCLE_TOUR_BOSS.length);
+    const b = MONSTRES[CYCLE_TOUR_BOSS[(e - 1) % CYCLE_TOUR_BOSS.length]];
+    return b.hp * diff.hp * (1 + e * 0.08 + c * 0.6) * multEquipe;
+  };
+  const finCyclePrecedent = cycle > 0 ? robustesse(cycle * CYCLE_TOUR_BOSS.length) : 0;
+  const plancher = finCyclePrecedent * (1 + 0.06 * ((etage - 1) % CYCLE_TOUR_BOSS.length));
   const def = {
     ...base,
     cle,
     nom: cycle > 0 ? `${base.nom} transcendé` : base.nom,
-    hp: Math.round(base.hp * multHp),
-    atk: Math.round(base.atk * diff.atk * (1 + etage * 0.03)),
+    hp: Math.round(Math.max(robustesse(etage), plancher)),
+    atk: Math.round(base.atk * diff.atk * (1 + etage * 0.03) * multAtkEquipe * (1 + cycle * 0.25)),
   };
   demarrerCombat({
     genre: 'tourBoss',

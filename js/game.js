@@ -753,7 +753,17 @@ function apprendreCompetence(p, id, prioritaire) {
   // que la barre est pleine des choix de création — elle prend la place
   // d'une commune, qui reste au grimoire et se rééquipe d'un clic.
   if (!prioritaire) return;
-  const aCeder = p.competences.find((autre) => !(COMPETENCES[autre] || {}).classe);
+  // v20 : mais on ne sacrifie JAMAIS une invocation chez une classe dont
+  // le passif en vit (l'Invocateur se retrouvait sans la moindre créature
+  // à équiper — exactement l'inverse de sa promesse).
+  const vitDesInvocations = (passifClasse(p).invocations || 1) > 1;
+  const cessible = (autre) => {
+    const comp = COMPETENCES[autre] || {};
+    if (comp.classe) return false;
+    if (vitDesInvocations && comp.type === 'invocation') return false;
+    return true;
+  };
+  const aCeder = p.competences.find(cessible);
   if (!aCeder) return;
   p.competences[p.competences.indexOf(aCeder)] = id;
 }
