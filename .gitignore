@@ -1,0 +1,4 @@
+# Harnais d'analyse jetables (mesures d'équilibrage, exécutions de tests).
+*.tmp.js
+node_modules/
+package-lock.json
