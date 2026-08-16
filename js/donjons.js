@@ -2890,6 +2890,11 @@ function ouvrirDonjon(donjon) {
           texte: '📖 Revivre l’histoire (récompenses réduites)',
           action: () => demarrerHistoireDonjon(donjon),
         },
+        {
+          // Sans cette sortie, le joueur restait coincé sur l'écran de butin.
+          texte: '🗺️ Revenir à la carte',
+          action: () => naviguer('carte'),
+        },
       ],
     });
     return;

@@ -790,6 +790,9 @@ function gagnerXp(p, xp) {
   if (familier && familier.bonus.xpBonus) xp = Math.round(xp * (1 + familier.bonus.xpBonus));
   const sets = bonusSetActifs(p);
   if (sets.xpBonus) xp = Math.round(xp * (1 + sets.xpBonus));
+  // v20 : passif de classe (Pisteur du Rôdeur…).
+  const passif = passifClasse(p);
+  if (passif.xpMult) xp = Math.round(xp * passif.xpMult);
   p.xp += xp;
   const apres = niveauPour(p.xp);
   if (apres > avant) {
@@ -995,7 +998,9 @@ function rendreCreation() {
     .map((comp) => `<br>🔓 <strong>niv. ${comp.niveauRequis}</strong> — ${comp.emoji} <strong>${comp.nom}</strong> : ${comp.desc}
       <br><span class="encart-chiffres">${detailsCompetence(comp, b.stats).join(' · ')}</span>`)
     .join('');
-  encartSignature.innerHTML = `🏅 Signature de ${b.classe === 'aventurier' ? 'l’Aventurier (aucune classe choisie)' : `la classe <strong>${CLASSES[b.classe].nom}</strong>`} :
+  const passifClasseChoisie = CLASSES[b.classe].passif;
+  encartSignature.innerHTML = `<span class="encart-passif">✨ Passif de classe : <strong>${passifClasseChoisie.nom}</strong> — ${passifClasseChoisie.desc}</span>
+    <br>🏅 Signature de ${b.classe === 'aventurier' ? 'l’Aventurier (aucune classe choisie)' : `la classe <strong>${CLASSES[b.classe].nom}</strong>`} :
     ${signature.emoji} <strong>${signature.nom}</strong> — ${signature.desc}
     <br><span class="encart-chiffres">${detailsCompetence(signature, b.stats).join(' · ')}</span>
     ${arbre}
@@ -1090,7 +1095,12 @@ function ajouterBlocSignature(p, id, comp, carte) {
   monter.className = p.maitrise > 0 ? 'btn-principal btn-compact' : 'btn-choix btn-compact';
   const texteInitial = p.maitrise > 0
     ? `🏅 Passer au rang ${rang + 1} (+15 % de puissance)`
-    : `🏅 Rang ${rang}/${RANG_SIGNATURE_MAX} — point de maîtrise au niveau ${SEUILS_MAITRISE.find((seuil) => seuil > p.niveau) || 18}`;
+    : (() => {
+      const prochain = SEUILS_MAITRISE.find((seuil) => seuil > p.niveau);
+      return prochain
+        ? `🏅 Rang ${rang}/${RANG_SIGNATURE_MAX} — prochain point de maîtrise au niveau ${prochain}`
+        : `🏅 Rang ${rang}/${RANG_SIGNATURE_MAX} — plus aucun point de maîtrise à venir`;
+    })();
   monter.textContent = texteInitial;
   monter.disabled = p.maitrise <= 0;
   // v15.1 : deux clics — le premier demande confirmation, le second investit.
@@ -1629,6 +1639,7 @@ function rendreHeros() {
         <button id="btn-valider-renommage" class="btn-choix btn-compact">Valider</button>
       </div>
       <div class="heros-race">${race.emoji} ${race.nom} — <em>${race.passif}</em> : ${race.desc}</div>
+      <div class="heros-race heros-passif-classe">${classe.emoji} ${classe.nom} — <em>${classe.passif.nom}</em> : ${classe.passif.desc}</div>
       <div class="barre xp"><div class="remplissage" style="width:${pctXp}%"></div>
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
       <div class="heros-puissance">⚡ Puissance : <strong>${puissanceDe(p).toLocaleString('fr-FR')}</strong>
@@ -1790,7 +1801,7 @@ function rendreBlocCompetences(zone, p, s) {
   blocComp.innerHTML = `<h3>⚡ Compétences actives (${p.competences.length}/${MAX_COMPETENCES_ACTIVES})
     ${p.maitrise > 0 ? `<span class="badge badge-alerte">🏅 ${p.maitrise} point${p.maitrise > 1 ? 's' : ''} de maîtrise à investir !</span>` : ''}</h3>
     <p class="aide">Ce sont elles que vous lancez en combat. Retirez-en, équipez-en d'autres depuis le grimoire — autant de fois que vous voulez, hors combat.
-    Votre signature de classe se renforce avec les points de maîtrise (niv. 3, 6, 9, 12, 15, 18).</p>
+    Vos compétences de classe se renforcent avec les points de maîtrise, gagnés aux niveaux ${SEUILS_MAITRISE.join(', ')}.</p>
     <p class="aide">📖 <strong>Apprendre de nouveaux sorts ?</strong> Monter de niveau n'en offre aucun. Vos
     8 compétences de classe vous reviennent de droit (5 dès le niveau 1, puis une aux niveaux 5, 10 et 15) ;
     tout le reste se lit dans un <strong>grimoire acheté à l'Arcanium</strong>, chez Dame Sibylle. Le savoir se paie.</p>`;

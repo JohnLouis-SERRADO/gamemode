@@ -261,9 +261,14 @@ function composerPack(z, nb) {
 // marchand, trouvailles… et la menace du boss, qui frappe sans prévenir.
 function explorer(z) {
   const p = persoActif();
-  p.explorations[z.id] = (p.explorations[z.id] || 0) + 1;
-  progresserQuete(p, 'exploration', 1);
-  sauvegarder(p);
+  // v20 : TOUTE l'équipe explore — chaque héros voit son compteur de zone
+  // et son contrat « Explorer N fois » avancer, pas seulement le chef.
+  membresEquipe().forEach((m) => {
+    if (m.distant) return;
+    m.explorations[z.id] = (m.explorations[z.id] || 0) + 1;
+    progresserQuete(m, 'exploration', 1);
+    sauvegarder(m);
+  });
 
   // ⚠️ La menace est armée : le boss peut surgir À TOUT MOMENT, au plus
   // tard 8 explorations après l'avertissement. On ne sait jamais quand.
@@ -706,6 +711,9 @@ function tirerButinCombat(cb) {
   cb.equipe.forEach((j) => {
     if ((j.statuts || []).some((s) => s.type === 'fortune')) chanceEquipe *= 1.3;
   });
+  // v20 : le meilleur passif de butin de l'équipe (Pisteur, Doigts agiles).
+  const meilleurButin = cb.equipe.reduce((max, j) => Math.max(max, passifClasse(j).butinMult || 1), 1);
+  chanceEquipe *= meilleurButin;
   let xp = 0;
   let po = 0;
   const objets = {};

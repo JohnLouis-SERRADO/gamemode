@@ -50,7 +50,7 @@ function rendreVille() {
         })),
         {
           emoji: '🏺', nom: 'Antiquaire', detail: 'Curiosités rares : accessoires anciens et objets tactiques de combat',
-          action: () => { rendreAntiquaire(); montrerEcran('ecran-antiquaire'); },
+          action: () => ouvrirAntiquaire(),
         },
         {
           emoji: '🔮', nom: 'L’Arcanium', detail: 'La magie en échoppe : les grimoires de compétences, chez Dame Sibylle',
@@ -322,23 +322,41 @@ function rendreVente(contenu, p) {
   rendreChipsFiltres(contenu, 'vente', () => rendreBoutique());
 
   // Vente groupée des matériaux : le petit confort des grandes fortunes.
-  const materiaux = p.inventaire.filter((e) => OBJETS[e.id] && OBJETS[e.id].type === 'materiau');
+  // v20 : elle suit les FILTRES affichés et demande CONFIRMATION — vendre
+  // par mégarde des raffinés mythiques est irréversible.
+  const materiaux = p.inventaire.filter((e) => {
+    const o = OBJETS[e.id];
+    return o && o.type === 'materiau' && passeSousFiltres(o, 'vente');
+  });
   if (materiaux.length > 1) {
     const total = materiaux.reduce((somme, e) => somme + prixVenteDe(e.id) * e.qte, 0);
-    const toutVendre = document.createElement('button');
-    toutVendre.className = 'btn-choix';
-    toutVendre.textContent = `💰 Vendre tous les matériaux — ${total} po`;
-    toutVendre.addEventListener('click', () => {
+    const precieux = materiaux.filter((e) => ['epique', 'legendaire', 'mythique', 'divin'].includes(rareteDe(OBJETS[e.id])));
+    const libelle = `💰 Vendre les matériaux affichés (${materiaux.length}) — ${formatNombre(total)} po`;
+    const vendreTout = () => {
       materiaux.forEach((e) => {
         const gain = prixVenteDe(e.id) * e.qte;
-        if (retirerObjet(p, e.id, e.qte)) p.po += gain;
+        if (retirerObjet(p, e.id, e.qte)) { p.po += gain; p.compteurs.orTotal += gain; }
       });
+      verifierHautsFaits(p);
       sauvegarder(p);
-      afficherToast(`💰 Matériaux vendus : +${total} po !`);
+      afficherToast(`💰 Matériaux vendus : +${formatNombre(total)} po !`);
       rendreBoutique();
       rendreTopbar();
-    });
-    contenu.appendChild(toutVendre);
+    };
+    if (precieux.length > 0) {
+      const noms = precieux.slice(0, 3).map((e) => OBJETS[e.id].nom).join(', ');
+      contenu.appendChild(boutonConfirmation(
+        `${libelle} ⚠️`,
+        `❓ Confirmer — dont ${precieux.length} précieux (${noms}${precieux.length > 3 ? '…' : ''})`,
+        vendreTout,
+      ));
+    } else {
+      const toutVendre = document.createElement('button');
+      toutVendre.className = 'btn-choix';
+      toutVendre.textContent = libelle;
+      toutVendre.addEventListener('click', vendreTout);
+      contenu.appendChild(toutVendre);
+    }
   }
 
   const grille = document.createElement('div');
@@ -372,6 +390,8 @@ function rendreVente(contenu, p) {
         const vendu = Math.min(qte, compterObjet(p, entree.id));
         if (vendu <= 0 || !retirerObjet(p, entree.id, vendu)) return;
         p.po += prix * vendu;
+        p.compteurs.orTotal += prix * vendu; // le haut fait « fortune » compte aussi les ventes
+        verifierHautsFaits(p);
         sauvegarder(p);
         afficherToast(`${objet.emoji} ${objet.nom} ×${vendu} vendu (+${formatNombre(prix * vendu)} po).`);
         rendreBoutique();
@@ -388,6 +408,14 @@ function rendreVente(contenu, p) {
 // =====================================================================
 // Antiquaire : curiosités rares
 // =====================================================================
+// v20 : chaque échoppe repart avec ses propres filtres — sans quoi une
+// rareté choisie chez le marchand vidait la vitrine de l'antiquaire.
+function ouvrirAntiquaire() {
+  sousFiltres = { rarete: 'tous', type: 'tous' };
+  rendreAntiquaire();
+  montrerEcran('ecran-antiquaire');
+}
+
 function rendreAntiquaire() {
   const p = persoActif();
   el('antiquaire-po').textContent = `💰 ${p.po} po`;
@@ -492,6 +520,7 @@ function rendreFournisseur() {
   rendreChipsFiltres(zone, null, () => rendreFournisseur());
   const grille = document.createElement('div');
   grille.className = 'grille-inventaire';
+  let articlesVisibles = 0;
   const signature = SIGNATURE_FILIERE[f.famille];
   // v17 : TOUT ce qui sert au craft s'achète — bruts, raffinés et même
   // les signatures (au prix fort, niveau 20+), selon le niveau du joueur.
@@ -500,6 +529,7 @@ function rendreFournisseur() {
     .filter(([, o]) => passeSousFiltres(o, null))
     .sort((a, b) => niveauMateriau(a[0]) - niveauMateriau(b[0]) || prixVenteDe(a[0]) - prixVenteDe(b[0]))
     .forEach(([id, objet]) => {
+      articlesVisibles++;
       const estSignature = id === signature;
       const niveau = estSignature ? Math.max(20, niveauMateriau(id)) : niveauMateriau(id);
       const verrouille = niveau > p.niveau;
@@ -534,6 +564,10 @@ function rendreFournisseur() {
       }
       grille.appendChild(carte);
     });
+  if (articlesVisibles === 0) {
+    zone.insertAdjacentHTML('beforeend',
+      '<p class="aide">Rien sur l’étal avec ces filtres — le fournisseur vous invite à en essayer d’autres.</p>');
+  }
   zone.appendChild(grille);
 
   // Rachat : le fournisseur reprend les matériaux de SA filière.
@@ -662,6 +696,7 @@ function rendreArcanium() {
 function rendreGuilde() {
   const p = persoActif();
   normaliserPerso(p); // régénère les contrats si la date a changé
+  el('guilde-po').textContent = `💰 ${formatNombre(p.po)} po`;
   const zone = el('guilde-contenu');
   zone.innerHTML = '';
 

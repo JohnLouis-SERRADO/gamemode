@@ -444,7 +444,11 @@ function bonusSetActifs(p) {
 // Multiplicateur d'or gagné : familier + panoplies.
 function multiplicateurOr(p) {
   const familier = familierActif(p);
-  return 1 + ((familier && familier.bonus.poBonus) || 0) + bonusSetActifs(p).poBonus;
+  // v20 : le passif de classe (Doigts agiles, Débrouille…) s'ajoute aux
+  // bonus de familier et de panoplie.
+  const passif = typeof passifClasse === 'function' ? passifClasse(p) : {};
+  return 1 + ((familier && familier.bonus.poBonus) || 0) + bonusSetActifs(p).poBonus
+    + ((passif.orMult || 1) - 1);
 }
 
 // Ligne d'affichage de la panoplie d'un objet (cartes d'inventaire/boutique).

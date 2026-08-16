@@ -222,7 +222,7 @@ function texteEffetCompetence(effet, s) {
 
 // Renvoie des lignes chiffrées (dégâts, soins, effets, coût) calculées
 // avec les stats effectives fournies.
-function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
+function detailsCompetence(comp, s, rang = 0, maxMp = 0, lanceur = null) {
   const parts = [];
   const multRang = 1 + 0.15 * rang;
   if (comp.type === 'degats') {
@@ -243,7 +243,7 @@ function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
     if (texte) parts.push(texte);
   }
   parts.push(`🎯 ${TEXTE_CIBLE[comp.cible]}`);
-  const cout = coutMpDe(comp, s, maxMp);
+  const cout = coutMpDe(comp, s, maxMp, lanceur);
   parts.push(cout > 0 ? `💧 ${cout} PM${cout > (comp.coutMp || 0) ? ` (${comp.coutMp} +${cout - comp.coutMp} lié aux stats)` : ''}` : '💧 gratuit');
   if (comp.cooldown) parts.push(`⏳ ${comp.cooldown} t.`);
   return parts;
@@ -255,7 +255,7 @@ function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
 // mana. Garde-fou : le coût ne dépasse jamais 30 % du mana maximum —
 // aucune compétence ne vide la réserve d'un coup.
 // =====================================================================
-function coutMpDe(comp, s, maxMp) {
+function coutMpDe(comp, s, maxMp, lanceur) {
   let cout = comp.coutMp || 0;
   if (cout > 0 && comp.stat && comp.ratio && (comp.type === 'degats' || comp.type === 'soin')) {
     cout += Math.floor(((s && s[comp.stat]) || 0) * comp.ratio * 0.08);
@@ -263,6 +263,9 @@ function coutMpDe(comp, s, maxMp) {
   if (maxMp > 0 && cout > (comp.coutMp || 0)) {
     cout = Math.min(cout, Math.max(comp.coutMp || 0, Math.round(maxMp * 0.3)));
   }
+  // v20 : Économie arcanique (Mage) et consorts allègent la facture.
+  const passif = typeof passifClasse === 'function' ? passifClasse(lanceur) : {};
+  if (cout > 0 && passif.coutMpMult) cout = Math.max(1, Math.round(cout * passif.coutMpMult));
   return cout;
 }
 
@@ -1028,6 +1031,51 @@ Object.entries(VOIES_CLASSES).forEach(([classe, ids]) => {
   });
 });
 
+// =====================================================================
+// v20 : PASSIFS DE CLASSE — comme les races, chaque classe a désormais
+// un pouvoir permanent qui la définit, sans occuper d'emplacement de
+// sort. C'est ici que vit la maîtrise des invocations : entretenir
+// plusieurs créatures est un TRAIT de l'Invocateur, pas une compétence.
+//
+// Champs reconnus par le moteur (voir js/combat.js) :
+//   degatsMult / degatsMultAoe / degatsMultMono  multiplicateur de dégâts
+//   soinMult                                     multiplicateur de soins
+//   reductionDegats                              part des dégâts subis en moins
+//   critBonus                                    points de % de critique
+//   coutMpMult                                   multiplicateur du coût en mana
+//   manaParTour / pvParTourPct                   régénération de début de tour
+//   drainParFrappe                               part des dégâts rendue en PV
+//   dureeBuffBonus                               tours de bonus/malus en plus
+//   invocations                                  créatures entretenues à la fois
+//   orMult / butinMult / xpMult                  gains hors combat
+//   esquive / blocage                            points de % défensifs
+//   seuilRage / degatsMultRage                   dégâts accrus sous X % de PV
+//   premierCoupCrit                              le 1er coup du combat est critique
+// =====================================================================
+const PASSIFS_CLASSE = {
+  aventurier:    { nom: 'Débrouille', desc: '+8 % de dégâts, +8 % de soins et +5 % d’or : bon partout, maître nulle part.', degatsMult: 1.08, soinMult: 1.08, orMult: 1.05 },
+  guerrier:      { nom: 'Discipline martiale', desc: 'Dégâts subis réduits de 8 % et +4 % de blocage : on encaisse et on avance.', reductionDegats: 0.08, blocage: 4 },
+  mage:          { nom: 'Économie arcanique', desc: 'Tous vos sorts coûtent 15 % de mana en moins, et vous récupérez 2 PM par tour.', coutMpMult: 0.85, manaParTour: 2 },
+  archer:        { nom: 'Œil du faucon', desc: '+8 % de chances de coup critique — la cible bouge, la flèche aussi.', critBonus: 8 },
+  clerc:         { nom: 'Grâce', desc: 'Vos soins rendent 25 % de PV en plus. La lumière ne compte pas ses heures.', soinMult: 1.25 },
+  paladin:       { nom: 'Serment du juste', desc: 'Chaque coup porté vous rend 8 % des dégâts en PV, et vous subissez 5 % de moins.', drainParFrappe: 0.08, reductionDegats: 0.05 },
+  necromancien:  { nom: 'Récolte des âmes', desc: 'Chaque coup porté vous rend 12 % des dégâts en PV. Ce qui meurt vous nourrit.', drainParFrappe: 0.12 },
+  moine:         { nom: 'Souffle intérieur', desc: 'Vous régénérez 3 % de vos PV max et 3 PM au début de chacun de vos tours.', pvParTourPct: 0.03, manaParTour: 3 },
+  barde:         { nom: 'Refrain tenace', desc: 'Vos bénédictions, régénérations et affaiblissements durent 1 tour de plus.', dureeBuffBonus: 1 },
+  rodeur:        { nom: 'Pisteur', desc: '+20 % de chances de butin et +10 % d’expérience : rien ne vous échappe.', butinMult: 1.2, xpMult: 1.1 },
+  assassin:      { nom: 'Première lame', desc: 'Votre tout premier coup du combat est un critique garanti. +5 % de critique ensuite.', premierCoupCrit: true, critBonus: 5 },
+  berserker:     { nom: 'Rage sanglante', desc: 'Sous 50 % de PV, vos dégâts augmentent de 30 %. La douleur, c’est du carburant.', seuilRage: 0.5, degatsMultRage: 1.3 },
+  templier:      { nom: 'Rempart', desc: 'Dégâts subis réduits de 12 % et +6 % de blocage. On ne passe pas.', reductionDegats: 0.12, blocage: 6 },
+  elementaliste: { nom: 'Déchaînement', desc: 'Vos sorts qui frappent TOUS les ennemis infligent 25 % de dégâts en plus.', degatsMultAoe: 1.25 },
+  druide:        { nom: 'Cycle vital', desc: 'Vos soins rendent 15 % de plus, et vous régénérez 2 % de vos PV max par tour.', soinMult: 1.15, pvParTourPct: 0.02 },
+  invocateur:    { nom: 'Maître des liens', desc: 'Vous entretenez DEUX invocations à la fois (une seule pour les autres classes), et vos créatures frappent 15 % plus fort.', invocations: 2, degatsInvocationMult: 1.15 },
+  pyromancien:   { nom: 'Braise vive', desc: 'Vos poisons et brûlures infligent 40 % de dégâts en plus, sur toute leur durée.', poisonMult: 1.4 },
+  givremage:     { nom: 'Emprise du gel', desc: '+20 points de % de chances d’étourdir. Ce qui est figé ne riposte pas.', etourdiBonus: 0.2 },
+  chaman:        { nom: 'Voix des ancêtres', desc: 'Vos sorts qui visent TOUT le groupe soignent 30 % de plus et durent 1 tour de plus.', soinGroupeMult: 1.3, dureeBuffBonus: 1 },
+  voleur:        { nom: 'Doigts agiles', desc: '+35 % d’or ramassé et +10 % de chances de butin. Tout traîne un peu, non ?', orMult: 1.35, butinMult: 1.1 },
+  danselame:     { nom: 'Pas de côté', desc: '+8 % d’esquive et +4 % de critique : toucher une danseuse, encore faut-il la trouver.', esquive: 8, critBonus: 4 },
+};
+
 const CLASSES = {
   aventurier: { nom: 'Aventurier', emoji: '🎒', signature: 'signature-panache' },
 };
@@ -1038,9 +1086,17 @@ MODELES.forEach((m) => {
     signature: Object.keys(COMPETENCES_SIGNATURE).find((id) => COMPETENCES_SIGNATURE[id].classe === m.id),
   };
 });
+Object.keys(CLASSES).forEach((id) => { CLASSES[id].passif = PASSIFS_CLASSE[id] || PASSIFS_CLASSE.aventurier; });
 
 function classeDe(p) {
   return CLASSES[p.classe] || CLASSES.aventurier;
+}
+
+// Le passif de classe d'un combattant (héros, ou invocation via son maître).
+function passifClasse(c) {
+  if (!c) return {};
+  const classe = CLASSES[c.classe];
+  return (classe && classe.passif) || {};
 }
 
 // Points de maîtrise : un par palier de niveau atteint, à investir dans

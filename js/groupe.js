@@ -703,7 +703,7 @@ function executerActionDistante(j, a) {
     const comp = COMPETENCES[action.compId];
     if (!comp || !j.competences.includes(action.compId)
       || (j.cooldowns[action.compId] || 0) > 0
-      || j.mp < coutMpDe(comp, statsEffectives(j), j.maxMp)) {
+      || j.mp < coutMpDe(comp, statsEffectives(j), j.maxMp, j)) {
       action = { genre: 'defense' };
     }
   }
@@ -915,8 +915,21 @@ function demarrerSuiviCombatDistant() {
       naviguer('taverne');
       return;
     }
-    // La fraîcheur de la publication trahit un chef déconnecté.
-    if (ligne.statut === 'aventure' && Date.now() - new Date(ligne.maj).getTime() > 30000) {
+    // La fraîcheur de la publication trahit un chef déconnecté. v20 : au
+    // bout d'une minute on LIBÈRE le membre — sans quoi il restait enfermé
+    // sur l'écran de combat (combatEnCours() bloque toute navigation) sans
+    // le moindre bouton pour en sortir. Le chef, lui, a déjà ce garde-fou.
+    const retard = Date.now() - new Date(ligne.maj).getTime();
+    if (ligne.statut === 'aventure' && retard > 60000) {
+      arreterSondagesGroupe();
+      etat.combat = null;
+      etat.groupeLigne = null;
+      afficherToast('📡 Chef déconnecté : l’expédition est abandonnée.');
+      naviguer('taverne');
+      return;
+    }
+    if (ligne.statut === 'aventure' && retard > 30000 && !groupe.chefAverti) {
+      groupe.chefAverti = true;
       afficherToast('📡 Le chef semble déconnecté…');
     }
     if (ligne.statut === 'lobby') {

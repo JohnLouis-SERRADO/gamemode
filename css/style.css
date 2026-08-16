@@ -1297,6 +1297,16 @@ button:focus-visible,
 /* Doublement qualifié : sinon .champ-comptoir.large l'écrase à 90 px. */
 .champ-comptoir.champ-admin-objet { width: min(280px, 100%); }
 
+/* Passif de classe : mis en avant comme celui de la race */
+.heros-passif-classe { color: var(--accent-clair); }
+.heros-passif-classe em { color: var(--accent); font-style: normal; font-weight: bold; }
+
+.encart-passif {
+  display: block;
+  color: var(--accent-clair);
+  margin-bottom: 6px;
+}
+
 .tableau-bord-admin { margin-top: 10px; }
 .tableau-bord-admin .chip { font-size: 0.78rem; cursor: default; }
 

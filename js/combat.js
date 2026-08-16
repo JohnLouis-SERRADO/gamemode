@@ -305,7 +305,15 @@ function debutTour(c) {
 
   if (c.type === 'joueur' || c.type === 'invocation') {
     Object.keys(c.cooldowns).forEach((k) => { if (c.cooldowns[k] > 0) c.cooldowns[k]--; });
-    c.mp = Math.min(c.maxMp, c.mp + 2);
+    // v20 : la régénération de mana de base, plus celle du passif de classe
+    // (Économie arcanique, Souffle intérieur…).
+    const passif = passifClasse(c);
+    c.mp = Math.min(c.maxMp, c.mp + 2 + (c.type === 'joueur' ? (passif.manaParTour || 0) : 0));
+    if (c.type === 'joueur' && passif.pvParTourPct && c.hp > 0 && c.hp < c.maxHp) {
+      const souffle = Math.max(1, Math.round(c.maxHp * passif.pvParTourPct));
+      c.hp = Math.min(c.maxHp, c.hp + souffle);
+      journal(`✨ ${passif.nom} rend ${souffle} PV à ${c.nom}.`);
+    }
   }
 
   const poison = c.statuts.find((s) => s.type === 'poison');
@@ -404,11 +412,33 @@ function infligerDegats(source, cible, brut, options = {}) {
   // Sang de guerre (orc) : +15 % de dégâts sous 40 % de PV.
   if (source.race === 'orc' && source.hp < source.maxHp * 0.4) d *= 1.15;
 
+  // v20 : PASSIFS DE CLASSE côté attaquant.
+  const passif = passifClasse(source);
+  if (source.type === 'joueur') {
+    if (passif.degatsMult) d *= passif.degatsMult;
+    if (options.aoe && passif.degatsMultAoe) d *= passif.degatsMultAoe;
+    if (passif.seuilRage && source.hp < source.maxHp * passif.seuilRage) d *= passif.degatsMultRage;
+  } else if (source.type === 'invocation') {
+    // La créature frappe plus fort si son maître est Invocateur.
+    const maitre = (cb && cb.equipe.find((x) => x.bid === source.maitre)) || null;
+    const passifMaitre = passifClasse(maitre);
+    if (passifMaitre.degatsInvocationMult) d *= passifMaitre.degatsInvocationMult;
+  }
+  // …et côté défenseur.
+  const passifCible = passifClasse(cible);
+  if (cible.type === 'joueur' && passifCible.reductionDegats) d *= 1 - passifCible.reductionDegats;
+
   let chanceCrit = 0.05 + (options.critBonus || 0);
   if (source.type === 'joueur') {
     const s = statsEffectives(source);
     chanceCrit += s.agi * 0.01 + (s.crit || 0) / 100;
     if (source.race === 'elfe') chanceCrit += 0.05; // Précision millénaire
+    if (passif.critBonus) chanceCrit += passif.critBonus / 100;
+    // Première lame (assassin) : le tout premier coup du combat est fatal.
+    if (passif.premierCoupCrit && !source.premiereLameUtilisee) {
+      source.premiereLameUtilisee = true;
+      chanceCrit = 1;
+    }
   }
   const crit = Math.random() < chanceCrit;
   if (crit) d *= 1.5;
@@ -417,10 +447,14 @@ function infligerDegats(source, cible, brut, options = {}) {
   let bloque = false;
   if (cible.type === 'joueur') {
     const defensif = statsEffectives(cible);
-    if (Math.random() < Math.min(35, defensif.esquive || 0) / 100) {
+    // Les passifs de classe s'ajoutent aux stats d'équipement, sous les
+    // mêmes plafonds (35 % d'esquive, 40 % de blocage).
+    const esquive = (defensif.esquive || 0) + (passifCible.esquive || 0);
+    const blocage = (defensif.blocage || 0) + (passifCible.blocage || 0);
+    if (Math.random() < Math.min(35, esquive) / 100) {
       return { degats: 0, crit: false, absorbe: 0, esquive: true };
     }
-    if (Math.random() < Math.min(40, defensif.blocage || 0) / 100) {
+    if (Math.random() < Math.min(40, blocage) / 100) {
       bloque = true;
       d *= 0.5;
     }
@@ -467,8 +501,16 @@ function texteDegats(r) {
   return t;
 }
 
-function soigner(cible, brut) {
-  const soin = Math.max(1, Math.round(varie(brut)));
+// v20 : le soigneur applique son passif de classe (Grâce, Cycle vital,
+// Voix des ancêtres…). La source est facultative : sans elle, soin brut.
+function soigner(cible, brut, source, options = {}) {
+  let valeur = brut;
+  const passif = passifClasse(source);
+  if (source && source.type === 'joueur') {
+    if (passif.soinMult) valeur *= passif.soinMult;
+    if (options.groupe && passif.soinGroupeMult) valeur *= passif.soinGroupeMult;
+  }
+  const soin = Math.max(1, Math.round(varie(valeur)));
   cible.hp = Math.min(cible.maxHp, cible.hp + soin);
   return soin;
 }
@@ -496,18 +538,25 @@ function poserStatut(cible, statut) {
 }
 
 function appliquerEffet(source, cible, effet, resultatDegats) {
+  // v20 : les passifs de classe pèsent sur les effets posés — brûlures
+  // plus mordantes, gel plus sûr, refrains qui s'attardent.
+  const passif = source && source.type === 'joueur' ? passifClasse(source) : {};
+  const duree = (base) => (base || 0) + (passif.dureeBuffBonus || 0);
   switch (effet.type) {
     case 'poison': {
-      const valeur = effet.degats != null
+      let valeur = effet.degats != null
         ? effet.degats
         : Math.round(3 + statDe(source, effet.stat || 'agi') * (effet.stat === 'int' ? 0.5 : 0.6));
-      poserStatut(cible, { type: 'poison', duree: effet.duree, valeur });
-      journal(`🧪 ${cible.nom} est empoisonné (${valeur} dégâts par tour, ${effet.duree} tours).`);
+      if (passif.poisonMult) valeur = Math.round(valeur * passif.poisonMult);
+      const tours = duree(effet.duree);
+      poserStatut(cible, { type: 'poison', duree: tours, valeur });
+      journal(`🧪 ${cible.nom} est empoisonné (${valeur} dégâts par tour, ${tours} tours).`);
       break;
     }
     case 'affaibli': {
-      poserStatut(cible, { type: 'affaibli', duree: effet.duree });
-      journal(`⬇️ ${cible.nom} est affaibli : −30 % de dégâts pendant ${effet.duree} tours.`);
+      const tours = duree(effet.duree);
+      poserStatut(cible, { type: 'affaibli', duree: tours });
+      journal(`⬇️ ${cible.nom} est affaibli : −30 % de dégâts pendant ${tours} tours.`);
       break;
     }
     case 'pacte': {
@@ -518,7 +567,8 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
       break;
     }
     case 'etourdi': {
-      if (Math.random() < (effet.chance != null ? effet.chance : 1)) {
+      const chance = (effet.chance != null ? effet.chance : 1) + (passif.etourdiBonus || 0);
+      if (Math.random() < chance) {
         // La source est mémorisée pour que le « passe son tour » dise QUI a étourdi.
         poserStatut(cible, { type: 'etourdi', duree: effet.duree, source: source.nom });
         journal(`💫 ${cible.nom} est étourdi par ${source.nom} !`);
@@ -558,7 +608,7 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
     }
     case 'drain': {
       if (resultatDegats && resultatDegats.degats > 0) {
-        const soin = soigner(source, resultatDegats.degats * effet.part);
+        const soin = soigner(source, resultatDegats.degats * effet.part, source);
         journal(`🧛 ${source.nom} draine ${soin} PV.`);
       }
       break;
@@ -669,9 +719,9 @@ function rendreActions(j) {
     const btn = document.createElement('button');
     btn.className = 'btn-action competence';
     const cd = j.cooldowns[compId] || 0;
-    const cout = coutMpDe(comp, statsJoueur, j.maxMp);
+    const cout = coutMpDe(comp, statsJoueur, j.maxMp, j);
     // Détails chiffrés : dégâts/soins estimés, effets, coût, recharge.
-    let detail = detailsCompetence(comp, statsJoueur, rangDe(j, compId), j.maxMp).join(' · ');
+    let detail = detailsCompetence(comp, statsJoueur, rangDe(j, compId), j.maxMp, j).join(' · ');
     if (cd > 0) detail = `⏳ Encore ${cd} tour${cd > 1 ? 's' : ''}`;
     else if (j.mp < cout) detail = `${cout} PM — pas assez de mana`;
     btn.innerHTML = `${comp.emoji} <strong>${comp.nom}</strong><span class="action-detail">${detail}</span>`;
@@ -777,6 +827,12 @@ function executerActionCoeur(j, action, cible) {
     const brut = 3 + Math.max(s.for, s.agi);
     const r = infligerDegats(j, cible, brut);
     journal(`⚔️ ${j.nom} attaque ${cible.nom} : ${texteDegats(r)}`);
+    const passifAtt = passifClasse(j);
+    if (passifAtt.drainParFrappe && r.degats > 0 && j.hp < j.maxHp) {
+      const rendu = Math.max(1, Math.round(r.degats * passifAtt.drainParFrappe));
+      j.hp = Math.min(j.maxHp, j.hp + rendu);
+      journal(`   ✨ ${passifAtt.nom} rend ${rendu} PV à ${j.nom}.`);
+    }
     gererMort(cible);
   } else if (action.genre === 'ligne') {
     // v16 : se déplacer est un tour à part entière.
@@ -838,22 +894,30 @@ function lancerCompetence(j, compId, cible) {
   const comp = COMPETENCES[compId];
   if (comp.type === 'invocation') { lancerInvocation(j, compId); return; }
   const s = statsEffectives(j);
-  j.mp = Math.max(0, j.mp - coutMpDe(comp, s, j.maxMp));
+  j.mp = Math.max(0, j.mp - coutMpDe(comp, s, j.maxMp, j));
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
 
   // Rang de maîtrise (compétences signatures) : +15 % par rang.
   const multRang = 1 + 0.15 * rangDe(j, compId);
 
   if (comp.type === 'degats') {
-    const cibles = comp.cible === 'ennemis' ? cb.monstres.filter((m) => !m.mort) : [cible];
+    const aoe = comp.cible === 'ennemis';
+    const cibles = aoe ? cb.monstres.filter((m) => !m.mort) : [cible];
     journal(`${comp.emoji} ${j.nom} utilise ${comp.nom}${multRang > 1 ? ` (rang ${rangDe(j, compId)})` : ''} !`);
+    const passifJ = passifClasse(j);
     cibles.forEach((c) => {
       // Certaines compétences frappent plusieurs fois (rafale de coups).
       for (let coup = 0; coup < (comp.coups || 1); coup++) {
         if (estMort(c)) break;
         const brut = (comp.puissance + s[comp.stat] * comp.ratio) * multRang;
-        const r = infligerDegats(j, c, brut, { critBonus: comp.critBonus || 0, magique: comp.stat === 'int' });
+        const r = infligerDegats(j, c, brut, { critBonus: comp.critBonus || 0, magique: comp.stat === 'int', aoe });
         journal(`→ ${c.nom} subit ${texteDegats(r)}`);
+        // Serment du juste / Récolte des âmes : chaque coup rend des PV.
+        if (passifJ.drainParFrappe && r.degats > 0 && j.hp < j.maxHp) {
+          const rendu = Math.max(1, Math.round(r.degats * passifJ.drainParFrappe));
+          j.hp = Math.min(j.maxHp, j.hp + rendu);
+          journal(`   ✨ ${passifJ.nom} rend ${rendu} PV à ${j.nom}.`);
+        }
         gererMort(c);
         // Le drain soigne le lanceur même si le coup achève la cible ;
         // les autres effets (poison, étourdissement…) ne s'appliquent qu'aux vivants.
@@ -863,9 +927,10 @@ function lancerCompetence(j, compId, cible) {
       }
     });
   } else if (comp.type === 'soin') {
-    const cibles = comp.cible === 'allies' ? cb.equipe.filter((x) => !x.ko) : [cible];
+    const groupe = comp.cible === 'allies';
+    const cibles = groupe ? cb.equipe.filter((x) => !x.ko) : [cible];
     cibles.forEach((c) => {
-      const soin = soigner(c, (comp.puissance + s[comp.stat] * comp.ratio) * multRang);
+      const soin = soigner(c, (comp.puissance + s[comp.stat] * comp.ratio) * multRang, j, { groupe });
       journal(`${comp.emoji} ${j.nom} rend ${soin} PV à ${c === j ? 'lui-même' : c.nom}.`);
       if (comp.effet) appliquerEffet(j, c, comp.effet, null);
     });
@@ -886,19 +951,19 @@ function lancerCompetence(j, compId, cible) {
 function lancerInvocation(j, compId) {
   const cb = etat.combat;
   const comp = COMPETENCES[compId];
-  // v16 : les invocations traversent désormais les expéditions en ligne —
-  // le chef héberge la simulation, la créature vit sur son écran.
-  // v15.2 : l'Invocateur, maître des liens, entretient DEUX créatures à
-  // la fois — tout autre héros n'en contrôle qu'une.
-  const limite = j.classe === 'invocateur' ? 2 : 1;
+  // v20 : le nombre de créatures entretenues est un PASSIF DE CLASSE
+  // (« Maître des liens » de l'Invocateur), plus une règle en dur : la
+  // capacité appartient à la classe, pas au sort.
+  const passif = passifClasse(j);
+  const limite = passif.invocations || 1;
   const vivantes = cb.equipe.filter((x) => x.type === 'invocation' && x.maitre === j.bid && !estMort(x));
   if (vivantes.length >= limite) {
     journal(limite > 1
-      ? `🐾 ${j.nom} tient déjà ${vivantes.map((x) => x.nom).join(' et ')} — même un Invocateur s'arrête à deux !`
-      : `🐾 ${j.nom} a déjà ${vivantes[0].nom} au combat — une seule invocation par héros !`);
+      ? `🐾 ${j.nom} tient déjà ${vivantes.map((x) => x.nom).join(' et ')} — « ${passif.nom} » s'arrête à ${limite} créatures !`
+      : `🐾 ${j.nom} a déjà ${vivantes[0].nom} au combat — une seule invocation, sauf pour l'Invocateur !`);
     return;
   }
-  j.mp = Math.max(0, j.mp - coutMpDe(comp, statsEffectives(j), j.maxMp));
+  j.mp = Math.max(0, j.mp - coutMpDe(comp, statsEffectives(j), j.maxMp, j));
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
 
   const modele = INVOCATIONS[comp.invocation];
@@ -952,7 +1017,7 @@ function tourInvocation(c) {
     const comp = COMPETENCES[id];
     // Ne soigne que si quelqu'un en a besoin.
     if (comp.type === 'soin' && !cb.equipe.some((x) => !estMort(x) && x.hp < x.maxHp * 0.85)) return false;
-    const cout = coutMpDe(comp, s, c.maxMp);
+    const cout = coutMpDe(comp, s, c.maxMp, c);
     return c.mp >= cout || c.hp > cout * 2;
   });
   const choix = utilisables.length ? utilisables[alea(0, utilisables.length - 1)] : null;
@@ -968,7 +1033,7 @@ function tourInvocation(c) {
 
   const comp = COMPETENCES[choix];
   if (comp.cooldown) c.cooldowns[choix] = comp.cooldown;
-  const coutInv = coutMpDe(comp, s, c.maxMp);
+  const coutInv = coutMpDe(comp, s, c.maxMp, c);
   if (c.mp >= coutInv) {
     c.mp -= coutInv;
   } else {
@@ -1102,6 +1167,9 @@ function tourMonstre(m) {
       const r = infligerDegats(m, jv, m.atk * att.mult);
       journal(`→ ${jv.nom} subit ${texteDegats(r)}`);
       gererMort(jv);
+      // v20 : les effets des attaques de ZONE s'appliquent enfin — quinze
+      // attaques (dont plusieurs souffles de boss) les perdaient en silence.
+      if (att.effet && !estMort(jv)) appliquerEffet(m, jv, att.effet, r);
     });
   } else {
     const cible = choisirCibleJoueur(joueursVivants);

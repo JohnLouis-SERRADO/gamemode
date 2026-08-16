@@ -305,8 +305,6 @@ const MONSTRES = {
 // =====================================================================
 // Zones du monde
 // =====================================================================
-const EXPLORATIONS_POUR_BOSS = 3;
-
 const ZONES = [
   {
     id: 'plaines', nom: 'Plaines de l’Aube', emoji: '🌾', niveauMin: 1, plage: 'niv. 1-3',

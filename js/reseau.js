@@ -542,7 +542,19 @@ function rendreTaverne() {
     const vendre = document.createElement('button');
     vendre.className = 'btn-choix btn-compact';
     vendre.textContent = '📤 Mettre en vente';
-    vendre.addEventListener('click', () => vendreAuComptoir());
+    // v20 : verrouillé pendant la requête — deux clics rapides créaient
+    // deux annonces alors qu'un seul objet quittait le sac.
+    vendre.addEventListener('click', async () => {
+      if (vendre.disabled) return;
+      vendre.disabled = true;
+      vendre.textContent = '📤 Dépôt en cours…';
+      try {
+        await vendreAuComptoir();
+      } finally {
+        vendre.disabled = false;
+        vendre.textContent = '📤 Mettre en vente';
+      }
+    });
     formulaire.appendChild(selectObjet);
     formulaire.appendChild(champQte);
     formulaire.appendChild(champPrix);
@@ -876,6 +888,8 @@ async function ouvrirFichePublique(idJoueur) {
     <div class="panneau"><h3>Caractéristiques effectives</h3>
       <p>${statsTexte}</p>
       <p class="joueur-detail">❤️ ${maxHpDe(pp)} PV max · 💧 ${maxMpDe(pp)} PM max${s.blocage ? ` · 🛡️ ${Math.min(40, s.blocage)} % blocage` : ''}${s.esquive ? ` · 💨 ${Math.min(35, s.esquive)} % esquive` : ''}</p>
+      <p class="joueur-detail">✨ <strong>${classe.passif.nom}</strong> : ${classe.passif.desc}</p>
+      <p class="joueur-detail">${race.emoji} <strong>${race.passif}</strong> : ${race.desc}</p>
       <p class="joueur-detail">⚙️ ${panoplies}${compagnon ? ` · 🐾 ${compagnon.emoji} ${compagnon.nom}` : ''} · 🏅 ${(d.hautsFaits || []).length}/${HAUTS_FAITS.length} hauts faits</p>
       <p class="joueur-detail">${Object.entries(METIERS).map(([idMetier, metier]) => {
         const m = (d.metiers && d.metiers[idMetier]) || { niveau: 1 };
