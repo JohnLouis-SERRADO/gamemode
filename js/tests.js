@@ -2179,6 +2179,44 @@ suite('Régressions v22', () => {
     aucun(fautives, 'histoires qui promettent un matériau étranger à leur carte');
   });
 
+  // Éprouvé à deux vrais écrans : un héros de niveau 60, Berserker sur la
+  // Voie de la Rage, envoyé dans le groupe d'un autre joueur. Ses PV, ses
+  // caractéristiques effectives et ses passifs doivent traverser intacts —
+  // sinon il combat plus faible chez l'hôte que chez lui.
+  test('un héros transmis à un autre écran garde ses stats et ses passifs', () => {
+    const p = herosTest();
+    adminFixerNiveau(p, 60);
+    p.sousClasse = Object.keys(SOUS_CLASSES).find((k) => SOUS_CLASSES[k].classe === p.classe);
+    p.voie = Object.keys(VOIES).find((k) => VOIES[k].sousClasse === p.sousClasse);
+    debloquerCompetencesClasse(p, false);
+    adminEquiperAuMieux(p);
+    p.cloud = { id: 'test-cloud', token: 'jeton' };
+
+    const copie = creerJoueurDistant(snapshotPourGroupe(p));
+    const ecarts = [];
+    const mien = statsEffectives(p);
+    const sien = statsEffectives(copie);
+    Object.keys(CARACS).forEach((cle) => {
+      if (mien[cle] !== sien[cle]) ecarts.push(`${cle} : ${mien[cle]} → ${sien[cle]}`);
+    });
+    if (p.maxHp !== copie.maxHp) ecarts.push(`PV max : ${p.maxHp} → ${copie.maxHp}`);
+    if (p.maxMp !== copie.maxMp) ecarts.push(`PM max : ${p.maxMp} → ${copie.maxMp}`);
+    if ((p.competences || []).length !== (copie.competences || []).length) {
+      ecarts.push(`compétences : ${(p.competences || []).length} → ${(copie.competences || []).length}`);
+    }
+    // Les passifs voyagent précalculés : c'est eux qui font qu'un Colosse
+    // garde ses PV et un Invocateur sa seconde créature chez l'hôte.
+    const miens = passifsDe(p);
+    const siens = passifsDe(copie);
+    Object.keys(miens).forEach((cle) => {
+      if (JSON.stringify(miens[cle]) !== JSON.stringify(siens[cle])) {
+        ecarts.push(`passif ${cle} : ${JSON.stringify(miens[cle])} → ${JSON.stringify(siens[cle])}`);
+      }
+    });
+    verifier(Object.keys(miens).length > 0, 'le héros de référence doit avoir des passifs à transmettre');
+    aucun(ecarts, 'écarts entre le héros et sa copie sur l\'écran d\'un autre joueur');
+  });
+
   test('tout matériau exigé par une recette s\'achète bien quelque part', () => {
     // La Halle aux matières l'affiche noir sur blanc : « TOUT ce qui sert
     // au craft s'achète ». Un matériau sans famille n'est au rayon
