@@ -161,6 +161,87 @@ function bornerVie(p) {
 }
 
 // =====================================================================
+// v20 — L'ÉCHELLE DE L'ÉQUIPEMENT : le seul endroit où se règle le poids
+// du butin dans un héros.
+//
+// CE QUI N'ALLAIT PAS. Une pièce de niveau n apportait à elle seule ~0,7
+// fois TOUS les points de caractéristique gagnés depuis le niveau 1.
+// Multiplié par huit emplacements, l'équipement pesait 88 % du héros : le
+// personnage ne comptait plus, seul son butin comptait. Un niveau 22 bien
+// équipé écrasait le contenu de niveau 50, et les sous-caractéristiques
+// (critique, détermination, ténacité — les multiplicateurs de dégâts)
+// touchaient la moitié de leur plafond dès le niveau 22.
+//
+// LA RÈGLE DE LA v20. L'équipement complet vaut ~40 % des caractéristiques
+// d'un héros : assez pour que le butin fasse rêver, pas assez pour
+// remplacer la progression. Les trois générateurs — butin d'aventure,
+// étal du marchand, forges d'artisan — passent tous par ces fonctions.
+// Un seul endroit à régler, et les tests le surveillent.
+//
+// La rareté, elle, s'écarte PLUS qu'avant (voir MULT_RARETE_BUTIN) : les
+// chiffres baissent, mais l'écart entre un commun et un divin se creuse.
+// Trouver une pièce divine doit rester un événement.
+// =====================================================================
+const ECHELLE_EQUIPEMENT = {
+  principaleBase: 0.294,
+  principalePente: 0.0422,
+  partSecondaire: 0.35,
+  reservePvPente: 0.42,
+  reservePmPente: 0.32,
+  defensifBase: 0.4,
+  defensifPente: 0.022,
+  sousCaracBase: 0.45,
+  sousCaracPente: 0.055,
+};
+
+// Stat principale d'une pièce : ce qui décide de tout le reste.
+function statPrincipaleObjet(niveau, mult) {
+  const e = ECHELLE_EQUIPEMENT;
+  return Math.max(1, Math.round((e.principaleBase + niveau * e.principalePente) * mult));
+}
+
+// Stat secondaire : une fraction de la principale, jamais moins de 1.
+function statSecondaireObjet(principal) {
+  return Math.max(1, Math.round(principal * ECHELLE_EQUIPEMENT.partSecondaire));
+}
+
+// Réserves (PV/PM max). Elles pèsent moins qu'une caractéristique dans le
+// score de puissance, elles peuvent donc rester un peu plus généreuses.
+function reservePvObjet(niveau, mult) {
+  return Math.max(1, Math.round(niveau * ECHELLE_EQUIPEMENT.reservePvPente * mult));
+}
+
+function reservePmObjet(niveau, mult) {
+  return Math.max(1, Math.round(niveau * ECHELLE_EQUIPEMENT.reservePmPente * mult));
+}
+
+// Bonus défensif des gants et des bottes.
+function statDefensiveObjet(niveau, mult) {
+  const e = ECHELLE_EQUIPEMENT;
+  return Math.max(1, Math.round((e.defensifBase + niveau * e.defensifPente) * mult));
+}
+
+// Une sous-caractéristique portée par une pièce. Elle doit approcher son
+// plafond en toute fin de partie, pas au premier tiers.
+function sousCaracObjet(niveau, mult) {
+  const e = ECHELLE_EQUIPEMENT;
+  return Math.max(1, Math.round((e.sousCaracBase + niveau * e.sousCaracPente) * mult));
+}
+
+// Ce que « vaut » un jeu de bonus, dans la monnaie de puissanceDe. Sert à
+// comparer deux pièces qui ne portent pas les mêmes lignes — et à tenir le
+// catalogue écrit à la main sur la même échelle que les générateurs.
+function valeurBonusObjet(bonus) {
+  return Object.entries(bonus || {}).reduce((total, [cle, valeur]) => {
+    if (cle === 'pvMax') return total + valeur * 0.8;
+    if (cle === 'pmMax') return total + valeur * 0.6;
+    if (CARACS[cle]) return total + valeur * 6;
+    if (SOUS_CARACS[cle]) return total + valeur * 8;
+    return total;
+  }, 0);
+}
+
+// =====================================================================
 // v17 : la PUISSANCE — un score unique qui résume un héros : ses
 // caractéristiques effectives, ses PV/PM, ses sous-caractéristiques et la
 // qualité de son équipement (niveau × rareté). Affichée partout, et
@@ -183,17 +264,50 @@ function puissanceDe(p) {
   return Math.round(score);
 }
 
-// Puissance conseillée pour aborder un contenu de niveau n. Calibrée sur
-// un héros de référence : ses points de niveau répartis sur deux attributs,
-// et un équipement de sa tranche. La courbe est volontairement continue —
-// un palier de recommandation qui saute donne l'impression d'un mur.
+// =====================================================================
+// v20 — La puissance conseillée, calibrée sur des héros RÉELS.
+//
+// L'ancienne formule reconstituait un héros de référence à la main… et
+// modélisait son équipement par un forfait de niveau × 9,4. Un joueur
+// correctement équipé affichait donc 6 à 7 fois le chiffre « conseillé » à
+// tous les niveaux : au niveau 22 on dépassait déjà la recommandation du
+// niveau 100. L'indicateur ne pouvait structurellement pas dire vrai.
+//
+// Désormais la référence est mesurée, pas devinée. PUISSANCE_ETALON donne,
+// pour chaque niveau, la puissance du héros LE PLUS FORT que le jeu
+// autorise — dans la classe la MOINS bien lotie, parce qu'un contenu
+// taillé pour la meilleure classe serait infranchissable pour les autres.
+// Le tableau est produit par js/data/equilibrage.js et vérifié à chaque
+// exécution des tests : s'il dérive d'un point, la suite passe au rouge.
+// =====================================================================
+const PUISSANCE_ETALON = [
+    411,   486,   650,   783,   882,  1056,  1133,  1287,  1365,  1729,  // 1–10
+   1815,  1925,  2023,  2620,  2753,  2868,  3466,  3559,  3659,  3766,  // 11–20
+   3822,  3926,  4028,  4332,  4440,  4592,  4749,  4844,  4953,  5051,  // 21–30
+   5169,  5475,  5570,  5665,  5916,  6026,  6135,  6215,  6535,  6644,  // 31–40
+   6752,  6843,  6957,  7066,  7267,  7562,  7692,  7776,  7876,  8230,  // 41–50
+   8230,  8327,  8489,  8628,  8820,  8887,  9003,  9084,  9277,  9512,  // 51–60
+   9551,  9707,  9752, 10099, 10140, 10292, 10332, 10685, 10724, 10824,  // 61–70
+  10863, 11147, 11192, 11376, 11416, 11754, 11795, 11836, 11875, 12214,  // 71–80
+  12266, 12484, 12536, 12930, 12982, 12982, 13021, 13424, 13470, 13589,  // 81–90
+  13641, 14156, 14207, 14207, 14207, 14748, 14794, 14794, 14794, 15375,  // 91–100
+];
+
+// Ce que l'étalon a de plus qu'un joueur réel : huit pièces DIVINES, la
+// rareté la plus rare du jeu. Un joueur bien équipé — pièces légendaires
+// partout, ce qui est déjà une belle collection — pèse 0,72 fois l'étalon
+// (mesuré, voir les tests). C'est cette barre-là qu'on conseille : la
+// franchir veut dire « vous êtes prêt », rester dessous veut dire « il
+// vous manque de l'équipement, pas des niveaux ».
+const FACTEUR_RECOMMANDATION = 0.72;
+
+function puissanceEtalon(niveau) {
+  const n = Math.min(NIVEAU_MAX, Math.max(1, Math.round(niveau) || 1));
+  return PUISSANCE_ETALON[n - 1];
+}
+
 function puissanceRecommandee(niveau) {
-  const n = Math.min(NIVEAU_MAX, Math.max(1, niveau || 1));
-  const points = POINTS_CREATION + 6 * STAT_BASE + pointsCumules(n);
-  const pvReference = 25 + points * 0.35 * 7 + (n - 1) * 6 + n * 3;
-  const pmReference = 8 + points * 0.3 * 3 + (n - 1) * 2 + n * 2;
-  const equipement = n * 8 + n * 1.4;
-  return Math.round(points * 6 + pvReference * 0.8 + pmReference * 0.6 + equipement + n * 10);
+  return Math.round(puissanceEtalon(niveau) * FACTEUR_RECOMMANDATION);
 }
 
 // Étiquette HTML « puissance conseillée » colorée selon le héros.

@@ -594,8 +594,11 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
       break;
     }
     case 'mana': {
-      cible.mp = Math.min(cible.maxMp, cible.mp + effet.valeur);
-      journal(`🧘 ${cible.nom} récupère ${effet.valeur} PM.`);
+      // v20 : une part de la réserve, plus un forfait figé qui devenait
+      // dérisoire en fin de partie (+10 PM sur 300, c'était mourir debout).
+      const rendu = valeurRetourMana(effet, statsEffectives(cible), cible.maxMp);
+      cible.mp = Math.min(cible.maxMp, cible.mp + rendu);
+      journal(`🧘 ${cible.nom} récupère ${rendu} PM.`);
       break;
     }
     case 'drain': {
@@ -816,7 +819,9 @@ function executerActionCoeur(j, action, cible) {
   const cb = etat.combat;
   if (action.genre === 'attaque') {
     const s = statsEffectives(j);
-    const brut = 3 + Math.max(s.for, s.dex);
+    // v20 : la meilleure caractéristique offensive, pas seulement FOR/DEX
+    // — sans quoi un lanceur frappe à 9 quand un guerrier frappe à 161.
+    const brut = degatsAttaqueDeBase(j, s);
     const r = infligerDegats(j, cible, brut);
     journal(`⚔️ ${j.nom} attaque ${cible.nom} : ${texteDegats(r)}`);
     gererMort(cible);

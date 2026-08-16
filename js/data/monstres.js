@@ -589,3 +589,163 @@ Object.assign(MONSTRES, {
     ],
   },
 });
+
+// =====================================================================
+// v20 — LA CALIBRATION DU BESTIAIRE.
+//
+// CE QUI N'ALLAIT PAS. Les points de vie et l'attaque de chaque monstre
+// étaient écrits à la main, un par un, sans que rien ne les compare jamais
+// à ce qu'un héros de leur niveau peut réellement encaisser et infliger.
+// Résultat mesuré : au niveau 22, un héros bien équipé nettoyait un groupe
+// de son niveau en 3,4 tours en survivant 31,8 tours — neuf fois plus de
+// marge qu'il n'en faut — pendant qu'au niveau 90 la même mesure tombait à
+// 1,0. Le milieu de partie était une promenade, la fin de partie un mur, et
+// aucun garde-fou ne le signalait.
+//
+// LA RÈGLE DE LA v20. Les chiffres écrits ci-dessus gardent tout leur sens :
+// ils disent le CARACTÈRE de chaque bête — celle-ci encaisse, celle-là
+// frappe fort, cette autre est fragile mais rapide. Ce sont des valeurs
+// RELATIVES au sein de leur palier. L'échelle ABSOLUE, elle, est dérivée du
+// héros : les tables ci-dessous disent, pour chaque niveau, combien de PV et
+// d'attaque un monstre doit porter pour qu'un combat dure ce qu'il doit
+// durer.
+//
+// Les cibles sont calculées (js/data/equilibrage.js) sur un héros de
+// référence : classe médiane des six, équipement LÉGENDAIRE — un joueur
+// bien équipé, pas l'étalon divin que personne n'atteint. Objectif :
+//   • un groupe de 3 monstres de son niveau tombe en ~6 tours et coûte
+//     à peu près la moitié des points de vie ;
+//   • un boss tient ~12 tours et coûte les deux tiers ;
+//   • personne ne meurt en un coup, dans aucun des deux sens.
+//
+// Les tests vérifient le résultat zone par zone. Ajouter un monstre demain
+// ne peut plus casser la courbe : il entre dans la calibration comme les
+// autres.
+// =====================================================================
+const PV_CIBLE_MONSTRE = [
+76,     78,     83,    102,    102,    109,    113,    131,    135,    184,  // 1–10
+     184,    188,    212,    216,    233,    271,    271,    271,    289,    289,  // 11–20
+     289,    289,    314,    314,    314,    314,    314,    320,    335,    384,  // 21–30
+     398,    398,    398,    403,    440,    440,    440,    440,    440,    440,  // 31–40
+     440,    448,    454,    454,    454,    492,    526,    526,    526,    526,  // 41–50
+     570,    570,    570,    572,    610,    635,    635,    635,    635,    635,  // 51–60
+     635,    694,    699,    699,    710,    767,    779,    787,    798,    851,  // 61–70
+     862,    862,    862,   1027,   1040,   1040,   1040,   1040,   1040,   1040,  // 71–80
+    1051,   1067,   1079,   1079,   1079,   1230,   1251,   1251,   1251,   1266,  // 81–90
+    1279,   1294,   1307,   1377,   1390,   1390,   1390,   1595,   1617,   1617,  // 91–100
+];
+
+const ATK_CIBLE_MONSTRE = [
+1.9,    2.1,    3.0,    3.2,    4.0,    4.0,    4.2,    5.2,    5.2,    5.7,  // 1–10
+     5.7,    6.6,    6.6,    8.5,    8.5,    8.5,    9.1,    9.1,    9.1,    9.8,  // 11–20
+    10.0,   10.0,   10.0,   11.5,   12.6,   13.5,   13.5,   13.5,   13.5,   13.5,  // 21–30
+    13.5,   13.5,   13.5,   13.5,   13.5,   16.1,   18.0,   19.1,   19.1,   19.6,  // 31–40
+    21.2,   21.2,   21.2,   23.8,   23.8,   23.8,   23.8,   23.8,   23.8,   23.8,  // 41–50
+    23.8,   23.8,   23.8,   23.8,   23.8,   23.8,   23.8,   23.8,   23.8,   23.8,  // 51–60
+    23.8,   24.4,   24.9,   24.9,   24.9,   24.9,   24.9,   27.6,   27.9,   27.9,  // 61–70
+    27.9,   27.9,   27.9,   31.5,   31.8,   31.8,   31.8,   31.8,   31.8,   33.7,  // 71–80
+    34.2,   34.2,   34.2,   34.2,   34.2,   37.9,   38.2,   38.2,   38.2,   38.2,  // 81–90
+    38.2,   41.4,   41.9,   41.9,   41.9,   41.9,   41.9,   48.4,   48.7,   48.7,  // 91–100
+];
+
+// Un boss combat SEUL : il lui faut la masse de trois monstres et le temps
+// d'exposer ses mécaniques, sans jamais tuer d'un seul coup.
+const PV_CIBLE_BOSS = [
+405,    414,    442,    545,    545,    584,    600,    699,    722,    982,  // 1–10
+     982,   1004,   1129,   1153,   1244,   1446,   1446,   1446,   1542,   1542,  // 11–20
+    1542,   1542,   1674,   1674,   1674,   1674,   1674,   1707,   1785,   2049,  // 21–30
+    2121,   2121,   2121,   2150,   2345,   2345,   2345,   2345,   2345,   2345,  // 31–40
+    2345,   2388,   2420,   2420,   2420,   2624,   2806,   2806,   2806,   2806,  // 41–50
+    3040,   3040,   3040,   3048,   3253,   3389,   3389,   3389,   3389,   3389,  // 51–60
+    3389,   3701,   3731,   3731,   3787,   4091,   4153,   4197,   4255,   4536,  // 61–70
+    4595,   4595,   4595,   5478,   5547,   5547,   5547,   5547,   5547,   5547,  // 71–80
+    5608,   5690,   5753,   5753,   5753,   6559,   6670,   6670,   6670,   6752,  // 81–90
+    6822,   6903,   6972,   7343,   7415,   7415,   7415,   8506,   8622,   8622,  // 91–100
+];
+
+const ATK_CIBLE_BOSS = [
+4.2,    4.7,    6.8,    7.3,    9.0,    9.0,    9.4,   11.6,   11.6,   12.8,  // 1–10
+    12.8,   14.9,   14.9,   19.1,   19.1,   19.1,   20.4,   20.4,   20.4,   22.0,  // 11–20
+    22.6,   22.6,   22.6,   26.0,   28.4,   30.3,   30.3,   30.3,   30.3,   30.3,  // 21–30
+    30.3,   30.3,   30.3,   30.3,   30.3,   36.2,   40.5,   43.0,   43.0,   44.0,  // 31–40
+    47.8,   47.8,   47.8,   53.7,   53.7,   53.7,   53.7,   53.7,   53.7,   53.7,  // 41–50
+    53.7,   53.7,   53.7,   53.7,   53.7,   53.7,   53.7,   53.7,   53.7,   53.7,  // 51–60
+    53.7,   55.0,   56.0,   56.0,   56.0,   56.0,   56.0,   62.1,   62.7,   62.7,  // 61–70
+    62.7,   62.7,   62.7,   70.8,   71.5,   71.5,   71.5,   71.5,   71.5,   75.9,  // 71–80
+    77.0,   77.0,   77.0,   77.0,   77.0,   85.2,   86.0,   86.0,   86.0,   86.0,  // 81–90
+    86.0,   93.2,   94.3,   94.3,   94.3,   94.3,   94.3,  108.8,  109.7,  109.7,  // 91–100
+];
+
+function cibleMonstre(table, niveau) {
+  const n = Math.min(NIVEAU_MAX, Math.max(1, Math.round(niveau) || 1));
+  return table[n - 1];
+}
+
+// =====================================================================
+// Applique la calibration à un registre de monstres.
+//
+// Le facteur est calculé PAR PALIER, pas par bête : on compare la moyenne
+// du palier à sa cible, et on applique le même facteur à tous ses membres.
+// C'est ce qui préserve le caractère de chacun — un monstre deux fois plus
+// robuste que ses voisins le reste après calibration.
+//
+// Les niveaux voisins sont agrégés (fenêtre de ±2) : le bestiaire est
+// clairsemé, certains paliers n'ont qu'une seule bête et sa moyenne ne
+// voudrait rien dire toute seule.
+// =====================================================================
+function calibrerRegistreMonstres(registre) {
+  const bêtes = Object.values(registre).filter((m) => m && typeof m.hp === 'number' && m.niveau);
+  if (!bêtes.length) return;
+
+  // Photo des valeurs d'origine AVANT de toucher à quoi que ce soit : sans
+  // elle, la moyenne d'un palier se calculait sur des bêtes déjà corrigées
+  // et le résultat dépendait de l'ordre de déclaration dans le fichier.
+  const origine = new Map(bêtes.map((m) => [m, { hp: m.hp, atk: m.atk }]));
+
+  const moyenneAutour = (niveau, estBoss, champ) => {
+    for (let rayon = 1; rayon <= 12; rayon += 1) {
+      const proches = bêtes.filter((m) => !!m.boss === estBoss && Math.abs(m.niveau - niveau) <= rayon);
+      if (proches.length >= 2) return proches.reduce((a, m) => a + origine.get(m)[champ], 0) / proches.length;
+    }
+    const tous = bêtes.filter((m) => !!m.boss === estBoss);
+    return tous.length ? tous.reduce((a, m) => a + origine.get(m)[champ], 0) / tous.length : null;
+  };
+
+  // À quel point garde-t-on l'écart d'origine à la moyenne de son palier ?
+  //
+  // 1 = on garde tout : deux zones du même niveau restaient trois fois plus
+  // dures l'une que l'autre, parce que leurs chiffres avaient été écrits à
+  // des mois d'intervalle. 0 = tout le monde pareil, et le bestiaire perd
+  // son relief. À 0,35, une bête réputée coriace le reste nettement, sans
+  // qu'une zone devienne un mur et sa jumelle une promenade.
+  const RELIEF = 0.35;
+  const recentre = (valeur, moyenne, cible) => {
+    if (!(moyenne > 0)) return valeur;
+    const ecart = valeur / moyenne - 1;
+    return Math.max(1, Math.round(cible * (1 + RELIEF * ecart)));
+  };
+
+  bêtes.forEach((m) => {
+    const estBoss = !!m.boss;
+    const avant = origine.get(m).hp;
+    m.hp = recentre(avant, moyenneAutour(m.niveau, estBoss, 'hp'),
+      cibleMonstre(estBoss ? PV_CIBLE_BOSS : PV_CIBLE_MONSTRE, m.niveau));
+    m.atk = recentre(origine.get(m).atk, moyenneAutour(m.niveau, estBoss, 'atk'),
+      cibleMonstre(estBoss ? ATK_CIBLE_BOSS : ATK_CIBLE_MONSTRE, m.niveau));
+
+    // La récompense suit l'effort. Un monstre qui demande deux fois plus de
+    // tours rapporte deux fois plus : sans ça, rééquilibrer la difficulté
+    // reviendrait à tripler le temps de jeu pour un même niveau — la
+    // définition exacte du grind. L'XP par tour, elle, ne bouge pas.
+    const effort = avant > 0 ? m.hp / avant : 1;
+    if (typeof m.xp === 'number') m.xp = Math.max(1, Math.round(m.xp * effort));
+    if (Array.isArray(m.po)) m.po = m.po.map((v) => Math.max(1, Math.round(v * effort)));
+  });
+}
+
+// Le bestiaire des donjons vit dans son propre registre (js/donjons/epopees.js) ;
+// l'appel se fait donc en bout de chaîne de chargement, quand les deux existent.
+function calibrerBestiaire() {
+  calibrerRegistreMonstres(MONSTRES);
+  if (typeof MONSTRES_DONJONS !== 'undefined') calibrerRegistreMonstres(MONSTRES_DONJONS);
+}

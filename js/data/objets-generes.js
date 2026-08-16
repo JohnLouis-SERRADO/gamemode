@@ -91,7 +91,10 @@ function ajouterSousCaracs(bonus, slot, niveau, rarete, decalage = 0) {
   const mult = MULT_RARETE_BUTIN[rarete] || 1;
   for (let i = 0; i < combien; i++) {
     const cle = disponibles[(decalage + i) % disponibles.length];
-    const valeur = Math.max(1, Math.round((1 + niveau * 0.11) * mult));
+    // v20 : l'échelle commune (voir progression.js). Avant, huit pièces
+    // suffisaient à mettre la moitié des plafonds dans la poche d'un
+    // niveau 22 — critique et détermination comprises.
+    const valeur = sousCaracObjet(niveau, mult);
     bonus[cle] = (bonus[cle] || 0) + Math.min(valeur, PLAFONDS_SOUS_CARACS[cle]);
   }
   return bonus;
@@ -110,7 +113,11 @@ const QUALIFICATIFS_BUTIN = {
 
 // Niveau minimal d'apparition et puissance de chaque rareté.
 const PALIER_RARETE = { commun: 1, inhabituel: 1, rare: 3, epique: 6, legendaire: 10, mythique: 14, divin: 17 };
-const MULT_RARETE_BUTIN = { commun: 0.8, inhabituel: 0.95, rare: 1.1, epique: 1.3, legendaire: 1.55, mythique: 1.8, divin: 2.15 };
+// v20 : l'écart entre raretés se CREUSE pendant que les chiffres baissent.
+// L'équipement pèse moins dans le héros (40 % au lieu de 88 %), mais un
+// divin vaut désormais quatre communs au lieu de deux et demi — trouver
+// une pièce divine doit rester un événement, même à la nouvelle échelle.
+const MULT_RARETE_BUTIN = { commun: 0.62, inhabituel: 0.8, rare: 1, epique: 1.3, legendaire: 1.7, mythique: 2.1, divin: 2.55 };
 
 // Jusqu'au niveau 20 : toutes les raretés, deux variantes. Au-delà
 // (niveaux 21 à 50) : une variante, raretés épique et plus seulement —
@@ -128,16 +135,17 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
         const nomBase = archetype.noms[(niveau + variante) % archetype.noms.length];
         const qualificatif = QUALIFICATIFS_BUTIN[rarete][(niveau + variante * 2) % 3];
         const mult = MULT_RARETE_BUTIN[rarete];
-        const principal = Math.max(1, Math.round((2 + niveau * 0.85) * mult) + variante);
+        // v20 : l'échelle commune de l'équipement (voir progression.js).
+        const principal = statPrincipaleObjet(niveau, mult) + variante;
         const bonus = { [archetype.principal]: principal };
-        if (niveau >= 4) bonus[archetype.secondaire] = Math.max(1, Math.round(principal * 0.35));
-        if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = Math.round(niveau * 2 * mult);
+        if (niveau >= 4) bonus[archetype.secondaire] = statSecondaireObjet(principal);
+        if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = reservePvObjet(niveau, mult);
         if (archetype.principal === 'int' || archetype.principal === 'esp') {
-          bonus.pmMax = Math.round(niveau * 1.5 * mult);
+          bonus.pmMax = reservePmObjet(niveau, mult);
         }
         // Gants et bottes gardent leur tempérament défensif d'origine.
         if (archetype.defensif && niveau >= 8 && !['commun', 'inhabituel'].includes(rarete)) {
-          bonus[archetype.defensif] = Math.max(1, Math.round(1 + niveau * 0.12 * mult));
+          bonus[archetype.defensif] = statDefensiveObjet(niveau, mult);
         }
         ajouterSousCaracs(bonus, archetype.slot, niveau, rarete, niveau + variante);
         // Les objets partageant un même qualificatif forment une panoplie.
@@ -205,15 +213,15 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
       const qualificatif = QUALIFICATIFS_BOUTIQUE[rarete][indexQualificatif];
       const nomBase = archetype.noms[niveau % archetype.noms.length];
       const mult = MULT_STAT_BOUTIQUE[rarete];
-      const principal = Math.max(1, Math.round((2 + niveau * 0.85) * mult));
+      const principal = statPrincipaleObjet(niveau, mult);
       const bonus = { [archetype.principal]: principal };
-      if (niveau >= 4) bonus[archetype.secondaire] = Math.max(1, Math.round(principal * 0.35));
-      if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = Math.round(niveau * 2 * mult);
+      if (niveau >= 4) bonus[archetype.secondaire] = statSecondaireObjet(principal);
+      if (archetype.slot === 'torse' || archetype.slot === 'tete') bonus.pvMax = reservePvObjet(niveau, mult);
       if (archetype.principal === 'int' || archetype.principal === 'esp') {
-        bonus.pmMax = Math.round(niveau * 1.5 * mult);
+        bonus.pmMax = reservePmObjet(niveau, mult);
       }
       if (archetype.defensif && niveau >= 8 && ['rare', 'epique', 'legendaire'].includes(rarete)) {
-        bonus[archetype.defensif] = Math.max(1, Math.round(1 + niveau * 0.1 * mult));
+        bonus[archetype.defensif] = statDefensiveObjet(niveau, mult * 0.85);
       }
       // Le marchand porte une sous-caractéristique de moins que le butin :
       // partir à l'aventure doit rester plus payant que passer à la caisse.
@@ -231,6 +239,72 @@ ARCHETYPES_BUTIN.forEach((archetype) => {
     });
   }
 });
+
+// =====================================================================
+// v20 — Le catalogue écrit à la main, ramené sur la MÊME échelle.
+//
+// Les pièces uniques (reliques de Chronique, butin des boss nommés) sont
+// écrites à la main, une par une. Elles échappaient donc à la nouvelle
+// échelle de l'équipement — et se retrouvaient d'un coup quatre à cinq
+// fois plus fortes que le meilleur butin de leur niveau : la Couronne du
+// Premier Roi portait 88 points de caractéristiques quand une pièce
+// divine de niveau 100 en portait 19.
+//
+// On ne réécrit pas ces pièces : on les PLAFONNE. Chacune garde son
+// caractère — la répartition entre ses lignes, ce qui fait qu'une couronne
+// n'est pas une paire de bottes — et voit seulement son total ramené sous
+// le plafond de son emplacement. Une pièce déjà modeste (l'épée courte du
+// débutant) n'est jamais touchée : le plafond ne rehausse rien.
+//
+// Écrite comme une passe automatique et non comme des chiffres corrigés à
+// la main : toute pièce unique ajoutée demain sera tenue par la même règle.
+// =====================================================================
+const PRIME_PIECE_UNIQUE = 1.3;
+
+function plafonnerEquipementUnique() {
+  // Le plafond d'un emplacement : la meilleure pièce GÉNÉRÉE de ce slot,
+  // de niveau inférieur ou égal. C'est l'échelle commune, par construction.
+  const meilleurGenere = {};
+  Object.entries(OBJETS).forEach(([id, objet]) => {
+    if (objet.type !== 'equipement' || !objet.slot) return;
+    if (!/^(butin|marchand|craft)-/.test(id)) return;
+    const parSlot = meilleurGenere[objet.slot] = meilleurGenere[objet.slot] || [];
+    parSlot.push({ niveau: objet.niveau || 1, valeur: valeurBonusObjet(objet.bonus) });
+  });
+  Object.values(meilleurGenere).forEach((liste) => liste.sort((a, b) => a.niveau - b.niveau));
+
+  const plafondPour = (slot, niveau) => {
+    const liste = meilleurGenere[slot];
+    if (!liste || !liste.length) return null;
+    let plafond = 0;
+    liste.forEach((e) => { if (e.niveau <= niveau && e.valeur > plafond) plafond = e.valeur; });
+    return plafond > 0 ? plafond * PRIME_PIECE_UNIQUE : null;
+  };
+
+  Object.entries(OBJETS).forEach(([id, objet]) => {
+    if (objet.type !== 'equipement' || !objet.bonus) return;
+    if (/^(butin|marchand|craft)-/.test(id)) return;
+    const plafond = plafondPour(objet.slot, objet.niveau || 1);
+    if (!plafond) return;
+    const valeur = valeurBonusObjet(objet.bonus);
+    if (valeur <= plafond) return;           // déjà sage : on n'y touche pas
+    const facteur = plafond / valeur;
+    const ajuste = {};
+    Object.entries(objet.bonus).forEach(([cle, v]) => {
+      // Les lignes non chiffrées (bonus d'XP, d'or) traversent intactes.
+      if (typeof v !== 'number' || (!CARACS[cle] && !SOUS_CARACS[cle] && cle !== 'pvMax' && cle !== 'pmMax')) {
+        ajuste[cle] = v;
+        return;
+      }
+      ajuste[cle] = Math.max(1, Math.round(v * facteur));
+    });
+    objet.bonus = ajuste;
+  });
+}
+
+// L'APPEL est en fin de chaîne de chargement (js/donjons/moteur.js) : les
+// reliques de Chronique et le butin des boss nommés n'existent pas encore
+// ici, et ce sont justement eux que le plafond doit tenir.
 
 // =====================================================================
 // Inventaire : liste de { id, qte }

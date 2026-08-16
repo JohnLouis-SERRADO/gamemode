@@ -1712,7 +1712,7 @@ button:focus-visible,
 }
 
 /* v14 — L'écran de la mort : crâne géant, pertes détaillées, destin. */
-#voile-mort, #voile-renaissance {
+#voile-mort, #voile-renaissance, #voile-equilibrage {
   position: fixed;
   inset: 0;
   background: rgba(10, 4, 6, 0.94);
@@ -1723,6 +1723,15 @@ button:focus-visible,
   padding: 24px 12px;
   overflow-y: auto;
 }
+
+.modale-equilibrage {
+  border-color: var(--or, #d9a441);
+  box-shadow: 0 0 40px rgba(217, 164, 65, 0.35);
+  text-align: left;
+}
+
+.modale-equilibrage h2,
+.modale-equilibrage .crane-mort { text-align: center; }
 
 .modale-mort {
   border-color: #8b1a1a;

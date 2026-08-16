@@ -291,12 +291,18 @@ suite('Progression', () => {
     verifier(puissanceDe(fort) > puissanceDe(faible), 'un héros mieux doté doit être plus puissant');
   });
 
-  test('la puissance conseillée croît avec le niveau du contenu', () => {
+  test('la puissance conseillée ne redescend jamais', () => {
+    // v20 : l'invariant est « jamais de RECUL », pas « toujours plus ».
+    // La courbe est mesurée sur le meilleur héros possible à chaque niveau,
+    // et il existe des paliers où le catalogue n'offre rien de neuf : la
+    // recommandation y fait un plat, ce qui est honnête. Elle ne doit
+    // simplement jamais baisser — un contenu plus haut ne peut pas demander
+    // moins qu'un contenu plus bas.
     const ruptures = [];
     for (let n = 2; n <= NIVEAU_MAX; n++) {
-      if (puissanceRecommandee(n) <= puissanceRecommandee(n - 1)) ruptures.push(`niv. ${n}`);
+      if (puissanceRecommandee(n) < puissanceRecommandee(n - 1)) ruptures.push(`niv. ${n}`);
     }
-    aucun(ruptures, 'recommandations non croissantes');
+    aucun(ruptures, 'recommandations en recul');
   });
 });
 
@@ -739,18 +745,20 @@ suite('Route jusqu\'au niveau 100', () => {
   });
 
   test('la puissance conseillée reste atteignable à chaque niveau', () => {
-    // Un héros de référence, correctement doté, doit rester dans l'épure de
-    // la recommandation de son niveau — sinon toutes les cartes s'affichent
-    // en rouge et l'indicateur ne veut plus rien dire.
+    // v20 : ce test comparait la recommandation à un héros TOUT NU — et
+    // c'est précisément ce qui masquait le défaut pendant si longtemps.
+    // Un héros sans le moindre objet passait pour la référence, pendant
+    // qu'un joueur équipé affichait sept fois le chiffre conseillé.
+    //
+    // On compare désormais au héros ÉQUIPÉ de chaque classe : la
+    // recommandation doit être franchissable par toutes (donc sous la plus
+    // faible) sans être ridicule pour la meilleure.
     const ecarts = [];
     [1, 10, 25, 50, 70, 85, 100].forEach((n) => {
-      const p = herosTest({ niveau: n });
-      const points = POINTS_CREATION + 6 * STAT_BASE + pointsCumules(n);
-      const part = Math.floor(points / 6);
-      Object.keys(CARACS).forEach((cle) => { p.stats[cle] = part; });
-      bornerVie(p);
-      const rapport = puissanceDe(p) / puissanceRecommandee(n);
-      if (rapport < 0.55 || rapport > 1.6) ecarts.push(`niv. ${n} (×${rapport.toFixed(2)})`);
+      const e = puissancesEtalon(n);
+      const requis = puissanceRecommandee(n);
+      if (requis > e.min) ecarts.push(`niv. ${n} : ${requis} conseillé > ${e.min} atteignable`);
+      if (requis < e.min * 0.5) ecarts.push(`niv. ${n} : ${requis} conseillé, trop bas pour ${e.min}`);
     });
     aucun(ecarts, 'recommandations décalées du héros de référence');
   });
@@ -2424,6 +2432,222 @@ suite('Accès admin par le portrait', () => {
     egal(p.hp, p.maxHp, 'PV pleins');
     egal(p.mp, p.maxMp, 'PM pleins');
     egal(p.xp, seuilXp(25), 'l\'XP colle au palier du niveau');
+  });
+});
+
+// =====================================================================
+// v20 — ÉQUILIBRAGE : le contrôle de cohérence qui manquait.
+//
+// Rien ne comparait jamais un héros RÉEL au contenu réel. Deux courbes
+// vivaient chacune de leur côté — celle de la puissance et celle de la
+// difficulté — et elles avaient divergé d'un facteur sept sans qu'aucun
+// test ne s'en aperçoive. Un joueur de niveau 22 dépassait la puissance
+// « conseillée » pour le niveau 100, et nettoyait le contenu de son niveau
+// avec neuf fois la marge nécessaire.
+//
+// Cette suite est le garde-fou. Elle mesure ce qu'un joueur vit vraiment :
+// combien de tours pour nettoyer un groupe, combien de tours avant de
+// tomber, et si l'un des deux camps peut tuer d'un seul coup.
+// =====================================================================
+suite('Équilibrage (v20)', () => {
+  test('la table PUISSANCE_ETALON colle au héros réellement mesuré', () => {
+    // La table embarquée dans progression.js est un calcul figé : si le
+    // catalogue ou les formules bougent, elle doit être régénérée. Ce test
+    // est ce qui empêche qu'on l'oublie.
+    const derives = [];
+    let record = 0;
+    for (let n = 1; n <= NIVEAU_MAX; n++) {
+      record = Math.max(record, puissancesEtalon(n).min);
+      const ecart = Math.abs(puissanceEtalon(n) - record) / record;
+      if (ecart > 0.02) derives.push(`niv. ${n} : table ${puissanceEtalon(n)} vs mesuré ${record}`);
+    }
+    aucun(derives, 'PUISSANCE_ETALON a dérivé — régénérer la table');
+  });
+
+  test('l\'équipement pèse environ 40 % du héros, jamais plus de la moitié', () => {
+    // C'était 88 % : le personnage ne comptait plus, seul son butin comptait.
+    const fautifs = [];
+    let somme = 0;
+    let n = 0;
+    [5, 10, 22, 30, 40, 50, 60, 70, 80, 90, 100].forEach((niveau) => {
+      const p = personaReference('guerrier', niveau);
+      const nu = { ...p, equipement: {}, familier: null };
+      const avec = statsEffectives(p);
+      const sans = statsEffectives(nu);
+      const total = Object.keys(CARACS).reduce((a, c) => a + (avec[c] || 0), 0);
+      const propre = Object.keys(CARACS).reduce((a, c) => a + (sans[c] || 0), 0);
+      const part = (total - propre) / total;
+      somme += part; n++;
+      if (part > 0.55) fautifs.push(`niv. ${niveau} : ${Math.round(part * 100)} %`);
+    });
+    aucun(fautifs, 'niveaux où l\'équipement écrase le personnage');
+    entre(somme / n, 0.33, 0.47, 'part moyenne de l\'équipement dans les caractéristiques');
+  });
+
+  test('les sous-caractéristiques n\'atteignent leur plafond qu\'en fin de partie', () => {
+    // Elles étaient à la moitié de leur plafond dès le niveau 22 : critique,
+    // détermination et ténacité — les multiplicateurs de dégâts — étaient
+    // déjà à moitié acquis au premier quart du jeu.
+    const plafond = Object.keys(SOUS_CARACS).reduce((a, c) => a + PLAFONDS_SOUS_CARACS[c], 0);
+    const saturation = (niveau) => {
+      const s = statsEffectives(personaReference('guerrier', niveau));
+      return Object.keys(SOUS_CARACS).reduce((a, c) => a + (s[c] || 0), 0) / plafond;
+    };
+    entre(saturation(22), 0.15, 0.40, 'saturation au niveau 22');
+    entre(saturation(100), 0.70, 1.0, 'saturation au niveau 100');
+    verifier(saturation(100) > saturation(22), 'la saturation doit progresser avec le niveau');
+  });
+
+  test('aucun monstre ne tue un héros de son niveau en un coup', () => {
+    // La règle demandée : personne ne se fait « one shot », dans aucun sens.
+    const fautives = [];
+    ZONES.forEach((z) => {
+      const t = tensionZone(z, 3);
+      if (t && t.reference.pireCoupPct > 0.25) {
+        fautives.push(`${z.nom} : ${Math.round(t.reference.pireCoupPct * 100)} % des PV en un coup`);
+      }
+    });
+    aucun(fautives, 'zones où un seul coup fait trop mal');
+  });
+
+  test('aucun héros ne pulvérise un monstre de son niveau d\'une pichenette', () => {
+    // La réciproque : un monstre qui tombe au premier coup n'est pas un
+    // combat. Les deux premières zones sont exemptées — écraser un gobelin
+    // au niveau 2, c'est la promesse du début de partie.
+    const fautives = [];
+    ZONES.filter((z) => z.niveauMin > 4).forEach((z) => {
+      const t = tensionZone(z, 3);
+      if (t && t.reference.ripostePct > 0.85) {
+        fautives.push(`${z.nom} : un coup enlève ${Math.round(t.reference.ripostePct * 100)} % des PV du monstre`);
+      }
+    });
+    aucun(fautives, 'zones où les monstres tombent d\'un seul coup');
+  });
+
+  test('la tension reste dans la même fourchette du niveau 1 au niveau 100', () => {
+    // LE test qui aurait dû exister. Avant : 1,1× au niveau 3, 9,3× au
+    // niveau 22, 1,0× au niveau 90 — une bulle de contenu trivial au milieu
+    // de la partie, invisible pour tout le monde.
+    const marges = [];
+    const horsFourchette = [];
+    ZONES.forEach((z) => {
+      const t = tensionZone(z, 3);
+      if (!t) return;
+      marges.push(t.reference.marge);
+      if (t.reference.marge < 0.8 || t.reference.marge > 3.2) {
+        horsFourchette.push(`${z.nom} : ${t.reference.marge.toFixed(1)}×`);
+      }
+    });
+    aucun(horsFourchette, 'zones dont la tension sort de la fourchette');
+    const moyenne = marges.reduce((a, v) => a + v, 0) / marges.length;
+    entre(moyenne, 1.5, 2.2, 'marge moyenne sur toutes les zones');
+    // Et surtout : plus de bulle. Le rapport entre la zone la plus tendue
+    // et la plus tranquille doit rester modeste.
+    entre(Math.max(...marges) / Math.min(...marges), 1, 3.5, 'écart entre la zone la plus dure et la plus douce');
+  });
+
+  test('sauter vingt niveaux de contenu ne pardonne pas', () => {
+    // Le symptôme signalé : « au niveau 22 je pourrais faire la map 90-100 ».
+    // On vérifie avec un héros bien équipé (légendaire) : aucune classe ne
+    // doit survivre au contenu de niveau 46, et l'écart avec son propre
+    // contenu doit être franc.
+    const chezSoi = ZONES.filter((z) => z.niveauMin === 22)[0];
+    const tropHaut = ZONES.filter((z) => z.niveauMin >= 46)[0];
+    const mSoi = chezSoi.monstres.map((c) => MONSTRES[c]).filter(Boolean);
+    const mHaut = tropHaut.monstres.map((c) => MONSTRES[c]).filter(Boolean);
+    const survivants = [];
+    classesEtalon().forEach((classe) => {
+      const p = personaEquipeNormalement(classe, 22);
+      const marge = tensionCombat(mHaut, p, 3).marge;
+      if (marge >= 1) survivants.push(`${classe} (${marge.toFixed(2)}×)`);
+    });
+    aucun(survivants, 'classes de niveau 22 qui passent quand même le contenu de niveau 46');
+
+    // Et la chute doit être nette, pas marginale.
+    classesEtalon().forEach((classe) => {
+      const p = personaEquipeNormalement(classe, 22);
+      const ici = tensionCombat(mSoi, p, 3).marge;
+      const laBas = tensionCombat(mHaut, p, 3).marge;
+      verifier(laBas < ici * 0.55,
+        `${classe} : la marge doit s'effondrer en montant de 24 niveaux (${ici.toFixed(2)}× → ${laBas.toFixed(2)}×)`);
+    });
+  });
+
+  test('les six classes restent dans un écart de puissance raisonnable', () => {
+    // Elles ne se valent pas — c'est voulu — mais l'écart ne doit pas
+    // rendre une classe injouable.
+    const trop = [];
+    [10, 30, 50, 80, 100].forEach((n) => {
+      const e = puissancesEtalon(n);
+      if (e.max / e.min > 1.6) trop.push(`niv. ${n} : ×${(e.max / e.min).toFixed(2)}`);
+    });
+    aucun(trop, 'niveaux où une classe décroche complètement');
+  });
+});
+
+// =====================================================================
+// v20 — Cohérence entre les compétences et les caractéristiques
+// =====================================================================
+suite('Compétences et caractéristiques (v20)', () => {
+  test('l\'attaque de base profite à TOUTES les classes', () => {
+    // Elle valait « 3 + le meilleur de FOR et DEX » : au niveau 80, un
+    // guerrier frappait à 161 et un arcaniste à 9. Même bouton, même tour.
+    const fautives = [];
+    classesEtalon().forEach((classe) => {
+      const p = personaArme(classe, 80);
+      const s = statsEffectives(p);
+      // La caractéristique dans laquelle la classe investit doit compter.
+      if (degatsAttaqueDeBase(p, s) < (s[CLASSES_BASE[classe].stat] || 0)) fautives.push(classe);
+    });
+    aucun(fautives, 'classes dont l\'attaque de base ignore leur caractéristique');
+
+    const degats = classesEtalon().map((c) => {
+      const p = personaArme(c, 80);
+      return degatsAttaqueDeBase(p, statsEffectives(p));
+    });
+    entre(Math.max(...degats) / Math.min(...degats), 1, 2.2,
+      'écart d\'attaque de base entre la meilleure et la moins bien lotie');
+  });
+
+  test('chaque compétence chiffrée déclare la caractéristique qui la porte', () => {
+    const sansStat = Object.entries(COMPETENCES)
+      .filter(([, c]) => (c.type === 'degats' || c.type === 'soin') && (!c.stat || !CARACS[c.stat]))
+      .map(([id]) => id);
+    aucun(sansStat, 'compétences chiffrées sans caractéristique valide');
+  });
+
+  test('le détail d\'une compétence dit sur quoi elle s\'appuie', () => {
+    // La demande : « il faut indiquer les stats concernées par chaque sort
+    // pour savoir quoi évoluer ».
+    const s = statsEffectives(personaArme('arcaniste', 40));
+    const muettes = Object.entries(COMPETENCES)
+      .filter(([, c]) => c.type === 'degats' || c.type === 'soin')
+      .filter(([, c]) => !detailsCompetence(c, s, 0, 200).some((l) => l.startsWith('📊')))
+      .map(([id]) => id);
+    aucun(muettes, 'compétences dont le détail ne nomme pas la caractéristique');
+  });
+
+  test('aucune compétence chiffrée n\'est figée dans le temps', () => {
+    // Un ratio nul, c'est une compétence qui vaut la même chose au niveau 1
+    // et au niveau 100 : elle meurt doucement sans que personne ne le voie.
+    const figees = Object.entries(COMPETENCES)
+      .filter(([, c]) => (c.type === 'degats' || c.type === 'soin') && !c.ratio)
+      .map(([id]) => id);
+    aucun(figees, 'compétences à puissance fixe');
+  });
+
+  test('les retours de mana suivent la réserve du héros', () => {
+    // Sept compétences rendaient « +10 PM » en dur : un tiers de la réserve
+    // au niveau 5, trois pour cent au niveau 90.
+    const effetsMana = Object.entries(COMPETENCES)
+      .filter(([, c]) => c.effet && c.effet.type === 'mana');
+    verifier(effetsMana.length > 0, 'il existe bien des compétences qui rendent du mana');
+    const figees = effetsMana.filter(([, c]) => {
+      const petit = valeurRetourMana(c.effet, { int: 10, esp: 2 }, 40);
+      const grand = valeurRetourMana(c.effet, { int: 200, esp: 40 }, 600);
+      return grand <= petit;
+    }).map(([id]) => id);
+    aucun(figees, 'retours de mana qui ne progressent pas avec la réserve');
   });
 });
 

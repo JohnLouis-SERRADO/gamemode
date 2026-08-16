@@ -1004,3 +1004,18 @@ function terminerDonjon(etape) {
   boutons.appendChild(retour);
   scene.appendChild(boutons);
 }
+
+// =====================================================================
+// v20 — Dernier maillon du chargement des données : tout le catalogue
+// existe enfin (objets écrits à la main, séries d'artisan, butin généré,
+// étal du marchand, reliques de Chronique, butin des boss nommés). C'est
+// le seul moment où l'on peut tenir les pièces uniques sur la même
+// échelle que le reste — voir plafonnerEquipementUnique() dans
+// js/data/objets-generes.js.
+// =====================================================================
+plafonnerEquipementUnique();
+
+// Et la même chose pour le bestiaire : les points de vie et l'attaque de
+// chaque bête sont ramenés sur la courbe dérivée du héros — voir
+// calibrerBestiaire() dans js/data/monstres.js.
+calibrerBestiaire();

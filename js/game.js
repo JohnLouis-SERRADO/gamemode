@@ -1189,6 +1189,56 @@ function infererClasse(p) {
   return meilleur;
 }
 
+// =====================================================================
+// v20 — L'annonce du rééquilibrage, une fois et une seule.
+//
+// Le chiffre de puissance a beaucoup baissé pour tout le monde, et le
+// contenu a été réajusté dans la même proportion. Sans un mot, un joueur
+// qui revient croit à une perte : il faut lui dire que rien ne lui a été
+// retiré, et que le monde a bougé avec lui.
+//
+// Pas de compensation : la correction s'applique à tous de la même façon,
+// donc personne ne recule par rapport aux autres.
+// =====================================================================
+const CLE_ANNONCE_EQUILIBRAGE = 'gamemode2.annonce.v20';
+
+function annoncerReequilibrage() {
+  let deja = null;
+  try { deja = localStorage.getItem(CLE_ANNONCE_EQUILIBRAGE); } catch (e) { deja = 'vu'; }
+  if (deja) return;
+  // Un héros tout neuf n'a rien connu d'avant : inutile de lui expliquer.
+  if (!etat.profils.some((p) => (p.niveau || 1) > 1)) return;
+  try { localStorage.setItem(CLE_ANNONCE_EQUILIBRAGE, 'vu'); } catch (e) { /* tant pis */ }
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-renaissance';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-equilibrage';
+  modale.innerHTML = `
+    <div class="crane-mort">⚖️</div>
+    <h2>Le monde a été remis d’aplomb</h2>
+    <p><strong>Votre chiffre de puissance a beaucoup baissé. Vous n’avez rien perdu.</strong>
+    Ni un objet, ni un niveau, ni une compétence : tout est exactement là où vous l’aviez laissé.
+    C’est l’échelle qui a changé, pour tout le monde en même temps.</p>
+    <p>Ce qui n’allait pas : l’équipement pesait <strong>88 %</strong> d’un héros. Le personnage ne
+    comptait plus, seul son butin comptait — et un aventurier de niveau 22 correctement équipé
+    dépassait la puissance « conseillée » pour le niveau 100. Le milieu de la partie était devenu
+    une promenade, sans que rien ne le signale.</p>
+    <p>Ce qui change : l’équipement pèse désormais <strong>40 %</strong>, la puissance conseillée est
+    mesurée sur de vrais héros équipés au lieu d’un héros nu, et <strong>tout le bestiaire a été
+    réétalonné dans la même foulée</strong>. Un combat de votre niveau reste un combat de votre
+    niveau. Personne ne tue plus en un seul coup — ni les monstres, ni vous.</p>
+    <p class="aide">Les raretés, elles, s’écartent davantage qu’avant : une pièce divine vaut
+    maintenant quatre communes. Trouver du beau butin compte plus, pas moins.</p>`;
+  const bouton = document.createElement('button');
+  bouton.className = 'btn-principal';
+  bouton.textContent = '⚔️ Reprendre l’aventure';
+  bouton.addEventListener('click', () => voile.remove());
+  modale.appendChild(bouton);
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
 function sauvegarderLocal() {
   try {
     localStorage.setItem(CLE_STOCKAGE_PROFILS, JSON.stringify(etat.profils));
@@ -3036,6 +3086,7 @@ function initialiser() {
 
   rendreTitre();
   montrerEcran('ecran-titre');
+  annoncerReequilibrage();
   if (typeof demarrerReseau === 'function') {
     const reseau = demarrerReseau();
     // v20 : recharger la page ne coûte plus le groupe — dès que le monde

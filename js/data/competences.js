@@ -45,6 +45,55 @@ function statDeCompetence(comp, s) {
   return valeur;
 }
 
+// =====================================================================
+// v20 — L'ATTAQUE DE BASE, enfin la même pour tout le monde.
+//
+// Elle valait « 3 + le meilleur de la Force et de la Dextérité ». Les deux
+// caractéristiques offensives des lanceurs — Intelligence et Esprit —
+// n'y figuraient pas du tout. Mesuré au niveau 80 : un Guerrier frappait à
+// 161 d'un simple coup d'épée, un Arcaniste à 9. Le même bouton, dix-huit
+// fois moins fort, parce que sa caractéristique n'était pas dans la liste.
+//
+// Le Devin s'en sortait encore plus mal : ses sorts d'attaque rechargent,
+// et entre deux il retombait sur une attaque à 12. D'où un DPS trois fois
+// inférieur à celui des autres classes, à niveau et équipement égaux.
+//
+// Désormais l'attaque de base se lit sur la MEILLEURE caractéristique
+// offensive du héros, quelle qu'elle soit. Un mage qui frappe du bâton
+// frappe comme un mage ; il ne devient pas guerrier pour autant, ses sorts
+// restent largement devant.
+// =====================================================================
+// Les quatre caractéristiques avec lesquelles on frappe. La Vitalité n'en
+// fait pas partie — sauf pour le Gardien, dont c'est justement l'arme
+// (« Vitalité : augmente les points de vie — et les dégâts du Gardien »).
+// On l'ajoute donc au cas par cas, par la caractéristique de la classe :
+// sans quoi la Vitalité deviendrait la meilleure statistique du jeu pour
+// tout le monde, puisqu'elle donnerait à la fois les PV et les dégâts.
+const CARACS_OFFENSIVES = ['for', 'dex', 'int', 'esp'];
+
+function caracsFrappeDe(combattant) {
+  const base = typeof CLASSES_BASE !== 'undefined' && CLASSES_BASE[combattant && combattant.classe];
+  if (base && base.stat && CARACS_OFFENSIVES.indexOf(base.stat) === -1) {
+    return CARACS_OFFENSIVES.concat([base.stat]);
+  }
+  return CARACS_OFFENSIVES;
+}
+
+// La caractéristique qui PORTE l'attaque de base — affichée au joueur pour
+// qu'il sache quoi monter.
+function caracAttaqueDeBase(combattant, s) {
+  const candidates = caracsFrappeDe(combattant);
+  return candidates.reduce((meilleure, cle) =>
+    ((s && s[cle]) || 0) > ((s && s[meilleure]) || 0) ? cle : meilleure, candidates[0]);
+}
+
+function degatsAttaqueDeBase(combattant, s) {
+  const stats = s || statsEffectives(combattant);
+  const meilleure = caracsFrappeDe(combattant)
+    .reduce((max, cle) => Math.max(max, (stats && stats[cle]) || 0), 0);
+  return 3 + meilleure;
+}
+
 // Valeur de soutien d'un effet : l'Esprit, ou l'Intelligence si elle est
 // encore meilleure (héros d'avant la refonte des caractéristiques).
 function statSoutien(s, cle) {
@@ -57,6 +106,22 @@ const TEXTE_CIBLE = {
   ennemi: 'un ennemi', ennemis: 'tous les ennemis',
   allie: 'un allié', allies: 'tout le groupe', soi: 'soi-même',
 };
+
+// =====================================================================
+// v20 — Les retours de mana ÉVOLUENT eux aussi.
+//
+// Sept compétences rendaient un nombre fixe de points de mana : « +10 PM »,
+// écrit en dur. Au niveau 5 c'était un tiers de la réserve, au niveau 90
+// c'était trois pour cent — la compétence mourait doucement sans que
+// personne ne s'en aperçoive. Elles rendent désormais une PART de la
+// réserve, adossée à la valeur d'origine : le même geste garde le même
+// sens du début à la fin.
+// =====================================================================
+function valeurRetourMana(effet, s, maxMp) {
+  const base = effet.valeur || 0;
+  const reserve = maxMp || (s ? 8 + ((s.int || 0) + (s.esp || 0)) * 3 : 0);
+  return Math.max(base, Math.round(reserve * (effet.part || base / 60)));
+}
 
 function texteEffetCompetence(effet, s) {
   switch (effet.type) {
@@ -73,7 +138,7 @@ function texteEffetCompetence(effet, s) {
     case 'benediction': return `🙏 +30 % dégâts (${effet.duree} t.)`;
     case 'provocation': return `😤 attire les coups + bouclier ≈${Math.round(4 + (s.for || 0))}`;
     case 'regen': return `💧 régén. ≈${Math.round(3 + statSoutien(s, effet.stat) * 0.8)}/tour (${effet.duree} t.)`;
-    case 'mana': return `🧘 +${effet.valeur} PM`;
+    case 'mana': return `🧘 +${valeurRetourMana(effet, s)} PM`;
     case 'drain': return `🧛 rend ${Math.round(effet.part * 100)} % des dégâts en PV`;
     case 'pacte': return `🩸 −${Math.round(effet.partPv * 100)} % PV max → +${effet.mana} PM`;
     case 'vol-or': return `💰 vole ≈${Math.round(4 + (s.dex || 0) * 1.2)} po`;
@@ -83,14 +148,41 @@ function texteEffetCompetence(effet, s) {
 
 // Renvoie des lignes chiffrées (dégâts, soins, effets, coût) calculées
 // avec les stats effectives fournies.
+// =====================================================================
+// v20 — DIRE au joueur quelle caractéristique porte chaque compétence.
+//
+// Le détail chiffré affichait « ≈240 dégâts » sans jamais dire d'où
+// venait le chiffre. Sur 701 compétences, deviner laquelle monter relevait
+// du flair — et rien ne signalait qu'un sort d'Esprit ne profite pas d'un
+// point d'Intelligence. La ligne ci-dessous le dit, avec le ratio : c'est
+// la réponse à « je monte quoi pour ce sort ? ».
+// =====================================================================
+function caracPorteuse(comp, s) {
+  if (comp.type !== 'degats' && comp.type !== 'soin') return null;
+  // Les soins d'Intelligence acceptent l'Esprit s'il est meilleur (héros
+  // d'avant la refonte) : on affiche celle qui compte VRAIMENT pour lui.
+  let cle = comp.stat;
+  if (comp.stat === 'int' && estCompetenceDeSoutien(comp) && s && (s.esp || 0) > (s.int || 0)) cle = 'esp';
+  return CARACS[cle] ? { cle, nom: CARACS[cle].nom, emoji: CARACS[cle].emoji || '' } : null;
+}
+
+function ligneCaracPorteuse(comp, s) {
+  const porteuse = caracPorteuse(comp, s);
+  if (!porteuse) return '';
+  const part = comp.ratio ? ` ×${String(comp.ratio).replace('.', ',')}` : '';
+  return `📊 ${porteuse.emoji} ${porteuse.nom}${part}`;
+}
+
 function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
   const parts = [];
   const multRang = 1 + 0.15 * rang;
   if (comp.type === 'degats') {
     const brut = Math.round((comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang);
     parts.push(`⚔️ ≈${brut} dégâts${comp.coups ? ` ×${comp.coups} coups` : ''}`);
+    parts.push(ligneCaracPorteuse(comp, s));
   } else if (comp.type === 'soin') {
     parts.push(`💚 ≈${Math.round((comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang)} PV`);
+    parts.push(ligneCaracPorteuse(comp, s));
   } else if (comp.type === 'invocation') {
     const modele = INVOCATIONS[comp.invocation];
     parts.push(`🐾 invoque ${modele.emoji} ${modele.nom} (jusqu'à sa mort ou la fin du combat)`);
@@ -107,7 +199,7 @@ function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
   const cout = coutMpDe(comp, s, maxMp);
   parts.push(cout > 0 ? `💧 ${cout} PM${cout > (comp.coutMp || 0) ? ` (${comp.coutMp} +${cout - comp.coutMp} lié aux stats)` : ''}` : '💧 gratuit');
   if (comp.cooldown) parts.push(`⏳ ${comp.cooldown} t.`);
-  return parts;
+  return parts.filter(Boolean);
 }
 
 // =====================================================================
