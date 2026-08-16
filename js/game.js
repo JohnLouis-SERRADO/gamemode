@@ -1060,7 +1060,12 @@ function infererClasse(p) {
 function sauvegarderLocal() {
   try {
     localStorage.setItem(CLE_STOCKAGE_PROFILS, JSON.stringify(etat.profils));
+    // v22 : supprimer le héros actif remet bien `etat.actifId` à null — mais
+    // l'effacement n'atteignait jamais le stockage, faute d'être écrit. La
+    // clé continuait donc de désigner un héros qui n'existait plus, même
+    // après avoir tout effacé. Ce que la mémoire oublie, le disque l'oublie.
     if (etat.actifId) localStorage.setItem(CLE_STOCKAGE_ACTIF, etat.actifId);
+    else localStorage.removeItem(CLE_STOCKAGE_ACTIF);
   } catch (e) { /* stockage indisponible : la partie continue en mémoire */ }
 }
 
@@ -2832,19 +2837,38 @@ async function importerHeros() {
   chargerHerosImporte(donnees, id, token);
 }
 
-function chargerHerosImporte(donnees, id, token) {
-  const champ = el('champ-code-import');
-  const message = el('message-import');
+// Refait un héros complet à partir de ce que le monde en ligne a gardé de
+// lui. Séparée de l'écran d'import : c'est le chemin le plus sensible du
+// jeu — la règle d'or veut qu'on n'y perde jamais rien —, et une fonction
+// pure se met au banc d'essai, contrairement à un formulaire.
+function reconstruireHerosImporte(donnees, id, token) {
   const d = donnees.donnees || {};
+  // v22 — LA CLASSE ET LE NIVEAU D'ABORD, tout le reste ensuite.
+  //
+  // `nouveauPersonnage` normalise le héros qu'il fabrique. Tant qu'on ne
+  // lui disait pas sa classe, il naissait Aventurier de niveau 1 — et
+  // `debloquerCompetencesClasse` lui collait d'office la signature et les
+  // compétences de l'Aventurier, qui CHASSAIENT de la barre celles que le
+  // joueur avait choisies. Un Guerrier de niveau 70 rapatrié sur un autre
+  // appareil y perdait trois compétences actives et repartait avec le
+  // Panache d'une classe qui n'était pas la sienne.
+  //
+  // Le niveau se pose lui aussi avant la normalisation : sinon les
+  // compétences de classe des paliers hauts ne se débloquent jamais, le
+  // héros étant réputé de niveau 1 au moment où on les cherche.
+  const classeImportee = d.classe && (CLASSES[d.classe] || MIGRATION_CLASSES[d.classe])
+    ? d.classe : undefined;
   const p = nouveauPersonnage({
     nom: donnees.nom, avatar: donnees.avatar || '⚔️',
+    race: d.race,
+    classe: classeImportee,
     stats: d.stats || { for: 4, int: 4, dex: 4, vit: 4 },
     competences: d.competences || [],
   });
   if (Array.isArray(d.grimoire)) {
-    d.grimoire.forEach((id) => { if (!p.grimoire.includes(id)) p.grimoire.push(id); });
+    d.grimoire.forEach((idComp) => { if (!p.grimoire.includes(idComp)) p.grimoire.push(idComp); });
   }
-  if (d.classe && (CLASSES[d.classe] || MIGRATION_CLASSES[d.classe])) p.classe = d.classe;
+  if (classeImportee) p.classe = classeImportee;
   if (d.sousClasse !== undefined) p.sousClasse = d.sousClasse;
   if (d.voie !== undefined) p.voie = d.voie;
   if (d.eveil !== undefined) p.eveil = d.eveil;
@@ -2852,8 +2876,13 @@ function chargerHerosImporte(donnees, id, token) {
   if (d.versionClasses != null) p.versionClasses = d.versionClasses;
   if (d.rangs && typeof d.rangs === 'object') p.rangs = d.rangs;
   if (d.maitrise != null) p.maitrise = d.maitrise;
-  normaliserPerso(p); // signature de classe, maîtrise et grimoire cohérents
   p.niveau = donnees.niveau || 1;
+  normaliserPerso(p); // signature de classe, maîtrise et grimoire cohérents
+  // La barre active revient telle que le joueur l'avait laissée : la
+  // normalisation a pu y glisser des compétences de palier, mais c'est
+  // SON agencement qui fait foi, pas celui que le moteur reconstitue.
+  const barreDorigine = (d.competences || []).filter((idComp) => COMPETENCES[idComp]);
+  if (barreDorigine.length) p.competences = barreDorigine.slice(0, MAX_COMPETENCES_ACTIVES);
   p.xp = donnees.xp || 0;
   p.pointsEnAttente = d.pointsEnAttente || 0;
   p.competencesEnAttente = 0; // v18 : plus de compétence gratuite
@@ -2880,6 +2909,14 @@ function chargerHerosImporte(donnees, id, token) {
   bornerVie(p);
   p.hp = d.hp != null ? Math.min(p.maxHp, d.hp) : p.maxHp;
   p.mp = d.mp != null ? Math.min(p.maxMp, d.mp) : p.maxMp;
+  return p;
+}
+
+// L'écran d'import : il installe le héros reconstruit et referme le champ.
+function chargerHerosImporte(donnees, id, token) {
+  const champ = el('champ-code-import');
+  const message = el('message-import');
+  const p = reconstruireHerosImporte(donnees, id, token);
   etat.profils.push(p);
   etat.actifId = p.id;
   etat.equipe = [p.id];

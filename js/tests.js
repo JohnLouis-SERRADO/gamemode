@@ -2179,6 +2179,60 @@ suite('Régressions v22', () => {
     aucun(fautives, 'histoires qui promettent un matériau étranger à leur carte');
   });
 
+  test('un héros rapatrié garde EXACTEMENT ses compétences', () => {
+    // Le défaut : `nouveauPersonnage` normalise le héros qu'il fabrique.
+    // Tant qu'on ne lui disait pas sa classe, il naissait Aventurier de
+    // niveau 1 — et les compétences d'Aventurier chassaient de la barre
+    // celles que le joueur avait choisies. Un Guerrier de niveau 70
+    // rapatrié y perdait trois compétences et gagnait le Panache.
+    const p = herosTest();
+    adminFixerNiveau(p, 70);
+    p.sousClasse = Object.keys(SOUS_CLASSES).find((k) => SOUS_CLASSES[k].classe === p.classe);
+    debloquerCompetencesClasse(p, false);
+    const barreDorigine = p.competences.slice();
+    const grimoireDorigine = p.grimoire.slice();
+
+    // Le vrai trajet : exactement ce que le monde en ligne renvoie, passé
+    // à la fonction que l'écran d'import utilise réellement.
+    const arrive = reconstruireHerosImporte(
+      { nom: p.nom, avatar: p.avatar, niveau: p.niveau, xp: p.xp, donnees: donneesCloud(p) },
+      'id-en-ligne', 'jeton',
+    );
+
+    egal(arrive.classe, p.classe, 'la classe doit survivre au voyage');
+    egal(arrive.niveau, p.niveau, 'le niveau doit survivre au voyage');
+    const intruses = arrive.competences.filter((id) => !barreDorigine.includes(id));
+    aucun(intruses, 'compétences apparues toutes seules sur la barre du héros rapatrié');
+    const disparues = barreDorigine.filter((id) => !arrive.competences.includes(id));
+    aucun(disparues, 'compétences disparues de la barre du héros rapatrié');
+    const grimoireIntrus = arrive.grimoire.filter((id) => !grimoireDorigine.includes(id));
+    aucun(grimoireIntrus, 'compétences ajoutées d\'office au grimoire du héros rapatrié');
+  });
+
+  test('supprimer le héros actif efface aussi sa trace du stockage', () => {
+    // `etat.actifId` repassait bien à null en mémoire, mais l'effacement
+    // n'était jamais écrit : la clé continuait de désigner un héros
+    // supprimé, même après avoir tout effacé.
+    const memoireProfils = etat.profils;
+    const memoireActif = etat.actifId;
+    try {
+      const p = herosTest();
+      etat.profils = [p];
+      etat.actifId = p.id;
+      sauvegarderLocal();
+      egal(localStorage.getItem(CLE_STOCKAGE_ACTIF), p.id, 'le héros actif doit être noté');
+      // il s'en va
+      etat.profils = [];
+      etat.actifId = null;
+      sauvegarderLocal();
+      egal(localStorage.getItem(CLE_STOCKAGE_ACTIF), null,
+        'plus de héros actif : la clé ne doit plus désigner personne');
+    } finally {
+      etat.profils = memoireProfils;
+      etat.actifId = memoireActif;
+    }
+  });
+
   test('deux fois la même pièce ne font pas une panoplie', () => {
     // Les deux emplacements d'accessoire acceptent le même objet : il
     // suffisait donc de porter deux fois le même talisman pour décrocher
