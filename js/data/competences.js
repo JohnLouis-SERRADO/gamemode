@@ -39,9 +39,36 @@ function estCompetenceDeSoutien(comp) {
   return effet === 'bouclier' || effet === 'regen';
 }
 
+// =====================================================================
+// v20.1 — La Vitalité paie moins cher en dégâts qu'en points de vie.
+//
+// C'est la seule caractéristique qui achète DEUX choses à la fois : les
+// points de vie de tout le monde, et les dégâts du Gardien. Un Gardien
+// n'avait donc aucun arbitrage à faire — chaque point versé le rendait
+// plus dur à tuer ET plus dangereux, pendant que les cinq autres classes
+// devaient choisir. Mesuré au niveau 63 : il frappait aussi fort que la
+// meilleure classe de dégâts (325 contre 326) avec 1,7 fois ses points de
+// vie, et survivait cinq à six fois plus longtemps qu'il ne lui fallait
+// pour nettoyer un groupe.
+//
+// La Vitalité reste sa caractéristique — il frappe bien avec, et il reste
+// de très loin le plus résistant du jeu. Elle rend simplement 60 % de sa
+// valeur en dégâts : le Gardien encaisse comme personne, et tue lentement.
+// C'est la définition d'un tank.
+// =====================================================================
+const RENDEMENT_OFFENSIF_VITALITE = 0.6;
+
+function valeurOffensiveDe(cle, s) {
+  const valeur = (s && s[cle]) || 0;
+  return cle === 'vit' ? valeur * RENDEMENT_OFFENSIF_VITALITE : valeur;
+}
+
 function statDeCompetence(comp, s) {
   const valeur = (s && s[comp.stat]) || 0;
   if (comp.stat === 'int' && estCompetenceDeSoutien(comp)) return Math.max(valeur, (s && s.esp) || 0);
+  // Les soins portés par la Vitalité gardent leur pleine valeur : c'est
+  // seulement l'attaque qui est bridée.
+  if (comp.stat === 'vit' && comp.type === 'degats') return valeur * RENDEMENT_OFFENSIF_VITALITE;
   return valeur;
 }
 
@@ -84,13 +111,13 @@ function caracsFrappeDe(combattant) {
 function caracAttaqueDeBase(combattant, s) {
   const candidates = caracsFrappeDe(combattant);
   return candidates.reduce((meilleure, cle) =>
-    ((s && s[cle]) || 0) > ((s && s[meilleure]) || 0) ? cle : meilleure, candidates[0]);
+    valeurOffensiveDe(cle, s) > valeurOffensiveDe(meilleure, s) ? cle : meilleure, candidates[0]);
 }
 
 function degatsAttaqueDeBase(combattant, s) {
   const stats = s || statsEffectives(combattant);
   const meilleure = caracsFrappeDe(combattant)
-    .reduce((max, cle) => Math.max(max, (stats && stats[cle]) || 0), 0);
+    .reduce((max, cle) => Math.max(max, valeurOffensiveDe(cle, stats)), 0);
   return 3 + meilleure;
 }
 

@@ -249,6 +249,43 @@ function plusGrosCoupHeros(p) {
   return brut * (1 + sousCarac(s, 'deter')) * 1.5; // critique
 }
 
+// Ce qu'un héros peut se soigner LUI-MÊME pendant un combat.
+//
+// Sans ce terme, un soigneur passait pour la classe la plus fragile du jeu :
+// on comptait les coups qu'il prend et pas ceux qu'il efface.
+//
+// Mais soigner n'est pas gratuit : c'est un TOUR pris sur l'attaque, et du
+// mana. Un héros qui consacre un tour sur quatre à se remettre d'aplomb
+// allonge son combat d'autant. On borne donc à une part des tours, et par
+// la réserve de mana — les deux contraintes que le joueur subit vraiment.
+const PART_TOURS_DE_SOIN = 0.3;
+
+function meilleurSoinDe(p, s) {
+  let meilleur = null;
+  (p.competences || []).forEach((id) => {
+    const comp = COMPETENCES[id];
+    if (!comp || comp.type !== 'soin') return;
+    const soin = comp.puissance + statDeCompetence(comp, s) * comp.ratio;
+    if (!meilleur || soin > meilleur.soin) meilleur = { comp, soin };
+  });
+  return meilleur;
+}
+
+// Renvoie { soinTotal, toursDeSoin } pour un combat de `toursAttaque` tours
+// d'attaque. `toursDeSoin` s'ajoute à la durée du combat.
+function autoSoinPendantCombat(p, toursAttaque) {
+  const s = statsEffectives(p);
+  const meilleur = meilleurSoinDe(p, s);
+  if (!meilleur) return { soinTotal: 0, toursDeSoin: 0 };
+  // On ne peut pas relancer un soin plus souvent que sa recharge.
+  const parRecharge = toursAttaque / (1 + (meilleur.comp.cooldown || 0));
+  const parTemps = toursAttaque * PART_TOURS_DE_SOIN;
+  const cout = Math.max(1, coutMpDe(meilleur.comp, s, p.maxMp));
+  const parMana = p.maxMp / cout;
+  const lancers = Math.max(0, Math.min(parRecharge, parTemps, parMana));
+  return { soinTotal: lancers * meilleur.soin, toursDeSoin: lancers };
+}
+
 // Dégâts moyens d'un monstre sur ce héros, en un tour.
 function degatsParTourMonstre(m, p) {
   const s = statsEffectives(p);
@@ -283,11 +320,14 @@ function tensionCombat(monstres, p, taille = 3) {
   const pvMonstre = moy((m) => m.hp);
   const toursNettoyage = (pvMonstre * taille) / Math.max(1, degatsHeros);
   const recuParTour = moy((m) => degatsParTourMonstre(m, p)) * taille;
-  const toursSurvie = p.maxHp / Math.max(1, recuParTour);
+  // Les soins qu'il se rend allongent sa vie ET son combat : c'est le même
+  // tour qu'il n'a pas passé à frapper.
+  const auto = autoSoinPendantCombat(p, toursNettoyage);
+  const toursSurvie = (p.maxHp + auto.soinTotal) / Math.max(1, recuParTour);
   return {
-    toursNettoyage,
+    toursNettoyage: toursNettoyage + auto.toursDeSoin,
     toursSurvie,
-    marge: toursSurvie / toursNettoyage,
+    marge: toursSurvie / (toursNettoyage + auto.toursDeSoin),
     // Un « one shot » se lit ici : la pire claque en pourcentage des PV.
     pireCoupPct: moy((m) => plusGrosCoupMonstre(m, p)) / p.maxHp,
     // Et sa réciproque : ce que le héros enlève d'un coup au monstre.

@@ -2573,6 +2573,41 @@ suite('Équilibrage (v20)', () => {
     });
   });
 
+  test('la marge maximale reste entre 2 et 4, toutes classes et zones confondues', () => {
+    // La borne haute est ce qui empêche une classe de se promener : au-delà
+    // de 4, on survit quatre fois plus longtemps qu'il ne faut pour gagner,
+    // et le combat cesse d'être un combat. Le Gardien était à 5,8×.
+    // La borne basse dit l'inverse : si même le meilleur cas descend sous 2,
+    // c'est que le jeu ne laisse plus aucune respiration.
+    let maximum = 0;
+    let ou = '';
+    ZONES.forEach((z) => {
+      const monstres = (z.monstres || []).map((c) => MONSTRES[c]).filter(Boolean);
+      if (!monstres.length) return;
+      const niveau = niveauReelZone(z);
+      classesEtalon().forEach((classe) => {
+        const marge = tensionCombat(monstres, personaEquipeNormalement(classe, niveau), 3).marge;
+        if (marge > maximum) { maximum = marge; ou = `${classe} / ${z.nom}`; }
+      });
+    });
+    entre(maximum, 2, 4, `marge maximale (atteinte par ${ou})`);
+  });
+
+  test('aucune classe ne domine par la seule Vitalité', () => {
+    // La Vitalité achète les points de vie de tout le monde ET les dégâts du
+    // Gardien : elle payait donc deux fois pour lui, et il frappait aussi
+    // fort que la meilleure classe de dégâts avec 1,7 fois ses points de vie.
+    const dps = {};
+    classesEtalon().forEach((c) => { dps[c] = degatsParTourHeros(personaEquipeNormalement(c, 63)); });
+    const meilleurDps = Math.max(...Object.values(dps));
+    verifier(dps.gardien < meilleurDps * 0.8,
+      `un tank ne doit pas rivaliser en dégâts avec les classes offensives (${Math.round(dps.gardien)} contre ${Math.round(meilleurDps)})`);
+    // Il reste le plus résistant : c'est son métier.
+    const pv = {};
+    classesEtalon().forEach((c) => { pv[c] = personaEquipeNormalement(c, 63).maxHp; });
+    verifier(pv.gardien === Math.max(...Object.values(pv)), 'le Gardien doit rester le plus résistant');
+  });
+
   test('les six classes restent dans un écart de puissance raisonnable', () => {
     // Elles ne se valent pas — c'est voulu — mais l'écart ne doit pas
     // rendre une classe injouable.
@@ -2596,8 +2631,11 @@ suite('Compétences et caractéristiques (v20)', () => {
     classesEtalon().forEach((classe) => {
       const p = personaArme(classe, 80);
       const s = statsEffectives(p);
-      // La caractéristique dans laquelle la classe investit doit compter.
-      if (degatsAttaqueDeBase(p, s) < (s[CLASSES_BASE[classe].stat] || 0)) fautives.push(classe);
+      // La caractéristique dans laquelle la classe investit doit compter —
+      // au rendement offensif qui est le sien (la Vitalité rend 60 %, elle
+      // paie déjà en points de vie).
+      const attendu = valeurOffensiveDe(CLASSES_BASE[classe].stat, s);
+      if (degatsAttaqueDeBase(p, s) < attendu) fautives.push(classe);
     });
     aucun(fautives, 'classes dont l\'attaque de base ignore leur caractéristique');
 

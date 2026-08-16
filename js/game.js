@@ -1228,6 +1228,11 @@ function annoncerReequilibrage() {
     mesurée sur de vrais héros équipés au lieu d’un héros nu, et <strong>tout le bestiaire a été
     réétalonné dans la même foulée</strong>. Un combat de votre niveau reste un combat de votre
     niveau. Personne ne tue plus en un seul coup — ni les monstres, ni vous.</p>
+    <p>Un mot pour les <strong>Gardiens</strong> : la Vitalité vous achetait à la fois les points de
+    vie et les dégâts — vous frappiez aussi fort que la meilleure classe offensive avec près du
+    double de ses points de vie, sans jamais avoir à choisir. Elle rend désormais 60 % de sa valeur
+    en attaque. Vous restez de très loin les plus résistants du jeu ; vous tuez plus lentement.
+    C’est le métier.</p>
     <p class="aide">Les raretés, elles, s’écartent davantage qu’avant : une pièce divine vaut
     maintenant quatre communes. Trouver du beau butin compte plus, pas moins.</p>`;
   const bouton = document.createElement('button');
