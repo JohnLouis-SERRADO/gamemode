@@ -815,13 +815,24 @@ button:focus-visible,
   gap: 12px;
 }
 
+/* v21 : une carte de lieu se lit en une ligne, emoji à gauche.
+   Empilées à la verticale, les seize entrées du bourg faisaient plus de
+   huit écrans de téléphone : atteindre la Tannerie demandait un long
+   voyage du pouce. La carte du monde y gagne autant. */
 .carte-zone {
   background: var(--panneau);
   border: 1px solid var(--bordure);
   border-radius: 14px;
-  padding: 18px 16px;
+  padding: 13px 14px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 14px;
+  align-items: center;
   transition: border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
+
+.carte-zone > .zone-emoji { grid-row: 1 / -1; margin-bottom: 0; }
+.carte-zone > *:not(.zone-emoji) { grid-column: 2; }
 
 .carte-zone.cliquable { cursor: pointer; }
 .carte-zone.cliquable:hover {
@@ -858,19 +869,29 @@ button:focus-visible,
   margin-bottom: 14px;
 }
 
+/* v21 : les actions de zone se lisent en une ligne, emoji à gauche.
+   Empilées en colonne, les cinq cartes (explorer, trois métiers, boss)
+   faisaient trois écrans de haut sur un téléphone — on passait son temps
+   à faire défiler pour trouver le bouton suivant. */
 .btn-action-zone {
   background: var(--panneau);
   border: 1px solid var(--bordure);
   border-radius: 14px;
-  padding: 18px 14px;
-  text-align: center;
+  padding: 12px 14px;
+  text-align: left;
   font-size: 1rem;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: 4px;
+  column-gap: 12px;
+  row-gap: 2px;
   transition: border-color 0.15s ease, transform 0.1s ease;
 }
+
+.btn-action-zone .action-zone-emoji { grid-row: 1 / span 2; }
+.btn-action-zone strong { grid-column: 2; align-self: end; }
+.btn-action-zone .action-zone-detail { grid-column: 2; align-self: start; }
 
 .btn-action-zone:not(:disabled):hover { border-color: var(--accent); transform: translateY(-2px); }
 .btn-action-zone.exploration:not(:disabled) { border-color: #3b5a72; }
@@ -1031,6 +1052,42 @@ button:focus-visible,
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 8px;
+}
+
+/* v21 : la rangée des actions de base — attaquer, défendre, se replacer,
+   boire, fuir. Toujours au même endroit, toujours à portée de pouce. */
+.barre-actions-base {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.btn-action-base {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--panneau-clair);
+  border: 1px solid var(--bordure);
+  border-radius: 12px;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 56px;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+
+.btn-action-base:not(:disabled):hover { border-color: var(--accent); background: #2a3348; }
+.btn-action-base:not(:disabled):active { transform: scale(0.95); }
+.btn-action-base.danger:not(:disabled) { border-color: #6e3434; }
+.btn-action-base .base-emoji { font-size: 1.3rem; line-height: 1.1; }
+.btn-action-base .base-libelle {
+  font-size: 0.7rem;
+  color: var(--texte-doux);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .btn-action {
@@ -2038,9 +2095,19 @@ button:focus-visible,
     /* espace pour le halo doré et l'élévation de la carte active */
     padding: 10px 4px 8px;
     -webkit-overflow-scrolling: touch;
+    /* v21 : un pack de trois créatures se coupait net au bord de l'écran,
+       sans rien qui dise qu'il y avait la suite. Chaque carte s'aligne au
+       défilement, et le dégradé (posé par le jeu quand ça déborde
+       vraiment) annonce le hors-champ. */
+    scroll-snap-type: x proximity;
   }
 
-  .carte-combattant { width: 132px; min-width: 132px; padding: 8px; }
+  .combat-rangee.deborde {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+  }
+
+  .carte-combattant { width: 132px; min-width: 132px; padding: 8px; scroll-snap-align: start; }
   .combattant-avatar { font-size: 1.8rem; }
   .carte-boss .combattant-avatar { font-size: 2.2rem; }
 

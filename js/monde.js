@@ -235,16 +235,9 @@ function rendreZone(z) {
   const chipsMonstres = z.monstres
     .map((cle) => `<span class="chip">${MONSTRES[cle].emoji} ${MONSTRES[cle].nom}</span>`)
     .join('');
-  // Matériaux groupés par métier : on sait tout de suite quoi venir y faire.
-  const chipsMateriaux = Object.entries(METIERS).map(([idMetier, metier]) => {
-    const m = metierDe(p, idMetier);
-    const pool = z.recolte.filter((e) => FAMILLE_MATERIAU[e.id] === metier.famille);
-    const chips = pool
-      .map((e) => `<span class="chip">${OBJETS[e.id].emoji} ${OBJETS[e.id].nom}</span>`)
-      .join('');
-    return `<span class="chip chip-metier">${metier.emoji} ${metier.action} (niv. ${m.niveau}${p.metierPrincipal === idMetier ? ' ⭐' : ''})</span>${chips
-      || `<span class="chip">${OBJETS[metier.exclusif].emoji} ${OBJETS[metier.exclusif].nom} (traces)</span>`}`;
-  }).join(' ');
+  // v21 : la liste des matériaux par métier a disparu d'ici — les trois
+  // boutons de récolte la disent déjà, juste au-dessus. La répéter faisait
+  // un deuxième écran de défilement pour rien.
   const histoires = HISTOIRES_ZONES[z.id] || [];
   const vues = ((p.histoiresVues || {})[z.id] || []).length;
   infos.innerHTML = `
@@ -252,9 +245,7 @@ function rendreZone(z) {
       <h3>🐾 Créatures de la zone</h3>
       <div class="rangee-chips">${chipsMonstres}
         <span class="chip chip-boss">${boss.emoji} ${boss.nom} (boss)</span></div>
-      <h3>⛏️ Matériaux (une action de récolte par métier) <span class="badge">🍀 la Chance enrichit la moisson</span></h3>
-      <div class="rangee-chips">${chipsMateriaux}</div>
-      <p class="aide">📜 Histoires découvertes ici : ${vues}/${histoires.length} · Explorations : ${explorations}${bossVaincu ? ' · 🏆 boss vaincu — défi libre débloqué' : ''}</p>
+      <p class="aide">📜 Histoires découvertes ici : ${vues}/${histoires.length} · Explorations : ${explorations}${bossVaincu ? ' · 🏆 boss vaincu — défi libre débloqué' : ''} · 🍀 la Chance enrichit chaque moisson</p>
     </div>`;
 }
 

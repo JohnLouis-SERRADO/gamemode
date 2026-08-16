@@ -842,25 +842,50 @@ function rendreActions(j) {
     return;
   }
 
-  const btnAttaque = document.createElement('button');
-  btnAttaque.className = 'btn-action';
-  btnAttaque.innerHTML = '⚔️ <strong>Attaque</strong><span class="action-detail">Gratuite · dégâts légers</span>';
-  btnAttaque.addEventListener('click', () => surActionChoisie(j, { genre: 'attaque' }));
-  barre.appendChild(btnAttaque);
+  // v21 : les actions de base (attaquer, défendre, se replacer, boire,
+  // fuir) tiennent sur une seule rangée de pastilles. Elles occupaient
+  // avant autant de place que les sorts, alors qu'on les connaît par
+  // cœur : sur un téléphone, le tour d'un héros à huit sorts demandait
+  // trois écrans de défilement avant d'atteindre le bouton voulu.
+  const base = document.createElement('div');
+  base.className = 'barre-actions-base';
+  const pastille = (emoji, libelle, titre, action, options = {}) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-action-base' + (options.classe ? ` ${options.classe}` : '');
+    btn.disabled = !!options.desactive;
+    btn.title = titre;
+    btn.innerHTML = `<span class="base-emoji">${emoji}</span><span class="base-libelle">${libelle}</span>`;
+    btn.addEventListener('click', action);
+    base.appendChild(btn);
+    return btn;
+  };
 
-  const btnDefense = document.createElement('button');
-  btnDefense.className = 'btn-action';
-  btnDefense.innerHTML = '🛡️ <strong>Défendre</strong><span class="action-detail">−50 % dégâts subis · +3 PM</span>';
-  btnDefense.addEventListener('click', () => surActionChoisie(j, { genre: 'defense' }));
-  barre.appendChild(btnDefense);
+  pastille('⚔️', 'Attaque', 'Gratuite · dégâts légers',
+    () => surActionChoisie(j, { genre: 'attaque' }));
+  pastille('🛡️', 'Défendre', '−50 % de dégâts subis · +3 PM',
+    () => surActionChoisie(j, { genre: 'defense' }));
 
   // v16 : changer de ligne est une action à part entière — elle consomme le tour.
-  const btnLigne = document.createElement('button');
-  btnLigne.className = 'btn-action';
   const versArriere = j.ligne !== 'arriere';
-  btnLigne.innerHTML = `🔁 <strong>${versArriere ? 'Passer à l’arrière' : 'Passer à l’avant'}</strong><span class="action-detail">${versArriere ? 'Physique −40 % (donné ET subi)' : 'Pleine puissance, pleine exposition'} · consomme le tour</span>`;
-  btnLigne.addEventListener('click', () => surActionChoisie(j, { genre: 'ligne' }));
-  barre.appendChild(btnLigne);
+  pastille('🔁', versArriere ? 'Arrière' : 'Avant',
+    versArriere
+      ? 'Passer en ligne arrière : physique −40 % (donné ET subi) · consomme le tour'
+      : 'Passer en ligne avant : pleine puissance, pleine exposition · consomme le tour',
+    () => surActionChoisie(j, { genre: 'ligne' }));
+
+  const consommablesBase = consommablesDe(j);
+  pastille('🎒', 'Objet',
+    consommablesBase.length ? 'Boire une potion' : 'Aucune potion dans le sac',
+    () => { cb.modeActions = 'objet'; rendreActions(j); },
+    { desactive: consommablesBase.length === 0 });
+
+  if (cb.genre === 'exploration' || cb.genre === 'embuscade') {
+    pastille('💨', 'Fuir', '65 % de réussite', () => surActionChoisie(j, { genre: 'fuite' }), { classe: 'danger' });
+  } else if (cb.genre === 'bossMonde') {
+    pastille('🏳️', 'Retraite', 'Battre en retraite — vos dégâts comptent quand même',
+      () => surActionChoisie(j, { genre: 'fuite' }), { classe: 'danger' });
+  }
+  zone.appendChild(base);
 
   const statsJoueur = statsEffectives(j);
   j.competences.forEach((compId) => {
@@ -883,28 +908,6 @@ function rendreActions(j) {
     btn.addEventListener('click', () => surActionChoisie(j, { genre: 'competence', compId }));
     barre.appendChild(btn);
   });
-
-  const consommables = consommablesDe(j);
-  const btnObjet = document.createElement('button');
-  btnObjet.className = 'btn-action';
-  btnObjet.disabled = consommables.length === 0;
-  btnObjet.innerHTML = `🎒 <strong>Objet</strong><span class="action-detail">${consommables.length ? 'Boire une potion' : 'Aucune potion dans le sac'}</span>`;
-  btnObjet.addEventListener('click', () => { cb.modeActions = 'objet'; rendreActions(j); });
-  barre.appendChild(btnObjet);
-
-  if (cb.genre === 'exploration' || cb.genre === 'embuscade') {
-    const btnFuite = document.createElement('button');
-    btnFuite.className = 'btn-action';
-    btnFuite.innerHTML = '💨 <strong>Fuir</strong><span class="action-detail">65 % de réussite</span>';
-    btnFuite.addEventListener('click', () => surActionChoisie(j, { genre: 'fuite' }));
-    barre.appendChild(btnFuite);
-  } else if (cb.genre === 'bossMonde') {
-    const btnRetraite = document.createElement('button');
-    btnRetraite.className = 'btn-action';
-    btnRetraite.innerHTML = '🏳️ <strong>Battre en retraite</strong><span class="action-detail">Vos dégâts comptent quand même</span>';
-    btnRetraite.addEventListener('click', () => surActionChoisie(j, { genre: 'fuite' }));
-    barre.appendChild(btnRetraite);
-  }
 
   zone.appendChild(barre);
   // Sur petit écran, amener le panneau d'actions en vue au début du tour.
@@ -1383,6 +1386,15 @@ function rendreOrdreInitiative(cb) {
     .join('<span class="ordre-fleche">→</span>');
 }
 
+// v21 : signale d'un dégradé les rangées de combattants qui dépassent de
+// l'écran. Sans lui, un pack de trois créatures se coupait net au bord et
+// rien ne disait qu'il fallait faire défiler.
+function marquerRangeesQuiDebordent() {
+  document.querySelectorAll('.combat-rangee').forEach((rangee) => {
+    rangee.classList.toggle('deborde', rangee.scrollWidth > rangee.clientWidth + 4);
+  });
+}
+
 function rendreCombat() {
   const cb = etat.combat;
   if (!cb) return;
@@ -1401,12 +1413,19 @@ function rendreCombat() {
   if (arriere.length === 0) {
     cb.equipe.forEach((j) => zoneJ.appendChild(carteCombattant(j)));
   } else {
-    [['avant', '⚔️ Ligne avant', cb.equipe.filter((x) => x.ligne !== 'arriere')],
-      ['arriere', '🏹 Ligne arrière · physique −40 % (donné et subi)', arriere]]
-      .forEach(([, libelle, groupe]) => {
+    // v21 : le libellé de la ligne arrière tenait sur trois lignes sur un
+    // téléphone. La règle passe en infobulle, le libellé reste court.
+    [['avant', '⚔️ Ligne avant', 'Au contact : pleine puissance physique, pleine exposition.',
+      cb.equipe.filter((x) => x.ligne !== 'arriere')],
+    ['arriere', '🏹 Ligne arrière', 'Le physique y perd 40 %, donné comme subi. La magie ignore les lignes.',
+      arriere]]
+      .forEach(([, libelle, aide, groupe]) => {
+        // Une ligne vide n'a rien à dire : elle prenait un titre et un
+        // blanc au milieu de l'écran pour annoncer que personne n'y est.
+        if (!groupe.length) return;
         const bloc = document.createElement('div');
         bloc.className = 'ligne-combat';
-        bloc.innerHTML = `<div class="libelle-ligne">${libelle}</div>`;
+        bloc.innerHTML = `<div class="libelle-ligne" title="${aide}">${libelle}</div>`;
         const rangee = document.createElement('div');
         rangee.className = 'rangee-cartes combat-rangee';
         groupe.forEach((j) => rangee.appendChild(carteCombattant(j)));
@@ -1415,6 +1434,7 @@ function rendreCombat() {
       });
   }
   zoneJ.scrollLeft = defilJ;
+  marquerRangeesQuiDebordent();
   rendreJournal();
   // En mode ciblage, amener la première cible en vue.
   if (cb.cibleEnAttente) {
