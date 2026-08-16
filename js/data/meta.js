@@ -33,6 +33,15 @@ function familierActif(p) {
 // =====================================================================
 // Hauts faits : chacun débloque un titre affichable
 // =====================================================================
+
+// Combien de Chroniques le monde compte-t-il ? Lu dans les données plutôt
+// qu'écrit en dur : les Marches en ont ajouté dix après coup, et le haut
+// fait du complétiste avait gardé l'ancien chiffre. Appelée seulement
+// après le chargement des donjons (affichage, vérification).
+function nombreDeChroniques() {
+  return DONJONS.filter((d) => d.chronique).length;
+}
+
 const HAUTS_FAITS = [
   { id: 'niveau-5',    nom: 'Apprenti héros', emoji: '🌱', titre: 'l’Apprenti', desc: 'Atteindre le niveau 5', cond: (p) => p.niveau >= 5 },
   { id: 'niveau-10',   nom: 'Aventurier confirmé', emoji: '⚔️', titre: 'le Vétéran', desc: 'Atteindre le niveau 10', cond: (p) => p.niveau >= 10 },
@@ -65,7 +74,17 @@ const HAUTS_FAITS = [
   { id: 'donjon-temps-brise', nom: 'Maître des heures', emoji: '⏰', titre: 'Hors du Temps', desc: 'Terminer le défi 60 « La Forteresse du Temps Brisé »', cond: (p) => donjonFini(p, 'temps-brise') },
   { id: 'donjon-neant',       nom: 'Face au Néant', emoji: '👁️', titre: 'Fin des Histoires', desc: 'Terminer le défi 70 « L’Œil du Néant »', cond: (p) => donjonFini(p, 'neant') },
   { id: 'chroniques-5',       nom: 'Conteur des terres', emoji: '📜', titre: 'le Conteur', desc: 'Terminer 5 Chroniques des terres', cond: (p) => DONJONS.filter((d) => d.chronique && donjonFini(p, d.id)).length >= 5 },
-  { id: 'chroniques-16',      nom: 'Mémoire des Royaumes', emoji: '📚', titre: 'Mémoire Vivante', desc: 'Terminer les 16 Chroniques des terres', cond: (p) => DONJONS.filter((d) => d.chronique && donjonFini(p, d.id)).length >= 16 },
+  // v22 — Ce haut fait est celui du COMPLÉTISTE : il doit demander TOUTES
+  // les Chroniques. Il annonçait « les 16 » et se déclenchait à 16 — un
+  // chiffre figé du temps où les actes I et II étaient tout le monde. Les
+  // Marches et la Couture en ont ajouté dix : on décrochait donc « Mémoire
+  // Vivante » à 16 Chroniques sur 26, et le titre mentait deux fois — sur
+  // le nombre annoncé, et sur ce qu'il récompensait. Le compte se lit
+  // maintenant dans les données : il ne pourra plus dériver.
+  // `desc` est un ACCESSEUR : ce fichier se charge avant les Chroniques,
+  // le compte ne peut donc pas être lu à la définition. Il l'est à
+  // l'affichage, comme `cond` l'est à la vérification.
+  { id: 'chroniques-16',      nom: 'Mémoire des Royaumes', emoji: '📚', titre: 'Mémoire Vivante', get desc() { return `Terminer les ${nombreDeChroniques()} Chroniques des terres`; }, cond: (p) => DONJONS.filter((d) => d.chronique && donjonFini(p, d.id)).length >= nombreDeChroniques() },
   { id: 'ascension-10',       nom: 'Dix étages plus haut', emoji: '⛰️', titre: 'l’Ascensionniste', desc: 'Atteindre l’étage 10 d’une Ascension éternelle', cond: (p) => p.ascensions && Object.values(p.ascensions).some((e) => e >= 10) },
   { id: 'tour-boss-8',        nom: 'Fléau des seigneurs', emoji: '🏯', titre: 'Tueur de Rois', desc: 'Atteindre l’étage 8 de la Tour des Boss', cond: (p) => p.tourBoss && Math.max(p.tourBoss.normal, p.tourBoss.heroique, p.tourBoss.cauchemar) >= 8 },
   { id: 'niveau-35',          nom: 'Au-delà des Royaumes', emoji: '🌅', titre: 'des Terres lointaines', desc: 'Atteindre le niveau 35', cond: (p) => p.niveau >= 35 },

@@ -182,10 +182,21 @@ function textePalierSet(palier) {
 
 // Bonus de panoplies actives d'un héros : compte les pièces équipées de
 // chaque collection et cumule les paliers atteints.
+//
+// v22 — On compte les pièces DISTINCTES, et c'est tout l'enjeu. Les deux
+// emplacements d'accessoire acceptent le même objet : il suffisait donc
+// de porter deux fois le même talisman pour que la panoplie croie voir
+// deux pièces et lâche son bonus de palier. Un seul objet, dupliqué,
+// valait une demi-collection. `adminEquiperAuMieux` s'en gardait déjà
+// (« deux fois le même gonflerait artificiellement les panoplies ») —
+// le joueur, lui, n'avait aucun garde-fou. Une panoplie se COLLECTIONNE :
+// deux exemplaires de la même pièce n'en font toujours qu'une.
 function bonusSetActifs(p) {
   const parSet = {};
+  const vus = new Set();
   Object.values(p.equipement || {}).forEach((idObjet) => {
-    if (!idObjet) return;
+    if (!idObjet || vus.has(idObjet)) return;
+    vus.add(idObjet);
     const objet = OBJETS[idObjet];
     if (objet && objet.set) parSet[objet.set] = (parSet[objet.set] || 0) + 1;
   });

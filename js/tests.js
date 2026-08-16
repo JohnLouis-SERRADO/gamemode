@@ -2179,6 +2179,71 @@ suite('Régressions v22', () => {
     aucun(fautives, 'histoires qui promettent un matériau étranger à leur carte');
   });
 
+  test('deux fois la même pièce ne font pas une panoplie', () => {
+    // Les deux emplacements d'accessoire acceptent le même objet : il
+    // suffisait donc de porter deux fois le même talisman pour décrocher
+    // le palier « 2 pièces » avec un seul objet distinct.
+    const p = herosTest();
+    adminFixerNiveau(p, 60);
+    const accessoire = Object.entries(OBJETS).find(([, o]) => o.type === 'equipement'
+      && o.slot === 'accessoire' && o.set && (o.niveau || 1) <= p.niveau && peutPorter(p, o));
+    verifier(!!accessoire, 'il faut un accessoire de panoplie pour ce test');
+    const [id] = accessoire;
+    p.equipement = { arme: null, tete: null, torse: null, mains: null, jambes: null, pieds: null, acc1: id, acc2: id };
+    const bonus = bonusSetActifs(p);
+    egal(bonus.actifs.length, 0, 'porter deux fois le même accessoire ne doit activer aucune panoplie');
+    egal(Object.keys(bonus.stats).length, 0, 'et ne doit accorder aucune caractéristique');
+  });
+
+  test('deux pièces DIFFÉRENTES activent bien la panoplie', () => {
+    // Le garde-fou ne doit pas casser le cas légitime : une panoplie se
+    // collectionne, et deux pièces distinctes valent toujours un palier.
+    const p = herosTest();
+    adminFixerNiveau(p, 60);
+    const parSet = {};
+    Object.entries(OBJETS).forEach(([id, o]) => {
+      if (o.type !== 'equipement' || !o.set || (o.niveau || 1) > p.niveau || !peutPorter(p, o)) return;
+      (parSet[o.set] = parSet[o.set] || []).push([id, o]);
+    });
+    const trouve = Object.entries(parSet).find(([, v]) => v.length >= 2);
+    verifier(!!trouve, 'il faut une panoplie de deux pièces portables pour ce test');
+    const [idSet, pieces] = trouve;
+    p.equipement = { arme: null, tete: null, torse: null, mains: null, jambes: null, pieds: null, acc1: null, acc2: null };
+    let poses = 0;
+    pieces.forEach(([id, o]) => {
+      if (poses >= 2) return;
+      const slot = o.slot === 'accessoire' ? (p.equipement.acc1 ? 'acc2' : 'acc1') : o.slot;
+      if (p.equipement[slot]) return;
+      p.equipement[slot] = id;
+      poses++;
+    });
+    egal(poses, 2, 'deux pièces distinctes doivent avoir été posées');
+    const actif = bonusSetActifs(p).actifs.find((x) => x.idSet === idSet);
+    verifier(actif && actif.atteints.includes(2),
+      `la panoplie ${idSet} devrait atteindre son palier 2 avec deux pièces distinctes`);
+  });
+
+  test('le haut fait des Chroniques demande bien TOUTES les Chroniques', () => {
+    // Il annonçait « les 16 » et se déclenchait à 16, alors que les Marches
+    // et la Couture en ont porté le compte à 26 : le titre du complétiste
+    // se décrochait à 62 % du chemin.
+    const total = DONJONS.filter((d) => d.chronique).length;
+    const hautFait = HAUTS_FAITS.find((h) => h.id === 'chroniques-16');
+    verifier(!!hautFait, 'le haut fait des Chroniques doit exister');
+    verifier(hautFait.desc.includes(String(total)),
+      `la description annonce « ${hautFait.desc} » alors que le monde compte ${total} Chroniques`);
+
+    const p = herosTest();
+    const chroniques = DONJONS.filter((d) => d.chronique);
+    const avecNChroniques = (n) => {
+      p.donjons = {};
+      chroniques.slice(0, n).forEach((d) => { p.donjons[d.id] = { fini: 1 }; });
+      return !!hautFait.cond(p);
+    };
+    verifier(!avecNChroniques(total - 1), `il ne doit pas se décrocher à ${total - 1} Chroniques sur ${total}`);
+    verifier(avecNChroniques(total), `il doit se décrocher aux ${total} Chroniques`);
+  });
+
   // Les sept classements de la taverne lisent des champs APLATIS par le
   // serveur (dstats, dpo, dtour, dtb, dhf), pas le héros local. Le jour où
   // l'un d'eux manque, le classement affiche « NaN » ou « undefined » à
