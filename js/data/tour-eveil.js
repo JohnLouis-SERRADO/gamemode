@@ -42,6 +42,25 @@ function estEtageBoss(etage) {
 // Chacun a un coût en Sceaux, parfois en Sceaux Majeurs, et parfois en or
 // — les puits à or du lot 4 passent aussi par ici.
 // =====================================================================
+// v21 : refait le tirage en attente en tenant compte de ce qui vient
+// d'être payé (verrou, garantie). Rend `true` s'il y avait bien un tirage
+// à refaire — c'est ce qui permet aux services de dire la vérité sur ce
+// qu'ils viennent de faire. La garantie et le verrou sont consommés par ce
+// tirage-là, exactement comme lorsque c'est le jeu qui le déclenche.
+function retirerEveilsAutour(p) {
+  if (!p.eveil || !(p.eveil.propositions || []).length) return false;
+  const tirage = tirerEveils(p, {
+    garantirLegendaire: !!p.eveil.garantie,
+    verrouillee: p.eveil.verrouillee,
+  });
+  if (!tirage.length) return false;
+  p.eveil.propositions = tirage.map((e) => e.id);
+  p.eveil.garantie = false;
+  p.eveil.verrouillee = null;
+  p.eveil.reporte = false;
+  return true;
+}
+
 const SERVICES_TOUR = {
   'changer-voie': {
     nom: 'Changer de Voie', emoji: '🛤️',
@@ -82,7 +101,9 @@ const SERVICES_TOUR = {
     sceaux: 40, majeurs: 1, or: 0,
     desc: 'Un nouveau tirage de trois propositions. Après cinq relances, la garantie assure au moins un Mythique.',
     disponible: (p) => !!(p.eveil && (p.eveil.id || (p.eveil.propositions || []).length)),
-    raison: () => `Vous n’avez pas encore d’Éveil — le premier tirage arrive au niveau ${NIVEAU_EVEIL}.`,
+    raison: (p) => (p && p.niveau < NIVEAU_EVEIL
+      ? `Le premier tirage d’Éveil arrive au niveau ${NIVEAU_EVEIL} — il n’y a rien à relancer avant.`
+      : 'Vous n’avez pas encore de tirage d’Éveil en cours.'),
     appliquer: (p) => {
       // La relance oublie l'Éveil (ou le tirage en attente) mais JAMAIS
       // ce qui a été payé : la garantie et le verrou survivent jusqu'au
@@ -101,11 +122,17 @@ const SERVICES_TOUR = {
     },
   },
   'verrouiller': {
-    nom: 'Verrouiller une proposition', emoji: '🔒',
-    sceaux: 25, majeurs: 0, or: 0,
-    desc: 'Garder la meilleure proposition du tirage en attente : elle reviendra d’office au tirage suivant.',
+    nom: 'Verrouiller et relancer', emoji: '🔒',
+    // Plus cher que la relance simple, et pour cause : garder sa meilleure
+    // proposition ET refaire les deux autres est strictement supérieur à
+    // tout refaire. Au prix d'avant (25 Sceaux, aucun Majeur), personne
+    // n'aurait plus jamais payé la relance.
+    sceaux: 55, majeurs: 1, or: 0,
+    desc: 'Garder la meilleure proposition du tirage en cours et retirer les deux autres, immédiatement.',
     disponible: (p) => !!(p.eveil && p.eveil.propositions && p.eveil.propositions.length),
-    raison: () => 'Aucun tirage en attente. Reportez un tirage (« Plus tard ») ou relancez-en un, puis revenez.',
+    raison: (p) => (p && p.niveau < NIVEAU_EVEIL
+      ? `L’Éveil se tire au niveau ${NIVEAU_EVEIL} : il n’y a rien à verrouiller avant.`
+      : 'Aucun tirage en attente. Reportez un tirage (« Plus tard ») ou relancez-en un, puis revenez.'),
     appliquer: (p) => {
       // On garde la plus rare : c'est toujours elle qu'on paie pour revoir.
       const rangs = ORDRE_EVEIL;
@@ -113,17 +140,33 @@ const SERVICES_TOUR = {
         .map((id) => EVEILS[id]).filter(Boolean)
         .sort((a, b) => rangs.indexOf(b.rarete) - rangs.indexOf(a.rarete))[0];
       p.eveil.verrouillee = meilleure.id;
-      return `${meilleure.nom} (${RARETES_EVEIL[meilleure.rarete].nom}) est verrouillé : il reviendra au prochain tirage.`;
+      // v21 : le verrou agit TOUT DE SUITE. Avant, il se contentait de se
+      // poser sur un tirage déjà figé — le joueur payait 25 Sceaux, ne
+      // voyait rien changer, et devait encore payer 40 Sceaux de relance
+      // pour que son achat serve à quelque chose.
+      retirerEveilsAutour(p);
+      return `${meilleure.nom} (${RARETES_EVEIL[meilleure.rarete].nom}) est gardé, et deux nouvelles natures l’accompagnent.`;
     },
   },
   'forcer-rarete': {
     nom: 'Forcer une rareté minimale', emoji: '💠',
     sceaux: 80, majeurs: 0, or: 0,
-    desc: 'Garantir au moins une proposition Mythique dans le prochain tirage, sans attendre les cinq relances.',
-    disponible: () => true,
+    desc: 'Un tirage qui contient au moins une proposition Mythique, sans attendre les cinq relances.',
+    // Rien à garantir avant le premier tirage : la Tour ouvre au niveau 60,
+    // l'Éveil au niveau 80. Vendre la garantie entre les deux, c'était
+    // encaisser 80 Sceaux vingt niveaux avant qu'ils ne servent.
+    disponible: (p) => !!p && p.niveau >= NIVEAU_EVEIL && !!p.sousClasse,
+    raison: (p) => (p && !p.sousClasse
+      ? `Chaque Éveil appartient à une spécialité : choisissez la vôtre au niveau ${NIVEAU_SOUS_CLASSE}.`
+      : `Le premier tirage d’Éveil arrive au niveau ${NIVEAU_EVEIL} — il n’y a rien à garantir avant.`),
     appliquer: (p) => {
       p.eveil = { ...(p.eveil || { relances: 0 }), garantie: true };
-      return `Le prochain tirage contiendra au moins un ${RARETES_EVEIL[RARETE_GARANTIE].nom}.`;
+      // Même correction que le verrou : si un tirage attend, il est refait
+      // immédiatement avec la garantie. Sinon le joueur paie et ne voit rien.
+      const refait = retirerEveilsAutour(p);
+      return refait
+        ? `Le tirage est refait : il contient au moins un ${RARETES_EVEIL[RARETE_GARANTIE].nom}.`
+        : `Le prochain tirage contiendra au moins un ${RARETES_EVEIL[RARETE_GARANTIE].nom}.`;
     },
   },
   'reveler-cache': {

@@ -1815,6 +1815,43 @@ suite('Tour de l\'Éveil', () => {
       `changer de spécialité (${c('changer-sous-classe')}) devrait coûter moins que changer de rôle (${c('changer-classe')})`);
     egal(SERVICES_TOUR['changer-voie'].majeurs, 0, 'Majeurs pour la Voie');
     egal(SERVICES_TOUR['changer-classe'].majeurs, 3, 'Majeurs pour le rôle');
+    // Garder sa meilleure proposition ET refaire les deux autres est
+    // strictement supérieur à tout refaire : ça doit coûter plus cher,
+    // sinon la relance simple ne se vend plus jamais.
+    verifier(c('verrouiller') > c('relancer-eveil'),
+      `verrouiller (${c('verrouiller')}) devrait coûter plus que relancer (${c('relancer-eveil')})`);
+  });
+
+  test('LE DÉFAUT : un service payé agit sur le tirage EN COURS', () => {
+    // Avant la v21, « verrouiller » et « forcer une rareté » se posaient
+    // sur un tirage déjà figé : le joueur payait, et rien ne bougeait.
+    const p = herosTest({ niveau: 85, classe: 'arcaniste', sousClasse: 'invocateur' });
+    const depart = SOUS_CLASSES.invocateur.eveils.slice(0, 3);
+
+    p.eveil = { relances: 0, propositions: depart.slice() };
+    const messageVerrou = SERVICES_TOUR['verrouiller'].appliquer(p);
+    verifier(!!messageVerrou, 'le verrou devrait dire ce qu\'il a fait');
+    verifier(p.eveil.propositions.join() !== depart.join(),
+      'le tirage devrait avoir changé sur-le-champ');
+    egal(p.eveil.propositions.length, PROPOSITIONS_PAR_TIRAGE, 'propositions après verrou');
+    egal(p.eveil.verrouillee, null, 'le verrou est consommé par le tirage qu\'il déclenche');
+
+    p.eveil = { relances: 0, propositions: depart.slice() };
+    SERVICES_TOUR['forcer-rarete'].appliquer(p);
+    const rangs = ORDRE_EVEIL;
+    verifier(p.eveil.propositions.map((id) => EVEILS[id])
+      .some((e) => rangs.indexOf(e.rarete) >= rangs.indexOf(RARETE_GARANTIE)),
+    'le tirage refait devrait contenir la rareté garantie');
+    egal(p.eveil.garantie, false, 'la garantie est consommée par ce tirage');
+  });
+
+  test('rien de lié à l\'Éveil ne se vend avant le niveau 80', () => {
+    const jeune = herosTest({ niveau: NIVEAU_TOUR_EVEIL, classe: 'arcaniste', sousClasse: 'invocateur' });
+    ['relancer-eveil', 'verrouiller', 'forcer-rarete'].forEach((id) => {
+      verifier(!SERVICES_TOUR[id].disponible(jeune),
+        `${id} ne devrait pas être achetable au niveau ${jeune.niveau}`);
+      verifier(!!SERVICES_TOUR[id].raison(jeune), `${id} devrait expliquer pourquoi`);
+    });
   });
 
   test('les Sceaux montent par tranche et le boss donne un Majeur', () => {
@@ -1924,13 +1961,14 @@ suite('Tour de l\'Éveil', () => {
     egal(p.eveil.verrouillee, verrou, 'le verrou payé a été effacé par la relance');
   });
 
-  test('verrouiller retient la proposition la plus rare du tirage en attente', () => {
+  test('verrouiller retient la plus rare et refait le reste du tirage', () => {
     const p = herosTest({ niveau: 85, classe: 'guerrier', sousClasse: 'berserker' });
     const parRarete = {};
     SOUS_CLASSES.berserker.eveils.forEach((id) => { parRarete[EVEILS[id].rarete] = id; });
     p.eveil = { relances: 0, propositions: [parRarete.rare, parRarete.mythique, parRarete.epique] };
     const message = SERVICES_TOUR['verrouiller'].appliquer(p);
-    egal(p.eveil.verrouillee, parRarete.mythique, 'le verrou devrait retenir la plus rare');
+    verifier(p.eveil.propositions.includes(parRarete.mythique),
+      'la proposition verrouillée devrait figurer dans le tirage refait');
     verifier(message.includes(EVEILS[parRarete.mythique].nom), `le message devrait la nommer : ${message}`);
   });
 

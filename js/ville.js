@@ -857,6 +857,16 @@ function rendreTourEveil() {
       afficherToast(`${service.emoji} ${message}`);
       rendreTourEveil();
       rendreTopbar();
+      // v21 — LE DÉFAUT DE LA TOUR : les fenêtres de re-choix (rôle,
+      // spécialité, Voie, Éveil) ne s'ouvraient qu'au CHANGEMENT D'ÉCRAN.
+      // Un joueur payait 60 Sceaux et un Sceau Majeur pour changer de
+      // spécialité, voyait sa spécialité disparaître de sa fiche… et rien
+      // ne lui était proposé tant qu'il restait sur place. On ouvre donc
+      // la fenêtre due immédiatement, dans l'ordre des paliers.
+      verifierChoixClasse();
+      verifierChoixSousClasse();
+      verifierChoixVoie();
+      verifierEveil();
     });
     carte.appendChild(bouton);
     grille.appendChild(carte);
