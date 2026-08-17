@@ -31,7 +31,7 @@ const COMPETENCES_CLASSES_V19 = {
   'gardien-souffle-du-veteran': { classe: 'gardien', niveauRequis: 1, nom: 'Souffle du vétéran', emoji: '🫁', categorie: 'signature', type: 'soin', cible: 'soi', stat: 'vit', puissance: 7, ratio: 1.3, coutMp: 4, cooldown: 4, desc: 'Il a encaissé pire. Il le sait, et son corps aussi.' },
   'gardien-contre-attaque': { classe: 'gardien', niveauRequis: 5, nom: 'Contre-attaque', emoji: '↩️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'vit', puissance: 7, ratio: 1.2, effet: { type: 'affaibli', duree: 2 }, coutMp: 6, cooldown: 3, desc: 'Encaisser, puis rendre — avec les intérêts. L’ennemi en ressort diminué.' },
   'gardien-mur-de-boucliers': { classe: 'gardien', niveauRequis: 10, nom: 'Mur de boucliers', emoji: '🧱', categorie: 'signature', type: 'utilitaire', cible: 'allies', effet: { type: 'bouclier', duree: 3, stat: 'vit' }, coutMp: 11, cooldown: 5, desc: 'Il se place devant tout le monde à la fois. Techniquement impossible. Il le fait quand même.' },
-  'gardien-jugement-du-rempart': { classe: 'gardien', niveauRequis: 15, nom: 'Jugement du rempart', emoji: '⚒️', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'vit', puissance: 7, ratio: 1.05, effet: { type: 'etourdi', duree: 1, chance: 0.4 }, coutMp: 13, cooldown: 5, desc: 'Le bouclier frappe le sol, et le sol répond à tout le monde.' },
+  'gardien-jugement-du-rempart': { classe: 'gardien', niveauRequis: 15, nom: 'Jugement du rempart', emoji: '⚒️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'vit', puissance: 7, ratio: 1.05, effet: { type: 'etourdi', duree: 1, chance: 0.4 }, coutMp: 13, cooldown: 5, desc: 'Tout le poids du bouclier sur une seule tête — et elle ne se relève pas tout de suite.' },
   'signature-inebranlable': { classe: 'gardien', signature: true, nom: 'Inébranlable', emoji: '🗿', categorie: 'signature', type: 'utilitaire', cible: 'soi', stat: 'vit', effet: { type: 'bouclier', duree: 4, stat: 'vit' }, coutMp: 10, cooldown: 5, desc: 'La signature du Gardien : tant qu’il est debout, la ligne tient.' },
 
   // ----- 🌑 Runelame : la magie à bout portant -----
@@ -183,7 +183,7 @@ const CLASSES_BASE = {
     nom: 'Gardien', emoji: '🛡️', role: 'Tank', stat: 'vit', ligne: 'avant', armure: 'plaque',
     armes: ['lame lourde', 'bouclier-pavois', 'masse'],
     resume: 'Il se met devant. C’est tout son métier, et c’est un métier entier.',
-    passif: 'Rempart — attirer les coups est une arme : tant qu’il provoque, il frappe plus fort.',
+    passif: 'Rempart — il encaisse 12 % de moins que les autres, et tant qu’il provoque, il frappe plus fort.',
     competences: ['gardien-frappe-du-rempart', 'gardien-appel-au-combat', 'gardien-position-ancree',
       'gardien-souffle-du-veteran', 'gardien-contre-attaque', 'gardien-mur-de-boucliers',
       'gardien-jugement-du-rempart', 'signature-inebranlable'],

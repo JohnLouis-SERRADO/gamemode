@@ -85,16 +85,36 @@ function nourrirElan(c) {
 // tient les ennemis par la provocation, il frappe plus fort. Tanker devient
 // offensif.
 //
-// Le choix du levier n'est pas neutre : le Gardien est déjà la classe la
-// plus résistante du jeu, avec la marge de survie la plus haute (3,8× sur
-// une fourchette qui plafonne à 4). Augmenter sa défense l'aurait fait
-// sortir de la fourchette ; augmenter ses dégâts raccourcit ses combats,
-// et pousse donc sa marge vers le bas.
 const BONUS_REMPART = 0.25;
 
 function bonusRempart(c) {
   if (!aPassif(c, 'Rempart')) return 1;
   return c.statuts.some((s) => s.type === 'provocation') ? 1 + BONUS_REMPART : 1;
+}
+
+// =====================================================================
+// v21.3 — LA RÉSISTANCE REVIENT, MAIS COMME UN MÉTIER.
+//
+// La Ténacité retranchait des dégâts à TOUT LE MONDE, au prorata de ce
+// qu'on avait ramassé : un Guerrier en plaque encaissait exactement autant
+// qu'un Gardien, et deux zones voisines opposaient au joueur des dégâts du
+// simple au double selon son stuff. C'est pour ça qu'elle a disparu.
+//
+// Un tank doit quand même encaisser mieux que les autres — sinon le rôle
+// ne veut rien dire. La différence tient en un mot : ce n'est plus une
+// statistique qu'on ramasse, c'est le métier du Gardien et de lui seul.
+// Elle ne dépend d'aucun objet, elle ne dérive donc jamais, et elle ne
+// rend pas la difficulté illisible.
+//
+// Le compte du Gardien, avec cette v21.3 : « un peu moins de dégâts »
+// (77 % du meilleur DPS, contre 44 % avant), « beaucoup de points de vie »
+// (1,5 fois ceux d'un Guerrier) et « un peu plus de résistance » — ces
+// 12 %-là.
+// =====================================================================
+const RESISTANCE_GARDIEN = 0.12;
+
+function resistanceDeClasse(c) {
+  return aPassif(c, 'Rempart') ? 1 - RESISTANCE_GARDIEN : 1;
 }
 
 // Arcaniste : le mana revient plus vite. Deux points de base pour tout le
@@ -582,10 +602,10 @@ function infligerDegats(source, cible, brut, options = {}) {
     d *= 1.25;
   }
 
-  // v21 — Il n'y a plus de réduction plate des dégâts subis. Encaisser se
-  // joue avec ce qui se voit en combat : les PV, les boucliers, la défense,
-  // la ligne où l'on se place. Un pourcentage invisible cousu dans l'armure
-  // ne décide plus si un monstre fait mal ou non.
+  // v21 — Plus de réduction plate venue de l'équipement : encaisser se joue
+  // avec ce qui se voit en combat. Seul le Gardien en garde une, parce que
+  // c'est son métier et qu'elle ne dépend d'aucun objet.
+  d *= resistanceDeClasse(cible);
   // La nuit, ce qui rôde frappe plus fort — c'est le prix du butin majoré.
   if (source.type === 'monstre' && cible.type === 'joueur') {
     d *= (mondeMaintenant().effets.degatsSubis || 1);

@@ -314,6 +314,16 @@ function facteurLigneDe(p) {
   return ligne === 'arriere' ? 0.6 : 1;
 }
 
+// Et la résistance de métier du Gardien (v21.3) : le banc doit la connaître,
+// sinon il surestime ce que le tank encaisse — exactement le genre d'écart
+// qui avait rendu ses chiffres faux.
+function facteurResistanceDe(p) {
+  if (typeof resistanceDeClasse !== 'function') return 1;
+  // aPassif exige un combattant de type « joueur » : l'étalon n'en est pas
+  // un, on le lui présente comme tel le temps de la lecture.
+  return resistanceDeClasse({ classe: p.classe, type: 'joueur', statuts: [] });
+}
+
 // Dégâts moyens d'un héros par tour. Modèle simple et assumé : il frappe
 // avec la meilleure compétence qu'il peut se payer, et retombe sur
 // l'attaque de base quand elle recharge. Les hasards (critique, coup
@@ -429,7 +439,7 @@ function tensionCombat(monstres, p, taille = 3) {
   const degatsHeros = Math.max(1, degatsParTourHeros(p));
   const pvMonstre = moy((m) => m.hp);
   const ligne = facteurLigneDe(p);
-  const parMonstre = moy((m) => degatsParTourMonstre(m, p)) * ligne;
+  const parMonstre = moy((m) => degatsParTourMonstre(m, p)) * ligne * facteurResistanceDe(p);
 
   let restants = taille;
   let pvCible = pvMonstre;
@@ -461,7 +471,7 @@ function tensionCombat(monstres, p, taille = 3) {
     // 2,0 = nettoyer le groupe coûte la moitié de sa vie.
     marge,
     // Un « one shot » se lit ici : la pire claque en pourcentage des PV.
-    pireCoupPct: moy((m) => plusGrosCoupMonstre(m)) * ligne / p.maxHp,
+    pireCoupPct: moy((m) => plusGrosCoupMonstre(m)) * ligne * facteurResistanceDe(p) / p.maxHp,
     // Et sa réciproque : ce que le héros enlève d'un coup au monstre.
     ripostePct: plusGrosCoupHeros(p) / Math.max(1, pvMonstre),
   };
