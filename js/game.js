@@ -1200,7 +1200,7 @@ function infererClasse(p) {
 // Pas de compensation : la correction s'applique à tous de la même façon,
 // donc personne ne recule par rapport aux autres.
 // =====================================================================
-const CLE_ANNONCE_EQUILIBRAGE = 'gamemode2.annonce.v20-1';
+const CLE_ANNONCE_EQUILIBRAGE = 'gamemode2.annonce.v20-3';
 
 function annoncerReequilibrage() {
   let deja = null;
@@ -1244,7 +1244,9 @@ function annoncerReequilibrage() {
     pourtant 40 % de ses dégâts comme tout le monde. L’Élan du Guerrier, le mana de l’Arcaniste et
     le surplus de soin du Devin sont eux aussi branchés. Et les mêlées commencent enfin devant :
     le Runelame — comme les invocations de mêlée — partait se battre au fond de la salle.</p>
-    <p><strong>On montait trop vite :</strong> les gains d’expérience sont réduits de deux tiers.</p>
+    <p><strong>On montait trop vite :</strong> les gains d’expérience sont réduits de deux tiers, et
+    <strong>aucun niveau ne se gagne désormais en moins de dix combats</strong> — quel que soit ce
+    que vous affrontez, et quels que soient vos bonus d’expérience.</p>
     <p class="aide">Les raretés, elles, s’écartent davantage qu’avant : une pièce divine vaut
     maintenant quatre communes. Trouver du beau butin compte plus, pas moins.</p>`;
   const bouton = document.createElement('button');
@@ -1422,6 +1424,37 @@ function debloquerCompetencesClasse(p, annoncer) {
 const FACTEUR_XP_HISTORIQUE = 0.35;
 const REDUCTION_XP_V20 = 0.34;   // on garde 34 % : −66 %
 
+// =====================================================================
+// v20.3 — LE PLANCHER : jamais moins de dix combats pour un niveau.
+//
+// La courbe d'XP des monstres règle le RYTHME MOYEN, et elle le fait bien.
+// Mais une table, aussi bien calibrée soit-elle, ne peut pas garantir un
+// plancher : elle ne sait pas qu'un héros de niveau 20 ira farmer une zone
+// de niveau 90, qu'un groupe fera tomber six monstres d'un coup, qu'un
+// contrat de guilde paiera gros, ou qu'un joueur cumulera les quatre bonus
+// d'expérience du jeu (humain + familier + panoplie + reliques, ×1,39).
+//
+// Le plancher se pose donc là où il ne peut pas être contourné : au moment
+// où l'expérience est CRÉDITÉE. Aucun gain, quelle qu'en soit la source, ne
+// peut valoir plus d'un dixième du niveau en cours.
+//
+// Conséquence assumée : à très haut niveau, farmer une zone hors de sa
+// portée cesse de payer davantage. C'est le prix d'une garantie ferme, et
+// c'est aussi ce qui empêche de sauter des paliers en tapant trop haut.
+// =====================================================================
+const COMBATS_MINIMUM_PAR_NIVEAU = 10;
+
+function plafondXpParGain(p) {
+  // Sans niveau connu, on ne peut pas savoir ce que « un dixième de niveau »
+  // représente : on laisse alors passer plutôt que d'écraser le gain sur la
+  // base du niveau 1, ce qui diviserait l'XP d'un héros de niveau 90 par
+  // cinq mille.
+  if (!p || typeof p.niveau !== 'number') return Infinity;
+  const niveau = Math.min(NIVEAU_MAX - 1, Math.max(1, p.niveau));
+  const besoin = seuilXp(niveau + 1) - seuilXp(niveau);
+  return Math.max(1, Math.floor(besoin / COMBATS_MINIMUM_PAR_NIVEAU));
+}
+
 function xpReelle(p, xp) {
   xp = Math.max(1, Math.round(xp * FACTEUR_XP_HISTORIQUE * REDUCTION_XP_V20));
   if (p.race === 'humain') xp = Math.round(xp * 1.1); // Ambition
@@ -1435,7 +1468,9 @@ function xpReelle(p, xp) {
     const objet = id && OBJETS[id];
     if (objet && objet.bonus && objet.bonus.xpBonus) xp = Math.round(xp * (1 + objet.bonus.xpBonus));
   });
-  return xp;
+  // Le plancher s'applique EN DERNIER, après tous les bonus : c'est ce qui
+  // le rend infranchissable.
+  return Math.min(xp, plafondXpParGain(p));
 }
 
 // Texte honnête d'un gain partagé : une valeur unique si toute l'équipe

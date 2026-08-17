@@ -2631,6 +2631,47 @@ suite('Équilibrage (v20)', () => {
     verifier(pv.gardien === Math.max(...Object.values(pv)), 'le Gardien doit rester le plus résistant');
   });
 
+  test('aucun niveau ne se gagne en moins de dix combats', () => {
+    // Le plancher est posé au moment où l'XP est CRÉDITÉE (voir xpReelle),
+    // pas dans la table des monstres : une table ne peut pas savoir qu'un
+    // héros de niveau 3 ira farmer la zone de niveau 90, qu'un groupe fera
+    // tomber six monstres d'un coup, ou qu'un joueur cumulera les quatre
+    // bonus d'expérience du jeu. On éprouve donc les cas tordus.
+    const heros = (n) => {
+      const p = personaEquipeNormalement('guerrier', n);
+      p.race = 'humain';                       // Ambition : +10 % d'XP
+      const fam = Object.keys(FAMILIERS).sort((a, b) =>
+        (FAMILIERS[b].bonus.xpBonus || 0) - (FAMILIERS[a].bonus.xpBonus || 0))[0];
+      p.familier = fam;
+      p.familiers = [fam];
+      return p;
+    };
+    const zoneLaPlusHaute = ZONES[ZONES.length - 1];
+    const pires = [];
+    for (let n = 1; n < NIVEAU_MAX; n += 3) {
+      const p = heros(n);
+      const besoin = seuilXp(n + 1) - seuilXp(n);
+      const accessibles = ZONES.filter((z) => z.niveauMin <= n);
+      const derniere = accessibles[accessibles.length - 1] || ZONES[0];
+      const candidats = [
+        // le meilleur monstre à sa portée, en pack maximum
+        Math.max(...derniere.monstres.map((c) => MONSTRES[c].xp)) * 6,
+        // le contenu le plus haut du jeu, largement hors de sa portée
+        Math.max(...zoneLaPlusHaute.monstres.map((c) => MONSTRES[c].xp)) * 6,
+        // un boss
+        (MONSTRES[derniere.boss] || { xp: 0 }).xp,
+        // une somme absurde, pour vérifier que la borne est bien dure
+        999999999,
+      ];
+      candidats.forEach((brut) => {
+        if (!brut) return;
+        const combats = besoin / xpReelle(p, brut);
+        if (combats < 10) pires.push(`niv. ${n} : ${combats.toFixed(1)} combats`);
+      });
+    }
+    aucun(pires, 'niveaux gagnables en moins de dix combats');
+  });
+
   test('la courbe d\'XP monte régulièrement, sans falaise', () => {
     // Un niveau doit coûter plus cher que le précédent — mais la pente doit
     // se sentir, pas faire mur. Avant correction : 1,6 combat pour le
@@ -2648,6 +2689,9 @@ suite('Équilibrage (v20)', () => {
       }
       return null;
     };
+    // Héros SANS niveau, volontairement : ce test mesure la forme de la
+    // table d'XP, pas l'effet du plancher (qui a son propre test juste
+    // au-dessus). Sans niveau, plafondXpParGain ne s'applique pas.
     const heros = { race: 'elfe', equipement: {}, familier: null, familiers: [] };
     const combats = [];
     for (let n = 1; n < NIVEAU_MAX; n++) {
