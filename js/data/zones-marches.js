@@ -185,7 +185,7 @@ const BESTIAIRE_MARCHES = {
       { nom: 'Taille', emoji: '✂️', mult: 1.25, poids: 3, type: 'mono' },
       { nom: 'Élagage', emoji: '🍂', mult: 0.9, poids: 2, type: 'aoe' },
     ] },
-  fleurQuiRegarde: { nom: 'Fleur qui regarde', emoji: '🌺', niveau: 66, dex: 10,
+  fleurQuiRegarde: { nom: 'Fleur qui regarde', emoji: '🌺', niveau: 68, dex: 10,
     drops: [{ id: 'graine-renversee', chance: 0.55 }],
     attaques: [
       { nom: 'Pollen fixe', emoji: '🌼', mult: 0.9, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
@@ -239,7 +239,7 @@ const BESTIAIRE_MARCHES = {
       { nom: 'Refermement', emoji: '📕', mult: 1.3, poids: 3, type: 'mono' },
       { nom: 'Avalanche de tomes', emoji: '📖', mult: 0.9, poids: 2, type: 'aoe' },
     ] },
-  indexVivant: { nom: 'Index vivant', emoji: '🗂️', niveau: 76, dex: 15,
+  indexVivant: { nom: 'Index vivant', emoji: '🗂️', niveau: 78, dex: 15,
     drops: [{ id: 'encre-noyee', chance: 0.55 }],
     attaques: [
       { nom: 'Renvoi', emoji: '↩️', mult: 1.2, poids: 3, type: 'mono' },
@@ -293,7 +293,7 @@ const BESTIAIRE_MARCHES = {
       { nom: 'Répétition', emoji: '🔁', mult: 1.25, poids: 3, type: 'mono' },
       { nom: 'Superposition', emoji: '🌫️', mult: 0.95, poids: 2, type: 'aoe' },
     ] },
-  raccordRate: { nom: 'Raccord raté', emoji: '🩹', niveau: 86, dex: 14,
+  raccordRate: { nom: 'Raccord raté', emoji: '🩹', niveau: 88, dex: 14,
     drops: [{ id: 'fil-de-suture', chance: 0.45 }],
     attaques: [
       { nom: 'Couture qui lâche', emoji: '✂️', mult: 1.35, poids: 3, type: 'mono' },
@@ -347,7 +347,7 @@ const BESTIAIRE_MARCHES = {
       { nom: 'Mauvais conseil', emoji: '🗣️', mult: 1.35, poids: 3, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
       { nom: 'Cabale', emoji: '🕯️', mult: 1.05, poids: 2, type: 'aoe' },
     ] },
-  ombreCouronnee: { nom: 'Ombre couronnée', emoji: '👤', niveau: 97, dex: 15,
+  ombreCouronnee: { nom: 'Ombre couronnée', emoji: '👤', niveau: 99, dex: 15,
     drops: [{ id: 'eclat-de-couronne', chance: 0.3 }, { id: 'aiguille-premiere', chance: 0.15 }],
     attaques: [
       { nom: 'Ce qu’il fut', emoji: '👑', mult: 1.4, poids: 3, type: 'mono' },
