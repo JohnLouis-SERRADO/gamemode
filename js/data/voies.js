@@ -40,9 +40,9 @@ const VOIES = {};
 const TABLE_VOIES = {
   // ---------------- 🛡️ Gardien ----------------
   templier: [
-    ['Voie du Bastion', 'Partage 35 % de sa Ténacité avec la ligne avant ; chaque coup encaissé soigne l’équipe de 3 %.', 'Voûte', '🏛️', 'egide'],
+    ['Voie du Bastion', 'Partage 35 % de ses PV maximum avec la ligne avant ; chaque coup encaissé soigne l’équipe de 3 %.', 'Voûte', '🏛️', 'egide'],
     ['Voie du Serment', 'Les alliés qu’il protège frappent 15 % plus fort, et leurs dégâts lui rendent du mana.', 'Cercle sacré', '⭕', 'ferveur'],
-    ['Voie du Zèle', '+15 % de dégâts par allié vivant ; sa Ténacité se convertit en puissance offensive.', 'Verdict', '⚖️', 'frappe'],
+    ['Voie du Zèle', '+15 % de dégâts par allié vivant ; sa Vitalité se convertit en puissance offensive.', 'Verdict', '⚖️', 'frappe'],
   ],
   paladin: [
     ['Voie du Gardien', 'Un allié sous 20 % de PV devient invulnérable un tour, une fois par allié et par combat.', 'Serment éternel', '🕊️', 'egide'],

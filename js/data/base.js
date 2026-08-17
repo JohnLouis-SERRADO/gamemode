@@ -28,18 +28,33 @@ const CARACS = {
 
 // Les sous-caractéristiques ne se répartissent pas : elles se trouvent.
 // `pourcent` indique si la valeur s'affiche et se lit comme un pourcentage.
+//
+// v21 — La Ténacité a été retirée. Elle retranchait jusqu'à 40 % des dégâts
+// subis, à plat et sans jet : c'était le seul levier du jeu qui pouvait
+// effacer près de la moitié de ce que le bestiaire envoie. Comme elle vient
+// de l'équipement et que l'équipement se ramasse par paliers, deux zones
+// voisines pouvaient opposer au joueur des dégâts du simple au double sans
+// qu'une seule ligne du bestiaire ait bougé — mesuré au banc : 1,4 % des PV
+// par tour dans les zones où le héros portait ses 40 %, 2,6 % là où il n'en
+// portait que 4 %. La difficulté ne se lisait plus dans les monstres, elle
+// se lisait dans le stuff. On l'a donc supprimée, et recalibré le bestiaire
+// sur des dégâts qu'on peut enfin lire directement.
 const SOUS_CARACS = {
   crit:     { nom: 'Critique',      emoji: '💥', pourcent: true,  desc: 'Fréquence des coups critiques (×1,5 de dégâts)' },
   direct:   { nom: 'Coup direct',   emoji: '🎲', pourcent: true,  desc: 'Chance d’un coup net à +25 %, sans se cumuler au critique' },
   deter:    { nom: 'Détermination', emoji: '⚖️', pourcent: true,  desc: 'Augmente TOUS les dégâts et TOUS les soins, sans hasard' },
-  tenacite: { nom: 'Ténacité',      emoji: '🛡️', pourcent: true,  desc: 'Réduit les dégâts subis et renforce les vôtres — pièces de plaque' },
   celerite: { nom: 'Célérité',      emoji: '💨', pourcent: true,  desc: 'Augmente l’initiative et raccourcit les recharges' },
   piete:    { nom: 'Piété',         emoji: '💧', pourcent: true,  desc: 'Augmente le mana maximum et sa régénération' },
 };
 
 // Bornes des sous-caractéristiques : au-delà, le rendement est perdu.
 // Elles empêchent qu'un build à 100 % d'esquive ou de réduction existe.
-const PLAFONDS_SOUS_CARACS = { crit: 60, direct: 50, deter: 60, tenacite: 40, celerite: 50, piete: 100 };
+const PLAFONDS_SOUS_CARACS = { crit: 60, direct: 50, deter: 60, celerite: 50, piete: 100 };
+
+// Sous-caractéristiques disparues : on garde la liste pour que les vieilles
+// sauvegardes et les vieux objets se nettoient tout seuls au chargement
+// plutôt que de traîner une ligne qui ne fait plus rien.
+const SOUS_CARACS_RETIREES = ['tenacite'];
 
 const POINTS_CREATION = 12;   // points à répartir à la création (6 attributs)
 const STAT_BASE = 2;          // valeur de départ de chaque caractéristique

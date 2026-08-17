@@ -36,9 +36,11 @@ Les six classes couvrent la trinité MMORPG au complet :
 
 **Six attributs principaux** — 💪 Force · 🎯 Dextérité · 🧠 Intelligence · 🕊️ Esprit · ❤️ Vitalité · 🍀 Chance — qui déterminent *combien* vous frappez.
 
-**Six sous-caractéristiques** — 💥 Critique · 🎲 Coup direct · ⚖️ Détermination · 🛡️ Ténacité · 💨 Célérité · 💧 Piété — qui déterminent *comment*. Elles ne s'achètent pas avec des points : elles viennent de l'équipement, ce qui rend le choix d'un objet aussi structurant que celui d'une compétence. Chacune est **plafonnée** : empiler une seule sous-caractéristique cesse de payer.
+**Cinq sous-caractéristiques** — 💥 Critique · 🎲 Coup direct · ⚖️ Détermination · 💨 Célérité · 💧 Piété — qui déterminent *comment*. Elles ne s'achètent pas avec des points : elles viennent de l'équipement, ce qui rend le choix d'un objet aussi structurant que celui d'une compétence. Chacune est **plafonnée** : empiler une seule sous-caractéristique cesse de payer.
 
-Un coup peut être **critique** (×1,5) *ou* **direct** (×1,25), jamais les deux — la Détermination, elle, majore tout sans exception. La Ténacité retranche des dégâts à plat, la Célérité décide de l'ordre du tour, la Piété gonfle le mana.
+Un coup peut être **critique** (×1,5) *ou* **direct** (×1,25), jamais les deux — la Détermination, elle, majore tout sans exception. La Célérité décide de l'ordre du tour, la Piété gonfle le mana.
+
+Elles étaient six : la **Ténacité** retranchait jusqu'à 40 % des dégâts subis, à plat et sans jet. Elle a été retirée (v21). Comme elle venait de l'équipement et que l'équipement se ramasse par paliers, deux zones voisines pouvaient opposer au joueur des dégâts du simple au double sans qu'une ligne du bestiaire ait bougé — mesuré au banc : 1,4 % des points de vie par tour là où le héros portait ses 40 %, 2,6 % là où il n'en portait que 4 %. La difficulté ne se lisait plus dans les monstres, elle se lisait dans le stuff. Encaisser se joue désormais avec ce qui se voit : les points de vie, les boucliers, la défense, la ligne où l'on se place — et le bestiaire a été recalibré sur des dégâts qu'on peut enfin lire directement.
 
 ### L'équipement a enfin une logique
 
