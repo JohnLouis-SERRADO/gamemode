@@ -180,7 +180,7 @@ Le jeu embarque sa propre page de tests, qui charge exactement les mêmes fichie
 npx serve .   # puis ouvrir /tests.html
 ```
 
-**250 tests** en 23 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, l'instantané publié au groupe est toujours le héros tel qu'il est *maintenant* — et, depuis la v20, **l'équilibrage lui-même est sous test** : l'équipement ne doit jamais peser plus de la moitié d'un héros, la puissance conseillée doit rester atteignable par les six classes, la tension d'un combat doit rester dans la même fourchette du niveau 1 au niveau 100, et personne ne doit pouvoir tuer d'un seul coup — ni les monstres, ni vous.
+**251 tests** en 23 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, l'instantané publié au groupe est toujours le héros tel qu'il est *maintenant* — et, depuis la v20, **l'équilibrage lui-même est sous test** : l'équipement ne doit jamais peser plus de la moitié d'un héros, la puissance conseillée doit rester atteignable par les six classes, la tension d'un combat doit rester dans la même fourchette du niveau 1 au niveau 100, et personne ne doit pouvoir tuer d'un seul coup — ni les monstres, ni vous.
 
 ## 🗂️ Structure du projet
 
@@ -220,7 +220,7 @@ js/ville.js                      — le Bourg : boutiques, artisans, Arcanium, G
 js/combat.js                     — combat tour par tour (initiative, critiques, statuts, boss)
 js/groupe.js                     — expéditions en ligne à plusieurs appareils
 js/reseau.js                     — client REST Supabase, taverne, fiches publiques, échanges
-js/tests.js                      — les 250 tests
+js/tests.js                      — les 251 tests
 
 sql/                             — les fonctions RPC du backend Supabase, versionnées ici
 ```

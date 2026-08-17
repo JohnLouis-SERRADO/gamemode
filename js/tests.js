@@ -2616,6 +2616,62 @@ suite('Équilibrage (v20)', () => {
     entre(maximum, 2, 4, `marge maximale (atteinte par ${ou})`);
   });
 
+  test('chaque classe a un passif qui fait vraiment quelque chose', () => {
+    // Les six fiches annoncent un passif. Trois ne faisaient rien du tout,
+    // un quatrième était vrai à moitié — et le Gardien décrivait la
+    // mécanique générale de Ténacité, dont le Guerrier profite à
+    // l'identique (même armure de plaque, 21 % chacun). On vérifie donc
+    // que chaque passif produit un effet MESURABLE et PROPRE à sa classe.
+    const combattant = (classe, extra) => Object.assign({
+      type: 'joueur', classe, niveau: 50, bid: 'x',
+      stats: { for: 60, int: 60, dex: 60, esp: 60, vit: 60, cha: 10 },
+      equipement: {}, familiers: [], familier: null,
+      statuts: [], cooldowns: {}, competences: [], ligne: 'avant',
+      hp: 1000, maxHp: 1000, mp: 100, maxMp: 100,
+    }, extra || {});
+
+    // Franc-tireur : la ligne arrière ne le pénalise pas.
+    verifier(ignoreMalusDeLigne(combattant('franc-tireur')), 'Franc-tireur : « Ligne de tir »');
+    verifier(!ignoreMalusDeLigne(combattant('guerrier')), 'le malus de ligne doit rester pour les autres');
+
+    // Guerrier : l'Élan monte et plafonne.
+    const g = combattant('guerrier', { elan: 0 });
+    const depart = bonusElan(g);
+    for (let i = 0; i < 10; i++) nourrirElan(g);
+    verifier(bonusElan(g) > depart, 'Guerrier : « Élan » doit monter');
+    verifier(bonusElan(g) <= 1 + ELAN_MAX * ELAN_PAR_COUP + 1e-9, '« Élan » doit plafonner');
+    verifier(bonusElan(combattant('arcaniste', { elan: 3 })) === 1, '« Élan » n\'appartient qu\'au Guerrier');
+
+    // Arcaniste : le mana revient plus vite.
+    verifier(regainDeMana(combattant('arcaniste')) > regainDeMana(combattant('guerrier')),
+      'Arcaniste : « Flux »');
+
+    // Devin : le surplus de soin devient bouclier.
+    const soigneur = combattant('devin');
+    const plein = combattant('devin');
+    soigner(plein, 500, soigneur);
+    verifier(plein.statuts.some((x) => x.type === 'bouclier'), 'Devin : « Clairvoyance »');
+    const plein2 = combattant('guerrier');
+    soigner(plein2, 500, combattant('guerrier'));
+    verifier(!plein2.statuts.some((x) => x.type === 'bouclier'),
+      'le surplus ne doit se figer que pour le Devin');
+
+    // Gardien : provoquer le fait frapper plus fort.
+    verifier(bonusRempart(combattant('gardien', { statuts: [{ type: 'provocation', duree: 2 }] })) > 1,
+      'Gardien : « Rempart »');
+    verifier(bonusRempart(combattant('gardien')) === 1, '« Rempart » ne joue qu\'en provocation');
+    verifier(bonusRempart(combattant('guerrier', { statuts: [{ type: 'provocation', duree: 2 }] })) === 1,
+      '« Rempart » n\'appartient qu\'au Gardien');
+
+    // Runelame : la Gravure lui rend une part de ses dégâts.
+    const rl = combattant('runelame', { hp: 500 });
+    draineDeGravure(rl, 200);
+    verifier(rl.hp > 500, 'Runelame : « Gravure »');
+    const gr = combattant('guerrier', { hp: 500 });
+    draineDeGravure(gr, 200);
+    verifier(gr.hp === 500, '« Gravure » n\'appartient qu\'au Runelame');
+  });
+
   test('aucune classe ne domine par la seule Vitalité', () => {
     // La Vitalité achète les points de vie de tout le monde ET les dégâts du
     // Gardien : elle payait donc deux fois pour lui, et il frappait aussi

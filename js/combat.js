@@ -75,6 +75,29 @@ function nourrirElan(c) {
   c.elan = Math.min(ELAN_MAX, (c.elan || 0) + 1);
 }
 
+// Gardien : « attirer les coups est une arme ». La première moitié de son
+// passif — « les dégâts subis baissent avec la Ténacité » — ne lui
+// appartenait pas : c'est la mécanique générale, et le Guerrier, qui porte
+// la même plaque, en profitait exactement autant (21 % de Ténacité chacun).
+// Mesuré au banc : un Gardien encaissait 103 quand un Arcaniste encaissait
+// 103. Il était la seule des six classes sans passif propre.
+//
+// C'est donc la SECONDE moitié qui devient son passif, celle qui promet
+// quelque chose que personne d'autre ne fait : tant qu'il tient les
+// ennemis par la provocation, il frappe plus fort. Tanker devient offensif.
+//
+// Le choix du levier n'est pas neutre : le Gardien est déjà la classe la
+// plus résistante du jeu, avec la marge de survie la plus haute (3,8× sur
+// une fourchette qui plafonne à 4). Augmenter sa défense l'aurait fait
+// sortir de la fourchette ; augmenter ses dégâts raccourcit ses combats,
+// et pousse donc sa marge vers le bas.
+const BONUS_REMPART = 0.25;
+
+function bonusRempart(c) {
+  if (!aPassif(c, 'Rempart')) return 1;
+  return c.statuts.some((s) => s.type === 'provocation') ? 1 + BONUS_REMPART : 1;
+}
+
 // Arcaniste : le mana revient plus vite. Deux points de base pour tout le
 // monde, le double pour lui.
 function regainDeMana(c) {
@@ -526,6 +549,7 @@ function infligerDegats(source, cible, brut, options = {}) {
   // qu'il fait ne change rien à un coup d'épée.
   if (options.element) d *= multElementMonde(options.element);
   d *= bonusElan(source);            // « Élan » : chaque coup nourrit le suivant
+  d *= bonusRempart(source);         // « Rempart » : provoquer, c'est frapper
   if (source.statuts.some((s) => s.type === 'benediction')) d *= 1.3;
   if (source.statuts.some((s) => s.type === 'affaibli')) d *= 0.7;
   // Sang de guerre (orc) : +15 % de dégâts sous 40 % de PV.
