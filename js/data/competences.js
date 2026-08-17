@@ -740,7 +740,37 @@ function valeurEffectiveCompetence(comp, stat = STAT_CALIBRATION) {
 // Budget par tour de chaque rôle, à caractéristique 100. L'écart entre les
 // rôles est volontaire : toutes les classes ne se valent pas en dégâts, et
 // c'est ce qui leur donne une identité.
-const BUDGET_DEGATS_ROLE = { dps: 62, tank: 40, soigneur: 30 };
+//
+// =====================================================================
+// v21.1 — LE TANK ET LE SOIGNEUR PAYAIENT DEUX FOIS.
+//
+// Tant que les monstres tapaient trop faiblement, l'écart de dégâts entre
+// classes ne se voyait pas : tout le monde gagnait. Une fois le bestiaire
+// recalibré, il est devenu la seule chose qui comptait — parce qu'une
+// classe qui met trois fois plus de tours à nettoyer encaisse trois fois
+// plus de coups. Simulation de vrais combats : le Gardien perdait contre
+// TOUS les boss du jeu, vingt fois sur vingt, et le Devin traînait ses
+// combats sur soixante-dix manches.
+//
+// Le tank était puni deux fois pour la même raison. Une première fois ici,
+// par un budget à 40 contre 62 ; une seconde fois par sa caractéristique,
+// la Vitalité, dont le rendement offensif est bridé à 0,6 (voir
+// RENDEMENT_OFFENSIF_VITALITE — et ce bridage-là est nécessaire, sans quoi
+// la Vitalité donnerait à la fois les points de vie ET les dégâts). Budget
+// 40 × rendement 0,6 : le Gardien frappait à 39 % d'un DPS.
+//
+// Les budgets bas remontent donc — 40 → 54 pour le tank, 30 → 42 pour le
+// soigneur — et ceux du haut ne bougent pas. La hiérarchie des rôles reste
+// entière : après correction, le Gardien frappe encore à 52 % d'un DPS une
+// fois le bridage de la Vitalité appliqué, et le Devin à 68 %, lui qui
+// garde en échange le budget de soins le plus élevé du jeu.
+//
+// La borne haute n'est pas arbitraire : au-delà, l'écart de puissance entre
+// raretés d'Éveil dépasse les 10 % tolérés (les raretés ne portent pas le
+// même mélange de rôles), et la suite de tests passe au rouge. 54/42 laisse
+// une petite marge sous ce plafond.
+// =====================================================================
+const BUDGET_DEGATS_ROLE = { dps: 62, tank: 54, soigneur: 42 };
 const BUDGET_SOIN_ROLE = { dps: 26, tank: 34, soigneur: 62 };
 
 // Le palier de déblocage majore le budget : un sort de fin de parcours doit
