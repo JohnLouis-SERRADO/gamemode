@@ -360,6 +360,114 @@ const BESTIAIRE_MARCHES = {
       { nom: 'Le monde lui obéit encore', emoji: '🌍', mult: 1.15, poids: 2, type: 'aoe' },
       { nom: 'Recommencer', emoji: '🪡', mult: 1.9, poids: 1, type: 'mono', effet: { type: 'drain', part: 0.4 } },
     ] },
+
+  // ---------- Passage · La Balance des Heures (68-70) ----------
+  peseurDHeures: { nom: 'Peseur d’heures', emoji: '🕰️', niveau: 69, dex: 11,
+    drops: [{ id: 'echo-fossilise', chance: 0.4 }],
+    attaques: [
+      { nom: 'Prélèvement', emoji: '⏳', mult: 1.15, poids: 3, type: 'mono' },
+      { nom: 'Compte rond', emoji: '⚖️', mult: 0.9, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+    ] },
+  creancierGris: { nom: 'Créancier gris', emoji: '📜', niveau: 69, dex: 9,
+    drops: [{ id: 'graine-renversee', chance: 0.35 }, { id: 'echo-fossilise', chance: 0.3 }],
+    attaques: [
+      { nom: 'Rappel d’échéance', emoji: '📅', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Intérêts', emoji: '💱', mult: 0.85, poids: 2, type: 'mono', effet: { type: 'poison', duree: 3 } },
+    ] },
+  aiguilleAffolee: { nom: 'Aiguille affolée', emoji: '🧭', niveau: 70, dex: 16,
+    drops: [{ id: 'os-divin', chance: 0.25 }],
+    attaques: [
+      { nom: 'Tour de cadran', emoji: '🔄', mult: 1.1, poids: 3, type: 'mono' },
+      { nom: 'Minute volée', emoji: '⏱️', mult: 0.95, poids: 1, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
+    ] },
+  leGrandComptable: { nom: 'Le Grand Comptable', emoji: '🧮', niveau: 70, boss: true, dex: 12,
+    drops: [{ id: 'echo-fossilise', chance: 1 }, { id: 'os-divin', chance: 0.7 }],
+    attaques: [
+      { nom: 'Solde', emoji: '➖', mult: 1.3, poids: 3, type: 'mono' },
+      { nom: 'Arriérés', emoji: '📚', mult: 1, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+      { nom: 'Tout est dû', emoji: '🧾', mult: 1.7, poids: 1, type: 'mono' },
+    ] },
+
+  // ---------- Passage · Le Gué des Serments (78-80) ----------
+  passeurSansBarque: { nom: 'Passeur sans barque', emoji: '🚣', niveau: 79, dex: 13,
+    drops: [{ id: 'os-divin', chance: 0.4 }],
+    attaques: [
+      { nom: 'Traversée due', emoji: '〰️', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Le prix d’abord', emoji: '🪙', mult: 0.9, poids: 2, type: 'mono', effet: { type: 'drain', part: 0.25 } },
+    ] },
+  paroleGelee: { nom: 'Parole gelée', emoji: '🗨️', niveau: 79, dex: 8,
+    drops: [{ id: 'braise-crepusculaire', chance: 0.2 }, { id: 'os-divin', chance: 0.3 }],
+    attaques: [
+      { nom: 'Ce qui a été dit', emoji: '❄️', mult: 1.25, poids: 3, type: 'mono' },
+      { nom: 'Silence tenu', emoji: '🤫', mult: 0.85, poids: 2, type: 'aoe', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
+    ] },
+  temoinDeGalet: { nom: 'Témoin de galet', emoji: '🏛️', niveau: 80, dex: 10,
+    drops: [{ id: 'os-divin', chance: 0.45 }],
+    attaques: [
+      { nom: 'Déposition', emoji: '📖', mult: 1.15, poids: 3, type: 'mono' },
+      { nom: 'Contre-serment', emoji: '⛓️', mult: 1, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+    ] },
+  celuiQuiNaJamaisJure: { nom: 'Celui Qui N’a Jamais Juré', emoji: '🤐', niveau: 80, boss: true, dex: 14,
+    drops: [{ id: 'os-divin', chance: 1 }, { id: 'braise-crepusculaire', chance: 0.6 }],
+    attaques: [
+      { nom: 'Parole retenue', emoji: '🔇', mult: 1.35, poids: 3, type: 'mono' },
+      { nom: 'Rien promis, rien dû', emoji: '⚖️', mult: 1.05, poids: 2, type: 'aoe' },
+      { nom: 'Le seul homme libre', emoji: '🕊️', mult: 1.75, poids: 1, type: 'mono', effet: { type: 'drain', part: 0.35 } },
+    ] },
+
+  // ---------- Passage · L’Effilochure (88-90) ----------
+  filQuiLache: { nom: 'Fil qui lâche', emoji: '🧵', niveau: 89, dex: 12,
+    drops: [{ id: 'fil-de-suture', chance: 0.35 }],
+    attaques: [
+      { nom: 'Maille sautée', emoji: '➰', mult: 1.2, poids: 3, type: 'mono' },
+      { nom: 'Ça file', emoji: '📉', mult: 0.9, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+    ] },
+  trameNue: { nom: 'Trame nue', emoji: '🕸️', niveau: 89, dex: 10,
+    drops: [{ id: 'braise-crepusculaire', chance: 0.3 }, { id: 'fil-de-suture', chance: 0.25 }],
+    attaques: [
+      { nom: 'Le blanc d’avant', emoji: '⬜', mult: 1.25, poids: 3, type: 'mono' },
+      { nom: 'Rien dessous', emoji: '🕳️', mult: 0.95, poids: 2, type: 'mono', effet: { type: 'drain', part: 0.3 } },
+    ] },
+  bordSansOurlet: { nom: 'Bord sans ourlet', emoji: '✂️', niveau: 90, dex: 15,
+    drops: [{ id: 'fil-de-suture', chance: 0.4 }],
+    attaques: [
+      { nom: 'Coupe franche', emoji: '🔪', mult: 1.3, poids: 3, type: 'mono' },
+      { nom: 'S’effiloche', emoji: '🧶', mult: 1, poids: 1, type: 'aoe', effet: { type: 'poison', duree: 3 } },
+    ] },
+  laMailleTombee: { nom: 'La Maille Tombée', emoji: '🧷', niveau: 90, boss: true, dex: 13,
+    drops: [{ id: 'fil-de-suture', chance: 1 }, { id: 'braise-crepusculaire', chance: 0.7 }],
+    attaques: [
+      { nom: 'Une de moins', emoji: '➖', mult: 1.35, poids: 3, type: 'mono' },
+      { nom: 'Tout le rang', emoji: '📏', mult: 1.1, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+      { nom: 'Reprendre au début', emoji: '🔁', mult: 1.8, poids: 1, type: 'mono' },
+    ] },
+
+  // ---------- Passage · Le Dernier Point (98-100) ----------
+  noeudFinal: { nom: 'Nœud final', emoji: '➰', niveau: 99, dex: 11,
+    drops: [{ id: 'fil-de-suture', chance: 0.5 }, { id: 'aiguille-premiere', chance: 0.25 }],
+    attaques: [
+      { nom: 'Serrer', emoji: '🪢', mult: 1.3, poids: 3, type: 'mono' },
+      { nom: 'Ne plus défaire', emoji: '🔒', mult: 1, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 3 } },
+    ] },
+  repriseInachevee: { nom: 'Reprise inachevée', emoji: '🧩', niveau: 99, dex: 14,
+    drops: [{ id: 'fil-de-suture', chance: 0.45 }],
+    attaques: [
+      { nom: 'Point manquant', emoji: '❔', mult: 1.25, poids: 3, type: 'mono' },
+      { nom: 'Laissé en plan', emoji: '🪫', mult: 0.95, poids: 2, type: 'mono', effet: { type: 'drain', part: 0.3 } },
+    ] },
+  ourletDuMonde: { nom: 'Ourlet du monde', emoji: '〰️', niveau: 100, dex: 12,
+    drops: [{ id: 'aiguille-premiere', chance: 0.3 }, { id: 'eclat-de-couronne', chance: 0.2 }],
+    attaques: [
+      { nom: 'Bord du tissu', emoji: '📐', mult: 1.35, poids: 3, type: 'mono' },
+      { nom: 'Au-delà, rien', emoji: '🌑', mult: 1.05, poids: 2, type: 'aoe' },
+    ] },
+  laMainQuiCoud: { nom: 'La Main Qui Coud', emoji: '✋', niveau: 100, boss: true, dex: 15,
+    drops: [{ id: 'aiguille-premiere', chance: 1 }, { id: 'eclat-de-couronne', chance: 0.8 }],
+    attaques: [
+      { nom: 'Point arrière', emoji: '↩️', mult: 1.4, poids: 3, type: 'mono' },
+      { nom: 'Sept mondes de pratique', emoji: '🧵', mult: 1.15, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
+      { nom: 'Le dernier point', emoji: '🪡', mult: 1.95, poids: 1, type: 'mono', effet: { type: 'drain', part: 0.4 } },
+    ] },
 };
 
 // Les statistiques se calculent une fois, à l'enregistrement.
@@ -368,7 +476,7 @@ Object.entries(BESTIAIRE_MARCHES).forEach(([cle, def]) => {
 });
 
 // ---------------------------------------------------------------------
-// Les dix cartes. Chacune porte un morceau du fil conducteur : les
+// Les quatorze cartes. Chacune porte un morceau du fil conducteur : les
 // descriptions se lisent dans l'ordre et racontent la découverte.
 // ---------------------------------------------------------------------
 ZONES.push(
@@ -397,6 +505,12 @@ ZONES.push(
     recolte: [{ id: 'graine-renversee', chance: 0.8 }, { id: 'echo-fossilise', chance: 0.3 }, { id: 'basalte-poli', chance: 0.45 }, { id: 'verre-de-mer', chance: 0.25 }],
   },
   {
+    id: 'balance-des-heures', nom: 'La Balance des Heures', emoji: '⚖️', niveauMin: 68, plage: 'niv. 68-70 · passage',
+    desc: 'Une halle sans toit où pendent des milliers de balances. Sur un plateau, une heure ; sur l’autre, ce qu’elle a coûté. Personne n’est venu relever les comptes depuis très longtemps — mais les balances, elles, n’ont jamais cessé de peser.',
+    monstres: ['peseurDHeures', 'creancierGris', 'aiguilleAffolee'], boss: 'leGrandComptable',
+    recolte: [{ id: 'echo-fossilise', chance: 0.7 }, { id: 'graine-renversee', chance: 0.45 }, { id: 'os-divin', chance: 0.3 }, { id: 'basalte-poli', chance: 0.35 }],
+  },
+  {
     id: 'ossuaire-dieux', nom: 'L’Ossuaire des Dieux', emoji: '💀', niveauMin: 70, plage: 'niv. 70-78 · équipe requise',
     desc: 'Des ossements trop grands pour des géants, trop fins pour des bêtes, alignés comme dans un atelier. Aucun n’est complet. Tous portent des coutures — et ce sont les mêmes points que ceux qu’on a vus, en plus petit, sur les fêlures des Terres lointaines.',
     monstres: ['reliquaireMarcheur', 'cotesDuCiel', 'prieurDuVide'], boss: 'leDieuRecousu',
@@ -407,6 +521,12 @@ ZONES.push(
     desc: 'Tout le savoir d’avant, sous trois mètres d’eau immobile. Les livres s’y lisent encore. Le catalogue est complet, méthodique — et il recense sept versions du monde. Valciel porte le numéro sept.',
     monstres: ['copisteNoye', 'rayonnageVorace', 'indexVivant'], boss: 'archivisteDesFins',
     recolte: [{ id: 'encre-noyee', chance: 0.8 }, { id: 'os-divin', chance: 0.3 }, { id: 'peau-de-mammouth', chance: 0.35 }, { id: 'echo-fossilise', chance: 0.3 }],
+  },
+  {
+    id: 'gue-des-serments', nom: 'Le Gué des Serments', emoji: '🌉', niveauMin: 78, plage: 'niv. 78-80 · passage',
+    desc: 'Une rivière qu’on traverse à pied sec : l’eau s’est retirée le jour où le premier serment a été rompu. Sur les galets, des promesses déposées par milliers, comme des offrandes. Elles attendent encore qu’on revienne les chercher.',
+    monstres: ['passeurSansBarque', 'paroleGelee', 'temoinDeGalet'], boss: 'celuiQuiNaJamaisJure',
+    recolte: [{ id: 'os-divin', chance: 0.7 }, { id: 'echo-fossilise', chance: 0.4 }, { id: 'braise-crepusculaire', chance: 0.35 }, { id: 'encre-noyee', chance: 0.25 }],
   },
   {
     id: 'rempart-crepuscule', nom: 'Le Rempart du Crépuscule', emoji: '🌇', niveauMin: 80, plage: 'niv. 80-88 · équipe requise',
@@ -421,6 +541,12 @@ ZONES.push(
     recolte: [{ id: 'fil-de-suture', chance: 0.85 }, { id: 'graine-renversee', chance: 0.3 }, { id: 'verre-de-mer', chance: 0.35 }, { id: 'braise-crepusculaire', chance: 0.25 }, { id: 'echo-fossilise', chance: 0.35 }, { id: 'peau-de-mammouth', chance: 0.3 }],
   },
   {
+    id: 'effilochure', nom: 'L’Effilochure', emoji: '🧶', niveauMin: 88, plage: 'niv. 88-90 · passage',
+    desc: 'Ici la trame du monde perd ses fils un par un, et on voit au travers : derrière le paysage il n’y a pas d’autre paysage, juste le blanc d’avant. Les habitants recousent chaque matin ce qui a lâché pendant la nuit, et perdent un peu de terrain chaque jour.',
+    monstres: ['filQuiLache', 'trameNue', 'bordSansOurlet'], boss: 'laMailleTombee',
+    recolte: [{ id: 'fil-de-suture', chance: 0.6 }, { id: 'braise-crepusculaire', chance: 0.5 }, { id: 'echo-fossilise', chance: 0.4 }, { id: 'os-divin', chance: 0.35 }, { id: 'essence-primordiale', chance: 0.15 }],
+  },
+  {
     id: 'couture-monde', nom: 'La Couture du Monde', emoji: '🪡', niveauMin: 90, plage: 'niv. 90-100 · équipe requise',
     desc: 'La suture maîtresse, celle qui tient les six mondes précédents ensemble sous celui-ci. Elle est en train de céder. Ce n’est pas une menace : c’est un compte à rebours, et il a commencé bien avant votre naissance.',
     monstres: ['gardeDeLaCouture', 'pointDeRupture', 'memoireDuMondeAncien'], boss: 'laDerniereSuture',
@@ -432,12 +558,22 @@ ZONES.push(
     monstres: ['heraultSansVoix', 'conseillerDeLaPremiereHeure', 'ombreCouronnee'], boss: 'lePremierRoi',
     recolte: [{ id: 'eclat-de-couronne', chance: 0.6 }, { id: 'aiguille-premiere', chance: 0.4 }, { id: 'fil-de-suture', chance: 0.4 }, { id: 'essence-primordiale', chance: 0.2 }],
   },
+  {
+    id: 'dernier-point', nom: 'Le Dernier Point', emoji: '🪢', niveauMin: 98, plage: 'niv. 98-100 · après le Roi',
+    desc: 'Passé le trône, il reste trois mètres de monde. Le fil s’arrête là, sur un nœud qui n’a jamais été serré. Celui qui coud a posé son aiguille ici, un jour, et n’est pas revenu — on ne sait toujours pas s’il avait fini, ou s’il avait renoncé.',
+    monstres: ['noeudFinal', 'repriseInachevee', 'ourletDuMonde'], boss: 'laMainQuiCoud',
+    recolte: [{ id: 'fil-de-suture', chance: 0.6 }, { id: 'aiguille-premiere', chance: 0.5 }, { id: 'eclat-de-couronne', chance: 0.35 }, { id: 'essence-primordiale', chance: 0.25 }],
+  },
 );
 
 // ---------------------------------------------------------------------
 // Les trophées des dix nouveaux boss.
 // ---------------------------------------------------------------------
 Object.assign(OBJETS, {
+  'boulier-du-comptable': { nom: 'Boulier du Comptable', emoji: '🧮', type: 'equipement', slot: 'accessoire', niveau: 70, rarete: 'legendaire', prixVente: 2400, bonus: { int: 24, esp: 14, celerite: 8 }, desc: 'Trophée du Grand Comptable. Les boules glissent encore toutes seules, et le total tombe toujours juste.' },
+  'baillon-du-taciturne': { nom: 'Bâillon du Taciturne', emoji: '🤐', type: 'equipement', slot: 'accessoire', niveau: 80, rarete: 'mythique', prixVente: 3600, bonus: { esp: 30, vit: 16, tenacite: 11 }, desc: 'Trophée de Celui Qui N’a Jamais Juré. Le porter n’empêche pas de parler — ça rappelle seulement le prix.' },
+  'epingle-de-la-maille': { nom: 'Épingle de la Maille', emoji: '🧷', type: 'equipement', slot: 'accessoire', niveau: 90, rarete: 'mythique', prixVente: 5200, bonus: { dex: 30, int: 18, crit: 13 }, desc: 'Trophée de la Maille Tombée. Elle tient ce qui allait céder, le temps qu’on trouve mieux. On n’a jamais trouvé mieux.' },
+  'de-du-couturier': { nom: 'Dé du Couturier', emoji: '✋', type: 'equipement', slot: 'accessoire', niveau: 100, rarete: 'mythique', prixVente: 7000, bonus: { for: 26, dex: 26, esp: 20, deter: 14 }, desc: 'Trophée de la Main Qui Coud. Sept mondes d’usure sur le métal, et pas une éraflure sur le bord.' },
   'sablier-du-compteur':  { nom: 'Sablier du Compteur', emoji: '⏳', type: 'equipement', slot: 'accessoire', niveau: 58, rarete: 'legendaire', prixVente: 1400, bonus: { int: 16, esp: 10, celerite: 6 }, desc: 'Trophée de Celui Qui Compte. Il compte encore, mais plus les mêmes choses.' },
   'diapason-fele':        { nom: 'Diapason fêlé', emoji: '🎻', type: 'equipement', slot: 'accessoire', niveau: 58, rarete: 'legendaire', prixVente: 1400, bonus: { dex: 16, cha: 8, crit: 7 }, desc: 'Trophée du Maître de Chapelle. Il donne le la d’un monde disparu.' },
   'quille-de-verre':      { nom: 'Quille de verre', emoji: '⛵', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 68, rarete: 'legendaire', prixVente: 2200, bonus: { for: 26, vit: 12, deter: 8 }, desc: 'Trophée de Celle Qui N’a Jamais Coulé. Taillée dans une étrave qui n’a jamais touché l’eau.' },
@@ -461,6 +597,10 @@ Object.assign(COFFRES_BOSS, {
   laCouturiere: 'de-a-coudre-de-fer',
   laDerniereSuture: 'aiguille-de-la-fin',
   lePremierRoi: 'couronne-du-premier-roi',
+  leGrandComptable: 'boulier-du-comptable',
+  celuiQuiNaJamaisJure: 'baillon-du-taciturne',
+  laMailleTombee: 'epingle-de-la-maille',
+  laMainQuiCoud: 'de-du-couturier',
 });
 
 // ---------------------------------------------------------------------
@@ -507,6 +647,34 @@ RECETTES.sort((a, b) => a.niveau - b.niveau);
 // de personne.
 // ---------------------------------------------------------------------
 Object.assign(HISTOIRES_ZONES, {
+  'balance-des-heures': [
+    { titre: 'La balance à l’équilibre', texte: 'Une seule balance, tout au fond, est parfaitement à l’équilibre. Sur les deux plateaux : rien. C’est la seule heure de l’histoire qui n’a rien coûté à personne.', recompense: { xp: 300 } },
+    { titre: 'Le peseur qui s’excuse', texte: 'Un peseur d’heures vous croise, s’arrête, et incline la tête comme on présente ses condoléances. Puis il note quelque chose et repart.', recompense: { po: 150, xp: 130 } },
+    { titre: 'La colonne des crédits', texte: 'Le registre a une colonne de crédits, en face des débits. Elle est vide sur six cents ans, sauf une ligne, écrite d’une autre main, tout en bas : « rendu ».', recompense: { materiau: 'echo-fossilise' } },
+    { titre: 'L’heure retrouvée', texte: 'Sous un plateau, une heure entière est coincée, intacte, jamais dépensée. Vous la ramassez. Vous ne savez pas comment on dépense ça, mais vous la gardez.', recompense: { soinPct: 0.4 } },
+    { titre: 'Le boulier au repos', texte: 'Quand le Comptable s’absente, les boules de son boulier reviennent seules à la même position. Toujours la même : sept.', recompense: { po: 190 } },
+  ],
+  'gue-des-serments': [
+    { titre: 'L’alliance en double', texte: 'Deux alliances identiques, côte à côte, à trente ans d’écart. La même personne a déposé deux fois le même serment. Une seule fois de trop.', recompense: { xp: 340 } },
+    { titre: 'Le jouet sur le galet', texte: 'Un cheval de bois attend sur une pierre plate. Le serment était court : « je reviens avant la nuit ». La nuit dure depuis longtemps.', recompense: { po: 180 } },
+    { titre: 'Le lit qui se souvient', texte: 'À un endroit précis du gué, les galets sont humides. Un seul mètre carré. C’est là que la rivière a commencé à se retirer, et c’est là qu’elle recommencerait.', recompense: { materiau: 'os-divin' } },
+    { titre: 'Le passeur qui refuse', texte: 'Un passeur sans barque vous tend la main pour le prix de la traversée, puis se ravise et la retire. Il ne prend rien à ceux qui n’ont rien promis.', recompense: { soinPct: 0.45 } },
+    { titre: 'La liste des tenus', texte: 'Bran garde une liste, très courte, des serments effectivement tenus au gué. Il vous laisse la lire. Il y a sept noms, et aucun n’est humain.', recompense: { po: 210, xp: 220 } },
+  ],
+  'effilochure': [
+    { titre: 'Le piquet du grand-père', texte: 'Un piquet planté comme limite il y a trois générations. Il est à quarante pas derrière la limite actuelle. Personne ne l’a déplacé.', recompense: { xp: 380 } },
+    { titre: 'La reprise du dimanche', texte: 'Une reprise faite avec soin, en couleur, presque décorative. Quelqu’un a décidé que si on devait ravauder toute sa vie, autant que ce soit joli.', recompense: { materiau: 'fil-de-suture' } },
+    { titre: 'Le blanc qui ne renvoie rien', texte: 'Vous criez dans un trou de la trame. Aucun écho ne revient — et ce n’est pas parce que c’est grand. C’est parce qu’il n’y a rien pour renvoyer.', recompense: { po: 220 } },
+    { titre: 'L’envers du tissu', texte: 'En soulevant un pan mal recousu, on aperçoit l’envers. Il est couvert de reprises, sur toute sa surface, jusqu’aussi loin qu’on voit.', recompense: { materiau: 'echo-fossilise' } },
+    { titre: 'La nuit où ça n’a pas lâché', texte: 'Ysoline vous montre une entrée dans son carnet, vieille de douze ans : « rien à recoudre ce matin ». Une seule ligne. Elle n’a jamais su pourquoi.', recompense: { soinPct: 0.5, xp: 260 } },
+  ],
+  'dernier-point': [
+    { titre: 'Les trois mètres', texte: 'Passé le trône, il reste exactement trois mètres de monde. Vous les mesurez au pas. C’est peu pour une fin, et beaucoup pour un bord.', recompense: { xp: 480 } },
+    { titre: 'Le pouce calleux', texte: 'Sur le bord, l’empreinte d’un pouce dans la matière du monde. Elle est calleuse au même endroit que celle d’un tailleur. Elle est aussi vingt fois trop grande.', recompense: { materiau: 'aiguille-premiere' } },
+    { titre: 'Le fil qui dépasse', texte: 'Un bout de fil dépasse du nœud, long comme un avant-bras. De quoi faire encore quelques points. Quelqu’un a gardé de la marge.', recompense: { materiau: 'fil-de-suture' } },
+    { titre: 'La chaise absente', texte: 'Une marque au sol, à côté du nœud : quelque chose est resté posé là très longtemps, puis a été emporté. On travaillait assis, ici.', recompense: { po: 460 } },
+    { titre: 'Le compte des mondes', texte: 'Gravé au bord, très petit, sept traits. Les six premiers sont barrés. Le septième ne l’est pas encore, et le burin est posé juste à côté.', recompense: { po: 400, xp: 500 } },
+  ],
   'marches-grises': [
     { titre: 'La borne qui recule', texte: 'Une borne gravée « VALCIEL — FIN DES TERRES CONNUES ». Vous la dépassez. Le lendemain, elle est de nouveau devant vous, et la gravure n’a pas changé d’avis.', recompense: { xp: 260 } },
     { titre: 'La caravane qui marche encore', texte: 'Des voyageurs avancent en file, du même pas, depuis si longtemps que leurs sacs sont vides. Vous demandez où ils vont. Ils répondent « devant », et paient volontiers pour qu’on les accompagne un moment.', recompense: { po: 200 } },

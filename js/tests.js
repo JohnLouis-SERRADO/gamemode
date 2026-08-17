@@ -1218,7 +1218,7 @@ suite('Monde vivant', () => {
 // =====================================================================
 suite('Actes III et IV', () => {
   test('vingt-six cartes couvrent la route du niveau 1 au niveau 100', () => {
-    egal(ZONES.length, 26, 'cartes du monde');
+    egal(ZONES.length, 30, 'cartes du monde');
     const plafond = Math.max(...ZONES.map((z) => z.niveauMin));
     verifier(plafond >= 90, `la dernière carte s'ouvre au niveau ${plafond}`);
   });
@@ -1289,7 +1289,7 @@ suite('Actes III et IV', () => {
   });
 
   test('vingt-six Chroniques, une par carte', () => {
-    egal(CHRONIQUES.length, 26, 'Chroniques');
+    egal(CHRONIQUES.length, 30, 'Chroniques');
     const sansRecit = ZONES.filter((z) => !CHRONIQUES.some((c) => c.zone === z.id)).map((z) => z.id);
     aucun(sansRecit, 'cartes sans Chronique');
   });

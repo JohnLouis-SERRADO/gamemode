@@ -1,7 +1,7 @@
 'use strict';
 
 // =====================================================================
-// v19 — LES DIX CHRONIQUES DES MARCHES ET DE LA COUTURE
+// v19 — LES QUATORZE CHRONIQUES DES MARCHES ET DE LA COUTURE
 //
 // Une par carte neuve, au format exact des seize premières : un PNJ, une
 // épreuve, un dilemme, un trésor, un boss renforcé et une relique.
@@ -332,8 +332,136 @@ CHRONIQUES.push(
     },
     relique: { nom: 'Aiguille Première', emoji: '🪡', bonus: { for: 16, esp: 16, vit: 14, deter: 10 }, desc: 'Elle a recousu six mondes. Ce que vous en ferez ne regarde que vous. Récompense de « La Question Qu’On Ne Lui a Jamais Posée ».' },
   },
+  {
+    zone: 'balance-des-heures', nom: 'Ce Que Coûte Une Heure', emoji: '⚖️', statAcces: 'int',
+    pnj: { nom: 'Merisse, huissière', emoji: '📋' },
+    resume: 'Des milliers de balances pèsent le temps depuis avant Valciel. Elles ont un débiteur — et ce n’est personne d’ici.',
+    scenes: [
+      'La halle n’a pas de toit et pourtant il n’y pleut pas. Des balances pendent par milliers, à hauteur d’homme, et chacune porte une heure sur un plateau. Sur l’autre, ce qu’elle a coûté. Aucune n’est à l’équilibre.',
+      '« Je relève les comptes, » dit Merisse en tapotant un registre vide. « Enfin, je relevais. Il n’y a plus rien à relever depuis que j’ai compris que la colonne des débits ne portait aucun nom. Quelqu’un doit ces heures. Personne ne sait qui. »',
+      '« Regardez celle-ci. » Elle désigne une balance dont le plateau du coût touche le sol. « Six cents ans d’un seul côté. Ce n’est pas une vie qui pèse ça. C’est un monde. »',
+    ],
+    ep1: { stat: 'int', texte: 'Lire une balance demande de tenir les deux plateaux en tête à la fois : l’heure et son prix. En regarder trop d’affilée donne le vertige des comptes.', ok: 'Vous suivez une série de balances jusqu’à une qui porte une date. Elle est antérieure à la fondation de Valciel — et le débit court toujours.', ko: 'Les chiffres se mélangent et vous perdez le fil de la colonne. Merisse vous rattrape par la manche avant que vous ne renversiez un plateau.' },
+    combat1: 'Trois peseurs se détachent des travées. Ils ne défendent pas la halle : ils viennent relever ce que vous leur devez pour le temps passé ici.',
+    dilemme: {
+      texte: '« Il y a un grand livre au fond, » dit Merisse. « Le Comptable y tient le total. On peut l’ouvrir — et savoir enfin qui doit. Ou fausser une balance, une seule, pour voir si le total bouge. Si le monde s’en aperçoit, c’est qu’il compte vraiment.',
+      optA: { stat: 'int', texte: '📖 Ouvrir le grand livre', detail: 'on saura au nom de qui la dette court', resultat: 'La première page porte un seul mot en tête de colonne : « VALCIEL ». Pas un habitant, pas un roi : le monde lui-même. Les six colonnes précédentes sont soldées, rayées, closes. La septième est ouverte, et elle grossit pendant que vous la lisez.' },
+      optB: { texte: '⚖️ Fausser une balance', detail: 'un test discret, et on voit si quelqu’un réagit', resultat: 'Vous ajoutez un caillou sur un plateau. Dans la seconde, mille balances corrigent leur inclinaison, exactement du poids du caillou. Le total, lui, n’a pas bougé d’un cheveu. Quelque chose tient ces comptes en temps réel.' },
+    },
+    tresor: { titre: '⚖️ Le coffre des heures rendues', texte: 'Un coffret rangé sous le grand livre, plein de monnaie ancienne et d’une note pliée : « pour ceux qui refusent de signer ». Quelqu’un avait prévu qu’on vienne.' },
+    combat2: 'Les créanciers gris se relèvent des travées, registres ouverts. Ils ne viennent plus relever : ils viennent saisir.',
+    ep2: { stat: 'esp', texte: 'Le Comptable vous a repéré. Il ne se cache pas : il vous adresse ses écritures, ligne à ligne, et chaque ligne pèse sur la nuque comme une dette personnelle.', ok: 'Vous tenez sans signer. Il faut de l’aplomb pour lire une facture qui vous concerne et refuser de la reconnaître.', ko: 'Vous portez la main au registre avant de vous reprendre. Une heure de votre vie manque à l’appel — vous ne saurez jamais laquelle.' },
+    avantBoss: '« Il ne nous en veut pas, » dit Merisse. « Il tient les comptes. Le problème, c’est que la septième colonne se referme quand le total est atteint — et nous vivons dedans. »',
+    boss: {
+      nom: 'Le Grand Comptable', intro: 'Une forme voûtée sur un boulier plus large qu’une charrette. Les boules glissent seules. Il ne lève pas la tête : il ajoute votre venue à la colonne, et le total monte.',
+      annonce: '📖 Le grand livre est ouvert : le Comptable doit défendre un total que vous avez lu !',
+      phase: '🧮 Le boulier s’emballe : il solde d’avance ce que vous n’avez pas encore perdu !',
+      enrage: '⚠️ Il cesse d’additionner : il arrête les comptes, et ce qui n’est pas payé est saisi !',
+    },
+    fins: {
+      variante: 'Le Comptable s’affaisse sur son boulier et les balances, toutes, reviennent à l’équilibre pour la première fois depuis six cents ans. Merisse note la date. « Le total est suspendu, pas effacé, » dit-elle. « Quelqu’un reprendra la colonne. Autant savoir qui, avant. »',
+      defaut: 'Le boulier se brise et les boules roulent dans toute la halle. Les balances hésitent, puis reprennent leur pesée, un peu plus lentement. Merisse referme son registre vide. « On a gagné du temps, » dit-elle. « C’est exactement ce qui se paie ici. »',
+    },
+    relique: { nom: 'Contrepoids de Merisse', emoji: '⚖️', bonus: { int: 14, esp: 11, celerite: 6 }, desc: 'Un simple cube de plomb. Posé sur n’importe quelle balance, il la ramène à zéro. Récompense de « Ce Que Coûte Une Heure ».' },
+  },
+  {
+    zone: 'gue-des-serments', nom: 'Ce Qu’on Laisse Au Bord', emoji: '🌉', statAcces: 'esp',
+    pnj: { nom: 'Bran, ancien passeur', emoji: '🚣' },
+    resume: 'La rivière s’est retirée le jour où le premier serment a été rompu. Les promesses, elles, sont restées sur les galets.',
+    scenes: [
+      'Le lit de la rivière est sec depuis si longtemps que les galets sont tièdes. On le traverse en trois minutes. Partout entre les pierres : des objets déposés, alignés, sans un grain de poussière — des alliances, des clefs, des jouets.',
+      '« Chacun de ces objets est un serment, » dit Bran. « On les laissait ici avant de traverser, comme gage. On revenait les chercher quand la parole était tenue. » Il montre l’étendue des galets. « Comptez ceux qui restent. »',
+      '« Moi je passais les gens. Je n’ai jamais rien juré à personne — c’est pour ça que je suis encore là, et que l’eau ne m’a pas suivi. Celui qui garde le gué non plus n’a jamais juré. On est deux. On ne se parle pas. »',
+    ],
+    ep1: { stat: 'esp', texte: 'Traverser le gué, c’est passer devant des milliers de promesses non tenues, et chacune trouve la vôtre. Le pas ralentit tout seul.', ok: 'Vous atteignez l’autre rive sans avoir ramassé quoi que ce soit. Bran hoche la tête : la plupart des gens repartent avec un objet qui n’est pas le leur.', ko: 'Vous vous surprenez une alliance à la main, sans savoir quand vous l’avez prise. La reposer au bon endroit coûte une heure et un peu d’orgueil.' },
+    combat1: 'Trois passeurs sans barque remontent le lit sec. Ils réclament le prix de la traversée. Ils l’ont réclamé à tout le monde, depuis toujours, et personne n’a jamais su en quoi il se paie.',
+    dilemme: {
+      texte: '« Il y a une parole gelée au milieu du gué, » dit Bran. « La toute première, celle qui a été rompue. On peut la dégeler et l’entendre. Ou la laisser prise — parce qu’une parole qui a vidé une rivière, ça peut faire pire en fondant. »',
+      optA: { stat: 'esp', texte: '🗨️ Dégeler la première parole', detail: 'on saura ce qui a été promis, et à qui', resultat: 'La glace cède et une voix très ordinaire dit : « Je le referai autant de fois qu’il faudra. » Ce n’est pas une menace, c’est un engagement. Bran blêmit : ce n’est pas le serment qui a été rompu. C’est celui qui a été tenu six fois.' },
+      optB: { texte: '❄️ La laisser prise', detail: 'plus sage, mais on repart sans savoir', resultat: 'Vous contournez le bloc. En s’éloignant, on croit entendre la parole continuer toute seule sous la glace, patiemment, comme quelqu’un qui répète avant d’entrer en scène.' },
+    },
+    tresor: { titre: '🌉 Le dépôt du passeur', texte: 'Sous une pierre plate, la réserve de Bran : trente ans de péages jamais réclamés, et une seule promesse, la sienne, qu’il n’a jamais osé reprendre.' },
+    combat2: 'Les témoins de galet se dressent tout autour du gué. Ils ont vu chaque serment déposé ici, et ils ont une mémoire de pierre.',
+    ep2: { stat: 'vit', texte: 'Le gardien du gué ne parle pas et n’attaque pas : il se tient debout sur votre chemin, et il faut tenir sa présence aussi longtemps qu’il faudra pour le contourner.', ok: 'Vous passez sans un mot. Ne rien promettre, ici, est la seule monnaie qui vaille.', ko: 'Vous ouvrez la bouche pour négocier. Ce que vous dites vous engage désormais, et vous ne savez plus exactement à quoi.' },
+    avantBoss: '« Il ne va pas vous barrer la route, » dit Bran. « Il va vous demander de jurer quelque chose. N’importe quoi. Et le jour où vous manquerez à votre parole, il sera derrière vous. »',
+    boss: {
+      nom: 'Celui Qui N’a Jamais Juré', intro: 'Une silhouette immobile au milieu du lit sec, la bouche close depuis six mondes. Il ne réclame rien pour lui. Il attend seulement que vous promettiez, pour avoir enfin quelque chose à faire.',
+      annonce: '🗨️ La première parole est dégelée : celui qui n’a jamais juré sait que vous l’avez entendue !',
+      phase: '🤐 Il se tait plus fort : chaque promesse jamais tenue du gué remonte à la surface !',
+      enrage: '⚠️ Il ouvre la bouche pour la première fois — et ce qu’il va dire vaudra pour toujours !',
+    },
+    fins: {
+      variante: 'Il tombe sans avoir parlé, et les galets s’assombrissent d’un coup : l’eau revient, à peine un filet, mais elle coule. Bran s’accroupit pour y tremper la main. « Une parole tenue six fois, » répète-t-il. « Ça veut dire que la septième est déjà commencée. »',
+      defaut: 'Il s’effondre, la bouche toujours close. Les promesses restent sur les galets, exactement là où on les a posées. Bran en ramasse une — la sienne, une clef minuscule — et la remet dans sa poche après trente ans.',
+    },
+    relique: { nom: 'Gage de Bran', emoji: '🗝️', bonus: { esp: 15, vit: 12, tenacite: 7 }, desc: 'Une clef d’une serrure noyée depuis longtemps. La garder sur soi rappelle qu’on peut revenir chercher ce qu’on a laissé. Récompense de « Ce Qu’on Laisse Au Bord ».' },
+  },
+  {
+    zone: 'effilochure', nom: 'Ceux Qui Recousent Le Matin', emoji: '🧶', statAcces: 'dex',
+    pnj: { nom: 'Ysoline, ravaudeuse', emoji: '🧵' },
+    resume: 'Chaque nuit la trame lâche, chaque matin ils recousent. Ils perdent un peu de terrain par jour, et ils le savent.',
+    scenes: [
+      'Le paysage a des trous. Pas des gouffres : des manques, comme un tissu dont on aurait tiré un fil. Derrière, il n’y a pas d’autre paysage — juste un blanc qui ne renvoie rien et où le son ne porte pas.',
+      '« On recoud le matin, » dit Ysoline, une aiguille de bois entre les dents. « La nuit, ça lâche. Le matin, on reprend. Trois générations qu’on fait ça. » Elle montre un piquet planté dans la terre. « Mon grand-père a planté celui-là comme limite. Il est à quarante pas derrière nous, maintenant. »',
+      '« Vous allez me demander pourquoi on continue. » Elle hausse les épaules. « Parce que le jour où on s’arrête, on saura en combien de temps ça va vraiment. Personne n’a envie de connaître ce chiffre-là. »',
+    ],
+    ep1: { stat: 'dex', texte: 'Reprendre une maille du monde demande la même main qu’un ourlet, en plus grand et sans droit à l’erreur : un point de travers et le trou s’élargit.', ok: 'Votre reprise tient. Ysoline la vérifie du pouce, sans un mot, ce qui chez elle vaut un compliment appuyé.', ko: 'Le fil casse et le trou gagne une paume. On rebouche, mais le piquet du grand-père recule encore un peu.' },
+    combat1: 'Trois fils lâchés se dressent en travers du chemin — le tissu se défend, comme s’il préférait finir de céder tranquillement.',
+    dilemme: {
+      texte: '« Il y a une pièce de trame intacte, plus loin, » dit Ysoline. « De la première étoffe, celle d’avant. On peut la découper pour rapiécer trois villages. Ou la laisser en place et l’étudier — parce que si on comprend comment elle tient, on n’aura plus jamais à recoudre. »',
+      optA: { stat: 'dex', texte: '✂️ Découper la pièce intacte', detail: 'trois villages gagnent dix ans', resultat: 'L’étoffe se coupe sans résister, comme si elle attendait ça. Les reprises tiennent mieux que tout ce qu’Ysoline a posé de sa vie. Et sur l’envers, brodée petit, une numérotation : « VI ». Ce n’est pas la première étoffe. C’est la précédente.' },
+      optB: { texte: '🔍 L’étudier sans y toucher', detail: 'peut-être la fin du ravaudage, peut-être rien', resultat: 'Vous passez la journée dessus. La trame n’est pas tissée : elle est reprisée, entièrement, sur toute sa surface, par une main d’une régularité inhumaine. Il n’y a pas d’étoffe d’origine dessous. Il n’y a jamais eu que des reprises.' },
+    },
+    tresor: { titre: '🧶 La malle des ravaudeuses', texte: 'Trois générations d’outils dans une malle de bois : aiguilles, fils, et un carnet où chaque nuit de lâchage est notée. La dernière page est encore vierge.' },
+    combat2: 'La trame nue se soulève en trois pans. Le tissu ne se défend plus : il essaie de finir de céder avant qu’on l’en empêche.',
+    ep2: { stat: 'for', texte: 'Un pan entier cède pendant que vous êtes dessus. Il faut tenir les deux bords à bout de bras, le temps qu’Ysoline passe le fil.', ok: 'Vous tenez. Le pan se referme sur une couture épaisse et laide qui durera plus longtemps que vous.', ko: 'Vos bras lâchent avant l’aiguille. On rattrape le pan, mais il manque désormais un pré et un chemin à la carte.' },
+    avantBoss: '« La Maille Tombée, c’est la première qui a sauté, » dit Ysoline. « Tout part d’elle. On la remonte, ou on continue à ravauder derrière jusqu’à la fin. »',
+    boss: {
+      nom: 'La Maille Tombée', intro: 'Une boucle de fil grande comme une porte, qui pend dans le vide. Tout le tissu alentour converge vers elle et s’y défait. Elle ne bouge pas : c’est le monde qui vient à elle.',
+      annonce: '🧵 La trame d’avant est entre vos mains : la Maille Tombée n’est plus la seule à savoir comment ça tient !',
+      phase: '🧶 Le rang entier file : ce qui était cousu se découd à toute vitesse !',
+      enrage: '⚠️ Elle reprend au début — et tout ce que vous avez recousu n’a jamais été cousu !',
+    },
+    fins: {
+      variante: 'La maille se remonte et, sur une largeur de vallée, le blanc se referme. Ysoline plante un piquet neuf, très en avant. « Il tiendra un temps, » dit-elle. « Mais on a vu l’envers, maintenant. Six numéros avant nous. On ravaude un ravaudage. »',
+      defaut: 'La maille cède enfin et le tissu se stabilise, en tremblant. Ysoline range son aiguille. « Cette nuit, ça ne lâchera pas, » dit-elle. C’est la première fois de sa vie qu’elle le dit.',
+    },
+    relique: { nom: 'Aiguille d’Ysoline', emoji: '🧵', bonus: { dex: 16, for: 10, deter: 8 }, desc: 'Du bois usé par trois générations de mains. Elle ne casse pas, et elle sait déjà où passer. Récompense de « Ceux Qui Recousent Le Matin ».' },
+  },
+  {
+    zone: 'dernier-point', nom: 'Le Nœud Jamais Serré', emoji: '🪢', statAcces: 'for',
+    pnj: { nom: 'Vasque, cartographe', emoji: '🧭' },
+    resume: 'Passé le trône, il reste trois mètres de monde. Le fil s’arrête là, sur un nœud que personne n’a serré.',
+    scenes: [
+      'Derrière la salle du trône, un couloir, puis plus rien — non pas le vide, mais la fin du tissu. Trois mètres de sol, un bord net, et au-delà le blanc. Sur le bord, une aiguille posée à plat, à côté d’un nœud lâche.',
+      '« J’ai cartographié Valciel d’un bout à l’autre, » dit Vasque, qui n’a plus de parchemin. « Voilà l’autre bout. Il n’est pas déchiré, il n’est pas brûlé. Il est inachevé. Quelqu’un s’est arrêté ici en plein travail. »',
+      '« Un nœud non serré, ça veut dire deux choses. Soit on comptait reprendre. Soit on a hésité au dernier moment. » Elle regarde l’aiguille sans la toucher. « Six mondes qu’il recommence. Le septième n’est pas fini. Il s’est peut-être posé la question, lui aussi. »',
+    ],
+    ep1: { stat: 'for', texte: 'Le bord du monde tire. Ce n’est pas un vent, c’est une traction régulière, comme un tissu qu’on retend. S’avancer jusqu’au nœud demande de résister à ça sans rien lâcher.', ok: 'Vous atteignez le bord et vous vous y tenez debout. Personne n’avait fait ces trois mètres depuis six mondes.', ko: 'La traction vous met à genoux à un pas du nœud. On recule, on souffle, on recommence — mais quelque chose a mesuré votre force au passage.' },
+    combat1: 'Trois nœuds finaux se resserrent autour du bord. Ils ne défendent pas le monde : ils empêchent qu’on le termine.',
+    dilemme: {
+      texte: '« Deux gestes possibles, » dit Vasque, et sa voix est parfaitement calme. « Serrer le nœud : le monde est clos, fini, il ne peut plus se défaire — ni être recommencé. Ou le laisser ouvert, comme lui l’a laissé, et rendre l’aiguille. »',
+      optA: { stat: 'for', texte: '🪢 Serrer le nœud', detail: 'Valciel devient définitif — et le septième sera le dernier', resultat: 'Le nœud se serre avec un bruit très bref. Le bord cesse de tirer. Partout dans les Marches, les reprises tiennent, les balances s’équilibrent, l’eau revient au gué. Et il n’y aura plus jamais de huitième monde, parce qu’on ne recoud pas ce qui est noué.' },
+      optB: { texte: '🪡 Laisser ouvert et rendre l’aiguille', detail: 'il pourra recommencer — quelqu’un devra recommencer', resultat: 'Vous posez l’aiguille près du nœud, exactement comme vous l’avez trouvée. Le bord continue de tirer, doucement. Vasque note la position sur sa main, faute de parchemin. « Alors ce sera à quelqu’un d’autre, » dit-elle. « Un jour. Et il trouvera le nœud là où il est. »' },
+    },
+    tresor: { titre: '🪢 La réserve du couturier', texte: 'Contre le bord, une caisse d’outils rangée avec un soin extrême : bobines pleines, aiguilles alignées, tout prêt pour un huitième ouvrage qui n’a pas commencé.' },
+    combat2: 'Les ourlets du monde se replient sur vous. À trois mètres du bord, le tissu défend le peu qu’il lui reste.',
+    ep2: { stat: 'esp', texte: 'La Main s’approche du bord. Elle ne menace pas : elle vient reprendre son ouvrage, et il faut soutenir l’idée qu’on l’a interrompue.', ok: 'Vous tenez le regard du couturier. Il s’arrête. En six mondes, personne ne s’était mis entre l’aiguille et le tissu.', ko: 'Vous détournez les yeux une seconde. Quand vous les relevez, deux points de plus ont été faits, et le nœud est un peu plus loin.' },
+    avantBoss: '« Ce n’est pas un monstre, » dit Vasque. « C’est un artisan qui n’a jamais été interrompu. C’est peut-être pire. »',
+    boss: {
+      nom: 'La Main Qui Coud', intro: 'Une main seule, à l’échelle d’un homme, calleuse au pouce et à l’index. Elle tient l’aiguille avec l’assurance de sept mondes de pratique. Elle ne vous en veut pas : vous êtes sur le tissu.',
+      annonce: '🪢 Le nœud est entre vos mains : la Main Qui Coud ne décide plus seule de la suite !',
+      phase: '🧵 Le point arrière : ce qui vient d’être fait se défait pour être refait mieux !',
+      enrage: '⚠️ Elle prend le dernier point — celui qui ferme un monde !',
+    },
+    fins: {
+      variante: 'La Main s’ouvre et l’aiguille tombe sur le bord, à plat, exactement comme au début. Rien ne se referme, rien ne s’effondre. Vasque regarde longtemps les trois mètres de monde inachevé. « Il l’avait posée, » dit-elle enfin. « Il ne l’avait pas lâchée. Nous, si. »',
+      defaut: 'La Main retombe, doigts repliés, et le tissu cesse de tirer. Le nœud reste lâche. Vasque s’assoit au bord du monde, les jambes dans le blanc, et ne dit rien pendant très longtemps. Puis : « On rentre. Il y a une carte à refaire. »',
+    },
+    relique: { nom: 'Aiguille Reposée', emoji: '🪡', bonus: { for: 14, esp: 14, dex: 12, deter: 9 }, desc: 'Elle a cousu sept mondes et n’a pas une éraflure. Celui qui la porte sait qu’on peut poser un outil sans finir l’ouvrage. Récompense du « Nœud Jamais Serré ».' },
+  },
 );
 
-// Les dix récits repassent par le générateur commun : même format de
+// Les quatorze récits repassent par le générateur commun : même format de
 // donjon, mêmes verrous d'accès, même relique à la clef.
-construireChroniques(CHRONIQUES.slice(-10));
+construireChroniques(CHRONIQUES.slice(-14));
