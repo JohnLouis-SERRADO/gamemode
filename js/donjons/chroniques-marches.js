@@ -234,7 +234,7 @@ CHRONIQUES.push(
       variante: 'Le Capitaine met un genou à terre, retire son heaume — un visage très ordinaire, très fatigué — et rend son épée. « Relevé. » Il le dit deux fois, comme pour y croire. Puis il désigne la porte vers la Couture, et l’ouvre lui-même. « Allez voir. Quelqu’un devrait aller voir. Ce n’est pas normal que personne n’y soit jamais allé. »',
       defaut: 'Le Capitaine tombe sans lâcher son épée, et le Rempart, derrière lui, ne bouge pas d’un pouce. Bercail vous ouvre la porte à sa place, en silence. Il gardera le mur. Quelqu’un doit garder le mur.',
     },
-    relique: { nom: 'Cor de relève', emoji: '📯', bonus: { vit: 18, for: 12, tenacite: 8 }, desc: 'Il n’a servi qu’une fois. Ça a suffi. Récompense de « La Garde Qu’On N’a Jamais Relevée ».' },
+    relique: { nom: 'Cor de relève', emoji: '📯', bonus: { vit: 18, for: 12, deter: 8 }, desc: 'Il n’a servi qu’une fois. Ça a suffi. Récompense de « La Garde Qu’On N’a Jamais Relevée ».' },
   },
   {
     zone: 'terres-recousues', nom: 'Les Points Qui Lâchent', emoji: '🧵', statAcces: 'dex',
@@ -394,7 +394,7 @@ CHRONIQUES.push(
       variante: 'Il tombe sans avoir parlé, et les galets s’assombrissent d’un coup : l’eau revient, à peine un filet, mais elle coule. Bran s’accroupit pour y tremper la main. « Une parole tenue six fois, » répète-t-il. « Ça veut dire que la septième est déjà commencée. »',
       defaut: 'Il s’effondre, la bouche toujours close. Les promesses restent sur les galets, exactement là où on les a posées. Bran en ramasse une — la sienne, une clef minuscule — et la remet dans sa poche après trente ans.',
     },
-    relique: { nom: 'Gage de Bran', emoji: '🗝️', bonus: { esp: 15, vit: 12, tenacite: 7 }, desc: 'Une clef d’une serrure noyée depuis longtemps. La garder sur soi rappelle qu’on peut revenir chercher ce qu’on a laissé. Récompense de « Ce Qu’on Laisse Au Bord ».' },
+    relique: { nom: 'Gage de Bran', emoji: '🗝️', bonus: { esp: 15, vit: 12, deter: 7 }, desc: 'Une clef d’une serrure noyée depuis longtemps. La garder sur soi rappelle qu’on peut revenir chercher ce qu’on a laissé. Récompense de « Ce Qu’on Laisse Au Bord ».' },
   },
   {
     zone: 'effilochure', nom: 'Ceux Qui Recousent Le Matin', emoji: '🧶', statAcces: 'dex',

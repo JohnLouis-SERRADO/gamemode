@@ -201,7 +201,7 @@ const CHRONIQUES = [
       variante: 'Étourdi par les tambours, le Ver crache la perle-mère presque poliment avant de plonger bouder dans les profondeurs. La perle roule, s’arrête, et le désert entier S’ARRÊTE avec elle — les dunes se rasseyent comme un troupeau au repos. Naïla la remet au Dessous par le puits rituel de sa grand-mère : « Chaque chose à sa place. Surtout les grosses. »',
       defaut: 'Le Ver s’effondre en travers de son propre sillage et rend la perle-mère dans un hoquet sismique. À l’instant où elle touche le sable, les dunes cessent de marcher — on entend le désert se taire, ce qui est un son en soi. La ville-oasis ne saura jamais à quoi elle a échappé. Naïla si : elle rebaptise sa piste « la Route des Têtus ».',
     },
-    relique: { nom: 'Éclat de la Perle-Mère', emoji: '💠', bonus: { vit: 5, for: 3, tenacite: 2, pvMax: 24 }, desc: 'Un fragment qui ancre celui qui le porte. Récompense de « La Perle du Dessous ».' },
+    relique: { nom: 'Éclat de la Perle-Mère', emoji: '💠', bonus: { vit: 5, for: 3, deter: 2, pvMax: 24 }, desc: 'Un fragment qui ancre celui qui le porte. Récompense de « La Perle du Dessous ».' },
   },
   {
     zone: 'pics', nom: 'Le Chant du Blizzard', emoji: '🎶', statAcces: 'int',
@@ -329,7 +329,7 @@ const CHRONIQUES = [
       variante: 'Le Rokh ploie, épuisé — et vous laisse approcher de l’œuf sans un cri : il a compris ce que vous avez compris. Ensemble (lui portant, vous guidant par les pulsations), vous déménagez l’œuf de foudre jusqu’au grand nuage-enclume du large, où une tempête peut naître sans raser personne. L’éclosion, cette nuit-là, ressemble à un feu d’artifice poli. Perrin note tout, en tremblant d’aise : « Meilleure garde de ma carrière. »',
       defaut: 'Le père tombe en vrille contrôlée jusqu’à une vire basse, vaincu mais vivant — et l’œuf, privé de sa chaleur d’orage, refroidit doucement en un cristal de foudre inerte et magnifique. Les falaises cessent de hurler « éclosion » et reprennent leur répertoire habituel d’insultes au vent. Perrin grave la date sur sa lunette : « Le jour où le ciel n’est pas tombé. »',
     },
-    relique: { nom: 'Coquille de l’Œuf de Foudre', emoji: '⚡', bonus: { vit: 6, dex: 5, tenacite: 3, pvMax: 28 }, desc: 'Un éclat de coquille qui gronde quand le danger approche. Récompense de « L’Œuf de Foudre ».' },
+    relique: { nom: 'Coquille de l’Œuf de Foudre', emoji: '⚡', bonus: { vit: 6, dex: 5, deter: 3, pvMax: 28 }, desc: 'Un éclat de coquille qui gronde quand le danger approche. Récompense de « L’Œuf de Foudre ».' },
   },
   {
     zone: 'abysses-emeraude', nom: 'Les Lanternes Noyées', emoji: '🏮', statAcces: 'int',
@@ -425,7 +425,7 @@ const CHRONIQUES = [
       variante: 'L’Avatar se fissure — et le bouclier des druides s’engouffre dans chaque fente, semant du vert dans le quartz. Il ne meurt pas : il GERME. En une saison, disent déjà les druides libérés un à un de leur pose, l’Avatar deviendra la première statue-arbre — silence dehors, sève dedans. Lichen retrouve son cercle au complet. Sa moitié de pierre reste : « Souvenir de famille, » tranche-t-il.',
       defaut: 'L’Avatar s’effondre en gravier fin — et la Seconde Nuit, privée de son sculpteur, se dissout en une rosée grise qui fait briller la forêt sans la figer. Ici et là, une statue d’oiseau se secoue, ébouriffée, milléniale, et reprend son vol interrompu comme si de rien n’était. Lichen les regarde partir, sa moitié vivante trempée de larmes, sa moitié de pierre enfin tiède.',
     },
-    relique: { nom: 'Facette du Sculpteur', emoji: '💎', bonus: { int: 9, vit: 5, tenacite: 3, pmMax: 34 }, desc: 'Un fragment d’Avatar où votre reflet bouge — lui. Récompense de « La Seconde Nuit ».' },
+    relique: { nom: 'Facette du Sculpteur', emoji: '💎', bonus: { int: 9, vit: 5, deter: 3, pmMax: 34 }, desc: 'Un fragment d’Avatar où votre reflet bouge — lui. Récompense de « La Seconde Nuit ».' },
   },
   {
     zone: 'vallee-geants', nom: 'Le Réveil des Aïeux', emoji: '🦴', statAcces: 'vit',

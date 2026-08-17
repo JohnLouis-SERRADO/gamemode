@@ -75,16 +75,15 @@ function nourrirElan(c) {
   c.elan = Math.min(ELAN_MAX, (c.elan || 0) + 1);
 }
 
-// Gardien : « attirer les coups est une arme ». La première moitié de son
-// passif — « les dégâts subis baissent avec la Ténacité » — ne lui
-// appartenait pas : c'est la mécanique générale, et le Guerrier, qui porte
-// la même plaque, en profitait exactement autant (21 % de Ténacité chacun).
-// Mesuré au banc : un Gardien encaissait 103 quand un Arcaniste encaissait
-// 103. Il était la seule des six classes sans passif propre.
-//
-// C'est donc la SECONDE moitié qui devient son passif, celle qui promet
-// quelque chose que personne d'autre ne fait : tant qu'il tient les
-// ennemis par la provocation, il frappe plus fort. Tanker devient offensif.
+// Gardien : « attirer les coups est une arme ». Son passif annonçait
+// autrefois une seconde promesse — « les dégâts subis baissent » — qui ne
+// lui appartenait pas : c'était la mécanique générale de Ténacité, dont le
+// Guerrier, qui porte la même plaque, profitait exactement autant. Mesuré
+// au banc : un Gardien encaissait 103 quand un Arcaniste encaissait 103.
+// La Ténacité a disparu du jeu (v21) ; il ne reste donc que la moitié qui
+// était vraiment la sienne, celle que personne d'autre ne fait : tant qu'il
+// tient les ennemis par la provocation, il frappe plus fort. Tanker devient
+// offensif.
 //
 // Le choix du levier n'est pas neutre : le Gardien est déjà la classe la
 // plus résistante du jeu, avec la marge de survie la plus haute (3,8× sur
@@ -572,9 +571,6 @@ function infligerDegats(source, cible, brut, options = {}) {
     chanceCrit += sousCarac(s, 'crit');
     chanceDirect = sousCarac(s, 'direct');
     d *= 1 + sousCarac(s, 'deter');
-    // Un porteur de plaque frappe un peu plus fort : la Ténacité récompense
-    // celui qui tient la ligne au lieu de la fuir.
-    d *= 1 + sousCarac(s, 'tenacite') * 0.5;
     if (source.race === 'elfe') chanceCrit += 0.05; // Précision millénaire
   }
   const crit = Math.random() < chanceCrit;
@@ -586,18 +582,10 @@ function infligerDegats(source, cible, brut, options = {}) {
     d *= 1.25;
   }
 
-  // Ténacité en défense : une réduction franche et constante des dégâts
-  // subis. Elle remplace l'ancien jet de blocage — un tank encaisse parce
-  // qu'il est un tank, pas parce qu'il a eu de la chance.
-  let reduit = false;
-  if (cible.type === 'joueur') {
-    const defensif = statsEffectives(cible);
-    const tenacite = sousCarac(defensif, 'tenacite');
-    if (tenacite > 0) {
-      reduit = true;
-      d *= 1 - tenacite;
-    }
-  }
+  // v21 — Il n'y a plus de réduction plate des dégâts subis. Encaisser se
+  // joue avec ce qui se voit en combat : les PV, les boucliers, la défense,
+  // la ligne où l'on se place. Un pourcentage invisible cousu dans l'armure
+  // ne décide plus si un monstre fait mal ou non.
   // La nuit, ce qui rôde frappe plus fort — c'est le prix du butin majoré.
   if (source.type === 'monstre' && cible.type === 'joueur') {
     d *= (mondeMaintenant().effets.degatsSubis || 1);
@@ -635,14 +623,13 @@ function infligerDegats(source, cible, brut, options = {}) {
     cible.hp = 1;
     journal(`🐱 ${cible.nom} retombe sur ses pattes : Neuf vies le laisse à 1 PV !`);
   }
-  return { degats: d, crit, direct, absorbe, reduit };
+  return { degats: d, crit, direct, absorbe };
 }
 
 function texteDegats(r) {
   let t = `${r.degats} dégâts`;
   if (r.crit) t += ' 💥 CRITIQUE !';
   else if (r.direct) t += ' 🎲 coup direct !';
-  if (r.reduit) t += ' 🛡️ (Ténacité)';
   if (r.absorbe > 0) t += ` (${r.absorbe} absorbés par le bouclier)`;
   return t;
 }

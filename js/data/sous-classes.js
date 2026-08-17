@@ -183,7 +183,7 @@ const CLASSES_BASE = {
     nom: 'Gardien', emoji: '🛡️', role: 'Tank', stat: 'vit', ligne: 'avant', armure: 'plaque',
     armes: ['lame lourde', 'bouclier-pavois', 'masse'],
     resume: 'Il se met devant. C’est tout son métier, et c’est un métier entier.',
-    passif: 'Rempart — les dégâts subis baissent avec la Ténacité, et attirer les coups est une arme.',
+    passif: 'Rempart — attirer les coups est une arme : tant qu’il provoque, il frappe plus fort.',
     competences: ['gardien-frappe-du-rempart', 'gardien-appel-au-combat', 'gardien-position-ancree',
       'gardien-souffle-du-veteran', 'gardien-contre-attaque', 'gardien-mur-de-boucliers',
       'gardien-jugement-du-rempart', 'signature-inebranlable'],

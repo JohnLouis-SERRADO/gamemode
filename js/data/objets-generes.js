@@ -37,7 +37,7 @@ const PROFIL_ARMURE = {
   tissu:  { principal: 'int', secondaire: 'esp', defensif: 'piete' },
   cuir:   { principal: 'dex', secondaire: 'vit', defensif: 'celerite' },
   maille: { principal: 'int', secondaire: 'vit', defensif: 'deter' },
-  plaque: { principal: 'vit', secondaire: 'for', defensif: 'tenacite' },
+  plaque: { principal: 'vit', secondaire: 'for', defensif: 'deter' },
 };
 
 // --- Les accessoires : sans matière, ils vont à tout le monde ---------
@@ -71,10 +71,10 @@ const ARCHETYPES_BUTIN = [
 // =====================================================================
 const SOUS_CARACS_PAR_SLOT = {
   arme:       ['crit', 'direct', 'deter'],
-  tete:       ['deter', 'piete', 'tenacite'],
-  torse:      ['tenacite', 'deter', 'piete'],
-  mains:      ['direct', 'crit', 'tenacite'],
-  jambes:     ['deter', 'celerite', 'tenacite'],
+  tete:       ['deter', 'piete', 'crit'],
+  torse:      ['deter', 'piete', 'celerite'],
+  mains:      ['direct', 'crit', 'deter'],
+  jambes:     ['deter', 'celerite', 'piete'],
   pieds:      ['celerite', 'direct', 'crit'],
   accessoire: ['crit', 'piete', 'celerite', 'deter'],
 };
@@ -341,7 +341,7 @@ function texteBonus(bonus) {
     for: '💪 FOR', dex: '🎯 DEX', int: '🧠 INT', esp: '🕊️ ESP', vit: '❤️ VIT', cha: '🍀 CHA',
     pvMax: '❤️ PV max', pmMax: '💧 PM max',
     crit: '💥 Critique', direct: '🎲 Coup direct', deter: '⚖️ Détermination',
-    tenacite: '🛡️ Ténacité', celerite: '💨 Célérité', piete: '💧 Piété',
+    celerite: '💨 Célérité', piete: '💧 Piété',
   };
   const enPourcent = Object.keys(SOUS_CARACS);
   return Object.entries(bonus)

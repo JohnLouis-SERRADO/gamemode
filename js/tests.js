@@ -568,11 +568,11 @@ suite('Caractéristiques FF XIV', () => {
   });
 
   test('les six sous-caractéristiques sont déclarées et plafonnées', () => {
-    ['crit', 'direct', 'deter', 'tenacite', 'celerite', 'piete'].forEach((cle) => {
+    ['crit', 'direct', 'deter', 'celerite', 'piete'].forEach((cle) => {
       verifier(SOUS_CARACS[cle], `sous-caractéristique ${cle} manquante`);
       verifier(PLAFONDS_SOUS_CARACS[cle] > 0, `plafond de ${cle} manquant`);
     });
-    egal(Object.keys(SOUS_CARACS).length, 6, 'nombre de sous-caractéristiques');
+    egal(Object.keys(SOUS_CARACS).length, 5, 'nombre de sous-caractéristiques');
   });
 
   test('attributs et sous-caractéristiques ne se chevauchent jamais', () => {
@@ -2491,7 +2491,8 @@ suite('Équilibrage (v20)', () => {
 
   test('les sous-caractéristiques n\'atteignent leur plafond qu\'en fin de partie', () => {
     // Elles étaient à la moitié de leur plafond dès le niveau 22 : critique,
-    // détermination et ténacité — les multiplicateurs de dégâts — étaient
+    // détermination et la ténacité d'alors — les multiplicateurs de dégâts —
+    // étaient
     // déjà à moitié acquis au premier quart du jeu.
     const plafond = Object.keys(SOUS_CARACS).reduce((a, c) => a + PLAFONDS_SOUS_CARACS[c], 0);
     const saturation = (niveau) => {
@@ -2619,7 +2620,7 @@ suite('Équilibrage (v20)', () => {
   test('chaque classe a un passif qui fait vraiment quelque chose', () => {
     // Les six fiches annoncent un passif. Trois ne faisaient rien du tout,
     // un quatrième était vrai à moitié — et le Gardien décrivait la
-    // mécanique générale de Ténacité, dont le Guerrier profite à
+    // mécanique générale de réduction des dégâts, dont le Guerrier profitait à
     // l'identique (même armure de plaque, 21 % chacun). On vérifie donc
     // que chaque passif produit un effet MESURABLE et PROPRE à sa classe.
     const combattant = (classe, extra) => Object.assign({

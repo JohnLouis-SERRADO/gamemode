@@ -1425,7 +1425,7 @@ DONJONS.push(
 Object.assign(OBJETS, {
   'linceul-de-nihelm': {
     nom: 'Linceul de Nihelm', emoji: '🕳️', type: 'equipement', slot: 'torse', niveau: 50,
-    rarete: 'divin', prixVente: 3200, bonus: { vit: 22, for: 10, pvMax: 120, tenacite: 6 },
+    rarete: 'divin', prixVente: 3200, bonus: { vit: 22, for: 10, pvMax: 120, deter: 6 },
     desc: 'Tissé dans l’ombre de tous les monstres vaincus. Il pèse exactement le poids d’une conscience tranquille.',
   },
   'couronne-des-heures': {

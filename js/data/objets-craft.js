@@ -285,13 +285,13 @@ function construireSeriesCraft(series) {
     { cle: 'arc',       nom: `Arc ${serie.suffixe}`,       emoji: '🏹', slot: 'arme', familleArme: 'arc',     bonus: { dex: principal, crit: secondaire } },
     { cle: 'calice',    nom: `Calice ${serie.suffixe}`,    emoji: '🕊️', slot: 'arme', familleArme: 'calice',  bonus: { esp: principal, pmMax: secondaire * 3 } },
     { cle: 'faux',      nom: `Faux ${serie.suffixe}`,      emoji: '🌑', slot: 'arme', familleArme: 'runique', bonus: { int: principal, vit: secondaire } },
-    { cle: 'pavois',    nom: `Pavois ${serie.suffixe}`,    emoji: '🛡️', slot: 'arme', familleArme: 'pavois',  bonus: { vit: principal, tenacite: sousCaracObjet(serie.niveau, mult) } },
+    { cle: 'pavois',    nom: `Pavois ${serie.suffixe}`,    emoji: '🛡️', slot: 'arme', familleArme: 'pavois',  bonus: { vit: principal, deter: sousCaracObjet(serie.niveau, mult) } },
     { cle: 'armure',    nom: `Armure ${serie.suffixe}`,    emoji: '🛡️', slot: 'torse',      bonus: { vit: Math.max(1, Math.round(principal * 0.7)), pvMax: reservePvObjet(serie.niveau, mult * 2.2) } },
     { cle: 'heaume',    nom: `Heaume ${serie.suffixe}`,    emoji: '🪖', slot: 'tete',       bonus: { vit: secondaire, pvMax: reservePvObjet(serie.niveau, mult * 1.5) } },
     { cle: 'jambieres', nom: `Jambières ${serie.suffixe}`, emoji: '👖', slot: 'jambes',     bonus: { dex: secondaire, vit: secondaire, pvMax: reservePvObjet(serie.niveau, mult * 0.8) } },
     { cle: 'talisman',  nom: `Talisman ${serie.suffixe}`,  emoji: '🧿', slot: 'accessoire', bonus: { cha: Math.max(1, Math.round(secondaire * 0.6)), vit: secondaire, crit: sousCaracObjet(serie.niveau, mult) } },
     { cle: 'grimoire',  nom: `Grimoire ${serie.suffixe}`,  emoji: '📖', slot: 'accessoire', bonus: { int: secondaire + 1, pmMax: reservePmObjet(serie.niveau, mult * 1.4), cha: Math.max(1, Math.round(secondaire * 0.5)) } },
-    { cle: 'gants',     nom: `Gants ${serie.suffixe}`,     emoji: '🧤', slot: 'mains',      bonus: { for: secondaire, dex: secondaire, tenacite: sousCaracObjet(serie.niveau, mult) } },
+    { cle: 'gants',     nom: `Gants ${serie.suffixe}`,     emoji: '🧤', slot: 'mains',      bonus: { for: secondaire, dex: secondaire, deter: sousCaracObjet(serie.niveau, mult) } },
     { cle: 'bottes',    nom: `Bottes ${serie.suffixe}`,    emoji: '🥾', slot: 'pieds',      bonus: { dex: secondaire, vit: secondaire, celerite: sousCaracObjet(serie.niveau, mult) } },
   ];
   SETS[`craft-${idBase}`] = { nom: `Série ${serie.suffixe}`, rarete: serie.rarete };

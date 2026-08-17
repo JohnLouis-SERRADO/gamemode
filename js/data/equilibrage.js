@@ -229,7 +229,6 @@ function degatsParTourHeros(p) {
 
   let d = meilleure;
   d *= 1 + sousCarac(s, 'deter');
-  d *= 1 + sousCarac(s, 'tenacite') * 0.5;
   const crit = 0.05 + sousCarac(s, 'crit');
   const direct = sousCarac(s, 'direct');
   return d * (crit * 1.5 + (1 - crit) * (direct * 1.25 + (1 - direct)));
@@ -288,17 +287,17 @@ function autoSoinPendantCombat(p, toursAttaque) {
 
 // Dégâts moyens d'un monstre sur ce héros, en un tour.
 function degatsParTourMonstre(m, p) {
-  const s = statsEffectives(p);
   const poids = (m.attaques || []).reduce((a, at) => a + (at.poids || 1), 0) || 1;
   const mult = (m.attaques || []).reduce((a, at) => a + (at.mult || 1) * (at.poids || 1), 0) / poids;
-  return m.atk * mult * (1 - sousCarac(s, 'tenacite'));
+  // v21 : plus aucune réduction plate ne s'intercale. Ce que le bestiaire
+  // écrit est ce que le joueur prend — la mesure est enfin directe.
+  return m.atk * mult;
 }
 
 // Sa plus grosse attaque, elle : celle qui décide s'il peut tuer d'un coup.
-function plusGrosCoupMonstre(m, p) {
-  const s = statsEffectives(p);
+function plusGrosCoupMonstre(m) {
   const pire = (m.attaques || []).reduce((a, at) => Math.max(a, at.mult || 1), 1);
-  return m.atk * pire * (1 - sousCarac(s, 'tenacite'));
+  return m.atk * pire;
 }
 
 // Équipe le persona des compétences de sa classe : sans elles il tape
@@ -329,7 +328,7 @@ function tensionCombat(monstres, p, taille = 3) {
     toursSurvie,
     marge: toursSurvie / (toursNettoyage + auto.toursDeSoin),
     // Un « one shot » se lit ici : la pire claque en pourcentage des PV.
-    pireCoupPct: moy((m) => plusGrosCoupMonstre(m, p)) / p.maxHp,
+    pireCoupPct: moy((m) => plusGrosCoupMonstre(m)) / p.maxHp,
     // Et sa réciproque : ce que le héros enlève d'un coup au monstre.
     ripostePct: plusGrosCoupHeros(p) / Math.max(1, pvMonstre),
   };

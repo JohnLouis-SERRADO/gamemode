@@ -82,7 +82,7 @@ function pointsCumules(n) {
 // Un bonus d'objet peut porter :
 //   • un attribut principal    for, dex, int, esp, vit, cha
 //   • une réserve              pvMax, pmMax
-//   • une sous-caractéristique crit, direct, deter, tenacite, celerite, piete
+//   • une sous-caractéristique crit, direct, deter, celerite, piete
 // =====================================================================
 const CLES_SOUS_CARACS = Object.keys(SOUS_CARACS);
 
@@ -94,8 +94,14 @@ function statsVides() {
 
 function statsEffectives(p) {
   // Les héros distants (expéditions multi-écrans) arrivent avec leurs
-  // stats effectives déjà calculées sur leur propre appareil.
-  if (p.statsEff) return { ...statsVides(), ...p.statsEff };
+  // stats effectives déjà calculées sur leur propre appareil — parfois par
+  // une version antérieure du jeu, qui y glisse encore des sous-caracs
+  // supprimées depuis. On les jette ici plutôt que de les laisser circuler.
+  if (p.statsEff) {
+    const recu = { ...statsVides(), ...p.statsEff };
+    SOUS_CARACS_RETIREES.forEach((cle) => { delete recu[cle]; });
+    return recu;
+  }
   // Combattant reconstruit sans stats (état réseau incomplet) : zéros sûrs.
   if (!p.stats) return statsVides();
   const s = statsVides();
@@ -169,7 +175,8 @@ function bornerVie(p) {
 // Multiplié par huit emplacements, l'équipement pesait 88 % du héros : le
 // personnage ne comptait plus, seul son butin comptait. Un niveau 22 bien
 // équipé écrasait le contenu de niveau 50, et les sous-caractéristiques
-// (critique, détermination, ténacité — les multiplicateurs de dégâts)
+// (critique, détermination, et la ténacité d'alors — les multiplicateurs
+// de dégâts)
 // touchaient la moitié de leur plafond dès le niveau 22.
 //
 // LA RÈGLE DE LA v20. L'équipement complet vaut ~40 % des caractéristiques
@@ -281,16 +288,16 @@ function puissanceDe(p) {
 // exécution des tests : s'il dérive d'un point, la suite passe au rouge.
 // =====================================================================
 const PUISSANCE_ETALON = [
-    411,   486,   650,   783,   882,  1056,  1133,  1287,  1365,  1729,  // 1–10
-   1815,  1925,  2023,  2620,  2753,  2868,  3466,  3559,  3659,  3766,  // 11–20
-   3822,  3926,  4028,  4332,  4440,  4592,  4749,  4844,  4953,  5051,  // 21–30
-   5169,  5475,  5570,  5665,  5916,  6026,  6135,  6215,  6535,  6644,  // 31–40
-   6752,  6843,  6957,  7066,  7267,  7562,  7692,  7776,  7876,  8230,  // 41–50
-   8230,  8327,  8489,  8628,  8820,  8887,  9003,  9084,  9277,  9512,  // 51–60
-   9551,  9707,  9752, 10099, 10140, 10292, 10332, 10685, 10724, 10824,  // 61–70
-  10863, 11147, 11192, 11376, 11416, 11754, 11795, 11836, 11875, 12214,  // 71–80
-  12266, 12484, 12536, 12930, 12982, 12982, 13021, 13424, 13470, 13589,  // 81–90
-  13641, 14156, 14207, 14207, 14207, 14748, 14794, 14794, 14794, 15375,  // 91–100
+     411,   486,   650,   783,   882,  1056,  1133,  1288,  1365,  1729,  // 1–10
+    1817,  1926,  2023,  2622,  2754,  2869,  3469,  3562,  3662,  3769,  // 11–20
+    3825,  3929,  4031,  4336,  4444,  4596,  4754,  4849,  4958,  5056,  // 21–30
+    5175,  5481,  5576,  5672,  5922,  6032,  6141,  6222,  6544,  6653,  // 31–40
+    6761,  6852,  6966,  7075,  7238,  7515,  7671,  7724,  7824,  8237,  // 41–50
+    8237,  8339,  8406,  8546,  8785,  8830,  8922,  9003,  9243,  9401,  // 51–60
+    9441,  9516,  9562,  9990, 10031, 10103, 10144, 10562, 10602, 10614,  // 61–70
+   10653, 11025, 11071, 11177, 11218, 11652, 11692, 11692, 11692, 12113,  // 71–80
+   12165, 12298, 12350, 12809, 12861, 12861, 12861, 13304, 13350, 13417,  // 81–90
+   13468, 14016, 14067, 14067, 14067, 14588, 14635, 14635, 14635, 15217,  // 91–100
 ];
 
 // Ce que l'étalon a de plus qu'un joueur réel : huit pièces DIVINES, la

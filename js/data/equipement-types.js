@@ -36,7 +36,7 @@ const CATEGORIES_ARMURE = {
   plaque: {
     nom: 'Plaque', emoji: '🛡️',
     desc: 'Cuirasses et heaumes d’acier — lourds, et c’est bien l’idée.',
-    affinites: ['for', 'vit', 'tenacite'],
+    affinites: ['for', 'vit', 'deter'],
   },
 };
 

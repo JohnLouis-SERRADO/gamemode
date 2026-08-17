@@ -127,7 +127,7 @@ function valeurProfilEveil(comp, statReference) {
 const TABLE_EVEILS = {
   // ---------------- 🛡️ Gardien ----------------
   templier: [
-    ['Gardien de Fer', '+20 % de Ténacité pour toute l’équipe.', 'egide', 'frappe'],
+    ['Gardien de Fer', 'Toute l’équipe gagne 20 % de PV maximum.', 'egide', 'frappe'],
     ['Bastion Sacré', 'L’équipe partage 30 % des dégâts qu’elle subit.', 'egide', 'brise'],
     ['Muraille Vivante', 'L’équipe ne peut pas mourir tant qu’il est debout.', 'egide', 'fracas'],
     ['Serment Immortel', 'Il revient à 50 % de ses PV, une fois par combat.', 'soin', 'frappe'],
