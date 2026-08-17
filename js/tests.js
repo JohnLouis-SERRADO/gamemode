@@ -2680,8 +2680,14 @@ suite('Équilibrage (v20)', () => {
     //
     // On compte en COMBATS, la seule unité qui ne dépende pas de la vitesse
     // de lecture du joueur, et on la convertit avec une hypothèse explicite
-    // et volontairement pessimiste : vingt secondes par combat, ce qui
-    // suppose de jouer vite et de ne jamais s'arrêter.
+    // et volontairement pessimiste.
+    //
+    // Vingt secondes par combat est en réalité IMPOSSIBLE : le moteur impose
+    // 900 ms par tour de monstre et 400 ms entre deux tours (voir la boucle
+    // de manches dans js/combat.js), et une bataille tient une dizaine de
+    // manches — soit 45 s au bas mot. On garde volontairement cette borne
+    // irréaliste : un test qui passe avec une hypothèse trop favorable au
+    // joueur passera a fortiori dans la vraie vie.
     const SECONDES_PAR_COMBAT = 20;
     const tailleEsperee = (p) => {
       const s = statsEffectives(p);

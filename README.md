@@ -138,10 +138,14 @@ Deux courbes gouvernent le jeu, et elles sont désormais **mesurées, pas devin�
   frappe plus fort qu'un soigneur. Chaque sort garde son caractère — recharge, portée, cibles — donc
   deux compétences de valeur égale par tour n'ont pas du tout la même tête : l'une entretient la
   pression, l'autre s'économise pour achever.
-- **Le niveau 100 ne s'atteint pas en une soirée.** Il demande près de 3 800 combats — plus de vingt
-  heures en jouant vite et sans jamais s'arrêter. La progression est étirée de 1,45× au niveau 1 à
+- **Le niveau 100 ne s'atteint pas en une soirée.** Il demande environ 2 800 combats en farmant de
+  façon optimale — soit **une trentaine d'heures**, délais du moteur compris. Un combat ne peut pas
+  durer moins de ~45 s : le moteur impose 900 ms par tour de monstre et 400 ms entre deux tours, et
+  une bataille tient une dizaine de manches. Jalons : niveau 26 en 3 h, niveau 51 en 10 h, niveau 81
+  en 24 h. La progression est étirée de 1,45× au niveau 1 à
   3,1× au niveau 99 : les premiers niveaux restent vifs, la route se durcit à mesure qu'on approche
-  du bout. Quatre heures de jeu mènent au niveau 34, pas au bout.
+  du bout. Quatre heures de jeu mènent au niveau 30 environ, pas au bout — et ce décompte ne
+  couvre que la montée en niveau : ni les trajets, ni l'inventaire, ni les donjons, ni les morts.
 - **Aucun niveau ne se gagne en moins de dix combats.** Le plancher est posé là où il ne peut pas
   être contourné — au moment où l'expérience est créditée — et non dans la table des monstres : une
   table ne peut pas savoir qu'un héros de niveau 3 ira farmer la zone de niveau 90, qu'un groupe
