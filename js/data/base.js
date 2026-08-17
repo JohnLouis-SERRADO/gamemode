@@ -170,40 +170,51 @@ const FAMILLE_MATERIAU = {
 // mort ou la fin du combat. Ses stats sont des fractions de celles de
 // son maître — jamais au-dessus — et elle naît avec 50 % de son mana.
 // =====================================================================
+// La `ligne` dit où la créature se place au combat. Sans elle, on la
+// déduisait de ses caractéristiques — et comme un golem invoqué par un
+// Arcaniste hérite d'un peu de l'Intelligence énorme de son maître, le
+// tank de pierre partait se cacher en ligne arrière, où les coups
+// physiques perdent 40 %. Une invocation de mêlée va DEVANT, point.
 const INVOCATIONS = {
   'loup-spectral': {
     nom: 'Loup spectral', emoji: '🐺', pvPct: 0.55,
     stats: { for: 0.7, int: 0.2, dex: 0.9, vit: 0.6, cha: 0.3 },
+    ligne: 'avant',
     competences: ['morsure-du-loup', 'lame-dans-l-ombre', 'rafale-de-coups', 'instinct-sauvage'],
     desc: 'Un écho des meutes des Plaines : crocs rapides, loyauté d’outre-brume.',
   },
   'golem-de-basalte': {
     nom: 'Golem de basalte', emoji: '🗿', pvPct: 0.9,
     stats: { for: 0.8, int: 0.1, dex: 0.2, vit: 1.0, cha: 0.1 },
+    ligne: 'avant',
     competences: ['provocation', 'frappe-heroique', 'verdict-de-fer', 'second-souffle'],
     desc: 'Un fragment des Pics qui a accepté de marcher : il encaisse, il provoque, il tient.',
   },
   'feu-follet': {
     nom: 'Feu follet', emoji: '🔥', pvPct: 0.35,
     stats: { for: 0.1, int: 0.95, dex: 0.7, vit: 0.35, cha: 0.5 },
+    ligne: 'arriere',
     competences: ['boule-de-feu', 'eclair', 'combustion', 'mur-de-flammes'],
     desc: 'Une étincelle échappée de la Forge première — fragile, furieuse, incendiaire.',
   },
   'ondine-des-marees': {
     nom: 'Ondine des marées', emoji: '💧', pvPct: 0.5,
     stats: { for: 0.2, int: 0.85, dex: 0.5, vit: 0.6, cha: 0.6 },
+    ligne: 'arriere',
     competences: ['soin', 'cercle-de-soin', 'regeneration', 'fleche-de-givre'],
     desc: 'Une goutte du Sanctuaire des Marées : elle soigne les siens et gifle les autres.',
   },
   'corbeau-d-orage': {
     nom: 'Corbeau d’orage', emoji: '🐦‍⬛', pvPct: 0.4,
     stats: { for: 0.3, int: 0.75, dex: 0.95, vit: 0.4, cha: 0.6 },
+    ligne: 'arriere',
     competences: ['chaine-d-eclairs', 'eclair', 'totem-tonnerre', 'voile-de-fumee'],
     desc: 'Un éclat des Falaises Hurlantes à plumes : vif, bruyant, électrique.',
   },
   'ombre-de-nihelm': {
     nom: 'Ombre de Nihelm', emoji: '🕳️', pvPct: 0.45,
     stats: { for: 0.4, int: 0.9, dex: 0.8, vit: 0.45, cha: 0.4 },
+    ligne: 'avant',
     competences: ['faux-spectrale', 'drain-de-vie', 'horde-spectrale', 'terreur'],
     desc: 'Un pan du gouffre qui a choisi un maître — pour l’instant.',
   },

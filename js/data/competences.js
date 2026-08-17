@@ -123,6 +123,33 @@ function degatsAttaqueDeBase(combattant, s) {
 
 // Valeur de soutien d'un effet : l'Esprit, ou l'Intelligence si elle est
 // encore meilleure (héros d'avant la refonte des caractéristiques).
+// =====================================================================
+// v20.1 — Boucliers et régénérations suivent enfin LEUR compétence.
+//
+// Les deux effets étaient chiffrés une fois pour toutes : « 8 + Esprit×1,5 »
+// pour tout bouclier, « 3 + Esprit×0,8 » pour toute régénération. Un sort
+// d'Éveil obtenu au niveau 80 protégeait donc exactement autant qu'un sort
+// commun acheté au niveau 1 — la compétence débloquée ne changeait rien.
+//
+// L'ampleur de l'effet suit désormais la puissance de la compétence qui le
+// porte : `ampleur` (multiplicateur écrit sur l'effet) ou, à défaut, le
+// palier de déblocage. Le sort de fin de parcours protège comme un sort de
+// fin de parcours.
+// =====================================================================
+function ampleurEffet(comp, effet) {
+  if (effet && effet.ampleur) return effet.ampleur;
+  if (!comp) return 1;
+  return multiplicateurPalier(comp.niveauRequis);
+}
+
+function valeurBouclier(s, effet, comp) {
+  return Math.round((8 + statSoutien(s, effet && effet.stat) * 1.5) * ampleurEffet(comp, effet));
+}
+
+function valeurRegen(s, effet, comp) {
+  return Math.round((3 + statSoutien(s, effet && effet.stat) * 0.8) * ampleurEffet(comp, effet));
+}
+
 function statSoutien(s, cle) {
   const choisie = cle || 'int';
   const valeur = (s && s[choisie]) || 0;
@@ -150,7 +177,7 @@ function valeurRetourMana(effet, s, maxMp) {
   return Math.max(base, Math.round(reserve * (effet.part || base / 60)));
 }
 
-function texteEffetCompetence(effet, s) {
+function texteEffetCompetence(effet, s, comp) {
   switch (effet.type) {
     case 'poison': {
       const valeur = effet.degats != null
@@ -161,10 +188,10 @@ function texteEffetCompetence(effet, s) {
     case 'etourdi':
       return `💫 étourdit ${effet.duree || 1} t.${effet.chance != null && effet.chance < 1 ? ` (${Math.round(effet.chance * 100)} %)` : ''}`;
     case 'affaibli': return `⬇️ −30 % dégâts (${effet.duree} t.)`;
-    case 'bouclier': return `🛡️ bouclier ≈${Math.round(8 + statSoutien(s, effet.stat) * 1.5)} (${effet.duree} t.)`;
+    case 'bouclier': return `🛡️ bouclier ≈${valeurBouclier(s, effet, comp)} (${effet.duree} t.)`;
     case 'benediction': return `🙏 +30 % dégâts (${effet.duree} t.)`;
     case 'provocation': return `😤 attire les coups + bouclier ≈${Math.round(4 + (s.for || 0))}`;
-    case 'regen': return `💧 régén. ≈${Math.round(3 + statSoutien(s, effet.stat) * 0.8)}/tour (${effet.duree} t.)`;
+    case 'regen': return `💚 régén. ≈${valeurRegen(s, effet, comp)}/tour (${effet.duree} t.)`;
     case 'mana': return `🧘 +${valeurRetourMana(effet, s)} PM`;
     case 'drain': return `🧛 rend ${Math.round(effet.part * 100)} % des dégâts en PV`;
     case 'pacte': return `🩸 −${Math.round(effet.partPv * 100)} % PV max → +${effet.mana} PM`;
@@ -219,7 +246,7 @@ function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
   if (rang > 0) parts.push(`🏅 rang ${rang} (+${Math.round(rang * 15)} %)`);
   if (comp.critBonus) parts.push(`💥 +${Math.round(comp.critBonus * 100)} % crit.`);
   if (comp.effet) {
-    const texte = texteEffetCompetence(comp.effet, s);
+    const texte = texteEffetCompetence(comp.effet, s, comp);
     if (texte) parts.push(texte);
   }
   parts.push(`🎯 ${TEXTE_CIBLE[comp.cible]}`);
@@ -274,12 +301,12 @@ const COMPETENCES = {
   'tir-precis': {
     nom: 'Tir précis', emoji: '🏹', categorie: 'physique', type: 'degats', cible: 'ennemi',
     stat: 'dex', puissance: 7, ratio: 1.4, coutMp: 3, cooldown: 2, critBonus: 0.2,
-    desc: 'Un tir précis avec +20 % de chances de critique. Basé sur l’Dextérité.',
+    desc: 'Un tir précis avec +20 % de chances de critique. Basé sur la Dextérité.',
   },
   'pluie-de-fleches': {
     nom: 'Pluie de flèches', emoji: '🎯', categorie: 'physique', type: 'degats', cible: 'ennemis',
     stat: 'dex', puissance: 3, ratio: 0.8, coutMp: 8, cooldown: 3,
-    desc: 'Crible tous les ennemis de flèches. Basé sur l’Dextérité.',
+    desc: 'Crible tous les ennemis de flèches. Basé sur la Dextérité.',
   },
   'boule-de-feu': {
     nom: 'Boule de feu', emoji: '🔥', categorie: 'magie', type: 'degats', cible: 'ennemi',
@@ -663,3 +690,107 @@ const COMPETENCES = {
     desc: 'Un pas de côté pour souffler : récupère des PV et 5 PM.',
   },
 };
+
+// =====================================================================
+// v20.1 — LA CALIBRATION DES COMPÉTENCES.
+//
+// CE QUI N'ALLAIT PAS. Les 701 compétences ont été écrites une par une, au
+// fil des lots, sans que rien ne compare jamais leur puissance. Mesuré à
+// caractéristique égale, en valeur effective par tour (dégâts × coups ×
+// cibles, divisés par la recharge) :
+//
+//   • douze compétences rendaient MOINS qu'une compétence de la même classe
+//     débloquée plus tôt. « Assaut final », le coup de grâce du Guerrier au
+//     niveau 15, valait 34 quand « Taillade », son premier sort, valait 42.
+//     Le joueur débloquait un sort pour taper moins fort.
+//   • la hiérarchie des rôles était à l'envers : le Gardien (tank) frappait
+//     à 56 quand le Guerrier (DPS mêlée) frappait à 42, et l'Arcaniste
+//     montait à 115 — près de trois fois le Guerrier.
+//   • les compétences sans recharge écrasaient tout, la division par la
+//     recharge leur donnant une valeur par tour démesurée.
+//
+// LA RÈGLE. Chaque compétence garde son CARACTÈRE — sa recharge, sa portée,
+// ses cibles, son nombre de coups, sa part de dégâts fixes — et voit sa
+// magnitude ramenée sur un budget lisible : celui de son rôle, majoré par
+// son palier de déblocage. Un sort débloqué plus tard vaut forcément plus.
+// Une classe offensive frappe plus fort qu'un tank, qui frappe plus fort
+// qu'un soigneur. Le soigneur, lui, rend en soins ce qu'il perd en dégâts.
+//
+// On ne touche PAS aux compétences communes achetées à l'Arcanium : elles
+// n'appartiennent à aucun rôle, et servent de fond de sac à tout le monde.
+// =====================================================================
+
+// Valeur effective d'une compétence, par tour, à caractéristique donnée.
+// C'est la seule mesure qui permette de comparer un sort de zone à recharge
+// longue avec un coup simple qu'on relance à chaque tour.
+const CIBLES_ATTENDUES = 3;
+
+function ciblesDe(comp) {
+  return (comp.cible === 'ennemis' || comp.cible === 'allies') ? CIBLES_ATTENDUES : 1;
+}
+
+// La caractéristique de référence à laquelle tous les budgets sont exprimés.
+const STAT_CALIBRATION = 100;
+
+function valeurEffectiveCompetence(comp, stat = STAT_CALIBRATION) {
+  const brut = (comp.puissance + stat * (comp.ratio || 0)) * (comp.coups || 1) * ciblesDe(comp);
+  return brut / (1 + (comp.cooldown || 0));
+}
+
+// Budget par tour de chaque rôle, à caractéristique 100. L'écart entre les
+// rôles est volontaire : toutes les classes ne se valent pas en dégâts, et
+// c'est ce qui leur donne une identité.
+const BUDGET_DEGATS_ROLE = { dps: 62, tank: 40, soigneur: 30 };
+const BUDGET_SOIN_ROLE = { dps: 26, tank: 34, soigneur: 62 };
+
+// Le palier de déblocage majore le budget : un sort de fin de parcours doit
+// se sentir. Les paliers d'identité (spécialité 10, Voie 50, Éveil 80)
+// prennent le relais des paliers de classe.
+function multiplicateurPalier(niveauRequis) {
+  const n = Math.max(1, niveauRequis || 1);
+  return 1 + Math.min(1.4, (n - 1) * 0.018);
+}
+
+function roleDeCompetence(comp) {
+  const base = comp.classe && CLASSES_BASE[comp.classe];
+  const sousClasse = comp.sousClasse && SOUS_CLASSES[comp.sousClasse];
+  const voie = comp.voie && VOIES[comp.voie];
+  const eveil = comp.eveil && EVEILS[comp.eveil];
+  const idSousClasse = (sousClasse && sousClasse.id)
+    || (voie && voie.sousClasse) || (eveil && eveil.sousClasse);
+  const parent = idSousClasse && SOUS_CLASSES[idSousClasse]
+    ? CLASSES_BASE[SOUS_CLASSES[idSousClasse].classe] : base;
+  // L'Aventurier historique n'est plus dans CLASSES_BASE mais ses huit
+  // compétences vivent encore dans de vieilles sauvegardes : on les tient
+  // sur le budget offensif, sans quoi elles restent hors de toute échelle.
+  if (!parent) return comp.classe === 'aventurier' ? 'dps' : null;
+  if (/tank/i.test(parent.role)) return 'tank';
+  if (/soigneur/i.test(parent.role)) return 'soigneur';
+  return 'dps';
+}
+
+function calibrerCompetences() {
+  Object.values(COMPETENCES).forEach((comp) => {
+    if (comp.type !== 'degats' && comp.type !== 'soin') return;
+    if (estCompetenceCommune(comp)) return;      // le pool libre garde ses chiffres
+    const role = roleDeCompetence(comp);
+    if (!role) return;
+    const budget = comp.type === 'soin' ? BUDGET_SOIN_ROLE[role] : BUDGET_DEGATS_ROLE[role];
+    const cible = budget * multiplicateurPalier(comp.niveauRequis);
+    const actuel = valeurEffectiveCompetence(comp);
+    if (!(actuel > 0)) return;
+    const facteur = cible / actuel;
+    // On garde la proportion entre la part fixe et la part qui suit la
+    // caractéristique : c'est elle qui distingue un sort de débutant d'un
+    // sort qui récompense l'investissement.
+    comp.puissance = Math.max(1, Math.round(comp.puissance * facteur));
+    // Le ratio est ensuite DÉDUIT de la cible, pas mis à l'échelle comme la
+    // puissance : deux compétences de même rôle, même palier et même profil
+    // doivent tomber exactement sur le même chiffre. En le mettant à
+    // l'échelle, deux valeurs d'origine voisines (1,60 et 1,61) donnaient
+    // 2,17 et 2,18 — un écart invisible mais bien réel entre deux Voies
+    // censées être équivalentes.
+    const brutVoulu = cible * (1 + (comp.cooldown || 0)) / ((comp.coups || 1) * ciblesDe(comp));
+    comp.ratio = Math.max(0.05, Math.round(((brutVoulu - comp.puissance) / STAT_CALIBRATION) * 100) / 100);
+  });
+}

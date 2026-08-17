@@ -2262,3 +2262,23 @@ button:focus-visible,
   background: var(--panneau-clair);
 }
 .monde-titre { font-weight: 700; margin-bottom: var(--esp-1); }
+
+/* v20.1 — L'identité du héros sur sa fiche : classe, spécialité, Voie, Éveil. */
+.heros-classe {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--or, #d9a441);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0 4px 4px 0;
+  font-size: 0.9rem;
+}
+.heros-specialite { border-left-color: #6fa8dc; }
+.heros-voie { border-left-color: #9b7fd4; }
+.heros-eveil { border-left-color: #e0a3d6; }
+.classe-titre { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.classe-role { font-size: 0.8rem; opacity: 0.75; }
+.classe-passif { opacity: 0.95; }
+.classe-resume { font-size: 0.85rem; opacity: 0.7; }

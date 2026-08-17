@@ -1375,13 +1375,18 @@ suite('Voies', () => {
     aucun(fautives, 'Voies sur le mauvais attribut');
   });
 
-  test('à profil égal, deux Voies frappent aussi fort', () => {
+  test('à profil ET rôle égaux, deux Voies frappent aussi fort', () => {
     // C'est tout l'intérêt d'avoir calculé les chiffres plutôt que de les
     // écrire : aucune sous-classe n'est avantagée par accident.
+    //
+    // v20.1 : le RÔLE entre dans la clé. Depuis la calibration des
+    // compétences, une Voie de tank et une Voie de DPS ne frappent
+    // volontairement PAS aussi fort — c'était même tout le problème
+    // signalé. Ce qui doit rester égal, c'est deux Voies du même rôle.
     const parProfil = {};
     Object.values(VOIES).forEach((v) => {
       const comp = COMPETENCES[v.competence];
-      const cle = `${comp.type}-${comp.cible}-${comp.puissance}`;
+      const cle = `${roleDeCompetence(comp)}-${comp.type}-${comp.cible}-${comp.puissance}`;
       (parProfil[cle] = parProfil[cle] || []).push(comp.ratio);
     });
     const inegaux = Object.entries(parProfil)
@@ -2511,17 +2516,35 @@ suite('Équilibrage (v20)', () => {
   });
 
   test('aucun héros ne pulvérise un monstre de son niveau d\'une pichenette', () => {
-    // La réciproque : un monstre qui tombe au premier coup n'est pas un
-    // combat. Les deux premières zones sont exemptées — écraser un gobelin
-    // au niveau 2, c'est la promesse du début de partie.
-    const fautives = [];
+    // v20.1 : la règle se lit en DEUX temps, parce que la calibration des
+    // compétences a séparé pour de bon le coup d'entretien du coup gardé
+    // en réserve.
+    //
+    //   • en rythme de croisière, un monstre doit encaisser au moins deux
+    //     tours. Un ennemi qui tombe à chaque coup n'est pas un combat.
+    //   • une pointe — la grosse compétence, sortie au bon moment, qui
+    //     part en critique — a le droit d'achever un monstre d'un coup.
+    //     C'est ce qui rend le choix du moment intéressant. Elle ne doit
+    //     simplement jamais en emporter DEUX.
+    const tropFort = [];
+    const tropDeBurst = [];
     ZONES.filter((z) => z.niveauMin > 4).forEach((z) => {
-      const t = tensionZone(z, 3);
-      if (t && t.reference.ripostePct > 0.85) {
-        fautives.push(`${z.nom} : un coup enlève ${Math.round(t.reference.ripostePct * 100)} % des PV du monstre`);
-      }
+      const mobs = z.monstres.map((c) => MONSTRES[c]).filter(Boolean);
+      if (!mobs.length) return;
+      const niveau = niveauReelZone(z);
+      const pv = mobs.reduce((a, m) => a + m.hp, 0) / mobs.length;
+      classesEtalon().forEach((classe) => {
+        const p = personaEquipeNormalement(classe, niveau);
+        if (degatsParTourHeros(p) / pv > 0.6) {
+          tropFort.push(`${z.nom} / ${classe} : ${Math.round(degatsParTourHeros(p) / pv * 100)} % par tour`);
+        }
+        if (plusGrosCoupHeros(p) / pv > 2) {
+          tropDeBurst.push(`${z.nom} / ${classe} : une pointe emporte ${(plusGrosCoupHeros(p) / pv).toFixed(1)} monstres`);
+        }
+      });
     });
-    aucun(fautives, 'zones où les monstres tombent d\'un seul coup');
+    aucun(tropFort, 'zones où les monstres tombent en moins de deux tours');
+    aucun(tropDeBurst, 'zones où une seule pointe emporte deux monstres');
   });
 
   test('la tension reste dans la même fourchette du niveau 1 au niveau 100', () => {

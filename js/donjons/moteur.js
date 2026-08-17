@@ -1019,3 +1019,8 @@ plafonnerEquipementUnique();
 // chaque bête sont ramenés sur la courbe dérivée du héros — voir
 // calibrerBestiaire() dans js/data/monstres.js.
 calibrerBestiaire();
+
+// Et les compétences : leur puissance est ramenée sur le budget de leur
+// rôle et de leur palier — voir calibrerCompetences() dans
+// js/data/competences.js.
+calibrerCompetences();

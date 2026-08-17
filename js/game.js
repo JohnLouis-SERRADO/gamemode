@@ -1200,7 +1200,7 @@ function infererClasse(p) {
 // Pas de compensation : la correction s'applique à tous de la même façon,
 // donc personne ne recule par rapport aux autres.
 // =====================================================================
-const CLE_ANNONCE_EQUILIBRAGE = 'gamemode2.annonce.v20';
+const CLE_ANNONCE_EQUILIBRAGE = 'gamemode2.annonce.v20-1';
 
 function annoncerReequilibrage() {
   let deja = null;
@@ -1233,6 +1233,18 @@ function annoncerReequilibrage() {
     double de ses points de vie, sans jamais avoir à choisir. Elle rend désormais 60 % de sa valeur
     en attaque. Vous restez de très loin les plus résistants du jeu ; vous tuez plus lentement.
     C’est le métier.</p>
+    <p><strong>Les compétences ont été remises à l’échelle.</strong> Douze d’entre elles rendaient
+    moins qu’une compétence de la même classe débloquée plus tôt : « Assaut final », le coup de
+    grâce du Guerrier, valait moins que sa première attaque. Chacune garde son caractère — sa
+    recharge, sa portée, ses cibles — mais un sort débloqué plus tard frappe désormais forcément
+    plus fort, et une classe offensive frappe plus fort qu’un tank, qui frappe plus fort qu’un
+    soigneur.</p>
+    <p><strong>Trois passifs de classe ne faisaient rien du tout.</strong> Le Franc-tireur était le
+    plus mal loti : son passif promet « aucun malus depuis la ligne arrière », et il y perdait
+    pourtant 40 % de ses dégâts comme tout le monde. L’Élan du Guerrier, le mana de l’Arcaniste et
+    le surplus de soin du Devin sont eux aussi branchés. Et les mêlées commencent enfin devant :
+    le Runelame — comme les invocations de mêlée — partait se battre au fond de la salle.</p>
+    <p><strong>On montait trop vite :</strong> les gains d’expérience sont réduits de deux tiers.</p>
     <p class="aide">Les raretés, elles, s’écartent davantage qu’avant : une pièce divine vaut
     maintenant quatre communes. Trouver du beau butin compte plus, pas moins.</p>`;
   const bouton = document.createElement('button');
@@ -1395,8 +1407,23 @@ function debloquerCompetencesClasse(p, annoncer) {
 // puis ses bonus personnels (race, familier, panoplie). C'est LA source
 // de vérité — gagnerXp l'applique et les écrans de butin l'affichent,
 // pour que l'annonce et le gain soient exactement le même nombre.
+// =====================================================================
+// v20.1 — Le rythme de montée en niveau.
+//
+// On montait trop vite : le contenu défilait plus lentement que le héros,
+// et on arrivait dans une zone déjà trop fort pour elle. Le rééquilibrage
+// du bestiaire a même aggravé le cas — les monstres rendent désormais
+// proportionnellement à leur difficulté, donc davantage.
+//
+// Les gains sont réduits de deux tiers. Le facteur historique (0,35) est
+// conservé tel quel et multiplié par le nouveau : les deux réglages restent
+// lisibles séparément, l'ancien pour la courbe, le nouveau pour le rythme.
+// =====================================================================
+const FACTEUR_XP_HISTORIQUE = 0.35;
+const REDUCTION_XP_V20 = 0.34;   // on garde 34 % : −66 %
+
 function xpReelle(p, xp) {
-  xp = Math.max(1, Math.round(xp * 0.35));
+  xp = Math.max(1, Math.round(xp * FACTEUR_XP_HISTORIQUE * REDUCTION_XP_V20));
   if (p.race === 'humain') xp = Math.round(xp * 1.1); // Ambition
   const familier = familierActif(p);
   if (familier && familier.bonus.xpBonus) xp = Math.round(xp * (1 + familier.bonus.xpBonus));
@@ -2201,6 +2228,63 @@ function rendreConsoleAdmin(zone, p) {
 let brouillonRepartition = null; // { persoId, points: { for: 1, ... } }
 let ongletHeros = 'apercu'; // v17 : onglet actif de la fiche du héros
 
+// =====================================================================
+// v20.1 — La fiche dit enfin ce qu'est votre classe.
+//
+// La race affichait son passif et sa description sur la fiche du héros ;
+// la CLASSE, elle, n'apparaissait que le jour où on la choisissait, puis
+// disparaissait pour toujours. Le joueur ne pouvait plus relire ni son
+// rôle, ni son passif, ni ce que sa spécialité était censée faire — donc
+// impossible de vérifier qu'un passif fonctionnait, ou de se rappeler
+// pourquoi on avait choisi cette Voie il y a quarante niveaux.
+//
+// Tout est ici : classe, spécialité, Voie, Éveil — chacune avec sa ligne
+// de combat, son passif et son résumé.
+// =====================================================================
+function ligneLisible(cle) {
+  return cle === 'arriere' ? '🏹 ligne arrière' : '⚔️ ligne avant';
+}
+
+function blocIdentiteClasse(p) {
+  const base = CLASSES_BASE[p.classe];
+  if (!base) return '';
+  const lignes = [`<div class="heros-classe">
+    <span class="classe-titre">${base.emoji} <strong>${base.nom}</strong>
+      <span class="classe-role">${base.role} · ${ligneLisible(base.ligne)} · ${CARACS[base.stat].emoji} ${CARACS[base.stat].nom}</span></span>
+    <span class="classe-passif"><em>${echapper(base.passif)}</em></span>
+    <span class="classe-resume">${echapper(base.resume || '')}</span>
+  </div>`];
+
+  const sc = sousClasseDe(p);
+  if (sc) {
+    lignes.push(`<div class="heros-classe heros-specialite">
+      <span class="classe-titre">${sc.emoji} <strong>${sc.nom}</strong> <span class="classe-role">spécialité</span></span>
+      <span class="classe-passif"><em>${echapper(sc.passif || '')}</em></span>
+      <span class="classe-resume">${echapper(sc.resume || '')}</span>
+    </div>`);
+  } else if (p.niveau >= NIVEAU_SOUS_CLASSE) {
+    lignes.push(`<div class="heros-classe aide">🔓 Une spécialité vous attend — Profil › spécialité.</div>`);
+  }
+
+  const voie = voieDe(p);
+  if (voie) {
+    lignes.push(`<div class="heros-classe heros-voie">
+      <span class="classe-titre">🧭 <strong>${voie.nom}</strong> <span class="classe-role">Voie · ${voie.titre}</span></span>
+      <span class="classe-passif"><em>${echapper(voie.passif || '')}</em></span>
+    </div>`);
+  }
+
+  const eveil = typeof eveilDe === 'function' ? eveilDe(p) : null;
+  if (eveil) {
+    lignes.push(`<div class="heros-classe heros-eveil">
+      <span class="classe-titre">✨ <strong>${eveil.nom}</strong> <span class="classe-role">Éveil ${eveil.rarete}</span></span>
+      <span class="classe-passif"><em>${echapper(typeof eveil.effet === 'string' ? eveil.effet : (eveil.titre || ''))}</em></span>
+      ${eveil.contrainte ? `<span class="classe-resume">⚖️ ${echapper(typeof eveil.contrainte === 'string' ? eveil.contrainte : '')}</span>` : ''}
+    </div>`);
+  }
+  return lignes.join('');
+}
+
 function rendreHeros() {
   const p = persoActif();
   if (!p) return;
@@ -2229,6 +2313,7 @@ function rendreHeros() {
         <button id="btn-valider-renommage" class="btn-choix btn-compact">Valider</button>
       </div>
       <div class="heros-race">${race.emoji} ${race.nom} — <em>${race.passif}</em> : ${race.desc}</div>
+      ${blocIdentiteClasse(p)}
       <div class="barre xp"><div class="remplissage" style="width:${pctXp}%"></div>
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
       <div class="heros-puissance">⚡ Puissance : <strong>${puissanceDe(p).toLocaleString('fr-FR')}</strong>

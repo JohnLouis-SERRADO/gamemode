@@ -133,6 +133,11 @@ Deux courbes gouvernent le jeu, et elles sont désormais **mesurées, pas devin�
   héros, pour qu'un groupe de trois monstres de votre niveau tombe en une petite dizaine de tours
   et coûte à peu près la moitié de vos points de vie. Les récompenses suivent l'effort : un
   monstre plus long à abattre rapporte davantage.
+- **Les compétences sont calibrées** sur le budget de leur rôle et de leur palier : un sort débloqué
+  plus tard frappe forcément plus fort que le précédent, et un DPS frappe plus fort qu'un tank, qui
+  frappe plus fort qu'un soigneur. Chaque sort garde son caractère — recharge, portée, cibles — donc
+  deux compétences de valeur égale par tour n'ont pas du tout la même tête : l'une entretient la
+  pression, l'autre s'économise pour achever.
 - **La marge de survie reste entre 2 et 4** dans le meilleur des cas, toutes classes et toutes
   zones confondues — au-delà, on survit quatre fois plus longtemps qu'il ne faut pour gagner et le
   combat cesse d'en être un. La Vitalité, seule caractéristique qui achetait deux choses à la fois

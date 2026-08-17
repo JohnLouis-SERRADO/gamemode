@@ -173,9 +173,14 @@ Object.assign(COMPETENCES, COMPETENCES_CLASSES_V19, COMPETENCES_SOUS_CLASSES);
 // offensives et de soin y sont recalées, pour qu'un joueur n'ait jamais à
 // répartir ses points entre deux attributs pour jouer une seule classe.
 // =====================================================================
+// `ligne` : où la classe se place au combat. C'est le RÔLE qui décide, pas
+// la caractéristique — le Runelame est un DPS de MÊLÉE dont les sorts
+// portent sur l'Intelligence, et l'ancienne règle (« Intelligence
+// dominante → ligne arrière ») l'envoyait donc systématiquement se battre
+// de loin, là où ses coups physiques perdent 40 %.
 const CLASSES_BASE = {
   gardien: {
-    nom: 'Gardien', emoji: '🛡️', role: 'Tank', stat: 'vit', armure: 'plaque',
+    nom: 'Gardien', emoji: '🛡️', role: 'Tank', stat: 'vit', ligne: 'avant', armure: 'plaque',
     armes: ['lame lourde', 'bouclier-pavois', 'masse'],
     resume: 'Il se met devant. C’est tout son métier, et c’est un métier entier.',
     passif: 'Rempart — les dégâts subis baissent avec la Ténacité, et attirer les coups est une arme.',
@@ -184,7 +189,7 @@ const CLASSES_BASE = {
       'gardien-jugement-du-rempart', 'signature-inebranlable'],
   },
   guerrier: {
-    nom: 'Guerrier', emoji: '⚔️', role: 'DPS mêlée physique', stat: 'for', armure: 'plaque',
+    nom: 'Guerrier', emoji: '⚔️', role: 'DPS mêlée physique', stat: 'for', ligne: 'avant', armure: 'plaque',
     armes: ['épée', 'hache', 'poing d’acier'],
     resume: 'Au contact, sans détour : ce qu’il touche cesse rapidement de bouger.',
     passif: 'Élan — chaque coup porté nourrit le suivant.',
@@ -193,7 +198,7 @@ const CLASSES_BASE = {
       'guerrier-assaut-final', 'signature-lame-du-champion'],
   },
   'franc-tireur': {
-    nom: 'Franc-tireur', emoji: '🏹', role: 'DPS distance physique', stat: 'dex', armure: 'cuir',
+    nom: 'Franc-tireur', emoji: '🏹', role: 'DPS distance physique', stat: 'dex', ligne: 'arriere', armure: 'cuir',
     armes: ['arc', 'arbalète', 'dagues de lancer'],
     resume: 'La bonne distance, la bonne seconde. Il n’a jamais eu besoin d’autre chose.',
     passif: 'Ligne de tir — aucun malus depuis la ligne arrière, et l’initiative lui revient souvent.',
@@ -202,7 +207,7 @@ const CLASSES_BASE = {
       'archer-deluge', 'signature-fleche-du-destin'],
   },
   arcaniste: {
-    nom: 'Arcaniste', emoji: '🔮', role: 'DPS distance magique', stat: 'int', armure: 'tissu',
+    nom: 'Arcaniste', emoji: '🔮', role: 'DPS distance magique', stat: 'int', ligne: 'arriere', armure: 'tissu',
     armes: ['bâton', 'grimoire', 'focus'],
     resume: 'Fragile de près, catastrophique de loin.',
     passif: 'Flux — la magie ignore les lignes de combat, et le mana revient plus vite.',
@@ -211,7 +216,7 @@ const CLASSES_BASE = {
       'mage-tempete-de-mana', 'signature-comete-arcanique'],
   },
   devin: {
-    nom: 'Devin', emoji: '✨', role: 'Soigneur', stat: 'esp', armure: 'tissu',
+    nom: 'Devin', emoji: '✨', role: 'Soigneur', stat: 'esp', ligne: 'arriere', armure: 'tissu',
     armes: ['canne', 'calice', 'sceptre'],
     resume: 'Il décide qui survit. Personne ne s’en rend compte avant que ça manque.',
     passif: 'Clairvoyance — les soins et les boucliers montent avec l’Esprit, et le surplus ne se perd pas.',
@@ -220,7 +225,7 @@ const CLASSES_BASE = {
       'clerc-sanctuaire', 'signature-lumiere-salvatrice'],
   },
   runelame: {
-    nom: 'Runelame', emoji: '🌑', role: 'DPS mêlée magique', stat: 'int', armure: 'maille',
+    nom: 'Runelame', emoji: '🌑', role: 'DPS mêlée magique', stat: 'int', ligne: 'avant', armure: 'maille',
     armes: ['lame runique', 'faux', 'gantelet gravé'],
     resume: 'La magie ne se lance pas de loin : elle se plante dans le ventre.',
     passif: 'Gravure — ses sorts frappent au contact et lui rendent une part de ce qu’ils prennent.',

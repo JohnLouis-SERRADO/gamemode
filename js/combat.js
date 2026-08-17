@@ -23,6 +23,90 @@ function estMort(c) {
   return c.type === 'joueur' ? c.ko : c.mort;
 }
 
+// =====================================================================
+// v20.1 — LES PASSIFS DE CLASSE, enfin branchés.
+//
+// Chaque classe annonce un passif sur sa fiche. Trois d'entre eux ne
+// faisaient strictement rien, et un quatrième n'était vrai qu'à moitié :
+//
+//   • Franc-tireur, « Ligne de tir — aucun malus depuis la ligne arrière ».
+//     C'était l'inverse : classe à distance, il commençait à l'arrière et
+//     y perdait 40 % de ses dégâts physiques, comme tout le monde. Son
+//     passif emblématique le pénalisait.
+//   • Guerrier, « Élan — chaque coup porté nourrit le suivant ». Rien.
+//   • Arcaniste, « le mana revient plus vite ». Rien.
+//   • Devin, « le surplus [de soin] ne se perd pas ». Le surplus était
+//     purement et simplement jeté.
+//
+// Ils sont ici, tous au même endroit, lisibles d'un coup d'œil.
+// =====================================================================
+// (Attention : `classeDe` existe déjà dans js/data/classes.js et renvoie
+// autre chose. On ne réutilise pas son nom — combat.js est chargé après,
+// et l'écraser casserait la fiche du héros.)
+function classeBaseDuCombattant(c) {
+  return (c && c.type === 'joueur' && typeof CLASSES_BASE !== 'undefined'
+    && CLASSES_BASE[c.classe]) || null;
+}
+
+function aPassif(c, cle) {
+  const base = classeBaseDuCombattant(c);
+  return !!base && base.passif && base.passif.indexOf(cle) === 0;
+}
+
+// Franc-tireur : la ligne arrière est sa position de travail, pas une
+// punition. Ses tirs partent à pleine puissance.
+function ignoreMalusDeLigne(c) {
+  return aPassif(c, 'Ligne de tir');
+}
+
+// Guerrier : chaque coup porté dans la manche nourrit le suivant. Trois
+// paliers, remis à zéro à chaque combat — c'est une montée en pression,
+// pas une rente.
+const ELAN_PAR_COUP = 0.08;
+const ELAN_MAX = 3;
+
+function bonusElan(c) {
+  if (!aPassif(c, 'Élan')) return 1;
+  return 1 + Math.min(ELAN_MAX, c.elan || 0) * ELAN_PAR_COUP;
+}
+
+function nourrirElan(c) {
+  if (!aPassif(c, 'Élan')) return;
+  c.elan = Math.min(ELAN_MAX, (c.elan || 0) + 1);
+}
+
+// Arcaniste : le mana revient plus vite. Deux points de base pour tout le
+// monde, le double pour lui.
+function regainDeMana(c) {
+  return aPassif(c, 'Flux') ? 5 : 2;
+}
+
+// Runelame : « Gravure — ses sorts lui rendent une part de ce qu'ils
+// prennent ». Deux de ses huit compétences portaient un drain explicite ;
+// les six autres ne rendaient rien, alors que le passif parle de « ses
+// sorts » au pluriel. La classe draine désormais une part de tout ce
+// qu'elle inflige.
+const PART_GRAVURE = 0.1;
+
+function draineDeGravure(source, degats) {
+  if (degats <= 0 || !aPassif(source, 'Gravure')) return;
+  const rendu = Math.max(1, Math.round(degats * PART_GRAVURE));
+  const avant = source.hp;
+  source.hp = Math.min(source.maxHp, source.hp + rendu);
+  if (source.hp > avant) journal(`🌑 Gravure : ${source.nom} reprend ${source.hp - avant} PV à sa cible.`);
+}
+
+// Devin : ce qui déborde d'un soin ne se perd pas — il se fige en bouclier
+// sur la cible. Soigner quelqu'un à pleine vie cesse d'être un tour gâché.
+function surplusDeSoin(source, cible, surplus) {
+  if (surplus <= 0 || !aPassif(source, 'Clairvoyance')) return;
+  const existant = cible.statuts.find((s) => s.type === 'bouclier');
+  const valeur = Math.round(surplus);
+  if (existant) existant.valeur += valeur;
+  else cible.statuts.push({ type: 'bouclier', duree: 3, valeur });
+  journal(`✨ Le surplus de soin se fige en bouclier sur ${cible.nom} (+${valeur}).`);
+}
+
 // v16.3 : chacun combat à PLEINE puissance, en solo comme en groupe —
 // le nivelage de la v16 est retiré, sur demande générale.
 function statDe(source, cle) {
@@ -31,10 +115,35 @@ function statDe(source, cle) {
   return 0;
 }
 
-// v16 : deux lignes de combat. Les lanceurs de sorts (Intelligence
-// dominante) partent naturellement à l'arrière, les autres à l'avant.
+// =====================================================================
+// v20.1 — La ligne de combat vient du RÔLE, pas de la caractéristique.
+//
+// L'ancienne règle disait « Intelligence dominante → ligne arrière ». Elle
+// se trompait sur deux cas, et pas des moindres :
+//
+//   • le Runelame est un DPS de MÊLÉE dont les sorts portent sur
+//     l'Intelligence. Il partait donc se battre de loin — là où les coups
+//     physiques perdent 40 %, donnés comme reçus. Un bretteur qui commence
+//     le combat au fond de la salle.
+//   • une invocation hérite d'une part des caractéristiques de son maître.
+//     Le Golem de basalte — 0,9 de PV, Vitalité pleine, Provocation dans
+//     ses sorts, autrement dit un mur — invoqué par un Arcaniste héritait
+//     d'assez d'Intelligence pour basculer à l'arrière. Le tank de pierre
+//     allait se cacher pendant que son maître prenait les coups.
+//
+// Chaque classe et chaque invocation déclare désormais sa ligne. La
+// déduction par les caractéristiques ne sert plus que de filet pour les
+// vieux héros sans classe.
+// =====================================================================
 function ligneParDefaut(c) {
-  const s = c.type === 'invocation' ? c.stats : statsEffectives(c);
+  if (c.type === 'invocation') {
+    const modele = INVOCATIONS[c.modele];
+    if (modele && modele.ligne) return modele.ligne;
+    return (c.stats && (c.stats.int || 0) > (c.stats.for || 0)) ? 'arriere' : 'avant';
+  }
+  const base = typeof CLASSES_BASE !== 'undefined' && CLASSES_BASE[c.classe];
+  if (base && base.ligne) return base.ligne;
+  const s = statsEffectives(c);
   return (s.int || 0) > (s.for || 0) && (s.int || 0) > (s.dex || 0) ? 'arriere' : 'avant';
 }
 
@@ -173,6 +282,7 @@ function demarrerCombat(options) {
   equipe.forEach((j) => {
     j.bid = j.bid || (j.cloud && j.cloud.id) || j.id;
     j.neufViesUtilisees = false; // le passif félin se recharge à chaque combat
+    j.elan = 0;                  // « Élan » : la pression se rebâtit à chaque combat
   });
 
   etat.combat = {
@@ -317,7 +427,7 @@ function debutTour(c) {
 
   if (c.type === 'joueur' || c.type === 'invocation') {
     Object.keys(c.cooldowns).forEach((k) => { if (c.cooldowns[k] > 0) c.cooldowns[k]--; });
-    c.mp = Math.min(c.maxMp, c.mp + 2);
+    c.mp = Math.min(c.maxMp, c.mp + regainDeMana(c));
   }
 
   const poison = c.statuts.find((s) => s.type === 'poison');
@@ -415,6 +525,7 @@ function infligerDegats(source, cible, brut, options = {}) {
   // sous l'orage la foudre porte. Le physique reste neutre — le temps
   // qu'il fait ne change rien à un coup d'épée.
   if (options.element) d *= multElementMonde(options.element);
+  d *= bonusElan(source);            // « Élan » : chaque coup nourrit le suivant
   if (source.statuts.some((s) => s.type === 'benediction')) d *= 1.3;
   if (source.statuts.some((s) => s.type === 'affaibli')) d *= 0.7;
   // Sang de guerre (orc) : +15 % de dégâts sous 40 % de PV.
@@ -472,7 +583,8 @@ function infligerDegats(source, cible, brut, options = {}) {
   // v16 : les lignes de combat — un coup PHYSIQUE perd 40 % quand il part
   // de la ligne arrière ou qu'il la vise. La magie ignore les lignes.
   if (!options.magique) {
-    if (source.ligne === 'arriere') d *= 0.6;
+    // « Ligne de tir » : le Franc-tireur travaille de loin, sans pénalité.
+    if (source.ligne === 'arriere' && !ignoreMalusDeLigne(source)) d *= 0.6;
     if (cible.ligne === 'arriere') d *= 0.6;
   }
   d = Math.max(1, Math.round(d));
@@ -491,6 +603,8 @@ function infligerDegats(source, cible, brut, options = {}) {
     cb.degatsBossMonde += Math.min(d, Math.max(0, cible.hp));
   }
   cible.hp -= d;
+  nourrirElan(source);
+  draineDeGravure(source, d);
   // Neuf vies (félin) : survit une fois par combat à un coup fatal.
   if (cible.type === 'joueur' && cible.race === 'felin' && cible.hp <= 0 && !cible.neufViesUtilisees) {
     cible.neufViesUtilisees = true;
@@ -509,10 +623,14 @@ function texteDegats(r) {
   return t;
 }
 
-function soigner(cible, brut) {
+function soigner(cible, brut, source) {
   const soin = Math.max(1, Math.round(varie(brut)));
+  const avant = cible.hp;
   cible.hp = Math.min(cible.maxHp, cible.hp + soin);
-  return soin;
+  // « Clairvoyance » : ce qui dépasse les points de vie maximum ne tombe
+  // pas dans le vide, il se fige en bouclier.
+  if (source) surplusDeSoin(source, cible, soin - (cible.hp - avant));
+  return cible.hp - avant || soin;
 }
 
 function gererMort(c) {
@@ -537,7 +655,7 @@ function poserStatut(cible, statut) {
   cible.statuts.push(statut);
 }
 
-function appliquerEffet(source, cible, effet, resultatDegats) {
+function appliquerEffet(source, cible, effet, resultatDegats, comp) {
   switch (effet.type) {
     case 'poison': {
       const valeur = effet.degats != null
@@ -570,7 +688,7 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
       break;
     }
     case 'bouclier': {
-      const valeur = Math.round(8 + statDe(source, effet.stat || 'int') * 1.5);
+      const valeur = valeurBouclier(statsEffectives(source), effet, comp);
       poserStatut(cible, { type: 'bouclier', duree: effet.duree, valeur });
       journal(`🛡️ ${cible.nom} est protégé par un bouclier (${valeur} points).`);
       break;
@@ -588,9 +706,9 @@ function appliquerEffet(source, cible, effet, resultatDegats) {
       break;
     }
     case 'regen': {
-      const valeur = Math.round(3 + statDe(source, effet.stat || 'int') * 0.8);
+      const valeur = valeurRegen(statsEffectives(source), effet, comp);
       poserStatut(cible, { type: 'regen', duree: effet.duree, valeur });
-      journal(`💧 ${cible.nom} régénérera ${valeur} PV par tour pendant ${effet.duree} tours.`);
+      journal(`💚 ${cible.nom} régénérera ${valeur} PV par tour pendant ${effet.duree} tours.`);
       break;
     }
     case 'mana': {
@@ -905,22 +1023,22 @@ function lancerCompetence(j, compId, cible) {
         // Le drain soigne le lanceur même si le coup achève la cible ;
         // les autres effets (poison, étourdissement…) ne s'appliquent qu'aux vivants.
         if (comp.effet && (comp.effet.type === 'drain' || !estMort(c))) {
-          appliquerEffet(j, c, comp.effet, r);
+          appliquerEffet(j, c, comp.effet, r, comp);
         }
       }
     });
   } else if (comp.type === 'soin') {
     const cibles = comp.cible === 'allies' ? cb.equipe.filter((x) => !x.ko) : [cible];
     cibles.forEach((c) => {
-      const soin = soigner(c, (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang);
+      const soin = soigner(c, (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang, j);
       journal(`${comp.emoji} ${j.nom} rend ${soin} PV à ${c === j ? 'lui-même' : c.nom}.`);
-      if (comp.effet) appliquerEffet(j, c, comp.effet, null);
+      if (comp.effet) appliquerEffet(j, c, comp.effet, null, comp);
     });
   } else {
     // Utilitaire : sur soi, un allié, ou tout le groupe (aura, chant…)
     const cibles = comp.cible === 'allies' ? cb.equipe.filter((x) => !x.ko) : [cible || j];
     if (comp.cible === 'allies') journal(`${comp.emoji} ${j.nom} utilise ${comp.nom} !`);
-    cibles.forEach((c) => appliquerEffet(j, c, comp.effet, null));
+    cibles.forEach((c) => appliquerEffet(j, c, comp.effet, null, comp));
   }
 }
 
@@ -965,6 +1083,7 @@ function lancerInvocation(j, compId) {
   const inv = {
     type: 'invocation',
     invocation: true,
+    modele: comp.invocation,   // v20.1 : sa ligne de combat se lit dessus
     maitre: j.bid,
     nom: `${modele.nom} de ${j.nom}`,
     emoji: modele.emoji,
@@ -1038,7 +1157,7 @@ function tourInvocation(c) {
         const r = infligerDegats(c, m, brut, { critBonus: comp.critBonus || 0, magique: comp.stat === 'int' });
         journal(`→ ${m.nom} subit ${texteDegats(r)}`);
         gererMort(m);
-        if (comp.effet && (comp.effet.type === 'drain' || !estMort(m))) appliquerEffet(c, m, comp.effet, r);
+        if (comp.effet && (comp.effet.type === 'drain' || !estMort(m))) appliquerEffet(c, m, comp.effet, r, comp);
       }
     });
   } else if (comp.type === 'soin') {
@@ -1049,7 +1168,7 @@ function tourInvocation(c) {
     cibles.forEach((x) => {
       const soin = soigner(x, comp.puissance + statDeCompetence(comp, s) * comp.ratio);
       journal(`${comp.emoji} ${c.nom} rend ${soin} PV à ${x === c ? 'lui-même' : x.nom}.`);
-      if (comp.effet) appliquerEffet(c, x, comp.effet, null);
+      if (comp.effet) appliquerEffet(c, x, comp.effet, null, comp);
     });
   } else {
     const vivants = cb.equipe.filter((x) => !estMort(x));
@@ -1057,7 +1176,7 @@ function tourInvocation(c) {
       ? vivants
       : (comp.cible === 'allie' ? [vivants[alea(0, vivants.length - 1)]] : [c]);
     journal(`${comp.emoji} ${c.nom} utilise ${comp.nom} !`);
-    cibles.forEach((x) => appliquerEffet(c, x, comp.effet, null));
+    cibles.forEach((x) => appliquerEffet(c, x, comp.effet, null, comp));
   }
 }
 
