@@ -1299,19 +1299,27 @@ function annoncerRenfortEnnemis() {
     Tout le bestiaire était donc taillé pour un héros un tiers plus faible que vous, et l’écart se
     creusait à mesure qu’on montait : au milieu de la partie, nettoyer un groupe ne coûtait plus
     qu’un tiers de vos points de vie.</p>
-    <p>Ce qui change : <strong>les monstres et les boss ont été réétalonnés sur le vrai plafond</strong>.
-    Plus de points de vie, plus d’attaque — jusqu’à moitié plus au milieu de la partie, là où le
-    creux était le plus profond, à peine quelques pour cent dans les premières zones qui étaient
-    déjà justes. L’expérience gagnée, elle, ne change pas : la route jusqu’au niveau 100 reste
-    exactement la même. L’or suit l’effort, comme toujours.</p>
-    <p><strong>Le chiffre « conseillé » va vous paraître beaucoup plus haut.</strong> Il l’est :
-    il désignait un héros équipé en légendaire, deux crans sous ce qu’un joueur assidu porte
-    vraiment. Il désigne maintenant le héros équipé <strong>mythique</strong> — le plancher exact
-    à partir duquel une carte de votre niveau reste gagnable. Le franchir veut dire « vous êtes
-    prêt » ; rester dessous veut dire « il vous manque de l’équipement, pas des niveaux ».</p>
-    <p class="aide">Personne ne tue toujours en un seul coup, ni les monstres ni vous — et un héros
-    correctement équipé passe encore l’intégralité du contenu de son niveau. C’est vérifié zone
-    par zone, à chaque exécution des tests.</p>`;
+    <p>Ce qui change : <strong>chaque carte a désormais une puissance, et ses monstres se la
+    partagent</strong>. Cette puissance n’est pas décidée à la main — c’est la moyenne, sur la
+    tranche de niveaux que la carte annonce, du meilleur héros que le jeu autorise à chacun de
+    ces niveaux. Les Abysses d’Émeraude affichent « niv. 30-36 » : leur puissance est celle des
+    niveaux 30 à 36, mise bout à bout. Les bêtes en portent les trois quarts, le boss un peu
+    plus — il se bat seul.</p>
+    <p>Concrètement, elles ont pris <strong>des points de vie et de l’attaque</strong> : quelques
+    pour cent dans les premières zones, qui étaient déjà justes, jusqu’à moitié plus entre les
+    niveaux 40 et 70, là où le creux était le plus profond. L’expérience gagnée, elle, ne change
+    pas d’un point : la route jusqu’au niveau 100 reste exactement la même. L’or suit l’effort,
+    comme toujours.</p>
+    <p><strong>Le chiffre « conseillé » va vous paraître beaucoup plus haut.</strong> Il l’est,
+    pour deux raisons. Il se lisait sur le seul niveau d’entrée d’une carte, jamais sur sa
+    tranche entière. Et il désignait un héros équipé en légendaire, deux crans sous ce qu’un
+    joueur assidu porte vraiment. Il désigne maintenant le héros équipé <strong>mythique</strong>,
+    sur la tranche complète — le plancher exact à partir duquel une carte reste gagnable. Le
+    franchir veut dire « vous êtes prêt » ; rester dessous veut dire « il vous manque de
+    l’équipement, pas des niveaux ».</p>
+    <p class="aide">Les six classes passent toutes l’intégralité du contenu de leur niveau, la
+    moins bien servie comprise, et personne ne tue en un seul coup — ni les monstres, ni vous.
+    C’est vérifié carte par carte, à chaque exécution des tests.</p>`;
   const bouton = document.createElement('button');
   bouton.className = 'btn-principal';
   bouton.textContent = '⚔️ Reprendre l’aventure';

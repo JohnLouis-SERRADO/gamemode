@@ -288,16 +288,16 @@ function puissanceDe(p) {
 // exécution des tests : s'il dérive d'un point, la suite passe au rouge.
 // =====================================================================
 const PUISSANCE_ETALON = [
-     411,   486,   561,   676,   844,   907,  1130,  1158,  1191,  1757,  // 1–10
-    1825,  1858,  1886,  2117,  2248,  2284,  2806,  3078,  3697,  3731,  // 11–20
-    3764,  3798,  3981,  4014,  4048,  4082,  4116,  4887,  4920,  4953,  // 21–30
-    5139,  5313,  5340,  5374,  5714,  6029,  6062,  6090,  6333,  6637,  // 31–40
-    6672,  6705,  6921,  7109,  7142,  7176,  7348,  7745,  7779,  7813,  // 41–50
-    8002,  8185,  8231,  8270,  8468,  8778,  8819,  8865,  9104,  9235,  // 51–60
-    9275,  9315,  9361,  9400,  9440,  9480,  9520,  9565,  9606, 10647,  // 61–70
-   10687, 11052, 11098, 11138, 11178, 11644, 11684, 11684, 11712, 12105,  // 71–80
-   12156, 12203, 12254, 12794, 12846, 12846, 12882, 13286, 13332, 13461,  // 81–90
-   13512, 13983, 14034, 14034, 14056, 14551, 14596, 14596, 14599, 15185,  // 91–100
+     449,   531,   652,   790,   912,  1024,  1224,  1254,  1417,  1854,  // 1–10
+    1945,  1978,  2167,  2678,  2886,  2920,  3735,  3773,  3851,  3884,  // 11–20
+    3918,  4186,  4225,  4305,  4341,  4683,  4859,  5038,  5071,  5395,  // 21–30
+    5435,  5617,  5646,  5998,  6037,  6237,  6271,  6646,  6686,  6824,  // 31–40
+    6859,  7261,  7301,  7477,  7513,  7711,  7751,  8229,  8267,  8392,  // 41–50
+    8444,  8744,  8793,  8899,  8949,  9476,  9527,  9578,  9630, 10011,  // 51–60
+   10057, 10153, 10204, 10621, 10672, 10724, 10775, 11211, 11261, 11313,  // 61–70
+   11364, 11713, 11764, 11815, 11866, 12349, 12401, 12452, 12503, 12848,  // 71–80
+   12912, 12975, 13037, 13594, 13658, 13720, 13783, 14138, 14200, 14379,  // 81–90
+   14442, 14929, 14992, 15055, 15118, 15547, 15610, 15673, 15736, 16276,  // 91–100
 ];
 
 // =====================================================================
@@ -334,9 +334,50 @@ function puissanceRecommandee(niveau) {
   return Math.round(puissanceEtalon(niveau) * FACTEUR_RECOMMANDATION);
 }
 
+// =====================================================================
+// v22.1 — LA PUISSANCE D'UNE CARTE.
+//
+// Une carte n'a pas un niveau, elle a une TRANCHE : les Abysses
+// d'Émeraude annoncent « niv. 30-36 ». Jusqu'ici le chiffre conseillé se
+// lisait sur le seul niveau d'entrée — donc sur le joueur le plus faible
+// qui puisse y mettre les pieds, et jamais sur la carte elle-même.
+//
+// La puissance d'une carte est désormais la MOYENNE de la courbe sur sa
+// tranche entière. C'est aussi le nombre dont se déduit son bestiaire
+// (voir js/data/equilibrage.js) : la carte, ses monstres et le chiffre
+// affiché disent enfin tous la même chose.
+// =====================================================================
+function bandeDeNiveaux(zone) {
+  const trouve = /niv\.\s*(\d+)\s*[-–]\s*(\d+)/.exec((zone && zone.plage) || '');
+  if (trouve) return [+trouve[1], +trouve[2]];
+  const n = (zone && zone.niveauMin) || 1;
+  return [n, n];
+}
+
+function puissanceZone(zone) {
+  const [debut, fin] = bandeDeNiveaux(zone);
+  let somme = 0;
+  let compte = 0;
+  for (let n = debut; n <= fin; n++) { somme += puissanceEtalon(n); compte++; }
+  return compte ? somme / compte : puissanceEtalon(debut);
+}
+
 // Étiquette HTML « puissance conseillée » colorée selon le héros.
+function etiquetteRecommandation(p, requis, puissanceCarte) {
+  const mienne = puissanceDe(p);
+  const ok = mienne >= requis;
+  const detail = puissanceCarte
+    ? `Votre puissance : ${mienne} · puissance de la carte : ${Math.round(puissanceCarte)}`
+    : `Votre puissance : ${mienne}`;
+  return `<span class="reco-puissance ${ok ? 'reco-ok' : 'reco-risque'}" title="${detail}">⚡ ${requis} conseillé${ok ? ' ✓' : ' ⚠️'}</span>`;
+}
+
 function texteRecommandation(p, niveau) {
-  const requis = puissanceRecommandee(niveau);
-  const ok = puissanceDe(p) >= requis;
-  return `<span class="reco-puissance ${ok ? 'reco-ok' : 'reco-risque'}" title="Votre puissance : ${puissanceDe(p)}">⚡ ${requis} conseillé${ok ? ' ✓' : ' ⚠️'}</span>`;
+  return etiquetteRecommandation(p, puissanceRecommandee(niveau));
+}
+
+// La même étiquette pour une carte, calée sur sa tranche entière.
+function texteRecommandationZone(p, zone) {
+  const carte = puissanceZone(zone);
+  return etiquetteRecommandation(p, Math.round(carte * FACTEUR_RECOMMANDATION), carte);
 }

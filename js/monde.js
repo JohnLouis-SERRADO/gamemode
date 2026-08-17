@@ -66,7 +66,7 @@ function rendreCarte() {
     carte.innerHTML = `
       <div class="zone-emoji">${z.emoji}${verrouillee ? '<span class="cadenas-zone">🔒</span>' : ''}</div>
       <div class="zone-nom">${z.nom} ${bossVaincu ? '🏆' : ''}</div>
-      <div class="zone-plage">${z.plage} · ${texteRecommandation(p, z.niveauMin)}</div>
+      <div class="zone-plage">${z.plage} · ${texteRecommandationZone(p, z)}</div>
       <div class="zone-desc">${verrouillee ? `🔒 Atteignez le niveau ${z.niveauMin} pour entrer.` : z.desc}</div>`;
     if (!verrouillee) {
       rendreCliquable(carte, () => {
@@ -217,7 +217,7 @@ function rendreZone(z) {
 
   el('zone-entete').innerHTML = `
     <div class="entete-lieu">
-      <h2>${z.emoji} ${z.nom} <span class="badge">${z.plage}</span> ${texteRecommandation(p, z.niveauMin)}</h2>
+      <h2>${z.emoji} ${z.nom} <span class="badge">${z.plage}</span> ${texteRecommandationZone(p, z)}</h2>
       <button class="btn-choix btn-compact" id="zone-retour">🗺️ Carte</button>
     </div>
     <p class="sous-titre gauche">${z.desc}</p>

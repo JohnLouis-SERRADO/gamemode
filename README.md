@@ -182,9 +182,13 @@ Le jeu embarque sa propre page de tests, qui charge exactement les mêmes fichie
 npx serve .   # puis ouvrir /tests.html
 ```
 
-**256 tests** en 23 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, l'instantané publié au groupe est toujours le héros tel qu'il est *maintenant* — et, depuis la v20, **l'équilibrage lui-même est sous test** : l'équipement ne doit jamais peser plus de la moitié d'un héros, la puissance conseillée doit rester atteignable par les six classes, la tension d'un combat doit rester dans la même fourchette du niveau 1 au niveau 100, et personne ne doit pouvoir tuer d'un seul coup — ni les monstres, ni vous.
+**259 tests** en 23 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, l'instantané publié au groupe est toujours le héros tel qu'il est *maintenant* — et, depuis la v20, **l'équilibrage lui-même est sous test** : l'équipement ne doit jamais peser plus de la moitié d'un héros, la puissance conseillée doit rester atteignable par les six classes, la tension d'un combat doit rester dans la même fourchette du niveau 1 au niveau 100, et personne ne doit pouvoir tuer d'un seul coup — ni les monstres, ni vous.
 
-Depuis la **v22**, deux garde-fous de plus ferment la boucle : les quatre tables de cibles du bestiaire (PV et attaque, monstre et boss) sont **dérivées du héros de référence** et un test refuse qu'elles s'en écartent de plus de 2 %, et un héros équipé **mythique** — le plancher que désigne le chiffre « conseillé » — doit encore franchir l'intégralité du contenu de son niveau. Le héros de référence, lui, est désormais le vrai plafond du jeu : il se bloquait jusque-là sur du vieux matériel, et toute la difficulté était calibrée sur un fantôme un tiers trop faible.
+Depuis la **v22**, la difficulté se lit dans une seule monnaie. À chaque niveau, le jeu construit le meilleur héros qu'il autorise — équipement complet, tous les points placés, paliers d'identité ouverts : c'est la **courbe de puissance**. La **puissance d'une carte** est la moyenne de cette courbe sur la tranche de niveaux qu'elle annonce, et ses monstres se la partagent — les trois quarts pour un groupe de trois, un peu plus pour le boss, qui se bat seul. La puissance d'un monstre se mesure au même barème que celle d'un héros : ses points de vie comptent ×0,8 comme les siens, et ses dégâts par tour à un taux mesuré sur le persona, pas choisi.
+
+La parité stricte, elle, est impossible et c'est mesuré : un groupe qui porterait 100 % de la puissance d'une carte la rend infranchissable pour les six classes, parce que le héros y est **seul contre trois**. Le ratio de menace est donc le seul vrai réglage de difficulté du jeu — et il est encadré des deux côtés : au-dessus de 0,78 le Guerrier ne passe plus la fin de partie, en dessous de 0,70 le milieu de partie redevient une promenade.
+
+Quatre garde-fous de plus ferment la boucle : les quatre tables de cibles du bestiaire sont **dérivées de cette courbe** et un test refuse qu'elles s'en écartent de plus de 2 % ; un héros équipé **mythique** — le plancher que désigne le chiffre « conseillé » — doit encore franchir tout le contenu de son niveau, boss compris ; les boss tiennent leur propre fourchette ; et les modes dérivés (Tour, expéditions, Héroïque et Cauchemar) sont lus dans la même monnaie, pour qu'on ne puisse plus toucher un multiplicateur sans voir ce qu'il vaut.
 
 ## 🗂️ Structure du projet
 
@@ -224,7 +228,7 @@ js/ville.js                      — le Bourg : boutiques, artisans, Arcanium, G
 js/combat.js                     — combat tour par tour (initiative, critiques, statuts, boss)
 js/groupe.js                     — expéditions en ligne à plusieurs appareils
 js/reseau.js                     — client REST Supabase, taverne, fiches publiques, échanges
-js/tests.js                      — les 256 tests
+js/tests.js                      — les 259 tests
 
 sql/                             — les fonctions RPC du backend Supabase, versionnées ici
 ```

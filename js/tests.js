@@ -2462,7 +2462,7 @@ suite('Équilibrage (v20)', () => {
     const derives = [];
     let record = 0;
     for (let n = 1; n <= NIVEAU_MAX; n++) {
-      record = Math.max(record, puissancesEtalon(n).min);
+      record = Math.max(record, puissancesEtalon(n).mediane);
       const ecart = Math.abs(puissanceEtalon(n) - record) / record;
       if (ecart > 0.02) derives.push(`niv. ${n} : table ${puissanceEtalon(n)} vs mesuré ${record}`);
     }
@@ -2684,6 +2684,73 @@ suite('Équilibrage (v20)', () => {
     const moyen = rapports.reduce((a, v) => a + v, 0) / rapports.length;
     entre(moyen, FACTEUR_RECOMMANDATION - 0.06, FACTEUR_RECOMMANDATION + 0.06,
       `rapport mythique / plafond mesuré (facteur affiché : ${FACTEUR_RECOMMANDATION})`);
+  });
+
+  // =====================================================================
+  // v22.1 — LES MODES DÉRIVÉS.
+  //
+  // La Tour, les expéditions et les difficultés Héroïque / Cauchemar ne
+  // décrivent aucun monstre : elles multiplient ceux des cartes. Elles
+  // héritent donc automatiquement de la parité — mais leurs propres
+  // multiplicateurs, eux, n'avaient jamais été lus dans la même monnaie.
+  // Ces tests les y ramènent, pour qu'on ne puisse plus en toucher un sans
+  // voir ce qu'il vaut.
+  //
+  // MENACE d'un multiplicateur = ce qu'il fait à la puissance d'un
+  // monstre, donc 0,42 × (ses PV) + 0,58 × (son attaque) — la répartition
+  // du bestiaire.
+  // =====================================================================
+  const menaceDe = (multHp, multAtk) => PART_VIE_MONSTRE * multHp + (1 - PART_VIE_MONSTRE) * multAtk;
+
+  test('Héroïque et Cauchemar valent ce qu\'elles annoncent', () => {
+    // Normal met 0,75 fois la puissance de la carte en face du joueur.
+    // Héroïque doit l'amener à la parité, Cauchemar au-delà — c'est ce qui
+    // justifie qu'elles se débloquent, l'une après le boss, l'autre six
+    // niveaux plus haut.
+    egal(Math.round(menaceDe(DIFFICULTES.normal.hp, DIFFICULTES.normal.atk) * 100) / 100, 1,
+      'Normal est la référence');
+    const heroique = menaceDe(DIFFICULTES.heroique.hp, DIFFICULTES.heroique.atk);
+    const cauchemar = menaceDe(DIFFICULTES.cauchemar.hp, DIFFICULTES.cauchemar.atk);
+    verifier(cauchemar > heroique, 'Cauchemar doit dépasser Héroïque');
+    entre(heroique * MENACE.plancher, 0.95, 1.20, 'Héroïque, en part de la puissance de la carte');
+    entre(cauchemar * MENACE.plancher, 1.30, 1.70, 'Cauchemar, en part de la puissance de la carte');
+  });
+
+  test('une expédition à plusieurs monte en menace sans jamais atteindre la parité', () => {
+    // Ce que le jeu oppose à N héros : un pack de min(6, N+2) bêtes,
+    // gonflées par multEquipe (js/groupe.js). La parité voudrait N fois la
+    // menace solo ; le jeu en met moins, et c'est voulu — jouer à plusieurs
+    // doit payer. On borne quand même l'écart : sous 0,60 par tête, le
+    // groupe farme.
+    const packSolo = 3;
+    const fautifs = [];
+    let precedente = 1;
+    for (let n = 2; n <= 6; n++) {
+      const taille = Math.min(6, n + 2);
+      const totale = taille * menaceDe(1 + 0.35 * (n - 1), 1 + 0.1 * (n - 1)) / packSolo;
+      if (totale <= precedente) fautifs.push(`${n} héros : la menace ne monte pas`);
+      const parTete = totale / n;
+      if (parTete < 0.6 || parTete > 1) fautifs.push(`${n} héros : ${parTete.toFixed(2)} de menace par tête`);
+      precedente = totale;
+    }
+    aucun(fautifs, 'tailles d\'expédition mal calibrées');
+  });
+
+  test('la Tour monte sans marche arrière ni palier gratuit', () => {
+    // Un étage ne doit jamais être plus doux que le précédent : ni par son
+    // multiplicateur, ni par la carte dont il tire ses bêtes.
+    const fautifs = [];
+    let zonePrecedente = -1;
+    let multPrecedent = 0;
+    for (let etage = 1; etage <= 120; etage++) {
+      const indexZone = Math.min(ZONES.length - 1, Math.floor((etage - 1) / 2.5));
+      const mult = 1 + etage * 0.06;
+      if (indexZone < zonePrecedente) fautifs.push(`étage ${etage} : la carte recule`);
+      if (mult <= multPrecedent) fautifs.push(`étage ${etage} : le multiplicateur stagne`);
+      zonePrecedente = indexZone;
+      multPrecedent = mult;
+    }
+    aucun(fautifs, 'étages de la Tour qui font marche arrière');
   });
 
   test('les quatre tables de cibles collent au héros de référence', () => {

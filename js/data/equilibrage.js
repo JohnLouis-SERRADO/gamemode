@@ -330,6 +330,11 @@ function puissancesEtalon(niveau) {
     parClasse,
     min: Math.min(...valeurs),
     max: Math.max(...valeurs),
+    // v22.1 : c'est la MÉDIANE qui sert de courbe de puissance au jeu.
+    // La plus faible des six taillerait un contenu que les cinq autres
+    // traversent sans le voir ; la plus forte, un mur pour les cinq
+    // autres — et l'écart entre les deux atteint 27 % au niveau 15.
+    mediane: valeurs.slice().sort((a, b) => a - b)[Math.floor(valeurs.length / 2)],
     moyenne: Math.round(valeurs.reduce((a, v) => a + v, 0) / valeurs.length),
   };
   memoPuissances[n] = resultat;
@@ -404,6 +409,56 @@ function facteurResistanceDe(p) {
   return resistanceDeClasse({ classe: p.classe, type: 'joueur', statuts: [] });
 }
 
+// =====================================================================
+// v22.1 — LE BANC IGNORAIT DEUX PASSIFS, ET C'ÉTAIT CEUX DES DEUX
+// CLASSES QU'IL DÉCLARAIT LES PLUS FAIBLES.
+//
+// Mesuré sur les trente zones : le Guerrier tombait à 0,83× de marge en
+// fin de partie et le Runelame à 0,97× — sous la barre de survie, quand
+// les quatre autres classes tenaient entre 1,1× et 2,5×. On allait en
+// conclure que les mêlées avaient besoin d'être renforcées.
+//
+// Elles n'en avaient pas besoin : le banc ne connaissait simplement pas
+// leur métier. L'Élan du Guerrier ajoute 8 % de dégâts par coup porté,
+// jusqu'à trois paliers ; la Gravure du Runelame lui rend 10 % de tout ce
+// qu'il inflige. Ces deux-là se déclenchent à CHAQUE combat, sans
+// condition, sans choix à faire — les ignorer, c'est mesurer une autre
+// classe que celle qui est jouée.
+//
+// On s'arrête là volontairement. Le Rempart du Gardien (+25 % de dégâts)
+// demande une provocation active, la Clairvoyance du Devin un surplus de
+// soin, le Flux de l'Arcaniste une gestion de mana : ceux-là dépendent de
+// la manière de jouer, et un banc qui les créditerait d'office
+// surestimerait le héros — l'erreur exacte que la v22 vient de corriger
+// dans l'autre sens.
+// =====================================================================
+
+// Le combattant tel que le moteur de combat le lit — aPassif exige un
+// « joueur », l'étalon n'en est pas un.
+function commeCombattant(p) {
+  return { classe: p.classe, type: 'joueur', statuts: [] };
+}
+
+// L'Élan monte d'un cran par coup porté et plafonne : sur un combat de T
+// tours, sa valeur moyenne se calcule, elle ne se devine pas.
+function facteurElanMoyen(p, tours) {
+  if (typeof aPassif !== 'function' || !aPassif(commeCombattant(p), 'Élan')) return 1;
+  const plafond = typeof ELAN_MAX === 'number' ? ELAN_MAX : 3;
+  const parCoup = typeof ELAN_PAR_COUP === 'number' ? ELAN_PAR_COUP : 0.08;
+  const n = Math.max(1, Math.round(tours));
+  let somme = 0;
+  for (let t = 0; t < n; t++) somme += Math.min(plafond, t);
+  return 1 + (somme / n) * parCoup;
+}
+
+// La Gravure rend une part de tout ce que le Runelame inflige. Contrairement
+// au soin qu'un héros se lance, elle ne coûte pas de tour : c'est de la vie
+// gagnée en frappant.
+function partGravureDe(p) {
+  if (typeof aPassif !== 'function' || !aPassif(commeCombattant(p), 'Gravure')) return 0;
+  return typeof PART_GRAVURE === 'number' ? PART_GRAVURE : 0;
+}
+
 // Dégâts moyens d'un héros par tour. Modèle simple et assumé : il frappe
 // avec la meilleure compétence qu'il peut se payer, et retombe sur
 // l'attaque de base quand elle recharge. Les hasards (critique, coup
@@ -441,7 +496,11 @@ function plusGrosCoupHeros(p) {
     const v = (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * (comp.coups || 1);
     if (v > brut) brut = v;
   });
-  return brut * (1 + sousCarac(s, 'deter')) * 1.5; // critique
+  // Une pointe se garde pour le bon moment : chez le Guerrier, c'est l'Élan
+  // au maximum.
+  const elan = facteurElanMoyen(p, 1) === 1 ? 1
+    : 1 + (typeof ELAN_MAX === 'number' ? ELAN_MAX : 3) * (typeof ELAN_PAR_COUP === 'number' ? ELAN_PAR_COUP : 0.08);
+  return brut * (1 + sousCarac(s, 'deter')) * 1.5 * elan; // critique
 }
 
 // Ce qu'un héros peut se soigner LUI-MÊME pendant un combat.
@@ -521,16 +580,25 @@ function tensionCombat(monstres, p, taille = 3) {
   const ligne = facteurLigneDe(p);
   const parMonstre = moy((m) => degatsParTourMonstre(m, p)) * ligne * facteurResistanceDe(p);
 
+  const plafondElan = typeof ELAN_MAX === 'number' ? ELAN_MAX : 3;
+  const parCoupElan = typeof ELAN_PAR_COUP === 'number' ? ELAN_PAR_COUP : 0.08;
+  const aElan = facteurElanMoyen(p, 1) !== 1 || facteurElanMoyen(p, 10) !== 1;
+
   let restants = taille;
   let pvCible = pvMonstre;
   let tours = 0;
   let recu = 0;
+  let inflige = 0;
   // Le surplus d'un coup qui dépasse est perdu : on n'achève pas deux bêtes
   // du même geste. Le garde-fou à 2000 tours n'existe que pour qu'une
   // configuration absurde ne fige jamais la suite de tests.
   while (restants > 0 && tours < 2000) {
+    // L'Élan du Guerrier monte d'un cran par coup porté : le premier tour
+    // frappe à sec, le quatrième à pleine pression.
+    const coup = degatsHeros * (aElan ? 1 + Math.min(plafondElan, tours) * parCoupElan : 1);
     tours++;
-    pvCible -= degatsHeros;
+    pvCible -= coup;
+    inflige += coup;
     if (pvCible <= 0) { restants--; pvCible = pvMonstre; }
     recu += restants * parMonstre;
   }
@@ -540,7 +608,10 @@ function tensionCombat(monstres, p, taille = 3) {
   const auto = autoSoinPendantCombat(p, tours);
   const survivantsMoyens = recu / Math.max(1e-9, tours * parMonstre);
   const recuTotal = recu + auto.toursDeSoin * survivantsMoyens * parMonstre;
-  const vie = p.maxHp + auto.soinTotal;
+  // La Gravure du Runelame ne coûte pas de tour : c'est de la vie reprise en
+  // frappant. Elle ne rend évidemment que ce qui a été perdu.
+  const gravure = Math.min(partGravureDe(p) * inflige, recuTotal);
+  const vie = p.maxHp + auto.soinTotal + gravure;
   const toursNettoyage = tours + auto.toursDeSoin;
   const marge = vie / Math.max(1, recuTotal);
   return {
@@ -658,87 +729,136 @@ function tensionZone(zone, taille = 3) {
 }
 
 // =====================================================================
-// v22 — D'OÙ VIENNENT LES CIBLES DU BESTIAIRE.
+// v22.1 — LE BESTIAIRE SE DÉRIVE PAR PARITÉ DE PUISSANCE.
 //
-// Les quatre tables de js/data/monstres.js — PV et attaque, monstre et
-// boss — ne sont pas écrites à la main : elles se DÉRIVENT du héros de
-// référence, niveau par niveau. Ce qui suit est le calcul qui les
-// produit, et un test vérifie à chaque exécution que les tables
-// embarquées n'ont pas dérivé de lui.
+// La v22 dérivait les cibles d'objectifs de COMBAT — « tant de tours,
+// telle marge ». Ça marchait, mais ça ne se lisait pas : rien, dans le
+// jeu, ne permettait de dire « cette carte vaut tant » et de comparer ce
+// chiffre au sien.
 //
-// Deux objectifs, deux situations distinctes :
+// La règle est désormais directe, et elle tient en trois phrases :
 //
-//   • le MONSTRE ORDINAIRE se rencontre par trois. Ses points de vie
-//     disent combien de temps le groupe tient (TOURS_GROUPE), son
-//     attaque ce que le groupe coûte (margeGroupe).
-//   • le BOSS se bat SEUL — pas d'attrition, rien à corriger pour lui.
-//     Il tient plus longtemps et coûte plus cher.
+//   1. À chaque niveau, on construit le meilleur héros que le jeu
+//      autorise — équipement complet, tous les points placés, paliers
+//      d'identité ouverts. Sa puissance, c'est la COURBE.
+//   2. La puissance d'une CARTE est la moyenne de cette courbe sur la
+//      tranche de niveaux qu'elle annonce. Les Abysses d'Émeraude
+//      affichent « niv. 30-36 » : leur puissance est la moyenne des
+//      niveaux 30 à 36.
+//   3. Les monstres de la carte se partagent cette puissance-là.
 //
-// La marge se resserre en montant : le début de partie pardonne, la fin
-// mord. Elle ne descend jamais sous 1,5 — en dessous, un combat ordinaire
-// se joue à la potion, et ce n'est plus du contenu de routine.
+// Encore faut-il savoir ce que « la puissance d'un monstre » veut dire.
+// On la mesure au MÊME barème que celle d'un héros : ses points de vie
+// comptent ×0,8 comme les siens, et ses dégâts par tour valent R — la
+// quantité qu'il faut pour qu'un monstre bâti comme le héros marque
+// exactement la puissance du héros. R n'est pas choisi, il est mesuré
+// sur le persona, niveau par niveau.
+//
+// POURQUOI PAS LA PARITÉ STRICTE. Un groupe qui porterait 100 % de la
+// puissance de la carte est INJOUABLE, et pas qu'un peu : mesuré, le
+// héros le mieux équipé du jeu perd dans 20 cartes sur 30, et les six
+// classes perdent partout. La raison est arithmétique — le héros est
+// SEUL contre trois. L'attrition (les bêtes tombent une à une et cessent
+// de mordre) ne rattrape pas un rapport de un contre trois.
+//
+// Le ratio de menace est donc le seul vrai réglage de difficulté du jeu,
+// et il est borné par le bas comme par le haut :
+//   • au-dessus de 0,78, le Guerrier — la classe la moins bien servie —
+//     passe sous la barre de survie sur les cartes de fin de partie ;
+//   • en dessous de 0,70, le milieu de partie redevient la promenade que
+//     la v22 vient de corriger.
+// 0,75 est le point mesuré où les six classes passent toutes leur propre
+// contenu, la plus faible comprise, sans qu'aucune ne s'y promène.
+//
+// Le boss, lui, se bat SEUL : à un contre un, il peut porter davantage.
+//
+// ET POURQUOI CE RATIO N'EST PAS CONSTANT. Il vaut 0,75 à partir du
+// niveau 30 environ, mais près de 1,00 au niveau 1 — et ce n'est pas un
+// choix de difficulté, c'est une CORRECTION. La puissance d'un héros
+// compte des choses qui n'entrent jamais dans un combat : sa réserve de
+// mana, ses caractéristiques hors rôle, le score de son équipement. Au
+// niveau 1 ces termes fixes pèsent près d'un quart de son score ; passé
+// le niveau 30 ils sont noyés. Sans la correction, les Plaines de l'Aube
+// se traversaient avec 3,2× de marge — mesuré — pendant que la fin de
+// partie était juste.
+//
+// La décroissance est ajustée sur la mesure, niveau par niveau (erreur
+// moyenne : 2,4 %), et elle n'a que trois constantes.
 // =====================================================================
-const PROFIL_CIBLE = {
-  // Le monstre moyen du bestiaire, mesuré : ×1,09 en moyenne pondérée,
-  // ×1,21 pour sa plus grosse attaque. Le boss frappe plus fort et garde
-  // une pointe nettement au-dessus (×1,48).
-  monstre: { attaques: [{ mult: 1.045, poids: 3 }, { mult: 1.214, poids: 1 }] },
-  boss: { attaques: [{ mult: 1.042, poids: 3 }, { mult: 1.478, poids: 1 }] },
-};
-const TOURS_GROUPE = 12;
-const TOURS_BOSS = 18;
-const MARGE_GROUPE = { debut: 2.2, fin: 1.75 };
-const MARGE_BOSS = 1.65;
+const MENACE = { plancher: 0.75, surcout: 0.26, demiVie: 12 };
+const MENACE_BOSS = { plancher: 0.80, surcout: 0.28, demiVie: 12 };
 
-function margeGroupeVoulue(niveau) {
-  const t = (Math.min(NIVEAU_MAX, Math.max(1, niveau)) - 1) / (NIVEAU_MAX - 1);
-  return MARGE_GROUPE.debut + (MARGE_GROUPE.fin - MARGE_GROUPE.debut) * t;
+function ratioMenace(niveau, forme) {
+  const n = Math.min(NIVEAU_MAX, Math.max(1, niveau));
+  return forme.plancher + forme.surcout * Math.exp(-(n - 1) / forme.demiVie);
 }
 
-// Les PV et l'attaque qu'il faut à ce niveau, pour cette classe.
-function ciblesPourClasse(classe, niveau) {
-  const p = personaArme(classe, niveau);
-  const resultat = {};
-  const roles = [
-    ['monstre', 3, TOURS_GROUPE, margeGroupeVoulue(niveau)],
-    ['boss', 1, TOURS_BOSS, MARGE_BOSS],
-  ];
-  roles.forEach(([role, taille, tours, marge]) => {
-    const profil = PROFIL_CIBLE[role];
-    // Les PV se cherchent par dichotomie : la durée d'un combat n'a pas
-    // de forme close (les bêtes tombent une à une, le héros se soigne).
-    // On part de l'estimation évidente — « tant de tours à tant de dégâts
-    // par tour » — et on encadre largement : trente pas suffisent alors là
-    // où soixante étaient nécessaires depuis un intervalle aveugle.
-    const estimation = Math.max(1, tours * degatsParTourHeros(p) / taille);
-    let bas = estimation * 0.1;
-    let haut = estimation * 10;
-    for (let i = 0; i < 30; i++) {
-      const milieu = (bas + haut) / 2;
-      const t = tensionCombat([{ ...profil, hp: milieu, atk: 1 }], p, taille);
-      if (t.toursNettoyage < tours) bas = milieu; else haut = milieu;
-    }
-    const hp = Math.round((bas + haut) / 2);
-    // L'attaque, elle, est immédiate : les dégâts encaissés lui sont
-    // proportionnels, donc la marge lui est inversement proportionnelle.
-    const temoin = tensionCombat([{ ...profil, hp, atk: 100 }], p, taille);
-    resultat[role] = { hp, atk: 100 * temoin.marge / marge };
+// Comment un monstre dépense sa puissance : en vie ou en frappe.
+//
+// À budget égal, c'est un partage à somme nulle — plus de PV, moins
+// d'attaque — et le produit des deux (donc la difficulté) est maximal à
+// 50/50. Les valeurs ci-dessous viennent du bestiaire tel qu'il a été
+// écrit à la main, et elles en disent le tempérament : un monstre
+// ordinaire met 42 % de sa puissance dans sa vie et le reste dans ses
+// coups ; un boss, qui doit durer et exposer ses mécaniques, en met 78 %.
+const PART_VIE_MONSTRE = 0.42;
+const PART_VIE_BOSS = 0.78;
+
+// Le multiplicateur d'attaque moyen du bestiaire, par rôle : c'est lui qui
+// convertit une attaque écrite en dégâts par tour réels.
+const MULT_MOYEN_MONSTRE = 1.087;
+const MULT_MOYEN_BOSS = 1.151;
+
+// =====================================================================
+// LE BARÈME : ce que vaut, en puissance, la substance d'un combattant.
+//
+// Les points de vie comptent ×0,8, exactement comme ceux d'un héros dans
+// puissanceDe. Reste à savoir ce que vaut un point de dégâts par tour :
+// c'est R, et il se déduit — pour que le héros lui-même marque sa propre
+// puissance, il faut que ses dégâts valent tout ce que ses points de vie
+// ne portent pas.
+// =====================================================================
+const memoBareme = [];
+
+function baremeDe(niveau) {
+  const n = Math.min(NIVEAU_MAX, Math.max(1, Math.round(niveau) || 1));
+  if (memoBareme[n]) return memoBareme[n];
+  const mesures = classesEtalon().map((classe) => {
+    const p = personaArme(classe, n);
+    return { puissance: puissanceDe(p), hp: p.maxHp, dpt: degatsParTourHeros(p) };
   });
-  return resultat;
+  const mediane = (f) => mesures.map(f).sort((a, b) => a - b)[Math.floor(mesures.length / 2)];
+  const puissance = mediane((m) => m.puissance);
+  const hp = mediane((m) => m.hp);
+  const dpt = mediane((m) => m.dpt);
+  return (memoBareme[n] = { puissance, hp, dpt, R: (puissance - 0.8 * hp) / Math.max(1e-9, dpt) });
 }
 
-// Les quatre tables, de 1 à 100. On prend la MÉDIANE des six classes :
-// se caler sur la plus faible taillerait un contenu que les cinq autres
-// traversent sans le voir, sur la plus forte un mur pour les cinq autres.
+// La puissance d'un monstre, dans la monnaie des héros.
+function puissanceMonstre(m) {
+  const poids = (m.attaques || []).reduce((a, x) => a + (x.poids || 1), 0) || 1;
+  const mult = (m.attaques || []).reduce((a, x) => a + (x.mult || 1) * (x.poids || 1), 0) / poids;
+  return 0.8 * m.hp + baremeDe(m.niveau).R * m.atk * mult;
+}
+
+// Les quatre tables, de 1 à 100 : le budget de puissance d'un monstre,
+// converti en points de vie et en attaque selon son partage.
 function ciblesBestiaire() {
   const tables = { hpMonstre: [], atkMonstre: [], hpBoss: [], atkBoss: [] };
-  const mediane = (valeurs) => valeurs.slice().sort((a, b) => a - b)[Math.floor(valeurs.length / 2)];
   for (let n = 1; n <= NIVEAU_MAX; n++) {
-    const parClasse = classesEtalon().map((classe) => ciblesPourClasse(classe, n));
-    tables.hpMonstre.push(mediane(parClasse.map((c) => c.monstre.hp)));
-    tables.atkMonstre.push(mediane(parClasse.map((c) => c.monstre.atk)));
-    tables.hpBoss.push(mediane(parClasse.map((c) => c.boss.hp)));
-    tables.atkBoss.push(mediane(parClasse.map((c) => c.boss.atk)));
+    const bareme = baremeDe(n);
+    // Le groupe de trois porte sa part de la puissance du niveau ; chaque
+    // bête en porte donc le tiers. Le boss porte la sienne seul.
+    const budget = {
+      monstre: bareme.puissance * ratioMenace(n, MENACE) / 3,
+      boss: bareme.puissance * ratioMenace(n, MENACE_BOSS),
+    };
+    const enPv = (b, part) => b * part / 0.8;
+    const enAtk = (b, part, mult) => b * (1 - part) / (bareme.R * mult);
+    tables.hpMonstre.push(enPv(budget.monstre, PART_VIE_MONSTRE));
+    tables.atkMonstre.push(enAtk(budget.monstre, PART_VIE_MONSTRE, MULT_MOYEN_MONSTRE));
+    tables.hpBoss.push(enPv(budget.boss, PART_VIE_BOSS));
+    tables.atkBoss.push(enAtk(budget.boss, PART_VIE_BOSS, MULT_MOYEN_BOSS));
   }
   // Un monstre de niveau n+1 n'est jamais plus faible qu'un de niveau n.
   // La courbe du héros, elle, a des plats et des à-coups — les paliers de
