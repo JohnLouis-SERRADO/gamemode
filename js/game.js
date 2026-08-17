@@ -1200,7 +1200,7 @@ function infererClasse(p) {
 // Pas de compensation : la correction s'applique à tous de la même façon,
 // donc personne ne recule par rapport aux autres.
 // =====================================================================
-const CLE_ANNONCE_EQUILIBRAGE = 'gamemode2.annonce.v20-3';
+const CLE_ANNONCE_EQUILIBRAGE = 'gamemode2.annonce.v20-4';
 
 function annoncerReequilibrage() {
   let deja = null;
@@ -1246,7 +1246,10 @@ function annoncerReequilibrage() {
     le Runelame — comme les invocations de mêlée — partait se battre au fond de la salle.</p>
     <p><strong>On montait trop vite :</strong> les gains d’expérience sont réduits de deux tiers, et
     <strong>aucun niveau ne se gagne désormais en moins de dix combats</strong> — quel que soit ce
-    que vous affrontez, et quels que soient vos bonus d’expérience.</p>
+    que vous affrontez, et quels que soient vos bonus d’expérience. La route jusqu’au niveau 100
+    demande maintenant près de 3 800 combats : les premiers niveaux restent vifs, et le chemin se
+    durcit à mesure qu’on approche du bout. Il y a vingt-six zones et trente-cinq donjons à
+    habiter — autant leur en laisser le temps.</p>
     <p class="aide">Les raretés, elles, s’écartent davantage qu’avant : une pièce divine vaut
     maintenant quatre communes. Trouver du beau butin compte plus, pas moins.</p>`;
   const bouton = document.createElement('button');
@@ -1425,6 +1428,31 @@ const FACTEUR_XP_HISTORIQUE = 0.35;
 const REDUCTION_XP_V20 = 0.34;   // on garde 34 % : −66 %
 
 // =====================================================================
+// v20.4 — L'ÉTIREMENT DE LA PROGRESSION.
+//
+// Le niveau 100 s'atteignait en 1 584 combats, soit moins de neuf heures
+// en jouant vite. Pour un jeu qui compte cent niveaux, vingt-six zones,
+// trente-cinq donjons d'histoire et sept cent une compétences, c'est une
+// course : on épuise le contenu avant d'avoir eu le temps de l'habiter.
+//
+// La progression est donc étirée — mais PAS uniformément, sinon le début
+// de partie devient une corvée avant même qu'on ait choisi sa spécialité.
+// L'étirement part de 1,45 au niveau 1 et monte à 3,1 au niveau 99 : les
+// premiers niveaux restent vifs, et la route se durcit à mesure qu'on
+// s'approche du bout.
+//
+// C'est aussi ce qui remet le plancher de dix combats à sa place. Il
+// mordait jusqu'au niveau 40 et écrasait tout le début de partie au même
+// rythme, quel que soit ce qu'on affrontait. Avec l'étirement, le rythme
+// naturel passe au-dessus de lui partout : il redevient ce qu'il doit
+// être, un filet de sécurité pour les cas extrêmes.
+// =====================================================================
+function etirementProgression(niveau) {
+  const n = Math.min(NIVEAU_MAX, Math.max(1, niveau || 1));
+  return 1.45 + (n - 1) * 0.017;
+}
+
+// =====================================================================
 // v20.3 — LE PLANCHER : jamais moins de dix combats pour un niveau.
 //
 // La courbe d'XP des monstres règle le RYTHME MOYEN, et elle le fait bien.
@@ -1456,7 +1484,8 @@ function plafondXpParGain(p) {
 }
 
 function xpReelle(p, xp) {
-  xp = Math.max(1, Math.round(xp * FACTEUR_XP_HISTORIQUE * REDUCTION_XP_V20));
+  const etirement = typeof p.niveau === 'number' ? etirementProgression(p.niveau) : 1;
+  xp = Math.max(1, Math.round(xp * FACTEUR_XP_HISTORIQUE * REDUCTION_XP_V20 / etirement));
   if (p.race === 'humain') xp = Math.round(xp * 1.1); // Ambition
   const familier = familierActif(p);
   if (familier && familier.bonus.xpBonus) xp = Math.round(xp * (1 + familier.bonus.xpBonus));

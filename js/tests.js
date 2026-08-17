@@ -2672,6 +2672,61 @@ suite('Équilibrage (v20)', () => {
     aucun(pires, 'niveaux gagnables en moins de dix combats');
   });
 
+  test('le niveau 100 ne s\'atteint pas en une soirée', () => {
+    // L'exigence tient en une phrase : on ne doit pas pouvoir boucler cent
+    // niveaux en quatre heures. Un jeu de vingt-six zones, trente-cinq
+    // donjons et sept cent une compétences ne peut pas s'épuiser avant
+    // d'avoir été habité.
+    //
+    // On compte en COMBATS, la seule unité qui ne dépende pas de la vitesse
+    // de lecture du joueur, et on la convertit avec une hypothèse explicite
+    // et volontairement pessimiste : vingt secondes par combat, ce qui
+    // suppose de jouer vite et de ne jamais s'arrêter.
+    const SECONDES_PAR_COMBAT = 20;
+    const tailleEsperee = (p) => {
+      const s = statsEffectives(p);
+      const score = s.for + s.int + s.dex + s.vit + (s.cha || 0);
+      const base = 1 + (score >= 90 ? 2 : score >= 50 ? 1 : 0);
+      let esp = 0;
+      [0, 1].forEach((plus) => {
+        const pPlus = plus ? 0.35 : 0.65;
+        const n1 = base + plus;
+        esp += n1 > 1 ? pPlus * (0.25 * (n1 - 1) + 0.75 * n1) : pPlus * n1;
+      });
+      return Math.max(1, Math.min(6, esp));
+    };
+    // Le héros le plus rapide possible : optimisé en XP, et qui farme
+    // toujours la meilleure zone à sa portée.
+    const herosOptimal = (n) => {
+      const p = personaEquipeNormalement('guerrier', n);
+      p.race = 'humain';
+      const fam = Object.keys(FAMILIERS).sort((a, b) =>
+        (FAMILIERS[b].bonus.xpBonus || 0) - (FAMILIERS[a].bonus.xpBonus || 0))[0];
+      p.familier = fam;
+      p.familiers = [fam];
+      return p;
+    };
+    let total = 0;
+    let niveauEn4h = 1;
+    const combatsEn4h = (4 * 3600) / SECONDES_PAR_COMBAT;
+    for (let n = 1; n < NIVEAU_MAX; n++) {
+      const accessibles = ZONES.filter((z) => z.niveauMin <= n);
+      const derniere = accessibles[accessibles.length - 1];
+      if (!derniere) continue;
+      const mobs = derniere.monstres.map((c) => MONSTRES[c]).filter(Boolean);
+      if (!mobs.length) continue;
+      const p = herosOptimal(n);
+      const meilleur = Math.max(...mobs.map((m) => m.xp));
+      total += (seuilXp(n + 1) - seuilXp(n)) / xpReelle(p, meilleur * tailleEsperee(p));
+      if (total <= combatsEn4h) niveauEn4h = n + 1;
+    }
+    verifier(total > combatsEn4h * 2,
+      `le niveau 100 doit demander bien plus de quatre heures (${Math.round(total)} combats,`
+      + ` soit ${(total * SECONDES_PAR_COMBAT / 3600).toFixed(1)} h au rythme le plus rapide)`);
+    verifier(niveauEn4h < 60,
+      `quatre heures ne doivent pas mener au-delà de la moitié du chemin (atteint : niveau ${niveauEn4h})`);
+  });
+
   test('la courbe d\'XP monte régulièrement, sans falaise', () => {
     // Un niveau doit coûter plus cher que le précédent — mais la pente doit
     // se sentir, pas faire mur. Avant correction : 1,6 combat pour le
