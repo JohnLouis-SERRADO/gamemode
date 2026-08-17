@@ -1261,6 +1261,66 @@ function annoncerReequilibrage() {
   document.body.appendChild(voile);
 }
 
+// =====================================================================
+// v22 — LES ENNEMIS ONT ÉTÉ RELEVÉS.
+//
+// Cette fois rien ne baisse côté héros : ni la puissance, ni les objets,
+// ni les compétences. C'est le bestiaire qui monte, et le chiffre
+// « conseillé » qui cesse de mentir. Il faut le dire, parce que le
+// deuxième change beaucoup à l'écran — une carte qui affichait 2 650 en
+// affiche 4 458 — et qu'un joueur pourrait croire qu'on lui a retiré
+// quelque chose.
+// =====================================================================
+const CLE_ANNONCE_ENNEMIS = 'gamemode2.annonce.v22-ennemis';
+
+function annoncerRenfortEnnemis() {
+  let deja = null;
+  try { deja = localStorage.getItem(CLE_ANNONCE_ENNEMIS); } catch (e) { deja = 'vu'; }
+  if (deja) return;
+  if (!etat.profils.some((p) => (p.niveau || 1) > 1)) return;
+  // Deux annonces empilées ne se lisent pas. Si celle de la v20 vient de
+  // s'ouvrir, on laisse la nôtre pour le prochain lancement — d'où le
+  // marqueur écrit APRÈS ce contrôle, et pas avant.
+  if (document.getElementById('voile-renaissance')) return;
+  try { localStorage.setItem(CLE_ANNONCE_ENNEMIS, 'vu'); } catch (e) { /* tant pis */ }
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-renaissance';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-equilibrage';
+  modale.innerHTML = `
+    <div class="crane-mort">👹</div>
+    <h2>Les ennemis ont pris du muscle</h2>
+    <p><strong>Votre héros n’a pas bougé d’un point.</strong> Même puissance, même équipement,
+    mêmes compétences : cette fois-ci, c’est en face que ça change.</p>
+    <p>Ce qui n’allait pas : le jeu mesurait sa difficulté sur un héros de référence qui
+    n’existait pas. Le banc d’essai se bloquait sur du vieux matériel et croyait qu’un aventurier
+    de niveau 32 plafonnait à 3 874 de puissance — quand le jeu en permet <strong>5 313</strong>.
+    Tout le bestiaire était donc taillé pour un héros un tiers plus faible que vous, et l’écart se
+    creusait à mesure qu’on montait : au milieu de la partie, nettoyer un groupe ne coûtait plus
+    qu’un tiers de vos points de vie.</p>
+    <p>Ce qui change : <strong>les monstres et les boss ont été réétalonnés sur le vrai plafond</strong>.
+    Plus de points de vie, plus d’attaque — jusqu’à moitié plus au milieu de la partie, là où le
+    creux était le plus profond, à peine quelques pour cent dans les premières zones qui étaient
+    déjà justes. L’expérience gagnée, elle, ne change pas : la route jusqu’au niveau 100 reste
+    exactement la même. L’or suit l’effort, comme toujours.</p>
+    <p><strong>Le chiffre « conseillé » va vous paraître beaucoup plus haut.</strong> Il l’est :
+    il désignait un héros équipé en légendaire, deux crans sous ce qu’un joueur assidu porte
+    vraiment. Il désigne maintenant le héros équipé <strong>mythique</strong> — le plancher exact
+    à partir duquel une carte de votre niveau reste gagnable. Le franchir veut dire « vous êtes
+    prêt » ; rester dessous veut dire « il vous manque de l’équipement, pas des niveaux ».</p>
+    <p class="aide">Personne ne tue toujours en un seul coup, ni les monstres ni vous — et un héros
+    correctement équipé passe encore l’intégralité du contenu de son niveau. C’est vérifié zone
+    par zone, à chaque exécution des tests.</p>`;
+  const bouton = document.createElement('button');
+  bouton.className = 'btn-principal';
+  bouton.textContent = '⚔️ Reprendre l’aventure';
+  bouton.addEventListener('click', () => voile.remove());
+  modale.appendChild(bouton);
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
 function sauvegarderLocal() {
   try {
     localStorage.setItem(CLE_STOCKAGE_PROFILS, JSON.stringify(etat.profils));
@@ -3241,6 +3301,7 @@ function initialiser() {
   rendreTitre();
   montrerEcran('ecran-titre');
   annoncerReequilibrage();
+  annoncerRenfortEnnemis();
   if (typeof demarrerReseau === 'function') {
     const reseau = demarrerReseau();
     // v20 : recharger la page ne coûte plus le groupe — dès que le monde

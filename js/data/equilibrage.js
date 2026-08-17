@@ -36,6 +36,34 @@ function classesEtalon() {
 // cent niveaux : on construit donc UNE fois, par classe et par
 // emplacement, un tableau « meilleure pièce de niveau ≤ n » — après quoi
 // chaque lecture est immédiate.
+//
+// =====================================================================
+// v22 — L'ÉTALON N'ÉTAIT PAS L'ÉTALON.
+//
+// L'index se construisait en UNE passe, et la meilleure note retenue ne
+// redescendait jamais. Une pièce écartée l'était donc pour de bon — y
+// compris quand elle n'était écartée que par la règle « ne jamais perdre
+// de vie », qui en écarte beaucoup. Des emplacements entiers restaient
+// bloqués sur du vieux matériel : mesuré, les deux accessoires d'un
+// étalon de niveau 32 dataient du niveau 24, ceux d'un niveau 100 du
+// niveau 88.
+//
+// Conséquence : le héros « le plus fort que le jeu autorise » était plus
+// faible qu'un joueur ordinaire correctement équipé — 4 554 de puissance
+// mesurée contre 5 919 réellement atteignables au niveau 32. Comme toute
+// la difficulté se dérive de lui, le bestiaire entier était calibré sur
+// un fantôme, et l'écart se creusait à mesure qu'on montait.
+//
+// On jette la passe unique : à chaque niveau, l'index reconsidère TOUTES
+// les pièces déjà débloquées et retient la mieux notée, point. C'est cent
+// fois plus de comparaisons — deux dixièmes de seconde pour l'index
+// entier, qui ne tourne que dans les tests.
+//
+// La règle « ne jamais perdre de vie » n'a pas disparu pour autant : elle
+// a simplement changé d'échelle. Une pièce ne dit rien des panoplies
+// qu'elle fait ou défait, donc elle se vérifie sur le héros entier — voir
+// equipementEtalon plus bas.
+// =====================================================================
 let indexEquipement = null;
 
 function construireIndexEquipement() {
@@ -52,37 +80,38 @@ function construireIndexEquipement() {
 
   indexEquipement = {};
   classesEtalon().forEach((classe) => {
-    const factice = { classe };
     const parClasse = indexEquipement[classe] = {};
     Object.entries(parSlot).forEach(([slot, liste]) => {
-      // meilleur[n] = identifiant de la meilleure pièce de niveau ≤ n.
-      const meilleur = new Array(NIVEAU_MAX + 1).fill(null);
-      let courant = null;
-      let valeurCourante = -1;
-      let pvCourant = -1;
-      let i = 0;
-      for (let n = 1; n <= NIVEAU_MAX; n++) {
-        while (i < liste.length && (liste[i].objet.niveau || 1) <= n) {
-          const candidat = liste[i];
-          i++;
-          if (!peutPorter(factice, candidat.objet)) continue;
-          const valeur = valeurDePiecePour(classe, candidat.objet);
-          // Monter en niveau ne doit JAMAIS faire perdre de la vie : on ne
-          // troque pas contre une pièce qui rend plus fragile, même mieux
-          // notée. Sans cette règle, les points de vie de l'étalon
-          // reculaient sur une dizaine de niveaux et toute la courbe de
-          // difficulté héritait de la dent de scie.
-          const pv = pvDePiece(candidat.objet);
-          if (valeur > valeurCourante && pv >= pvCourant) {
-            valeurCourante = valeur; pvCourant = pv; courant = candidat.id;
-          }
-        }
-        meilleur[n] = courant;
-      }
-      parClasse[slot] = meilleur;
+      parClasse[slot] = meilleuresPiecesParNiveau(classe, liste);
     });
   });
   return indexEquipement;
+}
+
+// meilleur[n] = la pièce la mieux notée que cette classe peut porter à ce
+// niveau. `liste` est déjà triée par niveau croissant, ce qui permet de
+// n'évaluer chaque pièce qu'une fois.
+function meilleuresPiecesParNiveau(classe, liste) {
+  const factice = { classe };
+  const meilleur = new Array(NIVEAU_MAX + 1).fill(null);
+  const debloquees = [];
+  let i = 0;
+  let courant = null;
+  for (let n = 1; n <= NIVEAU_MAX; n++) {
+    while (i < liste.length && (liste[i].objet.niveau || 1) <= n) {
+      const candidat = liste[i];
+      i++;
+      if (!peutPorter(factice, candidat.objet)) continue;
+      debloquees.push({ id: candidat.id, valeur: valeurDePiecePour(classe, candidat.objet) });
+    }
+    let elue = null;
+    for (let k = 0; k < debloquees.length; k++) {
+      if (!elue || debloquees[k].valeur > elue.valeur) elue = debloquees[k];
+    }
+    if (elue) courant = elue.id;
+    meilleur[n] = courant;
+  }
+  return meilleur;
 }
 
 // =====================================================================
@@ -117,12 +146,6 @@ const POIDS_HORS_ROLE = 0.33;
 // exigés par les tests, et l'équipement se met à peser plus de la moitié du
 // héros.
 const POIDS_SOUS_CARAC = 16;
-
-// Les points de vie qu'une pièce apporte, dans la monnaie de maxHpDe.
-function pvDePiece(objet) {
-  const bonus = (objet && objet.bonus) || {};
-  return (bonus.vit || 0) * 7 + (bonus.pvMax || 0);
-}
 
 // Ce que vaut une pièce POUR CETTE CLASSE.
 function valeurDePiecePour(classe, objet) {
@@ -174,6 +197,21 @@ function meilleurePiece(classe, slot, niveau) {
 // =====================================================================
 function personaReference(classe, niveau) {
   const n = Math.min(NIVEAU_MAX, Math.max(1, niveau || 1));
+  const p = squeletteEtalon(classe, n);
+  // Une COPIE : la chaîne est mémorisée, et plus d'un appelant rhabille
+  // le persona qu'il reçoit (personaEquipeNormalement, entre autres).
+  p.equipement = { ...equipementEtalon(classe, n) };
+  p.maxHp = maxHpDe(p);
+  p.maxMp = maxMpDe(p);
+  p.hp = p.maxHp;
+  p.mp = p.maxMp;
+  return p;
+}
+
+// Le héros sans son équipement : caractéristiques, paliers d'identité,
+// familier. C'est la partie qui ne dépend que du niveau.
+function squeletteEtalon(classe, niveau) {
+  const n = Math.min(NIVEAU_MAX, Math.max(1, niveau || 1));
   const base = CLASSES_BASE[classe];
   const statMaitresse = (base && base.stat) || 'for';
 
@@ -224,17 +262,49 @@ function personaReference(classe, niveau) {
     - Object.values(FAMILIERS[a].bonus || {}).reduce((x, v) => x + v, 0))[0];
   if (meilleurFamilier) { p.familiers = [meilleurFamilier]; p.familier = meilleurFamilier; }
 
+  return p;
+}
+
+// =====================================================================
+// L'équipement de l'étalon, niveau par niveau — et pourquoi c'est une
+// CHAÎNE plutôt qu'un simple choix.
+//
+// « Ne jamais perdre de vie » se vérifie emplacement par emplacement, ce
+// qui suffirait si les pièces vivaient chacune de leur côté. Mais les
+// PANOPLIES existent : troquer un accessoire pour un meilleur peut défaire
+// un bonus de collection qui portait, à lui seul, 140 points de vie.
+// Mesuré, l'étalon arcaniste perdait 12 % de sa vie en passant du niveau
+// 17 au 18 — chaque pièce était pourtant plus robuste que celle qu'elle
+// remplaçait.
+//
+// La règle se vérifie donc sur le HÉROS ENTIER : si la tenue proposée à ce
+// niveau tient moins bien que celle du niveau précédent, on garde la
+// précédente (elle reste portable, ses pièces sont de niveau inférieur).
+// D'où la chaîne, mémorisée par classe.
+// =====================================================================
+const memoEquipement = {};
+
+function tenueProposee(classe, niveau) {
+  const tenue = {};
   Object.keys(SLOTS_EQUIPEMENT).forEach((slot) => {
     const cible = (slot === 'acc1' || slot === 'acc2') ? 'accessoire' : slot;
-    const piece = meilleurePiece(classe, cible, n);
-    if (piece) p.equipement[slot] = piece;
+    const piece = meilleurePiece(classe, cible, niveau);
+    if (piece) tenue[slot] = piece;
   });
+  return tenue;
+}
 
-  p.maxHp = maxHpDe(p);
-  p.maxMp = maxMpDe(p);
-  p.hp = p.maxHp;
-  p.mp = p.maxMp;
-  return p;
+function equipementEtalon(classe, niveau) {
+  const chaine = memoEquipement[classe] = memoEquipement[classe] || [];
+  for (let n = chaine.length + 1; n <= niveau; n++) {
+    const propose = tenueProposee(classe, n);
+    const precedent = chaine[n - 2];
+    if (!precedent) { chaine[n - 1] = propose; continue; }
+    // Les deux tenues se comparent au MÊME niveau : seul l'équipement change.
+    const vieAvec = (tenue) => maxHpDe(Object.assign(squeletteEtalon(classe, n), { equipement: tenue }));
+    chaine[n - 1] = vieAvec(propose) >= vieAvec(precedent) ? propose : precedent;
+  }
+  return chaine[niveau - 1] || {};
 }
 
 // =====================================================================
@@ -487,53 +557,71 @@ function tensionCombat(monstres, p, taille = 3) {
   };
 }
 
-// --- Le héros de référence de la difficulté --------------------------
+// =====================================================================
+// v22 — QUI SERT DE RÉFÉRENCE À LA DIFFICULTÉ.
 //
-// Ni l'étalon divin (personne ne l'atteint), ni un débutant : un joueur
-// bien équipé, pièces LÉGENDAIRES partout. C'est sur lui que le bestiaire
-// est calibré, c'est donc sur lui qu'on vérifie.
-let indexLegendaire = null;
+// Jusqu'ici : un joueur « bien équipé », pièces LÉGENDAIRES partout — au
+// motif que l'étalon divin, personne ne l'atteint. C'était faux, et c'est
+// tout le problème signalé en jeu : « plus on progresse, plus l'écart se
+// creuse entre notre puissance et celle requise ».
+//
+// Un héros de niveau 32 relevé en partie pesait 5 270 de puissance. Le
+// héros légendaire du banc, au même niveau : 3 974. Le divin : 5 802. Le
+// joueur n'était pas « bien équipé », il était À QUELQUES POINTS DU
+// PLAFOND — et le bestiaire, lui, était taillé pour un héros 33 % plus
+// faible que lui. Mesurée contre le vrai plafond, la marge passait de
+// 1,9× (ce que le banc croyait) à 3,1× entre les niveaux 40 et 70 : le
+// milieu de partie n'opposait plus rien.
+//
+// La référence de la difficulté est donc désormais LE PLAFOND lui-même —
+// personaReference, l'étalon corrigé. Le héros légendaire reste mesuré,
+// mais comme PLANCHER : il doit encore l'emporter (marge > 1), sinon
+// c'est qu'on a fabriqué un mur pour qui n'a pas le meilleur butin.
+// =====================================================================
+const indexParRarete = {};
 
-function meilleurePieceLegendaire(classe, slot, niveau) {
-  if (!indexLegendaire) {
+function meilleurePiecePlafonnee(classe, slot, niveau, rareteMax) {
+  if (!indexParRarete[rareteMax]) {
     const ordre = Object.keys(RARETES);
-    const plafond = ordre.indexOf('legendaire');
-    indexLegendaire = {};
+    const plafond = ordre.indexOf(rareteMax);
+    const parSlot = {};
+    Object.entries(OBJETS).forEach(([id, objet]) => {
+      if (objet.type !== 'equipement' || !objet.slot) return;
+      if (ordre.indexOf(rareteDe(objet)) > plafond) return;
+      (parSlot[objet.slot] = parSlot[objet.slot] || []).push({ id, objet });
+    });
+    Object.values(parSlot).forEach((l) => l.sort((a, b) => (a.objet.niveau || 1) - (b.objet.niveau || 1)));
+    const index = indexParRarete[rareteMax] = {};
     classesEtalon().forEach((c) => {
-      const factice = { classe: c };
-      indexLegendaire[c] = {};
-      Object.entries(OBJETS).forEach(([id, o]) => {
-        if (o.type !== 'equipement' || !o.slot) return;
-        if (ordre.indexOf(rareteDe(o)) > plafond) return;
-        if (!peutPorter(factice, o)) return;
-        const parSlot = indexLegendaire[c][o.slot] = indexLegendaire[c][o.slot] || [];
-        parSlot.push({ id, niveau: o.niveau || 1, valeur: valeurDePiecePour(c, o), pv: pvDePiece(o) });
+      index[c] = {};
+      // Même construction que l'index complet : le verrou de la v21 y
+      // bloquait les emplacements aussi sûrement qu'ailleurs.
+      Object.entries(parSlot).forEach(([slot, liste]) => {
+        index[c][slot] = meilleuresPiecesParNiveau(c, liste);
       });
-      Object.values(indexLegendaire[c]).forEach((l) => l.sort((a, b) => a.niveau - b.niveau));
     });
   }
-  const liste = (indexLegendaire[classe] || {})[slot] || [];
-  let meilleur = null;
-  let valeur = -1;
-  let pv = -1;
-  for (let i = 0; i < liste.length && liste[i].niveau <= niveau; i++) {
-    if (liste[i].valeur > valeur && liste[i].pv >= pv) {
-      valeur = liste[i].valeur; pv = liste[i].pv; meilleur = liste[i].id;
-    }
-  }
-  return meilleur;
+  const meilleur = (indexParRarete[rareteMax][classe] || {})[slot];
+  return meilleur ? meilleur[Math.min(NIVEAU_MAX, Math.max(1, niveau))] : null;
 }
 
-function personaEquipeNormalement(classe, niveau) {
+// Un héros dont le butin s'arrête à une rareté donnée. Sert de PLANCHER :
+// « mythique » est le joueur bien équipé mais pas parfait (0,91 fois le
+// plafond) ; « légendaire », celui à qui il manque encore deux crans.
+function personaEquipeJusquA(classe, niveau, rareteMax) {
   const p = personaArme(classe, niveau);
   Object.keys(SLOTS_EQUIPEMENT).forEach((slot) => {
     const cible = (slot === 'acc1' || slot === 'acc2') ? 'accessoire' : slot;
-    const piece = meilleurePieceLegendaire(classe, cible, niveau);
+    const piece = meilleurePiecePlafonnee(classe, cible, niveau, rareteMax);
     if (piece) p.equipement[slot] = piece;
   });
   p.maxHp = maxHpDe(p);
   p.maxMp = maxMpDe(p);
   return p;
+}
+
+function personaEquipeNormalement(classe, niveau) {
+  return personaEquipeJusquA(classe, niveau, 'legendaire');
 }
 
 // Le niveau RÉEL d'une zone : ses monstres sont écrits un à sept niveaux
@@ -548,12 +636,15 @@ function niveauReelZone(zone) {
 // La tension d'une zone, vue par les six classes. `reference` est la
 // médiane — celle sur laquelle le bestiaire est calibré ; `pire` et
 // `meilleure` disent si l'écart entre classes reste vivable.
+//
+// v22 : le héros mesuré est le PLAFOND (personaArme), pas le héros
+// légendaire. Voir l'en-tête « qui sert de référence à la difficulté ».
 function tensionZone(zone, taille = 3) {
   const monstres = (zone.monstres || []).map((cle) => MONSTRES[cle]).filter(Boolean);
   if (!monstres.length) return null;
   const niveau = niveauReelZone(zone);
   const mesures = classesEtalon()
-    .map((classe) => ({ classe, t: tensionCombat(monstres, personaEquipeNormalement(classe, niveau), taille) }))
+    .map((classe) => ({ classe, t: tensionCombat(monstres, personaArme(classe, niveau), taille) }))
     .sort((a, b) => a.t.marge - b.t.marge);
   const mediane = mesures[Math.floor(mesures.length / 2)];
   return {
@@ -566,9 +657,103 @@ function tensionZone(zone, taille = 3) {
   };
 }
 
+// =====================================================================
+// v22 — D'OÙ VIENNENT LES CIBLES DU BESTIAIRE.
+//
+// Les quatre tables de js/data/monstres.js — PV et attaque, monstre et
+// boss — ne sont pas écrites à la main : elles se DÉRIVENT du héros de
+// référence, niveau par niveau. Ce qui suit est le calcul qui les
+// produit, et un test vérifie à chaque exécution que les tables
+// embarquées n'ont pas dérivé de lui.
+//
+// Deux objectifs, deux situations distinctes :
+//
+//   • le MONSTRE ORDINAIRE se rencontre par trois. Ses points de vie
+//     disent combien de temps le groupe tient (TOURS_GROUPE), son
+//     attaque ce que le groupe coûte (margeGroupe).
+//   • le BOSS se bat SEUL — pas d'attrition, rien à corriger pour lui.
+//     Il tient plus longtemps et coûte plus cher.
+//
+// La marge se resserre en montant : le début de partie pardonne, la fin
+// mord. Elle ne descend jamais sous 1,5 — en dessous, un combat ordinaire
+// se joue à la potion, et ce n'est plus du contenu de routine.
+// =====================================================================
+const PROFIL_CIBLE = {
+  // Le monstre moyen du bestiaire, mesuré : ×1,09 en moyenne pondérée,
+  // ×1,21 pour sa plus grosse attaque. Le boss frappe plus fort et garde
+  // une pointe nettement au-dessus (×1,48).
+  monstre: { attaques: [{ mult: 1.045, poids: 3 }, { mult: 1.214, poids: 1 }] },
+  boss: { attaques: [{ mult: 1.042, poids: 3 }, { mult: 1.478, poids: 1 }] },
+};
+const TOURS_GROUPE = 12;
+const TOURS_BOSS = 18;
+const MARGE_GROUPE = { debut: 2.2, fin: 1.75 };
+const MARGE_BOSS = 1.65;
+
+function margeGroupeVoulue(niveau) {
+  const t = (Math.min(NIVEAU_MAX, Math.max(1, niveau)) - 1) / (NIVEAU_MAX - 1);
+  return MARGE_GROUPE.debut + (MARGE_GROUPE.fin - MARGE_GROUPE.debut) * t;
+}
+
+// Les PV et l'attaque qu'il faut à ce niveau, pour cette classe.
+function ciblesPourClasse(classe, niveau) {
+  const p = personaArme(classe, niveau);
+  const resultat = {};
+  const roles = [
+    ['monstre', 3, TOURS_GROUPE, margeGroupeVoulue(niveau)],
+    ['boss', 1, TOURS_BOSS, MARGE_BOSS],
+  ];
+  roles.forEach(([role, taille, tours, marge]) => {
+    const profil = PROFIL_CIBLE[role];
+    // Les PV se cherchent par dichotomie : la durée d'un combat n'a pas
+    // de forme close (les bêtes tombent une à une, le héros se soigne).
+    // On part de l'estimation évidente — « tant de tours à tant de dégâts
+    // par tour » — et on encadre largement : trente pas suffisent alors là
+    // où soixante étaient nécessaires depuis un intervalle aveugle.
+    const estimation = Math.max(1, tours * degatsParTourHeros(p) / taille);
+    let bas = estimation * 0.1;
+    let haut = estimation * 10;
+    for (let i = 0; i < 30; i++) {
+      const milieu = (bas + haut) / 2;
+      const t = tensionCombat([{ ...profil, hp: milieu, atk: 1 }], p, taille);
+      if (t.toursNettoyage < tours) bas = milieu; else haut = milieu;
+    }
+    const hp = Math.round((bas + haut) / 2);
+    // L'attaque, elle, est immédiate : les dégâts encaissés lui sont
+    // proportionnels, donc la marge lui est inversement proportionnelle.
+    const temoin = tensionCombat([{ ...profil, hp, atk: 100 }], p, taille);
+    resultat[role] = { hp, atk: 100 * temoin.marge / marge };
+  });
+  return resultat;
+}
+
+// Les quatre tables, de 1 à 100. On prend la MÉDIANE des six classes :
+// se caler sur la plus faible taillerait un contenu que les cinq autres
+// traversent sans le voir, sur la plus forte un mur pour les cinq autres.
+function ciblesBestiaire() {
+  const tables = { hpMonstre: [], atkMonstre: [], hpBoss: [], atkBoss: [] };
+  const mediane = (valeurs) => valeurs.slice().sort((a, b) => a - b)[Math.floor(valeurs.length / 2)];
+  for (let n = 1; n <= NIVEAU_MAX; n++) {
+    const parClasse = classesEtalon().map((classe) => ciblesPourClasse(classe, n));
+    tables.hpMonstre.push(mediane(parClasse.map((c) => c.monstre.hp)));
+    tables.atkMonstre.push(mediane(parClasse.map((c) => c.monstre.atk)));
+    tables.hpBoss.push(mediane(parClasse.map((c) => c.boss.hp)));
+    tables.atkBoss.push(mediane(parClasse.map((c) => c.boss.atk)));
+  }
+  // Un monstre de niveau n+1 n'est jamais plus faible qu'un de niveau n.
+  // La courbe du héros, elle, a des plats et des à-coups — les paliers de
+  // butin — et sans ce lissage ils se retrouveraient dans le bestiaire.
+  Object.keys(tables).forEach((cle) => {
+    let record = 0;
+    tables[cle] = tables[cle].map((v) => { record = Math.max(record, v); return record; });
+  });
+  return tables;
+}
+
 // Réinitialise le cache — les tests qui bricolent le catalogue en ont besoin.
 function oublierEtalon() {
   indexEquipement = null;
-  indexLegendaire = null;
+  Object.keys(indexParRarete).forEach((cle) => delete indexParRarete[cle]);
+  Object.keys(memoEquipement).forEach((cle) => delete memoEquipement[cle]);
   Object.keys(memoPuissances).forEach((cle) => delete memoPuissances[cle]);
 }

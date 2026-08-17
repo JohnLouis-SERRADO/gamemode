@@ -2535,7 +2535,9 @@ suite('Équilibrage (v20)', () => {
       const niveau = niveauReelZone(z);
       const pv = mobs.reduce((a, m) => a + m.hp, 0) / mobs.length;
       classesEtalon().forEach((classe) => {
-        const p = personaEquipeNormalement(classe, niveau);
+        // v22 : mesuré sur le PLAFOND. C'est lui qui frappe le plus fort,
+        // donc lui qui décide si un monstre tombe d'une pichenette.
+        const p = personaArme(classe, niveau);
         if (degatsParTourHeros(p) / pv > 0.6) {
           tropFort.push(`${z.nom} / ${classe} : ${Math.round(degatsParTourHeros(p) / pv * 100)} % par tour`);
         }
@@ -2572,16 +2574,16 @@ suite('Équilibrage (v20)', () => {
 
   test('sauter vingt niveaux de contenu ne pardonne pas', () => {
     // Le symptôme signalé : « au niveau 22 je pourrais faire la map 90-100 ».
-    // On vérifie avec un héros bien équipé (légendaire) : aucune classe ne
-    // doit survivre au contenu de niveau 46, et l'écart avec son propre
-    // contenu doit être franc.
+    // v22 : on vérifie avec le PLAFOND — le héros le mieux équipé que le jeu
+    // autorise à ce niveau. Aucune classe ne doit survivre au contenu de
+    // niveau 46, et l'écart avec son propre contenu doit être franc.
     const chezSoi = ZONES.filter((z) => z.niveauMin === 22)[0];
     const tropHaut = ZONES.filter((z) => z.niveauMin >= 46)[0];
     const mSoi = chezSoi.monstres.map((c) => MONSTRES[c]).filter(Boolean);
     const mHaut = tropHaut.monstres.map((c) => MONSTRES[c]).filter(Boolean);
     const survivants = [];
     classesEtalon().forEach((classe) => {
-      const p = personaEquipeNormalement(classe, 22);
+      const p = personaArme(classe, 22);
       const marge = tensionCombat(mHaut, p, 3).marge;
       if (marge >= 1) survivants.push(`${classe} (${marge.toFixed(2)}×)`);
     });
@@ -2589,7 +2591,7 @@ suite('Équilibrage (v20)', () => {
 
     // Et la chute doit être nette, pas marginale.
     classesEtalon().forEach((classe) => {
-      const p = personaEquipeNormalement(classe, 22);
+      const p = personaArme(classe, 22);
       const ici = tensionCombat(mSoi, p, 3).marge;
       const laBas = tensionCombat(mHaut, p, 3).marge;
       verifier(laBas < ici * 0.55,
@@ -2597,12 +2599,13 @@ suite('Équilibrage (v20)', () => {
     });
   });
 
-  test('la marge maximale reste entre 2 et 4, toutes classes et zones confondues', () => {
-    // La borne haute est ce qui empêche une classe de se promener : au-delà
-    // de 4, on survit quatre fois plus longtemps qu'il ne faut pour gagner,
-    // et le combat cesse d'être un combat. Le Gardien était à 5,8×.
-    // La borne basse dit l'inverse : si même le meilleur cas descend sous 2,
-    // c'est que le jeu ne laisse plus aucune respiration.
+  test('même la classe la plus à l\'aise ne se promène pas', () => {
+    // La borne haute est ce qui empêche une classe de se promener : au-delà,
+    // on survit bien plus longtemps qu'il ne faut pour gagner, et le combat
+    // cesse d'être un combat. Le Gardien était à 5,8× en v21 ; mesuré contre
+    // le plafond réel, le milieu de partie remontait encore à 3,1×.
+    // La borne basse dit l'inverse : si même le meilleur cas descend sous
+    // 1,5, c'est que le jeu ne laisse plus aucune respiration.
     let maximum = 0;
     let ou = '';
     ZONES.forEach((z) => {
@@ -2610,11 +2613,99 @@ suite('Équilibrage (v20)', () => {
       if (!monstres.length) return;
       const niveau = niveauReelZone(z);
       classesEtalon().forEach((classe) => {
-        const marge = tensionCombat(monstres, personaEquipeNormalement(classe, niveau), 3).marge;
+        const marge = tensionCombat(monstres, personaArme(classe, niveau), 3).marge;
         if (marge > maximum) { maximum = marge; ou = `${classe} / ${z.nom}`; }
       });
     });
-    entre(maximum, 2, 4, `marge maximale (atteinte par ${ou})`);
+    entre(maximum, 1.5, 3, `marge maximale (atteinte par ${ou})`);
+  });
+
+  // =====================================================================
+  // v22 — LE PLANCHER : à partir de quel équipement le contenu passe.
+  //
+  // Relever la difficulté sur le plafond n'a de sens que si l'on borne
+  // l'autre bout : un joueur qui n'a pas LE meilleur butin doit encore
+  // pouvoir avancer. Le héros équipé MYTHIQUE — un cran sous le plafond,
+  // 0,90 fois sa puissance — est ce plancher, et c'est lui que le chiffre
+  // « conseillé » désigne. Il doit gagner partout.
+  // =====================================================================
+  test('un héros équipé mythique passe encore tout le contenu de son niveau', () => {
+    const mediane = (v) => v.slice().sort((a, b) => a - b)[Math.floor(v.length / 2)];
+    const bloquantes = [];
+    ZONES.forEach((z) => {
+      const monstres = (z.monstres || []).map((c) => MONSTRES[c]).filter(Boolean);
+      if (monstres.length) {
+        const niveau = niveauReelZone(z);
+        const marge = mediane(classesEtalon()
+          .map((classe) => tensionCombat(monstres, personaEquipeJusquA(classe, niveau, 'mythique'), 3).marge));
+        if (marge <= 1) bloquantes.push(`${z.nom} : ${marge.toFixed(2)}×`);
+      }
+      // Le boss aussi : c'est lui qui ferme la carte.
+      const boss = MONSTRES[z.boss];
+      if (!boss) return;
+      const margeBoss = mediane(classesEtalon()
+        .map((classe) => tensionCombat([boss], personaEquipeJusquA(classe, boss.niveau, 'mythique'), 1).marge));
+      if (margeBoss <= 1) bloquantes.push(`${boss.nom} : ${margeBoss.toFixed(2)}×`);
+    });
+    aucun(bloquantes, 'contenu infranchissable pour un héros équipé mythique');
+  });
+
+  test('les boss tiennent leur rôle : plus longs, plus chers, jamais expéditifs', () => {
+    // Un boss se bat SEUL : pas d'attrition, donc sa courbe est dérivée à
+    // part (voir MARGE_BOSS dans js/data/equilibrage.js). On vérifie ses
+    // trois promesses : il coûte cher, il dure, et il ne tue pas d'un coup.
+    const mediane = (v) => v.slice().sort((a, b) => a - b)[Math.floor(v.length / 2)];
+    const fautifs = [];
+    const marges = [];
+    ZONES.forEach((z) => {
+      const boss = MONSTRES[z.boss];
+      if (!boss) return;
+      const mesures = classesEtalon().map((classe) => tensionCombat([boss], personaArme(classe, boss.niveau), 1));
+      const marge = mediane(mesures.map((m) => m.marge));
+      marges.push(marge);
+      if (marge < 1.1 || marge > 3) fautifs.push(`${boss.nom} : marge ${marge.toFixed(2)}×`);
+      if (mediane(mesures.map((m) => m.toursNettoyage)) < 12) fautifs.push(`${boss.nom} : tombe trop vite`);
+      if (mediane(mesures.map((m) => m.pireCoupPct)) > 0.25) fautifs.push(`${boss.nom} : tue d'un seul coup`);
+    });
+    aucun(fautifs, 'boss hors de leur fourchette');
+    entre(marges.reduce((a, v) => a + v, 0) / marges.length, 1.4, 2.1, 'marge moyenne des boss');
+  });
+
+  test('le facteur de recommandation colle au plancher qu\'il désigne', () => {
+    // FACTEUR_RECOMMANDATION dit « le chiffre conseillé, c'est le héros
+    // mythique ». Si le rapport mesuré s'en écarte, l'étiquette ment — et
+    // c'est exactement le défaut que la v22 corrige.
+    const rapports = [];
+    [10, 25, 40, 55, 70, 85, 100].forEach((n) => {
+      const plafond = classesEtalon().map((c) => puissanceDe(personaArme(c, n)));
+      const mythique = classesEtalon().map((c) => puissanceDe(personaEquipeJusquA(c, n, 'mythique')));
+      rapports.push(Math.min(...mythique) / Math.min(...plafond));
+    });
+    const moyen = rapports.reduce((a, v) => a + v, 0) / rapports.length;
+    entre(moyen, FACTEUR_RECOMMANDATION - 0.06, FACTEUR_RECOMMANDATION + 0.06,
+      `rapport mythique / plafond mesuré (facteur affiché : ${FACTEUR_RECOMMANDATION})`);
+  });
+
+  test('les quatre tables de cibles collent au héros de référence', () => {
+    // Même garde-fou que pour PUISSANCE_ETALON : les tables de
+    // js/data/monstres.js sont un calcul figé, produit par ciblesBestiaire().
+    // Si le catalogue, les compétences ou les formules bougent, elles doivent
+    // être régénérées — et c'est ce test qui empêche qu'on l'oublie.
+    const attendu = ciblesBestiaire();
+    const paires = [
+      ['PV_CIBLE_MONSTRE', PV_CIBLE_MONSTRE, attendu.hpMonstre],
+      ['ATK_CIBLE_MONSTRE', ATK_CIBLE_MONSTRE, attendu.atkMonstre],
+      ['PV_CIBLE_BOSS', PV_CIBLE_BOSS, attendu.hpBoss],
+      ['ATK_CIBLE_BOSS', ATK_CIBLE_BOSS, attendu.atkBoss],
+    ];
+    const derives = [];
+    paires.forEach(([nom, table, mesure]) => {
+      for (let n = 1; n <= NIVEAU_MAX; n++) {
+        const ecart = Math.abs(table[n - 1] - mesure[n - 1]) / Math.max(1, mesure[n - 1]);
+        if (ecart > 0.02) derives.push(`${nom} niv. ${n} : ${table[n - 1]} vs ${Math.round(mesure[n - 1])}`);
+      }
+    });
+    aucun(derives, 'tables de cibles à régénérer');
   });
 
   test('chaque classe a un passif qui fait vraiment quelque chose', () => {

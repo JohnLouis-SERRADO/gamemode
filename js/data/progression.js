@@ -288,25 +288,42 @@ function puissanceDe(p) {
 // exécution des tests : s'il dérive d'un point, la suite passe au rouge.
 // =====================================================================
 const PUISSANCE_ETALON = [
-     411,   504,   639,   714,   816,   984,  1038,  1196,  1295,  1585,  // 1–10
-    1636,  1636,  1742,  2235,  2306,  2382,  2637,  2689,  2750,  2885,  // 11–20
-    2927,  2987,  3039,  3293,  3353,  3431,  3508,  3560,  3621,  3681,  // 21–30
-    3742,  3874,  3926,  3987,  4259,  4623,  4688,  4746,  4882,  4946,  // 31–40
-    5009,  5073,  5131,  5630,  5740,  5877,  5940,  5998,  6062,  7622,  // 41–50
-    7699,  7775,  7950,  8050,  8128,  8204,  8280,  8569,  8641,  8786,  // 51–60
-    8829,  8930,  8978,  9147,  9190,  9292,  9336,  9575,  9618,  9721,  // 61–70
-    9763,  9866,  9913, 10105, 10149, 10251, 10294, 10396, 10441, 10566,  // 71–80
-   10621, 10851, 10906, 11014, 11069, 11181, 11232, 12122, 12173, 12436,  // 81–90
-   12491, 12624, 12680, 12787, 12843, 13010, 13061, 13201, 13253, 13485,  // 91–100
+     411,   486,   561,   676,   844,   907,  1130,  1158,  1191,  1757,  // 1–10
+    1825,  1858,  1886,  2117,  2248,  2284,  2806,  3078,  3697,  3731,  // 11–20
+    3764,  3798,  3981,  4014,  4048,  4082,  4116,  4887,  4920,  4953,  // 21–30
+    5139,  5313,  5340,  5374,  5714,  6029,  6062,  6090,  6333,  6637,  // 31–40
+    6672,  6705,  6921,  7109,  7142,  7176,  7348,  7745,  7779,  7813,  // 41–50
+    8002,  8185,  8231,  8270,  8468,  8778,  8819,  8865,  9104,  9235,  // 51–60
+    9275,  9315,  9361,  9400,  9440,  9480,  9520,  9565,  9606, 10647,  // 61–70
+   10687, 11052, 11098, 11138, 11178, 11644, 11684, 11684, 11712, 12105,  // 71–80
+   12156, 12203, 12254, 12794, 12846, 12846, 12882, 13286, 13332, 13461,  // 81–90
+   13512, 13983, 14034, 14034, 14056, 14551, 14596, 14596, 14599, 15185,  // 91–100
 ];
 
-// Ce que l'étalon a de plus qu'un joueur réel : huit pièces DIVINES, la
-// rareté la plus rare du jeu. Un joueur bien équipé — pièces légendaires
-// partout, ce qui est déjà une belle collection — pèse 0,72 fois l'étalon
-// (mesuré, voir les tests). C'est cette barre-là qu'on conseille : la
-// franchir veut dire « vous êtes prêt », rester dessous veut dire « il
-// vous manque de l'équipement, pas des niveaux ».
-const FACTEUR_RECOMMANDATION = 0.72;
+// =====================================================================
+// v22 — LE CHIFFRE CONSEILLÉ DISAIT LA MOITIÉ DE LA VÉRITÉ.
+//
+// Deux erreurs se cumulaient, et ensemble elles donnaient un indicateur
+// deux fois trop bas — d'où le signalement en jeu : « plus on progresse,
+// plus l'écart se creuse entre notre puissance et celle requise ».
+//
+//  1. La table PUISSANCE_ETALON était sous-évaluée. Le banc qui la
+//     produit se bloquait sur du vieux matériel (voir l'en-tête de
+//     js/data/equilibrage.js) : au niveau 32, il annonçait 3 874 là où le
+//     jeu permet 5 313.
+//  2. Le facteur valait 0,72, au motif qu'un joueur « bien équipé » porte
+//     du LÉGENDAIRE partout. C'est deux crans sous ce qu'un joueur assidu
+//     porte réellement — un héros relevé en partie au niveau 32 pesait
+//     5 270, quand le chiffre conseillé pour sa carte affichait 2 650.
+//     Deux fois moins.
+//
+// La barre est désormais le héros ÉQUIPÉ MYTHIQUE : 0,90 fois le plafond
+// (mesuré, voir les tests), et le plancher exact à partir duquel un
+// combat de son niveau reste gagnable. La franchir veut dire « vous êtes
+// prêt » ; rester dessous veut dire « il vous manque de l'équipement, pas
+// des niveaux ».
+// =====================================================================
+const FACTEUR_RECOMMANDATION = 0.9;
 
 function puissanceEtalon(niveau) {
   const n = Math.min(NIVEAU_MAX, Math.max(1, Math.round(niveau) || 1));
