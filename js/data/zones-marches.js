@@ -45,18 +45,46 @@ Object.assign(FAMILLE_MATERIAU, {
 // Les monstres : une table compacte, des statistiques calculées.
 //
 // Écrire quarante blocs de chiffres à la main, c'est quarante occasions
-// de se tromper et aucune garantie de cohérence. La courbe est donc
-// dérivée de celle des Terres lointaines : à 3,6 % de PV, 1,9 % d'attaque
-// et 7,5 % d'XP par niveau, le raccord au niveau 52 est invisible.
+// de se tromper et aucune garantie de cohérence. Les PV, l'attaque et l'or
+// sont donc dérivés de la courbe des Terres lointaines : à 3,6 % de PV et
+// 1,9 % d'attaque par niveau, le raccord au niveau 52 est invisible.
+//
+// L'XP, elle, ne suit PLUS une croissance à taux fixe.
+//
+// CE QUI N'ALLAIT PAS. L'XP d'un monstre composait à 7,5 % par niveau,
+// pendant que le coût d'un niveau est quadratique par tronçon : sa
+// croissance relative retombe de +17 %/niveau au début d'un tronçon à
+// +5 %/niveau à sa fin. Deux courbes indépendantes, donc un rapport qui
+// dérive. Mesuré : 5,5 monstres pour le niveau 50, mais 2,2 seulement
+// pour le 52 — franchir le palier des Marches faisait monter deux fois et
+// demie plus vite. Et les niveaux 70 à 80 devenaient progressivement plus
+// faciles, onze niveaux d'affilée.
+//
+// LA RÈGLE. L'XP d'un monstre se déduit du coût du niveau, pas d'une
+// courbe parallèle. On fixe combien de monstres doit demander un niveau,
+// l'XP en découle, et le rapport ne peut plus dériver.
 // ---------------------------------------------------------------------
-const CROISSANCE_MARCHES = { hp: 1.036, atk: 1.019, xp: 1.075, po: 1.05 };
-const REFERENCE_MARCHES = { niveau: 52, hp: 2550, atk: 79, xp: 879, po: 52 };
+const CROISSANCE_MARCHES = { hp: 1.036, atk: 1.019, po: 1.05 };
+const REFERENCE_MARCHES = { niveau: 52, hp: 2550, atk: 79, po: 52 };
+
+// Combien de monstres pour un niveau. 5,5 à l'entrée des Marches, parce
+// que c'est exactement ce que demandent les Terres lointaines juste avant
+// (5,32 au niveau 46, 5,51 au niveau 50) : aucune marche en franchissant
+// le palier. 7,8 au niveau 100, la valeur déjà en place — la fin de
+// partie ne bouge pas.
+const COMBATS_PAR_NIVEAU = { entree: 5.5, fin: 7.8 };
+
+function combatsPourNiveau(niveau) {
+  const t = Math.min(1, Math.max(0, (niveau - 51) / (NIVEAU_MAX - 51)));
+  return COMBATS_PAR_NIVEAU.entree + (COMBATS_PAR_NIVEAU.fin - COMBATS_PAR_NIVEAU.entree) * t;
+}
 
 function statsMonstreMarches(niveau, boss) {
   const d = niveau - REFERENCE_MARCHES.niveau;
   const hp = Math.round(REFERENCE_MARCHES.hp * Math.pow(CROISSANCE_MARCHES.hp, d) * (boss ? 4.6 : 1));
   const atk = Math.round(REFERENCE_MARCHES.atk * Math.pow(CROISSANCE_MARCHES.atk, d) * (boss ? 1.35 : 1));
-  const xp = Math.round(REFERENCE_MARCHES.xp * Math.pow(CROISSANCE_MARCHES.xp, d) * (boss ? 3.4 : 1));
+  // incrementXp vient de progression.js, chargé avant ce fichier.
+  const xp = Math.round((incrementXp(niveau) / combatsPourNiveau(niveau)) * (boss ? 3.4 : 1));
   const po = Math.round(REFERENCE_MARCHES.po * Math.pow(CROISSANCE_MARCHES.po, d) * (boss ? 6 : 1));
   return { hp, atk, xp, po: [po, po * 2] };
 }

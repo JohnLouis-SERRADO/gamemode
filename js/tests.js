@@ -2842,6 +2842,54 @@ suite('Équilibrage (v20)', () => {
     aucun(marches, 'marches brutales dans la courbe d\'XP');
   });
 
+  test('la progression ne s\'accélère jamais quand on monte', () => {
+    // Le test au-dessus vérifie que la pente EXISTE et qu'elle ne fait pas
+    // de falaise. Il ne vérifiait pas qu'elle va toujours dans le bon sens
+    // — et c'est précisément par là que la dérive est passée.
+    //
+    // Ce qui avait échappé : l'XP des monstres composait à taux fixe pendant
+    // que le coût d'un niveau est quadratique par tronçon. Deux courbes
+    // indépendantes, donc un rapport qui dérive. Il fallait 5,5 monstres
+    // pour le niveau 50 et 2,2 pour le 52 (franchir le palier des Marches
+    // faisait monter deux fois et demie plus vite), puis les niveaux 70 à 80
+    // s'allégeaient onze niveaux d'affilée.
+    //
+    // On mesure ici la courbe de DESIGN : le joueur affronte le contenu
+    // taillé pour son niveau, donc un monstre de son niveau. La granularité
+    // du bestiaire (un monstre tous les deux à cinq niveaux) est un autre
+    // sujet, couvert par les tests de couverture du contenu.
+    const combatsPour = (n) => {
+      const stats = statsMonstreMarches(n, false);
+      return incrementXp(n) / stats.xp;
+    };
+
+    // 1. Aucun niveau ne doit demander moins de monstres que le précédent.
+    const allegements = [];
+    for (let n = 53; n <= NIVEAU_MAX; n++) {
+      const avant = combatsPour(n - 1);
+      const apres = combatsPour(n);
+      if (apres < avant - 0.01) {
+        allegements.push(`niv. ${n} (${avant.toFixed(2)} → ${apres.toFixed(2)})`);
+      }
+    }
+    aucun(allegements, 'niveaux qui s\'allègent au lieu de durcir');
+
+    // 2. Le raccord des Marches doit être invisible. Juste avant le palier,
+    //    le bestiaire écrit à la main demande ~5,5 monstres : l'entrée des
+    //    Marches doit repartir de là, pas d'un chiffre deux fois plus bas.
+    const avantPalier = incrementXp(PALIER_XP_MOYEN) / Math.max(...Object.values(MONSTRES)
+      .filter((m) => !m.boss && m.niveau <= PALIER_XP_MOYEN && m.niveau >= PALIER_XP_MOYEN - 4)
+      .map((m) => m.xp));
+    const apresPalier = combatsPour(PALIER_XP_MOYEN + 2);
+    entre(apresPalier / avantPalier, 0.85, 1.25,
+      `raccord des Marches (${avantPalier.toFixed(2)} → ${apresPalier.toFixed(2)} monstres)`);
+
+    // 3. La pente reste réelle sur les Marches et la Couture.
+    verifier(combatsPour(NIVEAU_MAX) > combatsPour(PALIER_XP_MOYEN + 2) * 1.2,
+      `la fin de partie doit durcir (${combatsPour(PALIER_XP_MOYEN + 2).toFixed(2)}`
+      + ` → ${combatsPour(NIVEAU_MAX).toFixed(2)} monstres)`);
+  });
+
   test('les six classes restent dans un écart de puissance raisonnable', () => {
     // Elles ne se valent pas — c'est voulu — mais l'écart ne doit pas
     // rendre une classe injouable.
