@@ -133,7 +133,17 @@ function valeurDePiecePour(classe, objet) {
   Object.entries(objet.bonus || {}).forEach(([cle, v]) => {
     if (cle === 'pvMax') { valeur += v * 0.8; return; }
     if (cle === 'pmMax') { valeur += v * 0.6; return; }
-    if (SOUS_CARACS[cle]) { valeur += v * POIDS_SOUS_CARAC; return; }
+    if (SOUS_CARACS[cle]) {
+      // Et la sous-caractéristique défensive de SON armure compte double :
+      // un soigneur en tissu monte sa Piété, un cuir sa Célérité. Sans ça,
+      // l'étalon soigneur finissait avec 2 % de Piété — et mourait à court
+      // de mana faute d'avoir jamais ramassé sa propre statistique.
+      const profil = (typeof PROFIL_ARMURE !== 'undefined')
+        && PROFIL_ARMURE[(EQUIPEMENT_PAR_CLASSE[classe] || {}).armure];
+      const sienne = profil && profil.defensif === cle;
+      valeur += v * POIDS_SOUS_CARAC * (sienne ? 2 : 1);
+      return;
+    }
     if (!CARACS[cle]) return;
     // La caractéristique de la classe et la Vitalité valent plein tarif :
     // l'une fait ses dégâts, l'autre le garde debout. Le reste est du décor.

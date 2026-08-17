@@ -770,7 +770,7 @@ function valeurEffectiveCompetence(comp, stat = STAT_CALIBRATION) {
 // même mélange de rôles), et la suite de tests passe au rouge. 54/42 laisse
 // une petite marge sous ce plafond.
 // =====================================================================
-const BUDGET_DEGATS_ROLE = { dps: 62, tank: 54, soigneur: 42 };
+const BUDGET_DEGATS_ROLE = { dps: 62, tank: 46, soigneur: 42 };
 const BUDGET_SOIN_ROLE = { dps: 26, tank: 34, soigneur: 62 };
 
 // Le palier de déblocage majore le budget : un sort de fin de parcours doit

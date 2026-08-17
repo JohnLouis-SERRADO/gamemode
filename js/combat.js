@@ -117,10 +117,31 @@ function resistanceDeClasse(c) {
   return aPassif(c, 'Rempart') ? 1 - RESISTANCE_GARDIEN : 1;
 }
 
-// Arcaniste : le mana revient plus vite. Deux points de base pour tout le
-// monde, le double pour lui.
+// =====================================================================
+// v21.4 — LA PIÉTÉ TIENT ENFIN SA PROMESSE.
+//
+// Sa fiche annonce « augmente le mana maximum ET SA RÉGÉNÉRATION ». Seule
+// la première moitié existait : le regain était un forfait de deux points
+// par tour pour tout le monde, cinq pour l'Arcaniste. La statistique du
+// soigneur ne lui rendait donc rien de ce qu'il dépense.
+//
+// Ça se voyait en jeu. Un Devin seul contre un boss tenait cinquante à
+// quatre-vingts manches — il survivait, il soignait, il ne mourait pas de
+// ses blessures : il mourait à court de mana, réserve à 0 %, incapable de
+// se soigner encore une fois. Sa ressource, celle sur laquelle repose tout
+// son métier, ne se rechargeait pas.
+//
+// Le regain suit désormais la Piété, en part de la réserve : c'est ce que
+// « régénération » veut dire pour un pool de mana. Le forfait reste le
+// plancher, pour ceux qui n'en portent pas.
+// =====================================================================
+const PART_REGAIN_PIETE = 0.15;
+
 function regainDeMana(c) {
-  return aPassif(c, 'Flux') ? 5 : 2;
+  const base = aPassif(c, 'Flux') ? 5 : 2;   // Arcaniste : le flux, son passif
+  if (!c || c.type !== 'joueur') return base;
+  const s = statsEffectives(c);
+  return base + Math.round((c.maxMp || 0) * sousCarac(s, 'piete') * PART_REGAIN_PIETE);
 }
 
 // Runelame : « Gravure — ses sorts lui rendent une part de ce qu'ils
