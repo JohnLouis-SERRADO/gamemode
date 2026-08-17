@@ -676,6 +676,46 @@ const ATK_CIBLE_BOSS = [
     86.0,   93.2,   94.3,   94.3,   94.3,   94.3,   94.3,  108.8,  109.7,  109.7,  // 91–100
 ];
 
+// =====================================================================
+// v20.2 — LA COURBE D'EXPÉRIENCE, rendue lisible.
+//
+// Un niveau doit coûter plus cher que le précédent — c'est le principe, et
+// il est bon. Encore faut-il que la pente se sente sans faire mur. Mesuré
+// avant correction, en nombre de combats nécessaires pour gagner un niveau :
+//
+//     niveau  1 →   1,6 combat        niveau 57 →  33 combats
+//     niveau 25 →   9,2 combats       niveau 89 → 105 combats
+//     niveau 41 →  16,2 combats       niveau 99 → 185 combats
+//
+// Un rapport de 114 entre le palier le plus rapide et le plus lent. Ce
+// n'est pas une pente, c'est une falaise : la courbe d'XP requise grimpe en
+// carré pendant que l'XP des monstres suit à peine leurs points de vie.
+//
+// L'XP d'un monstre est désormais DÉRIVÉE du rythme voulu : cinq combats
+// par niveau au départ, une petite trentaine à la fin. La pente reste
+// franche — six fois plus long à la fin qu'au début — mais régulière.
+//
+// La table est générée pour le facteur d'XP en vigueur (voir xpReelle dans
+// js/game.js) ; un test vérifie que le rythme obtenu colle toujours à la
+// cible, de sorte qu'on ne puisse pas changer l'un sans voir l'autre bouger.
+// =====================================================================
+const XP_CIBLE_MONSTRE = [
+25,      39,      51,      63,      74,      84,      94,     103,     111,     119,  // 1–10
+      126,     133,     139,     145,     151,     157,     162,     167,     171,     176,  // 11–20
+      180,     184,     188,     192,     195,     198,     202,     205,     208,     211,  // 21–30
+      213,     216,     219,     221,     224,     226,     228,     230,     232,     234,  // 31–40
+      236,     238,     240,     242,     243,     245,     247,     248,     250,     293,  // 41–50
+      338,     387,     437,     491,     546,     604,     664,     726,     790,     856,  // 51–60
+      924,     994,    1065,    1138,    1213,    1289,    1367,    1447,    1527,    1609,  // 61–70
+     1692,    1777,    1863,    1950,    2038,    2128,    2218,    2309,    2402,    2983,  // 71–80
+     3621,    4314,    5060,    5858,    6706,    7604,    8548,    9539,   10575,   11655,  // 81–90
+    12778,   13942,   15146,   16390,   17673,   18992,   20348,   21740,   23167,   23167,  // 91–100
+];
+
+// Un boss vaut une poignée de monstres ordinaires : il tient plus longtemps
+// et ne se rencontre qu'une fois.
+const MULT_XP_BOSS = 8;
+
 function cibleMonstre(table, niveau) {
   const n = Math.min(NIVEAU_MAX, Math.max(1, Math.round(niveau) || 1));
   return table[n - 1];
@@ -700,7 +740,7 @@ function calibrerRegistreMonstres(registre) {
   // Photo des valeurs d'origine AVANT de toucher à quoi que ce soit : sans
   // elle, la moyenne d'un palier se calculait sur des bêtes déjà corrigées
   // et le résultat dépendait de l'ordre de déclaration dans le fichier.
-  const origine = new Map(bêtes.map((m) => [m, { hp: m.hp, atk: m.atk }]));
+  const origine = new Map(bêtes.map((m) => [m, { hp: m.hp, atk: m.atk, xp: m.xp }]));
 
   const moyenneAutour = (niveau, estBoss, champ) => {
     for (let rayon = 1; rayon <= 12; rayon += 1) {
@@ -733,13 +773,18 @@ function calibrerRegistreMonstres(registre) {
     m.atk = recentre(origine.get(m).atk, moyenneAutour(m.niveau, estBoss, 'atk'),
       cibleMonstre(estBoss ? ATK_CIBLE_BOSS : ATK_CIBLE_MONSTRE, m.niveau));
 
-    // La récompense suit l'effort. Un monstre qui demande deux fois plus de
-    // tours rapporte deux fois plus : sans ça, rééquilibrer la difficulté
-    // reviendrait à tripler le temps de jeu pour un même niveau — la
-    // définition exacte du grind. L'XP par tour, elle, ne bouge pas.
+    // L'OR suit l'effort : un monstre qui demande deux fois plus de tours
+    // rapporte deux fois plus de pièces.
     const effort = avant > 0 ? m.hp / avant : 1;
-    if (typeof m.xp === 'number') m.xp = Math.max(1, Math.round(m.xp * effort));
     if (Array.isArray(m.po)) m.po = m.po.map((v) => Math.max(1, Math.round(v * effort)));
+
+    // L'EXPÉRIENCE, elle, ne suit pas l'effort mais le RYTHME voulu : c'est
+    // elle qui décide combien de combats séparent deux niveaux, et c'est là
+    // que se jouait la falaise de fin de partie.
+    if (typeof m.xp === 'number') {
+      const cibleXp = cibleMonstre(XP_CIBLE_MONSTRE, m.niveau) * (estBoss ? MULT_XP_BOSS : 1);
+      m.xp = recentre(origine.get(m).xp, moyenneAutour(m.niveau, estBoss, 'xp'), cibleXp);
+    }
   });
 }
 

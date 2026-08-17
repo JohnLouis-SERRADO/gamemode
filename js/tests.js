@@ -2631,6 +2631,56 @@ suite('Équilibrage (v20)', () => {
     verifier(pv.gardien === Math.max(...Object.values(pv)), 'le Gardien doit rester le plus résistant');
   });
 
+  test('la courbe d\'XP monte régulièrement, sans falaise', () => {
+    // Un niveau doit coûter plus cher que le précédent — mais la pente doit
+    // se sentir, pas faire mur. Avant correction : 1,6 combat pour le
+    // niveau 1, 185 pour le niveau 99. Un rapport de 114.
+    const parNiveau = {};
+    Object.values(MONSTRES).forEach((m) => {
+      if (m.boss || !m.niveau) return;
+      (parNiveau[m.niveau] = parNiveau[m.niveau] || []).push(m);
+    });
+    const xpMoyenAu = (n) => {
+      for (let r = 0; r <= 12; r++) {
+        const proches = [];
+        for (let k = n - r; k <= n + r; k++) if (parNiveau[k]) proches.push(...parNiveau[k]);
+        if (proches.length >= 2) return proches.reduce((a, m) => a + m.xp, 0) / proches.length;
+      }
+      return null;
+    };
+    const heros = { race: 'elfe', equipement: {}, familier: null, familiers: [] };
+    const combats = [];
+    for (let n = 1; n < NIVEAU_MAX; n++) {
+      const xpMoy = xpMoyenAu(n);
+      if (!xpMoy) continue;
+      combats.push({ n, valeur: (seuilXp(n + 1) - seuilXp(n)) / xpReelle(heros, xpMoy * 3) });
+    }
+    verifier(combats.length > 50, 'assez de paliers mesurés');
+    const valeurs = combats.map((c) => c.valeur);
+
+    // La pente EXISTE : la fin de partie demande nettement plus que le début.
+    const debut = combats.filter((c) => c.n <= 10).map((c) => c.valeur);
+    const fin = combats.filter((c) => c.n >= 90).map((c) => c.valeur);
+    const moyenne = (t) => t.reduce((a, v) => a + v, 0) / t.length;
+    verifier(moyenne(fin) > moyenne(debut) * 2,
+      `la fin de partie doit coûter nettement plus que le début (${moyenne(debut).toFixed(1)} → ${moyenne(fin).toFixed(1)} combats)`);
+
+    // Mais elle reste LISIBLE : pas de falaise.
+    entre(Math.max(...valeurs) / Math.min(...valeurs), 2, 12,
+      'rapport entre le palier le plus long et le plus court');
+    entre(Math.max(...valeurs), 10, 45, 'combats nécessaires pour le palier le plus long');
+
+    // Et elle ne fait pas de marche : aucun palier ne doit exiger le double
+    // du précédent d'un coup.
+    const marches = [];
+    combats.forEach((c, i) => {
+      if (i === 0) return;
+      const bond = c.valeur / combats[i - 1].valeur;
+      if (bond > 1.6) marches.push(`niv. ${c.n} (×${bond.toFixed(1)})`);
+    });
+    aucun(marches, 'marches brutales dans la courbe d\'XP');
+  });
+
   test('les six classes restent dans un écart de puissance raisonnable', () => {
     // Elles ne se valent pas — c'est voulu — mais l'écart ne doit pas
     // rendre une classe injouable.
