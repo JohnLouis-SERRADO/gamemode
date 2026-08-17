@@ -633,13 +633,32 @@ Object.assign(MONSTRES, {
 // 40 % de Ténacité dans certaines zones et 4 % dans d'autres. Les creux les
 // plus profonds tombaient exactement sur les cartes les mieux stuffées.
 //
-// La nouvelle échelle vise une tension nette : 2,0× au niveau 1 qui se
-// resserre régulièrement à 1,6× au niveau 100 — la fin de partie doit
-// mordre, sans jamais devenir le mur qu'elle était. Mesuré après coup :
-// écart de 1,6× entre la zone la plus dure et la plus douce, contre 2,8×
-// juste après le retrait de la Ténacité et 2,1× avant. Le boss, lui, garde
-// exactement son rapport au monstre ordinaire : cet équilibre-là était
-// déjà réglé, il n'y avait aucune raison de le rouvrir.
+// L'échelle vise une tension nette : 2,0× au niveau 1 qui se resserre
+// régulièrement à 1,6× au niveau 100 — la fin de partie doit mordre, sans
+// jamais devenir le mur qu'elle était.
+//
+// =====================================================================
+// v21.1 — LES DEUX COURBES SE DÉRIVENT SÉPARÉMENT, ET IL A FALLU JOUER
+// POUR S'EN APERCEVOIR.
+//
+// Le banc d'équilibrage se trompait d'un facteur deux (voir l'en-tête de
+// js/data/equilibrage.js : il ne faisait jamais mourir les monstres et
+// ignorait les lignes de combat). Les deux courbes en héritaient. Simulation
+// de vrais combats, trente parties par classe et par palier : cinq classes
+// sur six gagnaient 100 % du temps sans une seule mort, en finissant avec
+// 74 à 100 % de leurs points de vie. Les monstres ordinaires tapent donc
+// désormais environ deux fois plus fort.
+//
+// Mais la correction du groupe NE VAUT PAS pour un boss, et l'avoir appliquée
+// aux deux a coûté une seconde passe : le Gardien perdait contre TOUS les
+// boss, à tous les niveaux, vingt fois sur vingt. La raison tient en une
+// phrase — la correction venait de l'ATTRITION, du fait que dans un groupe
+// les bêtes tombent une par une et cessent de frapper, et un boss se bat
+// SEUL. Il n'y avait rien à corriger pour lui.
+//
+// Chaque courbe se dérive donc de SON objectif propre :
+//   • monstre ordinaire  groupe de 3, marge 2,0 → 1,6 selon le niveau ;
+//   • boss               combat seul, marge 1,5 — les deux tiers de la vie.
 // =====================================================================
 const PV_CIBLE_MONSTRE = [
 88,     92,    102,    129,    129,    137,    141,    168,    169,    237,  // 1–10
@@ -655,16 +674,16 @@ const PV_CIBLE_MONSTRE = [
 ];
 
 const ATK_CIBLE_MONSTRE = [
-3.3,     3.5,     3.6,     3.8,     4.0,     4.3,     4.6,     4.9,     5.2,     5.7,  // 1–10
-         5.9,     6.2,     6.6,     6.8,     7.1,     7.5,     7.8,     8.0,     8.0,     8.5,  // 11–20
-         8.9,     9.3,     9.8,    10.0,    10.2,    10.4,    10.7,    10.9,    11.0,    11.1,  // 21–30
-        11.1,    11.4,    11.9,    12.5,    12.9,    13.4,    14.0,    14.7,    15.4,    16.3,  // 31–40
-        16.3,    16.4,    16.4,    16.5,    16.5,    16.5,    16.5,    16.5,    16.5,    16.5,  // 41–50
-        16.5,    16.5,    16.5,    17.0,    17.5,    18.1,    18.8,    19.6,    20.3,    20.6,  // 51–60
-        20.8,    21.3,    21.5,    21.8,    22.3,    22.9,    23.4,    23.9,    25.0,    25.7,  // 61–70
-        26.4,    26.8,    26.9,    27.1,    27.1,    27.4,    27.6,    27.6,    27.7,    27.9,  // 71–80
-        28.2,    28.7,    29.2,    29.2,    29.2,    29.2,    29.2,    29.8,    30.6,    31.0,  // 81–90
-        31.2,    31.5,    32.3,    33.2,    33.7,    34.1,    34.1,    34.1,    34.2,    34.5,  // 91–100
+6.9,     7.3,     7.7,     8.1,     8.5,     9.3,    10.0,    10.8,    11.6,    12.5,  // 1–10
+        13.0,    13.6,    14.2,    14.7,    15.2,    16.0,    16.6,    17.0,    17.3,    18.2,  // 11–20
+        19.1,    19.8,    20.8,    21.0,    21.2,    21.3,    21.7,    21.9,    21.9,    21.9,  // 21–30
+        21.9,    22.4,    23.6,    24.8,    26.2,    27.6,    29.5,    31.2,    32.6,    34.7,  // 31–40
+        35.2,    35.8,    36.1,    36.2,    36.3,    36.3,    36.3,    36.3,    36.3,    36.3,  // 41–50
+        36.3,    36.3,    36.8,    37.6,    38.1,    39.0,    39.9,    42.2,    44.5,    45.4,  // 51–60
+        46.2,    47.0,    47.7,    49.9,    52.0,    53.1,    53.1,    53.1,    53.7,    54.9,  // 61–70
+        56.0,    56.4,    56.4,    56.4,    56.4,    56.9,    57.8,    58.3,    58.8,    59.6,  // 71–80
+        61.3,    63.0,    64.0,    64.5,    65.1,    66.3,    67.9,    71.3,    74.3,    75.1,  // 81–90
+        75.9,    76.7,    77.8,    79.7,    81.0,    81.9,    81.9,    81.9,    81.9,    81.9,  // 91–100
 ];
 
 // Un boss combat SEUL : il lui faut la masse de trois monstres et le temps
@@ -683,16 +702,16 @@ const PV_CIBLE_BOSS = [
 ];
 
 const ATK_CIBLE_BOSS = [
-7.3,     7.8,     8.2,     8.7,     9.0,     9.7,    10.3,    10.9,    11.6,    12.8,  // 1–10
-        13.2,    14.0,    14.9,    15.3,    16.0,    16.9,    17.5,    17.9,    17.9,    19.1,  // 11–20
-        20.1,    21.0,    22.1,    22.6,    23.0,    23.3,    24.0,    24.5,    24.7,    24.9,  // 21–30
-        24.9,    25.6,    26.7,    28.1,    29.0,    30.1,    31.5,    33.1,    34.7,    36.6,  // 31–40
-        36.8,    37.0,    37.0,    37.2,    37.2,    37.2,    37.2,    37.2,    37.2,    37.2,  // 41–50
-        37.2,    37.2,    37.2,    38.4,    39.5,    40.8,    42.4,    44.2,    45.8,    46.5,  // 51–60
-        46.9,    48.0,    48.4,    49.0,    50.2,    51.5,    52.6,    53.8,    56.2,    57.8,  // 61–70
-        59.3,    60.2,    60.5,    60.9,    60.9,    61.6,    62.1,    62.1,    62.3,    62.8,  // 71–80
-        63.5,    64.6,    65.7,    65.7,    65.7,    65.6,    65.7,    67.1,    68.9,    69.8,  // 81–90
-        70.2,    70.9,    72.7,    74.7,    75.8,    76.7,    76.7,    76.7,    77.0,    77.7,  // 91–100
+11.4,    11.9,    12.4,    13.0,    13.6,    14.7,    15.8,    16.9,    18.1,    19.9,  // 1–10
+        20.9,    22.0,    23.3,    24.1,    25.1,    26.5,    27.6,    28.1,    28.1,    29.5,  // 11–20
+        30.7,    31.6,    33.1,    33.4,    33.5,    33.6,    34.4,    35.0,    35.0,    35.0,  // 21–30
+        35.0,    35.8,    37.5,    39.5,    41.1,    42.8,    45.1,    47.6,    49.9,    53.1,  // 31–40
+        53.7,    54.2,    54.8,    55.1,    55.1,    55.1,    55.1,    55.1,    55.1,    55.1,  // 41–50
+        55.1,    55.1,    55.1,    55.3,    56.8,    58.4,    60.7,    62.7,    64.8,    65.5,  // 51–60
+        65.7,    67.2,    67.9,    68.5,    69.5,    69.9,    70.0,    70.1,    71.5,    73.5,  // 61–70
+        75.0,    75.4,    75.4,    75.7,    76.6,    78.8,    81.2,    81.5,    81.5,    81.9,  // 71–80
+        83.6,    86.0,    87.8,    87.8,    87.8,    87.8,    87.8,    90.2,    92.4,    93.1,  // 81–90
+        93.1,    93.1,    95.4,    98.6,    99.8,    99.8,    99.8,    99.8,    99.8,    99.8,  // 91–100
 ];
 
 // =====================================================================

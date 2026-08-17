@@ -199,14 +199,53 @@ function puissancesEtalon(niveau) {
 // milieu de partie était devenu une promenade sans que rien ne l'indique.
 //
 // On mesure donc trois choses, et les tests les surveillent :
-//   • la MARGE     survie ÷ temps de nettoyage. Doit rester dans une
-//                  fourchette étroite du niveau 1 au niveau 100.
+//   • la MARGE     vie totale ÷ dégâts encaissés pour nettoyer le groupe.
+//                  2,0 veut dire « un groupe coûte la moitié de sa vie ».
+//                  Doit rester dans une fourchette étroite du niveau 1
+//                  au niveau 100.
 //   • le PIRE COUP la plus grosse claque encaissable en un coup, en % des
 //                  PV. Aucun monstre ne doit jamais « one shot ».
 //   • la RIPOSTE   ce que le héros enlève en un coup, en % des PV du
 //                  monstre. Un monstre qui tombe en un coup n'est pas un
 //                  combat, c'est un décor.
+//
 // =====================================================================
+// v21.1 — CE BANC MENTAIT, ET IL A FALLU JOUER POUR S'EN APERCEVOIR.
+//
+// Simulation de vrais combats, moteur du jeu à la main, trente parties par
+// classe et par palier : cinq classes sur six gagnaient 100 % du temps, sans
+// une seule mort du niveau 5 au niveau 94, en terminant avec 74 à 100 % de
+// leurs points de vie. Le Runelame finissait TOUS ses combats intact. Le
+// banc, lui, annonçait tranquillement une marge de 2 — « un groupe coûte la
+// moitié de la vie ». Il se trompait d'un facteur trois, et il se trompait
+// pour deux raisons, toutes les deux structurelles :
+//
+//  1. IL NE FAISAIT JAMAIS MOURIR LES MONSTRES. Le modèle multipliait les
+//     dégâts d'un monstre par la taille du groupe et par la durée TOTALE du
+//     combat — comme si les trois bêtes frappaient encore au dernier tour.
+//     Dans un vrai combat, le héros concentre ses coups : la première tombe
+//     au tiers du combat et cesse de mordre. Le groupe encaissé vaut donc
+//     bien moins que trois monstres pendant tout le combat.
+//
+//  2. IL IGNORAIT LES LIGNES DE COMBAT. Aucune attaque de monstre ne passe
+//     l'option `magique` : elles sont toutes PHYSIQUES, et infligerDegats
+//     retranche 40 % à ce que subit un héros de ligne arrière. Trois classes
+//     sur six — Franc-tireur, Arcaniste, Devin — combattent en ligne arrière
+//     et prenaient donc 0,6× ce que le banc leur comptait. Mesuré en jeu au
+//     niveau 20 : 5 de dégâts en ligne arrière contre 9 en ligne avant.
+//
+// La tension se calcule désormais en DÉROULANT le combat tour par tour, avec
+// les monstres qui tombent et la ligne du héros. C'est un peu plus de calcul,
+// c'est déterministe, et surtout ça ne peut plus s'écarter du jeu sans que
+// les tests le voient.
+// =====================================================================
+
+// Les attaques de monstre n'étant jamais magiques, un héros de ligne arrière
+// en retranche 40 % — exactement comme dans infligerDegats.
+function facteurLigneDe(p) {
+  const ligne = typeof ligneParDefaut === 'function' ? ligneParDefaut(p) : 'avant';
+  return ligne === 'arriere' ? 0.6 : 1;
+}
 
 // Dégâts moyens d'un héros par tour. Modèle simple et assumé : il frappe
 // avec la meilleure compétence qu'il peut se payer, et retombe sur
@@ -312,23 +351,50 @@ function personaArme(classe, niveau) {
 }
 
 // La tension d'une zone pour un héros donné, face à un groupe de `taille`.
+//
+// Le combat est DÉROULÉ, pas estimé : à chaque tour le héros frappe une bête
+// — une seule, celle qu'il achève avant de passer à la suivante, comme le
+// fait un joueur — puis les survivantes ripostent. Une bête morte ne frappe
+// plus, et c'est précisément ce que l'ancien modèle oubliait.
 function tensionCombat(monstres, p, taille = 3) {
   if (!monstres.length) return null;
   const moy = (f) => monstres.reduce((a, m) => a + f(m), 0) / monstres.length;
-  const degatsHeros = degatsParTourHeros(p);
+  const degatsHeros = Math.max(1, degatsParTourHeros(p));
   const pvMonstre = moy((m) => m.hp);
-  const toursNettoyage = (pvMonstre * taille) / Math.max(1, degatsHeros);
-  const recuParTour = moy((m) => degatsParTourMonstre(m, p)) * taille;
+  const ligne = facteurLigneDe(p);
+  const parMonstre = moy((m) => degatsParTourMonstre(m, p)) * ligne;
+
+  let restants = taille;
+  let pvCible = pvMonstre;
+  let tours = 0;
+  let recu = 0;
+  // Le surplus d'un coup qui dépasse est perdu : on n'achève pas deux bêtes
+  // du même geste. Le garde-fou à 2000 tours n'existe que pour qu'une
+  // configuration absurde ne fige jamais la suite de tests.
+  while (restants > 0 && tours < 2000) {
+    tours++;
+    pvCible -= degatsHeros;
+    if (pvCible <= 0) { restants--; pvCible = pvMonstre; }
+    recu += restants * parMonstre;
+  }
+
   // Les soins qu'il se rend allongent sa vie ET son combat : c'est le même
-  // tour qu'il n'a pas passé à frapper.
-  const auto = autoSoinPendantCombat(p, toursNettoyage);
-  const toursSurvie = (p.maxHp + auto.soinTotal) / Math.max(1, recuParTour);
+  // tour qu'il n'a pas passé à frapper — et pendant lequel il encaisse.
+  const auto = autoSoinPendantCombat(p, tours);
+  const survivantsMoyens = recu / Math.max(1e-9, tours * parMonstre);
+  const recuTotal = recu + auto.toursDeSoin * survivantsMoyens * parMonstre;
+  const vie = p.maxHp + auto.soinTotal;
+  const toursNettoyage = tours + auto.toursDeSoin;
+  const marge = vie / Math.max(1, recuTotal);
   return {
-    toursNettoyage: toursNettoyage + auto.toursDeSoin,
-    toursSurvie,
-    marge: toursSurvie / (toursNettoyage + auto.toursDeSoin),
+    toursNettoyage,
+    // Conservé pour la lecture : le nombre de tours que le héros tiendrait
+    // à ce rythme d'encaissement.
+    toursSurvie: toursNettoyage * marge,
+    // 2,0 = nettoyer le groupe coûte la moitié de sa vie.
+    marge,
     // Un « one shot » se lit ici : la pire claque en pourcentage des PV.
-    pireCoupPct: moy((m) => plusGrosCoupMonstre(m)) / p.maxHp,
+    pireCoupPct: moy((m) => plusGrosCoupMonstre(m)) * ligne / p.maxHp,
     // Et sa réciproque : ce que le héros enlève d'un coup au monstre.
     ripostePct: plusGrosCoupHeros(p) / Math.max(1, pvMonstre),
   };
