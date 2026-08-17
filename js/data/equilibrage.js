@@ -44,7 +44,7 @@ function construireIndexEquipement() {
   const parSlot = {};
   Object.entries(OBJETS).forEach(([id, objet]) => {
     if (objet.type !== 'equipement' || !objet.slot) return;
-    (parSlot[objet.slot] = parSlot[objet.slot] || []).push({ id, objet, valeur: valeurDePiece(objet) });
+    (parSlot[objet.slot] = parSlot[objet.slot] || []).push({ id, objet });
   });
   Object.values(parSlot).forEach((liste) => {
     liste.sort((a, b) => (a.objet.niveau || 1) - (b.objet.niveau || 1));
@@ -59,13 +59,23 @@ function construireIndexEquipement() {
       const meilleur = new Array(NIVEAU_MAX + 1).fill(null);
       let courant = null;
       let valeurCourante = -1;
+      let pvCourant = -1;
       let i = 0;
       for (let n = 1; n <= NIVEAU_MAX; n++) {
         while (i < liste.length && (liste[i].objet.niveau || 1) <= n) {
           const candidat = liste[i];
           i++;
           if (!peutPorter(factice, candidat.objet)) continue;
-          if (candidat.valeur > valeurCourante) { valeurCourante = candidat.valeur; courant = candidat.id; }
+          const valeur = valeurDePiecePour(classe, candidat.objet);
+          // Monter en niveau ne doit JAMAIS faire perdre de la vie : on ne
+          // troque pas contre une pièce qui rend plus fragile, même mieux
+          // notée. Sans cette règle, les points de vie de l'étalon
+          // reculaient sur une dizaine de niveaux et toute la courbe de
+          // difficulté héritait de la dent de scie.
+          const pv = pvDePiece(candidat.objet);
+          if (valeur > valeurCourante && pv >= pvCourant) {
+            valeurCourante = valeur; pvCourant = pv; courant = candidat.id;
+          }
         }
         meilleur[n] = courant;
       }
@@ -75,9 +85,66 @@ function construireIndexEquipement() {
   return indexEquipement;
 }
 
-// Ce que vaut une pièce pour le score de puissance : exactement les
-// termes que puissanceDe additionnera. Un optimiseur ne choisit pas
-// autrement.
+// =====================================================================
+// v21.2 — CE QUE VAUT UNE PIÈCE, ET POUR QUI.
+//
+// La valeur d'une pièce était son SCORE de puissance : la somme de ses
+// caractéristiques à poids égal. Un optimiseur qui suit ce score troque
+// volontiers 25 de Vitalité contre 30 de Force — il y gagne 30 points de
+// score et il y perd 175 points de vie.
+//
+// C'est exactement ce qui se passait. Mesuré sur les six classes : les
+// points de vie de l'étalon RECULAIENT sur neuf à douze niveaux sur cent,
+// jusqu'à −25 % d'un niveau au suivant. Gagner un niveau faisait perdre de
+// la vie. Et comme toute la difficulté est dérivée de ce héros-là, la
+// courbe des monstres héritait de la dent de scie : le coup d'un monstre
+// coûtait de 3,3 % à 6,6 % des points de vie selon le niveau — du simple au
+// double — avec des ruptures de 36 % entre deux niveaux voisins.
+//
+// Une pièce se juge donc désormais POUR LA CLASSE qui la porte. Sa
+// caractéristique maîtresse et sa Vitalité comptent plein tarif ; les
+// caractéristiques qui ne lui servent à rien comptent au tiers. C'est le
+// même principe que la répartition 60/40 de personaReference, appliqué au
+// butin : l'étalon vise le meilleur JOUEUR possible, pas le meilleur
+// chiffre possible.
+// =====================================================================
+const POIDS_HORS_ROLE = 0.33;
+
+// Les sous-caractéristiques pèsent plus lourd ici que dans puissanceDe (8) :
+// ce sont elles qui font la personnalité d'un build, et un optimiseur qui les
+// sous-estime habille l'étalon en caractéristiques brutes. Réglé par mesure —
+// en dessous, la saturation des sous-caracs au niveau 100 tombe sous les 70 %
+// exigés par les tests, et l'équipement se met à peser plus de la moitié du
+// héros.
+const POIDS_SOUS_CARAC = 16;
+
+// Les points de vie qu'une pièce apporte, dans la monnaie de maxHpDe.
+function pvDePiece(objet) {
+  const bonus = (objet && objet.bonus) || {};
+  return (bonus.vit || 0) * 7 + (bonus.pvMax || 0);
+}
+
+// Ce que vaut une pièce POUR CETTE CLASSE.
+function valeurDePiecePour(classe, objet) {
+  const mult = (typeof MULT_RARETE_CRAFT !== 'undefined' && MULT_RARETE_CRAFT[rareteDe(objet)]) || 1;
+  const base = CLASSES_BASE[classe];
+  const maitresse = (base && base.stat) || 'for';
+  let valeur = 0;
+  Object.entries(objet.bonus || {}).forEach(([cle, v]) => {
+    if (cle === 'pvMax') { valeur += v * 0.8; return; }
+    if (cle === 'pmMax') { valeur += v * 0.6; return; }
+    if (SOUS_CARACS[cle]) { valeur += v * POIDS_SOUS_CARAC; return; }
+    if (!CARACS[cle]) return;
+    // La caractéristique de la classe et la Vitalité valent plein tarif :
+    // l'une fait ses dégâts, l'autre le garde debout. Le reste est du décor.
+    const plein = (cle === maitresse || cle === 'vit');
+    valeur += v * 6 * (plein ? 1 : POIDS_HORS_ROLE);
+  });
+  return valeur + (objet.niveau || 1) * mult * 4;
+}
+
+// Ce que vaut une pièce dans l'absolu — la monnaie de puissanceDe. Sert
+// encore là où aucune classe n'est en jeu.
 function valeurDePiece(objet) {
   const mult = (typeof MULT_RARETE_CRAFT !== 'undefined' && MULT_RARETE_CRAFT[rareteDe(objet)]) || 1;
   return valeurBonusObjet(objet.bonus) + (objet.niveau || 1) * mult * 4;
@@ -420,7 +487,7 @@ function meilleurePieceLegendaire(classe, slot, niveau) {
         if (ordre.indexOf(rareteDe(o)) > plafond) return;
         if (!peutPorter(factice, o)) return;
         const parSlot = indexLegendaire[c][o.slot] = indexLegendaire[c][o.slot] || [];
-        parSlot.push({ id, niveau: o.niveau || 1, valeur: valeurDePiece(o) });
+        parSlot.push({ id, niveau: o.niveau || 1, valeur: valeurDePiecePour(c, o), pv: pvDePiece(o) });
       });
       Object.values(indexLegendaire[c]).forEach((l) => l.sort((a, b) => a.niveau - b.niveau));
     });
@@ -428,8 +495,11 @@ function meilleurePieceLegendaire(classe, slot, niveau) {
   const liste = (indexLegendaire[classe] || {})[slot] || [];
   let meilleur = null;
   let valeur = -1;
+  let pv = -1;
   for (let i = 0; i < liste.length && liste[i].niveau <= niveau; i++) {
-    if (liste[i].valeur > valeur) { valeur = liste[i].valeur; meilleur = liste[i].id; }
+    if (liste[i].valeur > valeur && liste[i].pv >= pv) {
+      valeur = liste[i].valeur; pv = liste[i].pv; meilleur = liste[i].id;
+    }
   }
   return meilleur;
 }
