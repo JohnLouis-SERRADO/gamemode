@@ -218,7 +218,9 @@ function multiplicateurOr(p) {
     const objet = id && OBJETS[id];
     return somme + ((objet && objet.bonus && objet.bonus.poBonus) || 0);
   }, 0);
-  return 1 + ((familier && familier.bonus.poBonus) || 0) + bonusSetActifs(p).poBonus + equipement;
+  // « Poches percées » : le Voleur repart toujours avec plus.
+  return 1 + ((familier && familier.bonus.poBonus) || 0) + bonusSetActifs(p).poBonus + equipement
+    + reglagePassif(p, 'bonusOr', 0);
 }
 
 // Ligne d'affichage de la panoplie d'un objet (cartes d'inventaire/boutique).

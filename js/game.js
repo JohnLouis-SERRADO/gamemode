@@ -947,6 +947,12 @@ function normaliserPerso(p) {
   if (p.titre === undefined) p.titre = null;
   if (p.tourMax == null) p.tourMax = 0;
   if (!p.tourBoss || typeof p.tourBoss !== 'object') p.tourBoss = { normal: 0, heroique: 0, cauchemar: 0 };
+  // v22 : les points de sauvegarde des tours (un tous les dix étages).
+  if (!p.paliersTour || typeof p.paliersTour !== 'object') {
+    p.paliersTour = { tour: 0, tourBoss: { normal: 0, heroique: 0, cauchemar: 0 }, ascension: {} };
+  }
+  if (!p.paliersTour.tourBoss) p.paliersTour.tourBoss = { normal: 0, heroique: 0, cauchemar: 0 };
+  if (!p.paliersTour.ascension) p.paliersTour.ascension = {};
   if (!p.donjons || typeof p.donjons !== 'object') p.donjons = {};
   // v7 : le grimoire recense toutes les compétences connues ; seules
   // MAX_COMPETENCES_ACTIVES d'entre elles sont équipées en même temps.
@@ -1289,6 +1295,7 @@ function donneesCloud(p) {
     versionClasses: p.versionClasses,
     tourBoss: p.tourBoss, metiers: p.metiers, metierPrincipal: p.metierPrincipal,
     ascensions: p.ascensions, histoiresVues: p.histoiresVues,
+    forme: p.forme, paliersTour: p.paliersTour,
   };
 }
 
@@ -1524,7 +1531,7 @@ function gagnerXp(p, xp) {
   const apres = niveauPour(p.xp);
   if (apres > avant) {
     p.pointsEnAttente += pointsCumules(apres) - pointsCumules(avant);
-    // Points de maîtrise de la signature (niveaux 3, 6, 9, 12, 15, 18)
+    // Points de maîtrise des compétences de classe (voir CADENCE_MAITRISE)
     p.maitrise = (p.maitrise || 0) + pointsMaitrisePourNiveau(apres) - pointsMaitrisePourNiveau(avant);
     p.niveau = apres;
     // v18 : monter de niveau n'offre PLUS de compétence gratuite. Hors
@@ -1734,7 +1741,7 @@ function rendreCreation() {
     ${signature.emoji} <strong>${signature.nom}</strong> — ${signature.desc}
     <br><span class="encart-chiffres">${detailsCompetence(signature, b.stats).join(' · ')}</span>
     ${arbre}
-    <br><strong>8 compétences exclusives par classe</strong> (5 dès le niveau 1 — signature et bases —, puis niveaux 5, 10 et 15), améliorables avec les points de maîtrise (+15 % par rang) — en plus des compétences communes à choisir page suivante.`;
+    <br><strong>8 compétences exclusives par classe</strong> (5 dès le niveau 1 — signature et bases —, puis niveaux 5, 10 et 15), améliorables de +15 % par rang avec les points de maîtrise : un point ${texteBudgetMaitrise()} En plus des compétences communes, à choisir page suivante.`;
   zoneModeles.parentElement.appendChild(encartSignature);
 
   const restants = pointsRestants();
@@ -1826,9 +1833,10 @@ function ajouterBlocSignature(p, id, comp, carte) {
   if (rang >= RANG_SIGNATURE_MAX) return;
   const monter = document.createElement('button');
   monter.className = p.maitrise > 0 ? 'btn-principal btn-compact' : 'btn-choix btn-compact';
+  const prochain = prochainSeuilMaitrise(p.niveau);
   const texteInitial = p.maitrise > 0
     ? `🏅 Passer au rang ${rang + 1} (+15 % de puissance)`
-    : `🏅 Rang ${rang}/${RANG_SIGNATURE_MAX} — point de maîtrise au niveau ${SEUILS_MAITRISE.find((seuil) => seuil > p.niveau) || 18}`;
+    : `🏅 Rang ${rang}/${RANG_SIGNATURE_MAX} — ${prochain ? `prochain point de maîtrise au niveau ${prochain}` : 'tous les points de maîtrise sont acquis'}`;
   monter.textContent = texteInitial;
   monter.disabled = p.maitrise <= 0;
   // v15.1 : deux clics — le premier demande confirmation, le second investit.
@@ -2349,6 +2357,39 @@ function blocIdentiteClasse(p) {
   return lignes.join('');
 }
 
+// Métamorphe : « il bascule LIBREMENT ». La bascule se fait sur la fiche,
+// hors combat — l'ours porte les PV, le corbeau porte l'initiative.
+function ajouterBasculeDeForme(entete, p) {
+  if (!reglagePassif(p, 'pvOurs', 0)) return;
+  if (!p.forme) p.forme = 'ours';
+  const bloc = document.createElement('div');
+  bloc.className = 'heros-classe heros-forme';
+  const formes = [
+    ['ours', '🐻', `Ours — +${Math.round(reglagePassif(p, 'pvOurs', 0) * 100)} % de PV max`],
+    ['corbeau', '🐦‍⬛', `Corbeau — +${Math.round(reglagePassif(p, 'initiativeCorbeau', 0) * 100)} % d’initiative`],
+  ];
+  bloc.innerHTML = '<span class="classe-titre">🐾 <strong>Forme</strong> <span class="classe-role">changement libre, hors combat</span></span>';
+  const rangee = document.createElement('div');
+  rangee.className = 'rangee-boutons';
+  formes.forEach(([cle, emoji, libelle]) => {
+    const btn = document.createElement('button');
+    btn.className = (p.forme === cle ? 'btn-principal' : 'btn-choix') + ' btn-compact';
+    btn.textContent = `${emoji} ${libelle}${p.forme === cle ? ' ✓' : ''}`;
+    btn.disabled = p.forme === cle;
+    btn.addEventListener('click', () => {
+      p.forme = cle;
+      bornerVie(p);
+      sauvegarder(p);
+      afficherToast(`🐾 ${p.nom} prend la forme ${cle === 'ours' ? 'de l’ours' : 'du corbeau'}.`);
+      rendreHeros();
+      rendreTopbar();
+    });
+    rangee.appendChild(btn);
+  });
+  bloc.appendChild(rangee);
+  entete.querySelector('.heros-identite').appendChild(bloc);
+}
+
 function rendreHeros() {
   const p = persoActif();
   if (!p) return;
@@ -2385,6 +2426,7 @@ function rendreHeros() {
       <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${formatNombre(p.po)} po · 💥 ${Math.round(5 + s.dex + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(s.cha) - 1) * 100)} % butin${s.deter ? ` · ⚖️ ${Math.min(60, s.deter)} % determination` : ''}${s.celerite ? ` · 💨 ${Math.min(35, s.celerite)} % celerite` : ''}</div>
     </div>`;
   zone.appendChild(entete);
+  ajouterBasculeDeForme(entete, p);
 
   // (v18 : la console d'admin vit désormais dans son propre onglet)
 
@@ -2538,8 +2580,9 @@ function rendreBlocCompetences(zone, p, s) {
   blocComp.className = 'panneau';
   blocComp.innerHTML = `<h3>⚡ Compétences actives (${p.competences.length}/${MAX_COMPETENCES_ACTIVES})
     ${p.maitrise > 0 ? `<span class="badge badge-alerte">🏅 ${p.maitrise} point${p.maitrise > 1 ? 's' : ''} de maîtrise à investir !</span>` : ''}</h3>
-    <p class="aide">Ce sont elles que vous lancez en combat. Retirez-en, équipez-en d'autres depuis le grimoire — autant de fois que vous voulez, hors combat.
-    Votre signature de classe se renforce avec les points de maîtrise (niv. 3, 6, 9, 12, 15, 18).</p>
+    <p class="aide">Ce sont elles que vous lancez en combat. Retirez-en, équipez-en d'autres depuis le grimoire — autant de fois que vous voulez, hors combat.</p>
+    <p class="aide">🏅 <strong>Points de maîtrise</strong> — un point ${texteBudgetMaitrise()}
+    Vous en avez reçu ${pointsMaitrisePourNiveau(p.niveau)} jusqu'ici${prochainSeuilMaitrise(p.niveau) ? `, le prochain au niveau ${prochainSeuilMaitrise(p.niveau)}` : ''}.</p>
     <p class="aide">📖 <strong>Apprendre de nouveaux sorts ?</strong> Monter de niveau n'en offre aucun. Vos
     8 compétences de classe vous reviennent de droit (5 dès le niveau 1, puis une aux niveaux 5, 10 et 15) ;
     tout le reste se lit dans un <strong>grimoire acheté à l'Arcanium</strong>, chez Dame Sibylle. Le savoir se paie.</p>`;
@@ -3194,6 +3237,8 @@ function chargerHerosImporte(donnees, id, token) {
   if (d.metiers && typeof d.metiers === 'object') p.metiers = d.metiers;
   if (d.metierPrincipal !== undefined) p.metierPrincipal = d.metierPrincipal;
   if (d.ascensions && typeof d.ascensions === 'object') p.ascensions = d.ascensions;
+  if (d.forme !== undefined) p.forme = d.forme;
+  if (d.paliersTour && typeof d.paliersTour === 'object') p.paliersTour = d.paliersTour;
   if (d.histoiresVues && typeof d.histoiresVues === 'object') p.histoiresVues = d.histoiresVues;
   if (d.quetes && d.quetes.date) p.quetes = d.quetes;
   p.cloud = { id, token };

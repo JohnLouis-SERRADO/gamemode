@@ -112,7 +112,7 @@ const MODELES = [
 // Classes : chaque modèle de création est une classe à part entière.
 // Les 68 compétences classiques sont communes à tous ; chaque classe a
 // en plus une SIGNATURE exclusive, améliorable avec des points de
-// maîtrise (gagnés aux niveaux 3, 6, 9, 12, 15 et 18 — rang 5 maximum).
+// maîtrise (voir CADENCE_MAITRISE plus bas — rang 5 maximum).
 // =====================================================================
 MODELES.forEach((m) => {
   m.id = m.nom.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-');
@@ -389,17 +389,65 @@ function classeDe(p) {
   return CLASSES[p.classe] || CLASSES.aventurier;
 }
 
+// =====================================================================
 // Points de maîtrise : un par palier de niveau atteint, à investir dans
-// la compétence signature (chaque rang : +15 % de puissance, rang 5 max).
-// v19 : les paliers de maîtrise accompagnent la route jusqu'au niveau 100.
-// Tous les 3 niveaux au début, puis tous les 4, puis tous les 5 : le rythme
-// se calme à mesure que les niveaux coûtent cher.
-const SEUILS_MAITRISE = [3, 6, 9, 12, 15, 18, 22, 26, 30, 34, 38, 42, 46, 50,
-  55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
+// les compétences de classe (chaque rang : +15 % de puissance, rang 5 max).
+//
+// v22 — CE QUI N'ALLAIT PAS. Les paliers montaient jusqu'au niveau 100
+// depuis la v19, mais TOUS les écrans du jeu annonçaient encore « niveaux
+// 3, 6, 9, 12, 15 et 18 » — la liste de la v8, six points, écrite à la
+// main. Un joueur qui recevait un point au niveau 22 puis au 26 avait
+// raison de trouver le jeu incohérent : la règle affichée s'arrêtait au 18.
+//
+// La cadence est désormais la SOURCE : la liste des paliers en découle, et
+// la phrase affichée aussi. Les trois ne peuvent plus se contredire.
+// =====================================================================
+const CADENCE_MAITRISE = [
+  { jusqu: 18, tousLes: 3 },   // le début : un point tous les 3 niveaux
+  { jusqu: 50, tousLes: 4 },   // puis tous les 4
+  { jusqu: 100, tousLes: 5 },  // et tous les 5 jusqu'au bout de la route
+];
+
+const SEUILS_MAITRISE = (() => {
+  const seuils = [];
+  let precedent = 0;
+  CADENCE_MAITRISE.forEach((tranche) => {
+    for (let n = precedent + tranche.tousLes; n <= tranche.jusqu; n += tranche.tousLes) seuils.push(n);
+    precedent = seuils.length ? seuils[seuils.length - 1] : precedent;
+  });
+  return seuils;
+})();
+
 const RANG_SIGNATURE_MAX = 5;
+
+// Combien de points la carrière entière rapporte, et ce qu'on peut en
+// faire : deux chiffres que le joueur doit pouvoir lire, pas deviner.
+const TOTAL_POINTS_MAITRISE = SEUILS_MAITRISE.length;
+const COMPETENCES_MAITRISABLES = Math.floor(TOTAL_POINTS_MAITRISE / RANG_SIGNATURE_MAX);
 
 function pointsMaitrisePourNiveau(niveau) {
   return SEUILS_MAITRISE.filter((seuil) => niveau >= seuil).length;
+}
+
+// Le prochain palier après `niveau`, ou null quand il n'y en a plus.
+function prochainSeuilMaitrise(niveau) {
+  return SEUILS_MAITRISE.find((seuil) => seuil > niveau) || null;
+}
+
+// La phrase qui décrit la cadence — produite à partir de la cadence
+// elle-même, jamais recopiée à la main.
+function texteCadenceMaitrise() {
+  const morceaux = CADENCE_MAITRISE.map((tranche, i) => {
+    const debut = i === 0 ? '' : 'puis ';
+    return `${debut}tous les ${tranche.tousLes} niveaux jusqu’au ${tranche.jusqu}`;
+  });
+  return morceaux.join(', ');
+}
+
+// Et le compte complet, pour que personne n'ait à le refaire de tête.
+function texteBudgetMaitrise() {
+  return `${texteCadenceMaitrise()} — soit ${TOTAL_POINTS_MAITRISE} points sur toute la carrière, `
+    + `de quoi porter ${COMPETENCES_MAITRISABLES} de vos 8 compétences de classe au rang ${RANG_SIGNATURE_MAX}. À vous de choisir lesquelles.`;
 }
 
 function rangDe(p, compId) {

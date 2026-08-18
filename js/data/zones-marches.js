@@ -481,85 +481,85 @@ Object.entries(BESTIAIRE_MARCHES).forEach(([cle, def]) => {
 // ---------------------------------------------------------------------
 ZONES.push(
   {
-    id: 'marches-grises', nom: 'Les Marches Grises', emoji: '🌫️', niveauMin: 52, plage: 'niv. 52-58 · équipe conseillée',
+    id: 'marches-grises', nom: 'Les Marches Grises', emoji: '🌫️', niveauMin: 52, niveauMax: 58, note: 'équipe conseillée',
     desc: 'Au-delà de la dernière carte connue, le paysage cesse de se décider. Les bornes changent de place, la cendre ne vient d’aucun feu — et les voyageurs qu’on y croise marchent tous dans la même direction, sans savoir laquelle.',
     monstres: ['arpenteurGris', 'bornetremblante', 'gardienDeLaLimite'], boss: 'celuiQuiCompte',
     recolte: [{ id: 'cendre-grise', chance: 0.8 }, { id: 'echo-fossilise', chance: 0.35 }, { id: 'cendre-fertile', chance: 0.4 }],
   },
   {
-    id: 'chant-ruines', nom: 'Le Chant des Ruines', emoji: '🏚️', niveauMin: 52, plage: 'niv. 52-58 · équipe conseillée',
+    id: 'chant-ruines', nom: 'Le Chant des Ruines', emoji: '🏚️', niveauMin: 52, niveauMax: 58, note: 'équipe conseillée',
     desc: 'Une cité dont il ne reste que l’acoustique. Les murs sont tombés, la musique est restée : elle rejoue chaque soir un concert que personne n’a donné. Les pierres, elles, se souviennent d’un autre plan que celui d’aujourd’hui.',
     monstres: ['choeurDePierre', 'veuveDesArcades', 'refrainRevenant'], boss: 'maitreDeChapelle',
     recolte: [{ id: 'echo-fossilise', chance: 0.8 }, { id: 'cendre-grise', chance: 0.4 }, { id: 'liane-tressee', chance: 0.4 }, { id: 'essence-primordiale', chance: 0.15 }],
   },
   {
-    id: 'mer-de-verre', nom: 'La Mer de Verre', emoji: '🔷', niveauMin: 60, plage: 'niv. 60-68 · équipe conseillée',
+    id: 'mer-de-verre', nom: 'La Mer de Verre', emoji: '🔷', niveauMin: 60, niveauMax: 68, note: 'équipe conseillée',
     desc: 'Un océan arrêté en pleine vague, il y a si longtemps que l’écume est devenue de la pierre. On marche dessus. Dessous, on distingue des villes — et elles ne ressemblent à aucune ville de Valciel.',
     monstres: ['vagueFigee', 'noyeDebout', 'banquiseVive'], boss: 'celleQuiNaJamaisCoule',
     recolte: [{ id: 'verre-de-mer', chance: 0.8 }, { id: 'encre-noyee', chance: 0.3 }, { id: 'corail-sanglant', chance: 0.4 }, { id: 'echo-fossilise', chance: 0.25 }],
   },
   {
-    id: 'jardins-renverses', nom: 'Les Jardins Renversés', emoji: '🌺', niveauMin: 60, plage: 'niv. 60-68 · équipe conseillée',
+    id: 'jardins-renverses', nom: 'Les Jardins Renversés', emoji: '🌺', niveauMin: 60, niveauMax: 68, note: 'équipe conseillée',
     desc: 'Ici tout pousse à l’envers : les racines vers le ciel, les fleurs vers la terre. Les jardiniers entretiennent encore les allées. Interrogés, ils répondent qu’ils attendent que le monde soit remis à l’endroit — et qu’ils attendent depuis longtemps.',
     monstres: ['ronceInversee', 'jardinierSansTete', 'fleurQuiRegarde'], boss: 'grandMereRonce',
     recolte: [{ id: 'graine-renversee', chance: 0.8 }, { id: 'echo-fossilise', chance: 0.3 }, { id: 'basalte-poli', chance: 0.45 }, { id: 'verre-de-mer', chance: 0.25 }],
   },
   {
-    id: 'balance-des-heures', nom: 'La Balance des Heures', emoji: '⚖️', niveauMin: 68, plage: 'niv. 68-70 · passage',
+    id: 'balance-des-heures', nom: 'La Balance des Heures', emoji: '⚖️', niveauMin: 68, niveauMax: 70, note: 'passage',
     desc: 'Une halle sans toit où pendent des milliers de balances. Sur un plateau, une heure ; sur l’autre, ce qu’elle a coûté. Personne n’est venu relever les comptes depuis très longtemps — mais les balances, elles, n’ont jamais cessé de peser.',
     monstres: ['peseurDHeures', 'creancierGris', 'aiguilleAffolee'], boss: 'leGrandComptable',
     recolte: [{ id: 'echo-fossilise', chance: 0.7 }, { id: 'graine-renversee', chance: 0.45 }, { id: 'os-divin', chance: 0.3 }, { id: 'basalte-poli', chance: 0.35 }],
   },
   {
-    id: 'ossuaire-dieux', nom: 'L’Ossuaire des Dieux', emoji: '💀', niveauMin: 70, plage: 'niv. 70-78 · équipe requise',
+    id: 'ossuaire-dieux', nom: 'L’Ossuaire des Dieux', emoji: '💀', niveauMin: 70, niveauMax: 78, note: 'équipe requise',
     desc: 'Des ossements trop grands pour des géants, trop fins pour des bêtes, alignés comme dans un atelier. Aucun n’est complet. Tous portent des coutures — et ce sont les mêmes points que ceux qu’on a vus, en plus petit, sur les fêlures des Terres lointaines.',
     monstres: ['reliquaireMarcheur', 'cotesDuCiel', 'prieurDuVide'], boss: 'leDieuRecousu',
     recolte: [{ id: 'os-divin', chance: 0.8 }, { id: 'fil-de-suture', chance: 0.2 }, { id: 'ecaille-draconique', chance: 0.35 }, { id: 'echo-fossilise', chance: 0.3 }],
   },
   {
-    id: 'bibliotheque-noyee', nom: 'La Bibliothèque Noyée', emoji: '📚', niveauMin: 70, plage: 'niv. 70-78 · équipe requise',
+    id: 'bibliotheque-noyee', nom: 'La Bibliothèque Noyée', emoji: '📚', niveauMin: 70, niveauMax: 78, note: 'équipe requise',
     desc: 'Tout le savoir d’avant, sous trois mètres d’eau immobile. Les livres s’y lisent encore. Le catalogue est complet, méthodique — et il recense sept versions du monde. Valciel porte le numéro sept.',
     monstres: ['copisteNoye', 'rayonnageVorace', 'indexVivant'], boss: 'archivisteDesFins',
     recolte: [{ id: 'encre-noyee', chance: 0.8 }, { id: 'os-divin', chance: 0.3 }, { id: 'peau-de-mammouth', chance: 0.35 }, { id: 'echo-fossilise', chance: 0.3 }],
   },
   {
-    id: 'gue-des-serments', nom: 'Le Gué des Serments', emoji: '🌉', niveauMin: 78, plage: 'niv. 78-80 · passage',
+    id: 'gue-des-serments', nom: 'Le Gué des Serments', emoji: '🌉', niveauMin: 78, niveauMax: 80, note: 'passage',
     desc: 'Une rivière qu’on traverse à pied sec : l’eau s’est retirée le jour où le premier serment a été rompu. Sur les galets, des promesses déposées par milliers, comme des offrandes. Elles attendent encore qu’on revienne les chercher.',
     monstres: ['passeurSansBarque', 'paroleGelee', 'temoinDeGalet'], boss: 'celuiQuiNaJamaisJure',
     recolte: [{ id: 'os-divin', chance: 0.7 }, { id: 'echo-fossilise', chance: 0.4 }, { id: 'braise-crepusculaire', chance: 0.35 }, { id: 'encre-noyee', chance: 0.25 }],
   },
   {
-    id: 'rempart-crepuscule', nom: 'Le Rempart du Crépuscule', emoji: '🌇', niveauMin: 80, plage: 'niv. 80-88 · équipe requise',
+    id: 'rempart-crepuscule', nom: 'Le Rempart du Crépuscule', emoji: '🌇', niveauMin: 80, niveauMax: 88, note: 'équipe requise',
     desc: 'Un mur sans fin, bâti face au vide, où le soleil tombe sans jamais se coucher. La garnison tient depuis la première reconstruction. Elle n’a reçu aucun ordre depuis, et elle n’en attend plus : elle sait ce qu’il y a de l’autre côté.',
     monstres: ['sentinelleDuSoir', 'porteurDeLanterne', 'brecheAmbulante'], boss: 'capitaineDuDernierSoir',
     recolte: [{ id: 'braise-crepusculaire', chance: 0.8 }, { id: 'fil-de-suture', chance: 0.35 }, { id: 'plume-d-archon', chance: 0.35 }, { id: 'echo-fossilise', chance: 0.3 }],
   },
   {
-    id: 'terres-recousues', nom: 'Les Terres Recousues', emoji: '🧵', niveauMin: 80, plage: 'niv. 80-88 · équipe requise',
+    id: 'terres-recousues', nom: 'Les Terres Recousues', emoji: '🧵', niveauMin: 80, niveauMax: 88, note: 'équipe requise',
     desc: 'Des morceaux de pays cousus les uns aux autres : une plaine contre une falaise, un fleuve qui s’arrête net contre un désert. Les points sont visibles à l’œil nu. Certains lâchent. C’est de là que sortait tout ce qu’on a combattu depuis le premier jour.',
     monstres: ['cousuVivant', 'paysageEnDouble', 'raccordRate'], boss: 'laCouturiere',
     recolte: [{ id: 'fil-de-suture', chance: 0.85 }, { id: 'graine-renversee', chance: 0.3 }, { id: 'verre-de-mer', chance: 0.35 }, { id: 'braise-crepusculaire', chance: 0.25 }, { id: 'echo-fossilise', chance: 0.35 }, { id: 'peau-de-mammouth', chance: 0.3 }],
   },
   {
-    id: 'effilochure', nom: 'L’Effilochure', emoji: '🧶', niveauMin: 88, plage: 'niv. 88-90 · passage',
+    id: 'effilochure', nom: 'L’Effilochure', emoji: '🧶', niveauMin: 88, niveauMax: 90, note: 'passage',
     desc: 'Ici la trame du monde perd ses fils un par un, et on voit au travers : derrière le paysage il n’y a pas d’autre paysage, juste le blanc d’avant. Les habitants recousent chaque matin ce qui a lâché pendant la nuit, et perdent un peu de terrain chaque jour.',
     monstres: ['filQuiLache', 'trameNue', 'bordSansOurlet'], boss: 'laMailleTombee',
     recolte: [{ id: 'fil-de-suture', chance: 0.6 }, { id: 'braise-crepusculaire', chance: 0.5 }, { id: 'echo-fossilise', chance: 0.4 }, { id: 'os-divin', chance: 0.35 }, { id: 'essence-primordiale', chance: 0.15 }],
   },
   {
-    id: 'couture-monde', nom: 'La Couture du Monde', emoji: '🪡', niveauMin: 90, plage: 'niv. 90-100 · équipe requise',
+    id: 'couture-monde', nom: 'La Couture du Monde', emoji: '🪡', niveauMin: 90, niveauMax: 100, note: 'équipe requise',
     desc: 'La suture maîtresse, celle qui tient les six mondes précédents ensemble sous celui-ci. Elle est en train de céder. Ce n’est pas une menace : c’est un compte à rebours, et il a commencé bien avant votre naissance.',
     monstres: ['gardeDeLaCouture', 'pointDeRupture', 'memoireDuMondeAncien'], boss: 'laDerniereSuture',
     recolte: [{ id: 'fil-de-suture', chance: 0.9 }, { id: 'aiguille-premiere', chance: 0.25 }, { id: 'braise-crepusculaire', chance: 0.35 }, { id: 'eclat-de-couronne', chance: 0.2 }],
   },
   {
-    id: 'trone-premier-roi', nom: 'Le Trône du Premier Roi', emoji: '👑', niveauMin: 90, plage: 'niv. 90-100 · le dernier pas',
+    id: 'trone-premier-roi', nom: 'Le Trône du Premier Roi', emoji: '👑', niveauMin: 90, niveauMax: 100, note: 'le dernier pas',
     desc: 'Au bout de la Couture, une salle du trône bâtie avant Valciel. Celui qui y siège n’est pas un tyran : c’est le couturier. Il a recousu le monde six fois, il s’apprête à recommencer, et il n’a jamais demandé à personne s’il fallait continuer.',
     monstres: ['heraultSansVoix', 'conseillerDeLaPremiereHeure', 'ombreCouronnee'], boss: 'lePremierRoi',
     recolte: [{ id: 'eclat-de-couronne', chance: 0.6 }, { id: 'aiguille-premiere', chance: 0.4 }, { id: 'fil-de-suture', chance: 0.4 }, { id: 'essence-primordiale', chance: 0.2 }],
   },
   {
-    id: 'dernier-point', nom: 'Le Dernier Point', emoji: '🪢', niveauMin: 98, plage: 'niv. 98-100 · après le Roi',
+    id: 'dernier-point', nom: 'Le Dernier Point', emoji: '🪢', niveauMin: 98, niveauMax: 100, note: 'après le Roi',
     desc: 'Passé le trône, il reste trois mètres de monde. Le fil s’arrête là, sur un nœud qui n’a jamais été serré. Celui qui coud a posé son aiguille ici, un jour, et n’est pas revenu — on ne sait toujours pas s’il avait fini, ou s’il avait renoncé.',
     monstres: ['noeudFinal', 'repriseInachevee', 'ourletDuMonde'], boss: 'laMainQuiCoud',
     recolte: [{ id: 'fil-de-suture', chance: 0.6 }, { id: 'aiguille-premiere', chance: 0.5 }, { id: 'eclat-de-couronne', chance: 0.35 }, { id: 'essence-primordiale', chance: 0.25 }],
@@ -746,3 +746,31 @@ Object.assign(HISTOIRES_ZONES, {
     { titre: 'La question jamais posée', texte: 'Le hérault sans voix vous tend un parchemin vierge. Depuis six mondes, personne n’a demandé au Premier Roi s’il fallait continuer. Vous, vous pouvez encore.', recompense: { po: 440, xp: 470 } },
   ],
 });
+
+// =====================================================================
+// v22 — LE DERNIER MOT SUR LES BORNES DU MONDE.
+//
+// Toutes les cartes sont désormais chargées : c'est ici, et nulle part
+// ailleurs, que se fabriquent l'étiquette d'une carte (« niv. 22-28 ») et
+// les bornes d'un acte. Elles ne peuvent donc plus mentir sur le niveau
+// d'entrée — ni l'une, ni les autres.
+// =====================================================================
+function normaliserBornesDuMonde() {
+  ZONES.forEach((z) => {
+    if (z.niveauMax == null) z.niveauMax = z.niveauMin;
+    z.plage = `niv. ${z.niveauMin}-${z.niveauMax}${z.note ? ` · ${z.note}` : ''}`;
+    const acte = ACTES_MONDE.find((a) => z.niveauMin >= a.de && z.niveauMin <= a.a);
+    z.acte = acte ? acte.id : null;
+  });
+  ACTES_MONDE.forEach((acte) => {
+    const cartes = ZONES.filter((z) => z.acte === acte.id);
+    acte.cartes = cartes.length;
+    // Le niveau d'ENTRÉE de l'acte : celui de sa première carte, pas une
+    // borne théorique. Et le haut : la fin de plage de la dernière carte.
+    acte.niveauMin = cartes.length ? Math.min(...cartes.map((z) => z.niveauMin)) : acte.de;
+    acte.niveauMax = cartes.length ? Math.max(...cartes.map((z) => z.niveauMax)) : acte.a;
+    acte.plage = `niv. ${acte.niveauMin}-${acte.niveauMax}`;
+  });
+}
+
+normaliserBornesDuMonde();

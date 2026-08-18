@@ -280,6 +280,14 @@ const DONJONS = [
     nom: 'La Crypte du Roi Oublié',
     emoji: '🏛️',
     niveauMin: 4,
+    // La toute première histoire : elle ne demande pas de profil, juste de
+    // quoi veiller un mort et d'avoir tenu tête au Loup alpha des Plaines.
+    acces: accesHistoire(4, null, {
+      objets: { 'herbe-lunaire': 3 },
+      bossZones: ['plaines'],
+      puissance: 0.6,
+      equipement: 3,
+    }),
     resume: 'Sous les Plaines dort un roi que l’Histoire a rayé. Quelque chose l’empêche de dormir.',
     hautFait: 'donjon-crypte',
     depart: 'intro',
@@ -440,6 +448,12 @@ const DONJONS = [
     nom: 'Le Laboratoire de Frivole',
     emoji: '🧪',
     niveauMin: 8,
+    // Un laboratoire de mage se lit avant de se visiter — et la Forêt des
+    // Murmures fournit la sève dont ses cuves ont besoin.
+    acces: accesHistoire(8, 'int', {
+      objets: { 'seve-ambree': 3 },
+      bossZones: ['foret'],
+    }),
     resume: 'Le mage Frivole n’a plus donné signe de vie depuis trois lunes. Son laboratoire, si : il gronde.',
     hautFait: 'donjon-laboratoire',
     depart: 'intro',
@@ -601,6 +615,12 @@ const DONJONS = [
     nom: 'Le Brise-Brume',
     emoji: '⛵',
     niveauMin: 12,
+    // Un navire fantôme dans le marais : il faut du coffre, du lotus noir
+    // contre les vapeurs, et l'Hydre des brumes déjà couchée.
+    acces: accesHistoire(12, 'vit', {
+      objets: { 'lotus-noir': 2 },
+      bossZones: ['marais'],
+    }),
     resume: 'Un navire fantôme s’est échoué dans le Marais Putride. Son équipage n’a pas remarqué qu’il était mort.',
     hautFait: 'donjon-brise-brume',
     depart: 'intro',
@@ -759,6 +779,13 @@ const DONJONS = [
     nom: 'Le Cœur du Volcan',
     emoji: '🌋',
     niveauMin: 16,
+    // La Forge première ne s'ouvre pas à qui n'a jamais tenu un marteau :
+    // de la Force, du fer, les Pics Gelés domptés — et un vrai mineur.
+    acces: accesHistoire(16, 'for', {
+      objets: { 'minerai-fer': 5 },
+      bossZones: ['pics'],
+      metier: { id: 'mineur', niveau: 3 },
+    }),
     resume: 'Au fond des Pics Hurlants brûle la Forge première, gardée par le dernier des forgerons géants.',
     hautFait: 'donjon-volcan',
     depart: 'intro',
@@ -1082,6 +1109,28 @@ Object.assign(MONSTRES_DONJONS, {
   },
 });
 
+// =====================================================================
+// v22 — LE GABARIT DES VERROUS D'UNE HISTOIRE.
+//
+// Chroniques et Épopées passent désormais par la même porte. Un récit
+// déclare la caractéristique qui lui va, les trophées et les matériaux
+// qu'il exige ; le reste — le seuil de cette caractéristique, la
+// puissance, le nombre de pièces portées — se déduit de son palier.
+// Rééquilibrer le jeu réajuste donc tous les verrous d'un coup.
+// =====================================================================
+function accesHistoire(palier, stat, extras = {}) {
+  return {
+    stat: stat || null,          // la caractéristique du récit (voir verrousDonjon)
+    objets: extras.objets || {},
+    bossZones: extras.bossZones || [],
+    donjons: extras.donjons || [],
+    puissance: extras.puissance != null ? extras.puissance : 0.7,
+    equipement: extras.equipement != null ? extras.equipement
+      : (palier < 20 ? 4 : (palier < 50 ? 6 : 8)),
+    metier: extras.metier || null,
+  };
+}
+
 DONJONS.push(
   // ============================================================
   // 5. Le Sanctuaire des Marées — niv. 25+ (équipe conseillée)
@@ -1091,6 +1140,12 @@ DONJONS.push(
     nom: 'Le Sanctuaire des Marées',
     emoji: '🌊',
     niveauMin: 25,
+    // La Gardienne des Marées écoute avant de frapper : de l'Esprit, et
+    // les deux premières terres lointaines déjà matées.
+    acces: accesHistoire(25, 'esp', {
+      objets: { 'plume-de-rokh': 2 },
+      bossZones: ['jungle-vai', 'falaises-hurlantes'],
+    }),
     resume: 'La cité engloutie d’Azuria se réveille — et sa Gardienne veut rendre la mer à la surface. Toute la mer. Équipe conseillée.',
     hautFait: 'donjon-sanctuaire',
     depart: 'intro',
@@ -1246,6 +1301,13 @@ DONJONS.push(
     nom: 'La Couronne Céleste',
     emoji: '👑',
     niveauMin: 42,
+    // Une citadelle d'Archontes qui tombe du ciel : on n'y monte pas sans
+    // comprendre ce qu'on lit, ni sans avoir vidé les deux terres
+    // d'équipe — la Forêt Pétrifiée et la Vallée des Géants.
+    acces: accesHistoire(42, 'int', {
+      objets: { 'sphere-runique': 2, 'relique-antique': 2 },
+      bossZones: ['foret-petrifiee', 'vallee-geants'],
+    }),
     resume: 'La citadelle des Archontes tombe du ciel — droit sur Valciel. Il faudra une équipe entière pour atteindre la salle du trône.',
     hautFait: 'donjon-couronne',
     depart: 'intro',
@@ -1638,6 +1700,13 @@ DONJONS.push(
     niveauMin: 50,
     defi: 50,
     requiert: 'couronne-celeste',
+    // Le gouffre où coulent les vaincus : il faut de quoi tenir debout,
+    // une plume d'Archonte pour éclairer la descente, et la Citadelle de
+    // Foudre déjà tombée.
+    acces: accesHistoire(50, 'vit', {
+      objets: { 'plume-d-archon': 1, 'etoffe-du-neant': 2 },
+      bossZones: ['citadelle-foudre'],
+    }),
     resume: 'Tout ce que les héros ont vaincu coule quelque part. Ce quelque part vient de déborder. Défi de niveau 50 — équipe complète recommandée.',
     hautFait: 'donjon-nihelm',
     depart: 'intro',
@@ -1799,6 +1868,12 @@ DONJONS.push(
     niveauMin: 50,
     defi: 60,
     requiert: 'nihelm',
+    // On ne court pas après le temps sans vitesse — ni sans une essence
+    // primordiale, la seule matière que les heures ne rongent pas.
+    acces: accesHistoire(60, 'dex', {
+      objets: { 'essence-primordiale': 2 },
+      bossZones: ['neant-scintillant'],
+    }),
     resume: 'Une forteresse fige sa dernière heure en boucle depuis mille ans. Son Horloger refuse que minuit sonne. Défi de niveau 60 — équipe complète recommandée.',
     hautFait: 'donjon-temps-brise',
     depart: 'intro',
@@ -1958,6 +2033,13 @@ DONJONS.push(
     niveauMin: 50,
     defi: 70,
     requiert: 'temps-brise',
+    // Celui-qui-Attend regarde en retour : il faut un Esprit solide, trois
+    // éclats d'étoile pour ne pas se perdre, et les deux dernières terres
+    // des Royaumes lointains derrière soi.
+    acces: accesHistoire(70, 'esp', {
+      objets: { 'eclat-d-etoile': 3 },
+      bossZones: ['citadelle-foudre', 'neant-scintillant'],
+    }),
     resume: 'Sous le gouffre, derrière le temps, quelque chose attendait depuis avant les Royaumes. Il a fini d’attendre. Défi de niveau 70 — le dernier.',
     hautFait: 'donjon-neant',
     depart: 'intro',

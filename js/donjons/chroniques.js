@@ -574,12 +574,14 @@ function construireChroniques(liste) {
     chronique: true,
     zone: c.zone,
     nom: c.nom, emoji: c.emoji, niveauMin: niveau,
-    acces: {
-      stat: c.statAcces,
-      min: 4 + Math.round(z.niveauMin * 0.5),
-      objet: cleZone,
-      bossZone: z.id,
-    },
+    // v22 — Les verrous d'une Chronique regardent le héros ENTIER : ce
+    // qu'il vaut (caractéristique et puissance), ce qu'il porte, ce qu'il
+    // a récolté sur place, et ce qu'il a couché. Un seul de ces chiffres
+    // est écrit ici : tous les autres se déduisent du palier de la carte.
+    acces: accesHistoire(z.niveauMin, c.statAcces, {
+      objets: { [cleZone]: 2 },
+      bossZones: [z.id],
+    }),
     resume: c.resume,
     hautFait: 'chroniques-5',
     depart: 'intro',

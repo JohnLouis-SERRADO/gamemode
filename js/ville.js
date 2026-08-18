@@ -939,7 +939,7 @@ function reclamerQuete(p, quete) {
   // rareté du contrat dope encore le tirage.
   if (quete.recompense.coffre) {
     const s = statsEffectives(p);
-    const rarete = tirerRarete(s.cha + 5 + (quete.recompense.bonusCoffre || 0));
+    const rarete = tirerRarete(chanceButin(p) + 5 + (quete.recompense.bonusCoffre || 0));
     const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
       && (o.type === 'materiau' || o.type === 'consommable'
         || (o.type === 'equipement' && o.niveau <= p.niveau + 3)));

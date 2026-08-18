@@ -21,30 +21,135 @@ function progresDonjon(p, idDonjon) {
 // =====================================================================
 // Cartes des donjons sur la carte du monde
 // =====================================================================
-// Les verrous d'accès d'une Chronique : chaque condition manquante est
-// listée en clair — niveau, caractéristique, objet-clé, boss de la carte.
-function verrousChronique(p, donjon) {
+// =====================================================================
+// v22 — LES VERROUS DES DONJONS D'HISTOIRE, REMANIÉS.
+//
+// CE QUI N'ALLAIT PAS. Deux familles d'histoires, deux régimes sans
+// rapport : une Chronique demandait quatre conditions (niveau,
+// caractéristique, objet-clé, boss de la carte), une Épopée n'en demandait
+// qu'une — le niveau — et, pour les trois dernières, d'avoir fini la
+// précédente. On pouvait donc entrer dans « La Couronne Céleste » nu,
+// sans équipement, sans avoir vaincu quoi que ce soit, au seul motif
+// d'avoir atteint le niveau 42.
+//
+// LA RÈGLE DE LA v22. Un seul jeu de verrous, lu par les deux familles,
+// et qui regarde TOUT le héros : ses niveaux, ses caractéristiques
+// effectives (donc son équipement), sa puissance, ce qu'il porte
+// réellement, ce qu'il a dans son sac, les boss qu'il a couchés, les
+// histoires qu'il a déjà vécues et, quand le récit s'y prête, son métier.
+//
+// Chaque condition manquante est écrite en clair, avec le chiffre atteint
+// et le chiffre attendu : un donjon fermé doit toujours dire pourquoi, et
+// quoi faire pour l'ouvrir.
+// =====================================================================
+// Le seuil de caractéristique d'une histoire : une part du palier, la
+// même pour les Chroniques et les Épopées. Un seul chiffre à bouger si
+// l'exigence se révèle mal calibrée.
+function SEUIL_STAT_HISTOIRE(palier) {
+  return STAT_BASE + Math.round(palier * 0.35);
+}
+
+// Les emplacements sont déjà décrits une fois pour toutes dans le
+// catalogue : on les relit plutôt que d'en tenir une seconde liste.
+function piecesEquipees(p) {
+  return Object.keys(SLOTS_EQUIPEMENT).filter((slot) => (p.equipement || {})[slot]).length;
+}
+
+// Le seuil de puissance d'un donjon : une fraction de la puissance
+// conseillée pour son palier. Passer par puissanceRecommandee garantit
+// que le verrou suit automatiquement tout rééquilibrage du jeu.
+function puissanceExigee(donjon) {
+  const part = donjon.acces && donjon.acces.puissance;
+  if (!part) return 0;
+  return Math.round(puissanceRecommandee(donjon.defi || donjon.niveauMin) * part);
+}
+
+function verrousDonjon(p, donjon) {
   const verrous = [];
-  const a = donjon.acces;
-  if (p.niveau < donjon.niveauMin) verrous.push(`niveau ${donjon.niveauMin}`);
+  const a = donjon.acces || {};
+  if (p.niveau < donjon.niveauMin) verrous.push(`⬆️ niveau ${p.niveau}/${donjon.niveauMin}`);
+
+  // Caractéristique du récit, lue sur les stats EFFECTIVES : l'équipement
+  // compte, et c'est voulu.
+  //
+  // Une porte de caractéristique ne doit JAMAIS condamner un héros. Un
+  // spécialiste extrême — tous ses points dans une seule statistique —
+  // n'atteindrait certaines d'entre elles à aucun niveau, et resterait
+  // enfermé dehors pour toujours. D'où la dispense : celui qui arrive à
+  // la PLEINE puissance conseillée de son palier entre sans qu'on regarde
+  // son profil. La porte reste donc un choix (« investis un peu ici, ou
+  // équipe-toi mieux »), jamais une impasse.
   const s = statsEffectives(p);
-  if ((s[a.stat] || 0) < a.min) verrous.push(`${CARACS[a.stat].emoji} ${CARACS[a.stat].nom} ${s[a.stat] || 0}/${a.min}`);
-  if (compterObjet(p, a.objet) < 1) verrous.push(`🗝️ ${OBJETS[a.objet].emoji} ${OBJETS[a.objet].nom} en poche`);
-  if (!p.bossVaincus.includes(a.bossZone)) {
-    const z = ZONES.find((x) => x.id === a.bossZone);
-    verrous.push(`👑 vaincre ${MONSTRES[z.boss].nom}`);
+  if (a.stat) {
+    const min = SEUIL_STAT_HISTOIRE(donjon.niveauMin);
+    // 0,9 et non 1 : la barre conseillée est une moyenne entre classes, et
+    // un héros ENTIÈREMENT équipé en légendaire doit franchir la dispense
+    // quelle que soit la sienne — mesuré au banc, la classe la moins bien
+    // lotie passe à 0,92. Sinon la porte redeviendrait une impasse.
+    const dispense = Math.round(puissanceRecommandee(donjon.niveauMin) * 0.9);
+    if ((s[a.stat] || 0) < min && puissanceDe(p) < dispense) {
+      verrous.push(`${CARACS[a.stat].emoji} ${CARACS[a.stat].nom} ${s[a.stat] || 0}/${min}`
+        + ` (ou ⚡ ${formatNombre(dispense)} de puissance)`);
+    }
+  }
+
+  // Puissance : le seul verrou qui juge le héros ENTIER — caractéristiques,
+  // réserves, sous-caractéristiques et qualité de l'équipement à la fois.
+  const requise = puissanceExigee(donjon);
+  if (requise > 0 && puissanceDe(p) < requise) {
+    verrous.push(`⚡ puissance ${formatNombre(puissanceDe(p))}/${formatNombre(requise)}`);
+  }
+
+  // Ce qu'il PORTE : on n'entre pas dans une histoire en sous-vêtements.
+  if (a.equipement && piecesEquipees(p) < a.equipement) {
+    verrous.push(`🛡️ ${piecesEquipees(p)}/${a.equipement} emplacements d'équipement garnis`);
+  }
+
+  // Ce qu'il a dans son sac : les clefs du récit.
+  Object.entries(a.objets || {}).forEach(([id, qte]) => {
+    const objet = OBJETS[id];
+    if (!objet) return;
+    const enPoche = compterObjet(p, id);
+    if (enPoche < qte) verrous.push(`🗝️ ${objet.emoji} ${objet.nom} ${enPoche}/${qte}`);
+  });
+
+  // Les boss de carte déjà couchés.
+  (a.bossZones || []).forEach((idZone) => {
+    if (p.bossVaincus.includes(idZone)) return;
+    const z = ZONES.find((x) => x.id === idZone);
+    if (z) verrous.push(`👑 vaincre ${MONSTRES[z.boss].nom} (${z.nom})`);
+  });
+
+  // Les histoires déjà vécues — `requiert` reste accepté, il dit la même
+  // chose pour un seul donjon.
+  const histoires = [...(a.donjons || [])];
+  if (donjon.requiert) histoires.push(donjon.requiert);
+  histoires.forEach((id) => {
+    if (progresDonjon(p, id).fini > 0) return;
+    const autre = DONJONS_PAR_ID[id];
+    if (autre) verrous.push(`📖 terminer « ${autre.nom} »`);
+  });
+
+  // Et le métier, quand le récit tient à la main plutôt qu'à la lame.
+  if (a.metier) {
+    const niveau = (p.metiers && p.metiers[a.metier.id] && p.metiers[a.metier.id].niveau) || 1;
+    if (niveau < a.metier.niveau) {
+      verrous.push(`${METIERS[a.metier.id].emoji} ${METIERS[a.metier.id].nom} niveau ${niveau}/${a.metier.niveau}`);
+    }
   }
   return verrous;
 }
 
+// Compat : l'ancien nom reste, il pointe sur le nouveau jeu de verrous.
+function verrousChronique(p, donjon) {
+  return verrousDonjon(p, donjon);
+}
+
 // v16 : la liste des donjons qu'un héros a DÉBLOQUÉS — calculée sur son
-// propre appareil (verrous complets : niveau, stat, objet-clé, boss de
-// zone, prérequis d'épopée), puis embarquée dans l'instantané de groupe.
+// propre appareil (verrous complets), puis embarquée dans l'instantané
+// de groupe.
 function donjonDebloquePour(p, donjon) {
-  if (p.niveau < donjon.niveauMin) return false;
-  if (donjon.requiert && !(progresDonjon(p, donjon.requiert).fini > 0)) return false;
-  if (donjon.chronique && verrousChronique(p, donjon).length > 0) return false;
-  return true;
+  return verrousDonjon(p, donjon).length === 0;
 }
 
 function donjonsDebloquesPour(p) {
@@ -62,17 +167,17 @@ function rendreCartesDonjons(conteneur, p) {
   const sections = [
     {
       court: '📜 Chroniques des terres',
-      titre: '📜 <strong>Chroniques des terres</strong> — la petite histoire de chaque carte. Accès exigeant : niveau, caractéristique, objet-clé… et le boss de la carte vaincu.',
+      titre: '📜 <strong>Chroniques des terres</strong> — la petite histoire de chaque carte. Accès exigeant : niveau, caractéristique, puissance, équipement porté, objet-clé… et le boss de la carte vaincu.',
       liste: DONJONS.filter((d) => d.chronique),
     },
     {
       court: '📖 Épopées de Valciel',
-      titre: '📖 <strong>Épopées de Valciel</strong> — les grandes histoires. Une épopée terminée ouvre son <strong>Ascension éternelle</strong> : on y grimpe jusqu’à la mort ou l’abandon.',
+      titre: '📖 <strong>Épopées de Valciel</strong> — les grandes histoires. Elles se méritent, elles aussi : niveau, caractéristiques, puissance, équipement, trophées et matériaux de la région. Une épopée terminée ouvre son <strong>Ascension éternelle</strong> : on y grimpe jusqu’à la mort ou l’abandon.',
       liste: DONJONS.filter((d) => !d.chronique),
     },
   ];
 
-  // v19 : chaque registre se replie. Les vingt-cinq donjons s'ajoutaient
+  // v19 : chaque registre se replie. Les donjons d’histoire s’ajoutaient
   // à la suite des cartes du monde, dans le même défilement sans fin —
   // on ne les ouvre plus que quand on les cherche.
   sections.forEach((section) => {
@@ -107,9 +212,8 @@ function rendreCartesDonjons(conteneur, p) {
 
     section.liste.forEach((donjon) => {
       const prog = progresDonjon(p, donjon.id);
-      const prerequisManquant = donjon.requiert && !(progresDonjon(p, donjon.requiert).fini > 0);
-      const verrousAcces = donjon.chronique ? verrousChronique(p, donjon) : [];
-      const verrouille = p.niveau < donjon.niveauMin || prerequisManquant || verrousAcces.length > 0;
+      const verrousAcces = verrousDonjon(p, donjon);
+      const verrouille = verrousAcces.length > 0;
       const enCours = !!prog.checkpoint;
       const carte = document.createElement('div');
       carte.className = 'carte-zone donjon-histoire' + (verrouille ? ' verrouillee' : '');
@@ -117,9 +221,7 @@ function rendreCartesDonjons(conteneur, p) {
       if (prog.fini > 0) statut = ' ✅';
       else if (enCours) statut = ' 📖';
       let action = 'Commencer l’histoire';
-      if (donjon.chronique && verrousAcces.length) action = `🔒 Il manque : ${verrousAcces.join(' · ')}.`;
-      else if (p.niveau < donjon.niveauMin) action = `🔒 Atteignez le niveau ${donjon.niveauMin}.`;
-      else if (prerequisManquant) action = `🔒 Terminez d’abord « ${DONJONS_PAR_ID[donjon.requiert].nom} ».`;
+      if (verrousAcces.length) action = `🔒 Il manque : ${verrousAcces.join(' · ')}.`;
       else if (enCours) action = '▶ Reprendre l’aventure en cours';
       else if (prog.fini > 0) {
         action = donjon.chronique
@@ -147,13 +249,11 @@ function rendreCartesDonjons(conteneur, p) {
 // =====================================================================
 function ouvrirDonjon(donjon) {
   const p = persoActif();
-  // Chroniques : les quatre verrous se vérifient aussi à l'entrée.
-  if (donjon.chronique) {
-    const verrous = verrousChronique(p, donjon);
-    if (verrous.length) {
-      afficherToast(`🔒 Il manque : ${verrous.join(' · ')}.`);
-      return;
-    }
+  // Les verrous se revérifient à l'entrée — Chroniques comme Épopées.
+  const verrous = verrousDonjon(p, donjon);
+  if (verrous.length) {
+    afficherToast(`🔒 Il manque : ${verrous.join(' · ')}.`);
+    return;
   }
   const prog = progresDonjon(p, donjon.id);
   const reprise = prog.checkpoint && donjon.etapes[prog.checkpoint];
@@ -163,7 +263,15 @@ function ouvrirDonjon(donjon) {
     afficherButin({
       titre: `${donjon.emoji} ${donjon.nom}`,
       texte: 'L’histoire est écrite — mais le donjon, lui, vit toujours. Revivez le récit, ou entamez l’Ascension éternelle : des étages sans fin, de plus en plus durs, sans soin entre les salles, jusqu’à la mort ou l’abandon.',
-      lignes: [record > 0 ? `⛰️ Votre record d’Ascension ici : étage ${record}.` : '⛰️ Aucune Ascension tentée ici pour l’instant.'],
+      lignes: [
+        record > 0 ? `⛰️ Votre record d’Ascension ici : étage ${record}.` : '⛰️ Aucune Ascension tentée ici pour l’instant.',
+        (() => {
+          const palier = palierAtteint(p, `ascension:${donjon.id}`);
+          return palier > 0
+            ? `⛑️ Point de sauvegarde gravé : étage ${palier} — l’ascension peut y reprendre.`
+            : `⛑️ Un point de sauvegarde se grave tous les ${PALIER_SAUVEGARDE_TOUR} étages.`;
+        })(),
+      ],
       retour: 'carte',
       boutons: [
         {
@@ -666,9 +774,20 @@ function bossDeLEpopee(donjon) {
 }
 
 function ouvrirAscension(donjon) {
-  etat.ascension = { donjon, etage: 1 };
-  afficherToast(`⛰️ L'Ascension de « ${donjon.nom} » commence. Pas de soin entre les étages — grimpez tant que vous tenez debout.`);
-  demarrerEtageAscension();
+  // v22 : l'Ascension a ses points de sauvegarde, comme les deux Tours —
+  // un tous les dix étages, gravé par épopée.
+  demanderDepartAscension({
+    titre: `⛰️ ${donjon.nom} — Ascension éternelle`,
+    texte: 'Aucun soin entre les étages — sauf aux points de sauvegarde. D’où l’équipe part-elle ?',
+    cle: `ascension:${donjon.id}`,
+    lancer: (etage) => {
+      etat.ascension = { donjon, etage };
+      afficherToast(etage > 1
+        ? `⛰️ L'Ascension de « ${donjon.nom} » reprend à l'étage ${etage}.`
+        : `⛰️ L'Ascension de « ${donjon.nom} » commence. Pas de soin entre les étages — grimpez tant que vous tenez debout.`);
+      demarrerEtageAscension();
+    },
+  });
 }
 
 function demarrerEtageAscension() {
@@ -802,6 +921,8 @@ function rendreEpreuveAscension() {
         membresEquipe().forEach((m) => {
           if (!m.ascensions || typeof m.ascensions !== 'object') m.ascensions = {};
           if (etage > (m.ascensions[donjon.id] || 0)) m.ascensions[donjon.id] = etage;
+          // Un étage-épreuve compte comme un étage : le palier aussi.
+          franchirPalierDeSauvegarde(m, `ascension:${donjon.id}`, etage);
           verifierHautsFaits(m);
           sauvegarder(m);
         });
@@ -870,15 +991,19 @@ function apresVictoireAscension(cb) {
       nouveauRecord = true;
     }
     verifierHautsFaits(m);
-    nettoyerApresCombat(m); // pas de soin entre les étages : c'est la règle
+    nettoyerApresCombat(m); // pas de soin entre les étages : c'est la règle…
+    const repos = franchirPalierDeSauvegarde(m, `ascension:${a.donjon.id}`, a.etage);
+    if (repos) lignes.push(repos);                 // …sauf tous les dix étages
     if (niveaux > 0) lignes.push(`🎉 ${m.avatar} ${m.nom} passe niveau ${m.niveau} ! PV et PM restaurés.`);
     sauvegarder(m);
   });
   if (nouveauRecord) lignes.push(`⛰️ Nouveau record : étage ${a.etage} !`);
 
   afficherButin({
-    titre: `⛰️ Étage ${a.etage} conquis !`,
-    texte: 'Le donjon encaisse le coup — et reconstruit déjà l\'étage suivant, un peu plus haut, un peu plus dur.',
+    titre: `⛰️ Étage ${a.etage} conquis !${estPalierDeSauvegarde(a.etage) ? ' ⛑️ Point de sauvegarde' : ''}`,
+    texte: estPalierDeSauvegarde(a.etage)
+      ? 'Un palier de repos : le donjon vous laisse souffler, et grave votre passage. La prochaine ascension pourra repartir d\'ici.'
+      : 'Le donjon encaisse le coup — et reconstruit déjà l\'étage suivant, un peu plus haut, un peu plus dur.',
     lignes,
     retour: 'carte',
     boutons: [

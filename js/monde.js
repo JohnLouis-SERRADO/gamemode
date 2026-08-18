@@ -54,7 +54,7 @@ function rendreCarte() {
   // empilé dans un seul défilement de dix écrans, verrouillé compris.
   const groupes = [];
   ACTES_MONDE.forEach((acte) => {
-    const zones = ZONES.filter((z) => z.niveauMin >= acte.de && z.niveauMin <= acte.a);
+    const zones = ZONES.filter((z) => z.acte === acte.id);
     if (zones.length) groupes.push({ acte, zones });
   });
 
@@ -94,7 +94,7 @@ function rendreCarte() {
     entete.setAttribute('aria-expanded', String(!toutFerme));
     entete.innerHTML = `
       <span class="acte-titre">${acte.emoji} ${acte.nom}</span>
-      <span class="acte-plage">niv. ${acte.de}-${acte.a} · ${zones.length} carte${zones.length > 1 ? 's' : ''}${
+      <span class="acte-plage">${acte.plage} · ${zones.length} carte${zones.length > 1 ? 's' : ''}${
         fermees.length ? ` · ${fermees.length} 🔒` : ''}</span>
       <span class="acte-chevron">${toutFerme ? '▸' : '▾'}</span>`;
 
@@ -124,7 +124,8 @@ function rendreCarte() {
     <div class="zone-plage">défi — expédition solo ou locale · ${texteRecommandation(p, 3)}</div>
     <div class="zone-desc">${tourVerrouillee
     ? '🔒 Atteignez le niveau 3 pour tenter l’ascension.'
-    : 'Des étages infinis, aucun repos entre les combats, un butin qui grimpe à chaque palier. Jusqu’où monterez-vous ?'}</div>`;
+    : `Des étages infinis, aucun repos entre les combats, un butin qui grimpe à chaque palier. ⛑️ Point de sauvegarde tous les ${PALIER_SAUVEGARDE_TOUR} étages${
+      palierAtteint(p, 'tour') > 0 ? ` — le vôtre : étage ${palierAtteint(p, 'tour')}` : ''}. Jusqu’où monterez-vous ?`}</div>`;
   if (!tourVerrouillee) rendreCliquable(tour, () => demarrerTour());
   zone.appendChild(tour);
 
@@ -139,7 +140,7 @@ function rendreCarte() {
     <div class="zone-plage">défi — solo ou équipe · 3 difficultés · ${texteRecommandation(p, 10)}</div>
     <div class="zone-desc">${tourBossVerrouillee
     ? '🔒 Atteignez le niveau 10 pour défier les seigneurs des Royaumes.'
-    : 'Un boss par étage, du premier loup au Dévoreur de Mondes. Normal, Héroïque puis Cauchemar : chaque difficulté a son record.'}</div>`;
+    : `Un boss par étage, du premier loup au Dévoreur de Mondes. Normal, Héroïque puis Cauchemar : chaque difficulté a son record — et son point de sauvegarde tous les ${PALIER_SAUVEGARDE_TOUR} étages.`}</div>`;
   if (!tourBossVerrouillee) rendreCliquable(tourBoss, () => ouvrirTourBoss());
   zone.appendChild(tourBoss);
 
@@ -573,7 +574,7 @@ function recolter(z, idMetier) {
   progresserQuete(p, 'recolte', 1);
 
   const s = statsEffectives(p);
-  const multChance = multChanceDrop(s.cha); // jusqu'à ×2 avec la Chance
+  const multChance = multChanceDrop(chanceButin(p)); // jusqu'à ×2 avec la Chance
   const specialiste = p.metierPrincipal === idMetier;
   const multSpec = specialiste ? multSpecialite(s.cha) : 1; // ×1.3 à ×1.6 selon la Chance
   const niveauM = metierDe(p, idMetier).niveau;
@@ -763,7 +764,7 @@ function tirerButinCombat(cb) {
   const evenement = multiplicateursEvenement();
   // La chance moyenne de l'équipe améliore les probabilités de butin.
   const chaMoyenne = cb.equipe.length
-    ? cb.equipe.reduce((somme, j) => somme + (statsEffectives(j).cha || 0), 0) / cb.equipe.length
+    ? cb.equipe.reduce((somme, j) => somme + chanceButin(j), 0) / cb.equipe.length
     : 0;
   let chanceEquipe = multChanceDrop(chaMoyenne);
   // Trèfles séchés : chaque héros sous statut fortune ajoute +30 % de butin.
@@ -830,7 +831,7 @@ function ouvrirCoffreBoss(p, zone, difficulte) {
   if (difficulte === 'heroique' && Math.random() < 0.5) tirages++;
   if (difficulte === 'cauchemar') tirages++;
   for (let i = 0; i < tirages; i++) {
-    const rarete = tirerRarete(s.cha);
+    const rarete = tirerRarete(chanceButin(p));
     const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
       && (o.type === 'materiau' || o.type === 'consommable'
         || (o.type === 'equipement' && o.niveau <= p.niveau + 3)));
@@ -843,6 +844,97 @@ function ouvrirCoffreBoss(p, zone, difficulte) {
 }
 
 // =====================================================================
+// v22 — LES POINTS DE SAUVEGARDE DES TOURS.
+//
+// CE QUI N'ALLAIT PAS. Les tours d'exploration se grimpent sans repos
+// jusqu'à la mort. C'est leur règle, et elle est bonne — mais elle
+// signifiait aussi que tomber à l'étage 47 renvoyait à l'étage 1. Deux
+// heures d'ascension effacées, et la seule façon de progresser était de
+// refaire chaque fois les quarante premiers étages, qui ne présentent plus
+// aucun danger. Le mode s'auto-sabotait.
+//
+// LA RÈGLE DE LA v22. Tous les DIX étages, un palier de repos : l'équipe
+// souffle (PV et PM rendus) et le palier est gravé sur chaque héros. Une
+// ascension suivante peut repartir de là — ou du bas, pour ceux qui
+// veulent la course complète. Entre deux paliers, rien ne change : aucun
+// soin, aucune pitié.
+//
+// Les trois escaliers du jeu suivent la même règle : Tour Sans Fin, Tour
+// des Boss (un palier par difficulté) et Ascension éternelle (un palier
+// par épopée). Solo comme en groupe.
+// =====================================================================
+const PALIER_SAUVEGARDE_TOUR = 10;
+
+function paliersDe(p) {
+  if (!p.paliersTour || typeof p.paliersTour !== 'object') {
+    p.paliersTour = { tour: 0, tourBoss: { normal: 0, heroique: 0, cauchemar: 0 }, ascension: {} };
+  }
+  if (!p.paliersTour.tourBoss) p.paliersTour.tourBoss = { normal: 0, heroique: 0, cauchemar: 0 };
+  if (!p.paliersTour.ascension) p.paliersTour.ascension = {};
+  return p.paliersTour;
+}
+
+// Le dernier palier gravé pour un escalier donné. `cle` vaut 'tour',
+// 'tourBoss:<difficulté>' ou 'ascension:<idDonjon>'.
+function palierAtteint(p, cle) {
+  const paliers = paliersDe(p);
+  const [famille, detail] = cle.split(':');
+  if (famille === 'tour') return paliers.tour || 0;
+  if (famille === 'tourBoss') return paliers.tourBoss[detail] || 0;
+  return paliers.ascension[detail] || 0;
+}
+
+function graverPalier(p, cle, etage) {
+  const paliers = paliersDe(p);
+  const [famille, detail] = cle.split(':');
+  if (famille === 'tour') paliers.tour = Math.max(paliers.tour || 0, etage);
+  else if (famille === 'tourBoss') paliers.tourBoss[detail] = Math.max(paliers.tourBoss[detail] || 0, etage);
+  else paliers.ascension[detail] = Math.max(paliers.ascension[detail] || 0, etage);
+}
+
+function estPalierDeSauvegarde(etage) {
+  return etage > 0 && etage % PALIER_SAUVEGARDE_TOUR === 0;
+}
+
+// Un palier franchi : on grave, on souffle, on le dit. Renvoie la ligne à
+// afficher dans l'écran de butin, ou null si ce n'était pas un palier.
+function franchirPalierDeSauvegarde(m, cle, etage) {
+  if (!estPalierDeSauvegarde(etage)) return null;
+  graverPalier(m, cle, etage);
+  m.statuts = [];
+  bornerVie(m);
+  m.hp = m.maxHp;
+  m.mp = m.maxMp;
+  return `⛑️ Point de sauvegarde — étage ${etage} : ${m.avatar} ${m.nom} souffle (PV et PM rendus). La prochaine ascension pourra repartir d'ici.`;
+}
+
+// Le petit dialogue « d'où repart-on ? », commun aux trois escaliers.
+// Sans palier gravé, on lance directement : pas de clic pour rien.
+function demanderDepartAscension({ titre, texte, cle, lancer, retour }) {
+  const p = persoActif();
+  const palier = palierAtteint(p, cle);
+  if (palier <= 0) { lancer(1); return; }
+  afficherButin({
+    titre,
+    texte,
+    lignes: [
+      `⛑️ Point de sauvegarde le plus haut : étage ${palier}.`,
+      `Un nouveau point se grave tous les ${PALIER_SAUVEGARDE_TOUR} étages — et l'équipe y reprend son souffle.`,
+    ],
+    retour: retour || 'carte',
+    boutons: [
+      {
+        texte: `⛑️ Reprendre à l'étage ${palier + 1}`,
+        classe: 'btn-principal',
+        action: () => lancer(palier + 1),
+      },
+      { texte: '🗼 Repartir de l’étage 1', action: () => lancer(1) },
+      { texte: '🗺️ Revenir à la carte', action: () => naviguer(retour || 'carte') },
+    ],
+  });
+}
+
+// =====================================================================
 // La Tour Sans Fin : étages enchaînés sans repos
 // =====================================================================
 function zonePourEtage(etage) {
@@ -850,9 +942,18 @@ function zonePourEtage(etage) {
 }
 
 function demarrerTour() {
-  etat.tour = { etage: 1 };
-  afficherToast('🗼 L’ascension commence ! Aucun repos entre les étages…');
-  demarrerCombatTourEtage(1);
+  demanderDepartAscension({
+    titre: '🗼 La Tour Sans Fin',
+    texte: 'Aucun repos entre les étages — sauf aux points de sauvegarde. D’où l’équipe part-elle ?',
+    cle: 'tour',
+    lancer: (etage) => {
+      etat.tour = { etage };
+      afficherToast(etage > 1
+        ? `🗼 L’ascension reprend à l’étage ${etage} !`
+        : '🗼 L’ascension commence ! Aucun repos entre les étages…');
+      demarrerCombatTourEtage(etage);
+    },
+  });
 }
 
 function demarrerCombatTourEtage(etage) {
@@ -918,7 +1019,7 @@ function apresVictoireTour(cb) {
     if (estPalier) {
       const s = statsEffectives(m);
       for (let i = 0; i < 2; i++) {
-        const rarete = tirerRarete(s.cha + etage);
+        const rarete = tirerRarete(chanceButin(m) + etage);
         const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
           && (o.type === 'materiau' || o.type === 'consommable'
             || (o.type === 'equipement' && o.niveau <= m.niveau + 3)));
@@ -941,14 +1042,20 @@ function apresVictoireTour(cb) {
     const niveaux = gagnerXp(m, xpParHeros);
     verifierHautsFaits(m);
     nettoyerApresCombat(m); // ne soigne pas : la Tour ne pardonne rien
+    // …sauf tous les dix étages, où l'on grave le passage et où l'on souffle.
+    const repos = franchirPalierDeSauvegarde(m, 'tour', etage);
+    if (repos) lignes.push(repos);
     if (niveaux > 0) lignes.push(`🎉 ${m.avatar} ${m.nom} passe niveau ${m.niveau} ! PV et PM restaurés.`);
     sauvegarder(m);
   });
 
   const vies = membres.map((m) => `${m.avatar} ${m.hp}/${m.maxHp} PV`).join(' · ');
   afficherButin({
-    titre: `🗼 Étage ${etage} vaincu !`,
-    texte: `${estPalier ? 'Un palier ! Le coffre de la Tour s’ouvre. ' : ''}Pas de repos : ${vies}.`,
+    titre: `🗼 Étage ${etage} vaincu !${estPalierDeSauvegarde(etage) ? ' ⛑️ Point de sauvegarde' : ''}`,
+    texte: `${estPalier ? 'Un palier ! Le coffre de la Tour s’ouvre. ' : ''}${
+      estPalierDeSauvegarde(etage)
+        ? `L’équipe campe et repart à neuf : ${vies}.`
+        : `Pas de repos : ${vies}.`}`,
     lignes,
     retour: 'carte',
     boutons: [
@@ -981,10 +1088,15 @@ const CYCLE_TOUR_BOSS = ['loupAlpha', 'araigneeMatriarche', 'chefOrc', 'hydreBru
 function ouvrirTourBoss() {
   const p = persoActif();
   const records = p.tourBoss;
+  const palier = (cle) => {
+    const p2 = palierAtteint(p, `tourBoss:${cle}`);
+    return p2 > 0 ? ` · ⛑️ sauvegarde : étage ${p2}` : '';
+  };
   const lignes = [
-    `⚔️ Normal — record : étage ${records.normal}`,
-    `🔥 Héroïque — record : étage ${records.heroique}${records.normal >= 3 ? '' : ' · 🔒 atteignez l’étage 3 en Normal'}`,
-    `💀 Cauchemar — record : étage ${records.cauchemar}${records.heroique >= 3 ? '' : ' · 🔒 atteignez l’étage 3 en Héroïque'}`,
+    `⚔️ Normal — record : étage ${records.normal}${palier('normal')}`,
+    `🔥 Héroïque — record : étage ${records.heroique}${palier('heroique')}${records.normal >= 3 ? '' : ' · 🔒 atteignez l’étage 3 en Normal'}`,
+    `💀 Cauchemar — record : étage ${records.cauchemar}${palier('cauchemar')}${records.heroique >= 3 ? '' : ' · 🔒 atteignez l’étage 3 en Héroïque'}`,
+    `⛑️ Un point de sauvegarde se grave tous les ${PALIER_SAUVEGARDE_TOUR} étages, par difficulté.`,
   ];
   const boutons = [{ texte: '⚔️ Grimper en Normal', classe: 'btn-principal', action: () => demarrerTourBoss('normal') }];
   if (records.normal >= 3) boutons.push({ texte: '🔥 Grimper en Héroïque', classe: 'btn-choix', action: () => demarrerTourBoss('heroique') });
@@ -1000,9 +1112,16 @@ function ouvrirTourBoss() {
 }
 
 function demarrerTourBoss(difficulte) {
-  etat.tourBoss = { etage: 1, difficulte };
-  afficherToast(`🏯 Tour des Boss — ${DIFFICULTES[difficulte].emoji} ${DIFFICULTES[difficulte].nom} : étage 1 !`);
-  demarrerCombatTourBossEtage(1);
+  demanderDepartAscension({
+    titre: `🏯 Tour des Boss — ${DIFFICULTES[difficulte].emoji} ${DIFFICULTES[difficulte].nom}`,
+    texte: 'Un boss par étage, sans repos entre eux — sauf aux points de sauvegarde. D’où l’équipe part-elle ?',
+    cle: `tourBoss:${difficulte}`,
+    lancer: (etage) => {
+      etat.tourBoss = { etage, difficulte };
+      afficherToast(`🏯 Tour des Boss — ${DIFFICULTES[difficulte].emoji} ${DIFFICULTES[difficulte].nom} : étage ${etage} !`);
+      demarrerCombatTourBossEtage(etage);
+    },
+  });
 }
 
 function demarrerCombatTourBossEtage(etage) {
@@ -1061,7 +1180,7 @@ function apresVictoireTourBoss(cb) {
     const s = statsEffectives(m);
     const tirages = difficulte === 'cauchemar' ? 3 : 2;
     for (let i = 0; i < tirages; i++) {
-      const rarete = tirerRarete(s.cha + etage * 2);
+      const rarete = tirerRarete(chanceButin(m) + etage * 2);
       const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
         && (o.type === 'materiau' || o.type === 'consommable'
           || (o.type === 'equipement' && o.niveau <= m.niveau + 3)));
@@ -1075,7 +1194,9 @@ function apresVictoireTourBoss(cb) {
     recolterSceaux(m, etage, lignes);
     const niveaux = gagnerXp(m, xpParHeros);
     verifierHautsFaits(m);
-    nettoyerApresCombat(m); // pas de soin entre les étages
+    nettoyerApresCombat(m); // pas de soin entre les étages…
+    const repos = franchirPalierDeSauvegarde(m, `tourBoss:${difficulte}`, etage);
+    if (repos) lignes.push(repos);                 // …sauf tous les dix
     if (niveaux > 0) lignes.push(`🎉 ${m.avatar} ${m.nom} passe niveau ${m.niveau} ! PV et PM restaurés.`);
     sauvegarder(m);
   });
@@ -1083,8 +1204,9 @@ function apresVictoireTourBoss(cb) {
   const vies = membres.map((m) => `${m.avatar} ${m.hp}/${m.maxHp} PV`).join(' · ');
   const prochain = MONSTRES[CYCLE_TOUR_BOSS[etage % CYCLE_TOUR_BOSS.length]];
   afficherButin({
-    titre: `🏯 Étage ${etage} vaincu !`,
-    texte: `${DIFFICULTES[difficulte].emoji} ${DIFFICULTES[difficulte].nom} · Pas de repos : ${vies}.`,
+    titre: `🏯 Étage ${etage} vaincu !${estPalierDeSauvegarde(etage) ? ' ⛑️ Point de sauvegarde' : ''}`,
+    texte: `${DIFFICULTES[difficulte].emoji} ${DIFFICULTES[difficulte].nom} · ${
+      estPalierDeSauvegarde(etage) ? `L’équipe campe et repart à neuf : ${vies}.` : `Pas de repos : ${vies}.`}`,
     lignes,
     retour: 'carte',
     boutons: [
@@ -1166,7 +1288,7 @@ function apresVictoire(cb) {
   if (cb.genre !== 'boss' && cb.monstres.some((m) => m.miniBoss)) {
     membres.forEach((m, i) => {
       const s = statsEffectives(m);
-      const rarete = tirerRarete((s.cha || 0) + 3);
+      const rarete = tirerRarete(chanceButin(m) + 3);
       const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
         && (o.type === 'materiau' || o.type === 'consommable'
           || (o.type === 'equipement' && o.niveau <= m.niveau + 3)));
@@ -1255,12 +1377,12 @@ function depecerDepouilles(cb, bouton, lignes) {
     const multSpec = specialiste ? multSpecialite(s.cha) : 1;
     const gains = {};
     for (let i = 0; i < nb; i++) {
-      if (pool.length && Math.random() < Math.min(0.95, 0.75 * multChanceDrop(s.cha) * multSpec)) {
+      if (pool.length && Math.random() < Math.min(0.95, 0.75 * multChanceDrop(chanceButin(m)) * multSpec)) {
         const entree = pool[alea(0, pool.length - 1)];
         gains[entree.id] = (gains[entree.id] || 0) + 1 + Math.floor(niveauM / 3);
       }
     }
-    const chanceExclusif = Math.min(0.9, (0.1 + niveauM * 0.04) * multChanceDrop(s.cha) * multSpec);
+    const chanceExclusif = Math.min(0.9, (0.1 + niveauM * 0.04) * multChanceDrop(chanceButin(m)) * multSpec);
     if (!Object.keys(gains).length || Math.random() < chanceExclusif) {
       gains[metier.exclusif] = (gains[metier.exclusif] || 0) + 1 + (specialiste ? 1 : 0);
     }

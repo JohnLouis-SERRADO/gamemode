@@ -10,10 +10,22 @@
 // =====================================================================
 // v19 — Les actes du fil conducteur.
 //
-// La carte du monde se lit désormais par acte plutôt qu'en une seule
-// colonne de cinquante entrées. Les bornes recouvrent déjà les niveaux
-// à venir : les Marches Fêlées et la Couture accueilleront les cartes
-// des niveaux 52 à 100 sans qu'il faille retoucher l'affichage.
+// La carte du monde se lit par acte plutôt qu'en une seule colonne de
+// trente entrées : chaque acte se replie, et un acte dont aucune carte
+// n'est encore accessible reste fermé.
+//
+// v22 — LES BORNES D'UN ACTE NE SONT PLUS DÉCLARÉES, ELLES SONT MESURÉES.
+//
+// CE QUI N'ALLAIT PAS. Les actes annonçaient « niv. 21-50 » et « niv.
+// 51-78 » ; leurs premières cartes ouvraient au niveau 22 et au niveau 52.
+// Le joueur atteignait le niveau 21, lisait « Acte II — niv. 21-50 »,
+// dépliait… et ne trouvait qu'un cadenas « atteignez le niveau 22 ». Les
+// deux bornes venaient de deux endroits différents, elles ont fini par se
+// contredire.
+//
+// `de` et `a` ne servent plus qu'à RECRUTER les cartes d'un acte. Ce que
+// l'en-tête affiche est calculé sur les cartes réellement présentes —
+// impossible de promettre un niveau d'entrée qui n'existe pas.
 // =====================================================================
 const ACTES_MONDE = [
   { id: 'royaumes', nom: 'Acte I — Les Royaumes', emoji: '🌾', de: 1, a: 20,
@@ -30,49 +42,49 @@ const EXPLORATIONS_POUR_BOSS = 3;
 
 const ZONES = [
   {
-    id: 'plaines', nom: 'Plaines de l’Aube', emoji: '🌾', niveauMin: 1, plage: 'niv. 1-3',
+    id: 'plaines', nom: 'Plaines de l’Aube', emoji: '🌾', niveauMin: 1, niveauMax: 3,
     desc: 'Des prairies dorées où rôdent gobelins et bêtes sauvages. Le point de départ de tous les aventuriers.',
     monstres: ['gobelin', 'loup', 'sanglier'], boss: 'loupAlpha',
     recolte: [{ id: 'fibre-sauvage', chance: 0.9 }, { id: 'herbe-lunaire', chance: 0.55 }, { id: 'peau-de-loup', chance: 0.55 }, { id: 'defense-sanglier', chance: 0.4 }, { id: 'minerai-cuivre', chance: 0.3 }],
   },
   {
-    id: 'foret', nom: 'Forêt des Murmures', emoji: '🌲', niveauMin: 3, plage: 'niv. 3-6',
+    id: 'foret', nom: 'Forêt des Murmures', emoji: '🌲', niveauMin: 3, niveauMax: 6,
     desc: 'Une forêt dense où les arbres semblent chuchoter. Méfiez-vous des toiles entre les branches.',
     monstres: ['araignee', 'bandit', 'treant'], boss: 'araigneeMatriarche',
     recolte: [{ id: 'bois-chene', chance: 0.8 }, { id: 'seve-ambree', chance: 0.5 }, { id: 'soie-araignee', chance: 0.25 }, { id: 'minerai-cuivre', chance: 0.3 }],
   },
   {
-    id: 'collines', nom: 'Collines de Cuivre', emoji: '⛰️', niveauMin: 6, plage: 'niv. 6-10',
+    id: 'collines', nom: 'Collines de Cuivre', emoji: '⛰️', niveauMin: 6, niveauMax: 10,
     desc: 'Des collines rousses percées de mines. Les clans orcs y font régner leur loi.',
     monstres: ['orc', 'chamanGobelin', 'golemMineur'], boss: 'chefOrc',
     recolte: [{ id: 'minerai-cuivre', chance: 0.8 }, { id: 'minerai-fer', chance: 0.45 }, { id: 'peau-de-loup', chance: 0.4 }, { id: 'fibre-sauvage', chance: 0.5 }, { id: 'herbe-lunaire', chance: 0.4 }],
   },
   {
-    id: 'marais', nom: 'Marais de Brumeciel', emoji: '🐸', niveauMin: 8, plage: 'niv. 8-11',
+    id: 'marais', nom: 'Marais de Brumeciel', emoji: '🐸', niveauMin: 8, niveauMax: 11,
     desc: 'Des eaux stagnantes voilées de brume, où fleurit le précieux lotus noir. Ne buvez pas l’eau.',
     monstres: ['grenouilleGeante', 'sorciereMarais', 'serpentVoile'], boss: 'hydreBrumes',
     recolte: [{ id: 'lotus-noir', chance: 0.6 }, { id: 'herbe-lunaire', chance: 0.5 }, { id: 'seve-ambree', chance: 0.35 }, { id: 'minerai-fer', chance: 0.3 }, { id: 'os-ancien', chance: 0.4 }],
   },
   {
-    id: 'cryptes', nom: 'Cryptes Oubliées', emoji: '🕯️', niveauMin: 10, plage: 'niv. 10-14',
+    id: 'cryptes', nom: 'Cryptes Oubliées', emoji: '🕯️', niveauMin: 10, niveauMax: 14,
     desc: 'Les tombeaux d’un royaume disparu. Ses habitants n’apprécient pas les visites.',
     monstres: ['squelette', 'archerSquelette', 'pretreDechu', 'spectre'], boss: 'roiDechu',
     recolte: [{ id: 'os-ancien', chance: 0.8 }, { id: 'poussiere-spectre', chance: 0.4 }, { id: 'minerai-fer', chance: 0.35 }, { id: 'herbe-lunaire', chance: 0.4 }, { id: 'lotus-noir', chance: 0.2 }],
   },
   {
-    id: 'desert', nom: 'Désert d’Ambrezine', emoji: '🏜️', niveauMin: 12, plage: 'niv. 12-16',
+    id: 'desert', nom: 'Désert d’Ambrezine', emoji: '🏜️', niveauMin: 12, niveauMax: 16,
     desc: 'Un océan de dunes ambrées. Sous le sable dorment des perles… et des choses qui n’aiment pas être dérangées.',
     monstres: ['scorpionGeant', 'banditDunes', 'elementaireSable'], boss: 'verDesSables',
     recolte: [{ id: 'perle-des-sables', chance: 0.5 }, { id: 'minerai-fer', chance: 0.4 }, { id: 'os-ancien', chance: 0.3 }, { id: 'herbe-lunaire', chance: 0.3 }, { id: 'lotus-noir', chance: 0.2 }],
   },
   {
-    id: 'pics', nom: 'Pics Gelés', emoji: '🏔️', niveauMin: 14, plage: 'niv. 14-18',
+    id: 'pics', nom: 'Pics Gelés', emoji: '🏔️', niveauMin: 14, niveauMax: 18,
     desc: 'Des sommets balayés par le blizzard. Le froid y est une arme, et les cristaux un trésor.',
     monstres: ['loupGlaces', 'elementaireGivre', 'yeti'], boss: 'elementaireAncien',
     recolte: [{ id: 'cristal-givre', chance: 0.75 }, { id: 'minerai-fer', chance: 0.35 }, { id: 'peau-de-loup', chance: 0.5 }, { id: 'os-ancien', chance: 0.25 }, { id: 'herbe-lunaire', chance: 0.3 }],
   },
   {
-    id: 'profondeurs', nom: 'Cœur des Profondeurs', emoji: '🌋', niveauMin: 18, plage: 'niv. 18-20',
+    id: 'profondeurs', nom: 'Cœur des Profondeurs', emoji: '🌋', niveauMin: 18, niveauMax: 20,
     desc: 'Le cœur incandescent du monde, où veille le Gardien éternel. Le défi ultime.',
     monstres: ['golemAncien', 'ombre', 'dragonnet'], boss: 'gardienEternel',
     recolte: [{ id: 'noyau-golem', chance: 0.5 }, { id: 'ecaille-draconique', chance: 0.3 }, { id: 'poussiere-spectre', chance: 0.5 }, { id: 'lotus-noir', chance: 0.3 }, { id: 'seve-ambree', chance: 0.25 }],
@@ -81,49 +93,49 @@ const ZONES = [
 
 ZONES.push(
   {
-    id: 'jungle-vai', nom: 'Jungle de Vaï-Sombre', emoji: '🌴', niveauMin: 22, plage: 'niv. 22-28',
+    id: 'jungle-vai', nom: 'Jungle de Vaï-Sombre', emoji: '🌴', niveauMin: 22, niveauMax: 28,
     desc: 'Une jungle si dense que le jour n’y descend jamais tout à fait. Tout y pousse, tout y mord.',
     monstres: ['grenouilleDard', 'panthereOmbre', 'hommeLiane'], boss: 'matriarcheSarpense',
     recolte: [{ id: 'liane-tressee', chance: 0.8 }, { id: 'orchidee-lunaire', chance: 0.5 }, { id: 'venin-concentre', chance: 0.3 }, { id: 'basalte-poli', chance: 0.45 }],
   },
   {
-    id: 'falaises-hurlantes', nom: 'Falaises Hurlantes', emoji: '🪨', niveauMin: 22, plage: 'niv. 22-28',
+    id: 'falaises-hurlantes', nom: 'Falaises Hurlantes', emoji: '🪨', niveauMin: 22, niveauMax: 28,
     desc: 'Des à-pics battus par des vents qui hurlent des noms. Le minerai y est superbe — l’accrochage aussi.',
     monstres: ['harpieHurlante', 'gargouilleVigie', 'elementaireBourrasque'], boss: 'rokhTempetueux',
     recolte: [{ id: 'basalte-poli', chance: 0.8 }, { id: 'plume-de-rokh', chance: 0.5 }, { id: 'cristal-hurleur', chance: 0.3 }, { id: 'liane-tressee', chance: 0.4 }, { id: 'orchidee-lunaire', chance: 0.25 }],
   },
   {
-    id: 'abysses-emeraude', nom: 'Abysses d’Émeraude', emoji: '🐚', niveauMin: 30, plage: 'niv. 30-36',
+    id: 'abysses-emeraude', nom: 'Abysses d’Émeraude', emoji: '🐚', niveauMin: 30, niveauMax: 36,
     desc: 'Une cité engloutie dont les lanternes brûlent encore sous l’eau. Ses trésors n’attendent que des poumons solides.',
     monstres: ['mureneRodeuse', 'crabeCuirasse', 'sireneFuneste'], boss: 'leviathanCorallien',
     recolte: [{ id: 'nacre-abyssale', chance: 0.7 }, { id: 'corail-sanglant', chance: 0.45 }, { id: 'larme-de-sirene', chance: 0.25 }, { id: 'obsidienne-brute', chance: 0.35 }],
   },
   {
-    id: 'steppe-cendres', nom: 'Steppe des Cendres', emoji: '🌋', niveauMin: 30, plage: 'niv. 30-36',
+    id: 'steppe-cendres', nom: 'Steppe des Cendres', emoji: '🌋', niveauMin: 30, niveauMax: 36,
     desc: 'Une plaine grise où la terre couve encore. Les cendres fertilisent tout — surtout les ennuis.',
     monstres: ['chacalCendre', 'salamandreBraise', 'ogreMagmatique'], boss: 'behemothCendre',
     recolte: [{ id: 'cendre-fertile', chance: 0.7 }, { id: 'obsidienne-brute', chance: 0.45 }, { id: 'coeur-de-braise', chance: 0.25 }, { id: 'os-ancien', chance: 0.5 }, { id: 'ecaille-draconique', chance: 0.2 }],
   },
   {
-    id: 'foret-petrifiee', nom: 'Forêt Pétrifiée', emoji: '🗿', niveauMin: 38, plage: 'niv. 38-44 · équipe conseillée',
+    id: 'foret-petrifiee', nom: 'Forêt Pétrifiée', emoji: '🗿', niveauMin: 38, niveauMax: 44, note: 'équipe conseillée',
     desc: 'Une forêt changée en pierre en une seule nuit, il y a mille ans. Les arbres se souviennent. En équipe, de préférence.',
     monstres: ['treantPetrifie', 'basilicRunique', 'moissonneurRunique'], boss: 'avatarQuartz',
     recolte: [{ id: 'bois-petrifie', chance: 0.75 }, { id: 'ambre-noir', chance: 0.45 }, { id: 'sphere-runique', chance: 0.2 }, { id: 'os-ancien', chance: 0.5 }, { id: 'venin-concentre', chance: 0.25 }, { id: 'seve-ambree', chance: 0.45 }, { id: 'cendre-fertile', chance: 0.25 }],
   },
   {
-    id: 'vallee-geants', nom: 'Vallée des Géants', emoji: '🦴', niveauMin: 38, plage: 'niv. 38-44 · équipe conseillée',
+    id: 'vallee-geants', nom: 'Vallée des Géants', emoji: '🦴', niveauMin: 38, niveauMax: 44, note: 'équipe conseillée',
     desc: 'Le cimetière des géants d’avant les Royaumes. Leurs os valent des fortunes — et ils y tiennent. Venez accompagnés.',
     monstres: ['geantDechu', 'mammouthSpectral', 'chamanOsseux'], boss: 'roiOssements',
     recolte: [{ id: 'os-de-geant', chance: 0.75 }, { id: 'peau-de-mammouth', chance: 0.45 }, { id: 'relique-antique', chance: 0.2 }, { id: 'liane-tressee', chance: 0.4 }, { id: 'cendre-fertile', chance: 0.3 }],
   },
   {
-    id: 'citadelle-foudre', nom: 'Citadelle de Foudre', emoji: '⛈️', niveauMin: 46, plage: 'niv. 46-50 · équipe requise',
+    id: 'citadelle-foudre', nom: 'Citadelle de Foudre', emoji: '⛈️', niveauMin: 46, niveauMax: 50, note: 'équipe requise',
     desc: 'La forteresse volante des Archontes, échouée entre deux nuages. Tout y est sous tension. Ne venez pas seul.',
     monstres: ['sentinelleAcier', 'vouivreOrage', 'forgeronFoudroye'], boss: 'archonteTempete',
     recolte: [{ id: 'fragment-de-foudre', chance: 0.7 }, { id: 'acier-celeste', chance: 0.4 }, { id: 'plume-d-archon', chance: 0.15 }, { id: 'orchidee-lunaire', chance: 0.3 }, { id: 'etoffe-du-neant', chance: 0.2 }],
   },
   {
-    id: 'neant-scintillant', nom: 'Néant Scintillant', emoji: '🌌', niveauMin: 46, plage: 'niv. 46-50 · équipe requise',
+    id: 'neant-scintillant', nom: 'Néant Scintillant', emoji: '🌌', niveauMin: 46, niveauMax: 50, note: 'équipe requise',
     desc: 'Une déchirure dans le monde, pleine d’étoiles qui ne sont pas les nôtres. Ce qui en sort n’a pas de nom. Équipe obligatoire — sérieusement.',
     monstres: ['horreurDuVide', 'tisseuseEtoiles', 'echoNeant'], boss: 'devoreurMondes',
     recolte: [{ id: 'etoffe-du-neant', chance: 0.7 }, { id: 'eclat-d-etoile', chance: 0.4 }, { id: 'essence-primordiale', chance: 0.15 }, { id: 'poussiere-spectre', chance: 0.4 }, { id: 'plume-d-archon', chance: 0.2 }],

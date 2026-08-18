@@ -33,6 +33,23 @@ const PROFILS_VOIE = {
   souffle:  { type: 'utilitaire', cible: 'soi',    coutMp: 10, cooldown: 4, effet: { type: 'regen', duree: 4 } },
 };
 
+// =====================================================================
+// ⚠️ ÉTAT DES PASSIFS DE VOIE — à lire avant d'y toucher.
+//
+// La v22 a branché les vingt-sept passifs de SOUS-CLASSE (voir
+// js/data/passifs.js) : ils ne sont plus des phrases, ce sont des
+// mécaniques, et leur texte est produit par leurs chiffres.
+//
+// Les quatre-vingt-une phrases ci-dessous, elles, sont ENCORE
+// DESCRIPTIVES : une Voie donne bien son titre et sa compétence, mais son
+// passif n'est pas encore lu par le moteur de combat. C'est le prochain
+// lot, et il est de la même taille que celui des sous-classes.
+//
+// Règle à tenir quand il sera fait : le texte devra descendre dans un
+// tableau de réglages, comme PASSIFS_SOUS_CLASSE, plutôt que d'être écrit
+// à la main ici — c'est le seul moyen qu'il ne redevienne jamais faux.
+// =====================================================================
+
 // Les 81 Voies. Trois par sous-classe : une qui pousse l'identité à
 // l'extrême, une qui la détourne, une qui la retourne.
 const VOIES = {};

@@ -30,6 +30,10 @@ Les six classes couvrent la trinité MMORPG au complet :
 
 **L'Éveil** est le seul palier qu'on ne choisit pas librement : au niveau 80, **trois propositions** sont tirées au sort parmi les six Éveils de votre spécialité, en six raretés (Rare → Épique → Légendaire → Mythique → Divin, plus un **Éveil caché** qui ne sort d'aucun tirage et se mérite par une condition secrète). Pourquoi trois et pas cinq : chaque spécialité ne compte que cinq Éveils tirables, et un tirage de cinq les aurait tous sortis à chaque fois — relances, verrou et garantie n'auraient servi à rien. Les cinq raretés tirables sont **équilibrées à 10 % près** — un Divin n'est pas plus fort, il est plus *singulier*. Cinq relances sans Mythique ? La sixième le garantit.
 
+**Les points de maîtrise** montent les compétences de classe : +15 % de puissance par rang, cinq rangs au maximum. Un point **tous les 3 niveaux jusqu'au 18, puis tous les 4 jusqu'au 50, puis tous les 5 jusqu'au 100** — soit **24 points** sur toute la carrière, de quoi porter **4 de vos 8 compétences de classe** au rang 5. La cadence est la source : la liste des paliers et la phrase affichée dans le jeu en découlent toutes les deux, elles ne peuvent plus se contredire.
+
+**Chaque spécialité a son passif, et il fonctionne** — les vingt-sept. Le Faucheur reprend 25 % en PV sur *tous* ses sorts et exécute les cibles sous 15 % de vie, le Chevalier Noir paie ses sorts en sang quand le mana manque, l'Assassin ouvre sur un critique garanti, le Traqueur marque ses cibles pour toute l'équipe, le Chaman retient l'esprit d'un allié tombé. Le texte du passif n'est plus écrit à la main : il est **produit à partir des chiffres qui le font tourner** (`js/data/passifs.js`), donc une fiche ne peut plus promettre autre chose que ce que le moteur applique. *Les 81 passifs de Voie (niveau 50), eux, sont encore descriptifs — c'est le prochain lot.*
+
 **701 compétences** au total : 56 de classe (48 pour les six classes jouables, plus les 8 de l'Aventurier historique, gardées pour les vieilles sauvegardes), 216 de spécialité, 81 de Voie, 324 d'Éveil et 24 du pool commun acheté à l'Arcanium. Ce pool commun est le seul qui s'achète : les compétences de spécialité, de Voie et d'Éveil se méritent à leur palier, jamais en boutique. Toujours **8 sorts équipés au maximum** — l'arbitrage ne disparaît jamais.
 
 ### Les caractéristiques, modèle Final Fantasy XIV
@@ -54,7 +58,7 @@ Le header affiche en permanence **l'heure du jour** (🌅 aube · ☀️ jour ·
 
 ### Explorer, raconter, mourir
 
-- **26 zones** (niveaux 1 à 90) en **quatre actes** qui se répondent, du champ de blé des Plaines de l'Aube jusqu'au Trône du Premier Roi.
+- **30 zones** (niveaux 1 à 100) en **quatre actes** qui se répondent, du champ de blé des Plaines de l'Aube jusqu'au Trône du Premier Roi. Les bornes d'un acte ne sont pas déclarées à la main : elles sont **mesurées sur ses cartes**, donc le niveau annoncé en tête d'acte est exactement celui qui ouvre sa première carte (Acte I : 1-20 · Acte II : 22-50 · Acte III : 52-80 · Acte IV : 80-100).
 
   Chaque carte se joue par **cinq modes** — les mêmes partout, et **chacun avec sa ressource** :
 
@@ -67,9 +71,10 @@ Le header affiche en permanence **l'heure du jour** (🌅 aube · ☀️ jour ·
   | 👑 **Boss** | Le maître des lieux, une fois vaincu la première fois | Son coffre et son trophée |
 
   La règle vaut jusque dans le butin des monstres : une battue rapporte des peaux, une embuscade rend la filière qu'on était en train de récolter, et une expédition ne rend **jamais** de matériau. Et la **menace du boss** tombe toujours sans prévenir.
-- **35 donjons d'histoire** écrits comme des aventures de *Donjons & Dragons* : dialogues, choix à conséquences, **votes d'équipe**, **épreuves au d20**, boss à phases et épilogues à variantes.
-  - 📜 **26 Chroniques des terres** — une par carte, avec son PNJ, son dilemme et son boss renforcé. Accès exigeant : niveau, caractéristique minimum, objet-clé en poche, boss de la carte vaincu.
+- **39 donjons d'histoire** écrits comme des aventures de *Donjons & Dragons* : dialogues, choix à conséquences, **votes d'équipe**, **épreuves au d20**, boss à phases et épilogues à variantes.
+  - 📜 **30 Chroniques des terres** — une par carte, avec son PNJ, son dilemme et son boss renforcé.
   - 📖 **9 Épopées de Valciel** — les grandes histoires. Une épopée terminée ouvre son **Ascension éternelle** : des étages sans fin, **sans soin entre les salles**, jusqu'à la mort ou l'abandon.
+  - 🔒 **Un seul jeu de verrous pour les deux familles**, et il regarde le héros entier : niveau, caractéristique du récit, **puissance**, **nombre de pièces portées**, matériaux de la région en poche, boss de carte couchés, histoires déjà vécues — et le métier, quand le récit tient à la main plutôt qu'à la lame. Chaque condition manquante est écrite en clair, avec le chiffre atteint et le chiffre attendu. Une porte de caractéristique ne condamne jamais personne : atteindre la pleine puissance conseillée de son palier en dispense.
 - **Craindre la mort** : une expédition qui tombe, c'est la mort. L'équipement porté est **perdu à jamais**, le familier meurt avec le héros, la moitié de la bourse s'évapore et **un niveau s'efface**. Compétences, métiers et hauts faits, eux, survivent au voyage.
 
 ### 🗝️ La Tour de l'Éveil — défaire ses choix
@@ -101,7 +106,7 @@ Le coût suit la gravité du changement, et **aucun service ne retire quoi que c
 
 - **Combat tour par tour** à deux lignes (⚔️ avant / 🏹 arrière), initiative par Célérité, statuts, bombes, boss à mécaniques.
 - **Invocations** 🐾 : six créatures qui combattent seules, en payant leur mana — puis les PV de leur maître.
-- **Tours sans fin** : la Tour Sans Fin et la Tour des Boss (16 boss, Normal/Héroïque/Cauchemar).
+- **Tours sans fin** : la Tour Sans Fin et la Tour des Boss (16 boss, Normal/Héroïque/Cauchemar). **Un point de sauvegarde tous les 10 étages** : l'équipe y campe (PV et PM rendus) et le palier est gravé — l'ascension suivante peut repartir de là, ou du bas pour ceux qui veulent la course entière. Entre deux paliers, rien ne change : aucun soin, aucune pitié. La même règle vaut pour l'Ascension éternelle des épopées, avec un palier par épopée et par difficulté.
 - **Taverne** : chat, sept classements, boss du monde à barre de vie partagée, comptoir d'échange.
 - **37 hauts faits**, 6 races à passifs, 13 familiers à bonus.
 - **Un bac à sable admin** 🛠️ : **cliquer sur le portrait du héros**, en haut à gauche, ouvre un verrou — le code donne accès à une console rangée en 9 sections, qui règle à la main le niveau (à la hausse comme à la baisse), les points de caractéristiques et de maîtrise, l'or, les Sceaux, les objets, les compétences, les métiers et les donjons. Le statut reste acquis au héros : le portrait mène ensuite droit à la console, et la « Zone rouge » permet d'y renoncer. L'autre porte existe toujours : taper `admin-valciel` dans « Reprendre un héros » crée un héros admin de zéro, local par défaut.
@@ -195,6 +200,7 @@ js/data/base.js                  — 6 attributs, 6 sous-caractéristiques, rare
 js/data/competences.js           — moteur de compétences, coût en mana, portées
 js/data/classes.js               — les 6 classes de base
 js/data/sous-classes.js          — 27 spécialités et leurs compétences
+js/data/passifs.js               — les 27 passifs de spécialité : leurs réglages, et le texte qu'ils produisent
 js/data/voies.js                 — 81 Voies (niveau 50)
 js/data/eveils.js                — 162 Éveils (niveau 80), tirage et garanties
 js/data/tour-eveil.js            — la Tour de l'Éveil, Sceaux et 7 services
@@ -206,11 +212,11 @@ js/data/objets-generes.js        — générateurs par niveau, rareté et catég
 js/data/objets-craft.js          — séries de craft, panoplies, raffinage
 js/data/monde-vivant.js          — heure du jour, météo partagée, effets
 js/data/monstres.js              — bestiaire commun
-js/data/zones.js                 — actes I et II (niveaux 1 à 46)
-js/data/zones-marches.js         — actes III et IV (niveaux 52 à 90)
+js/data/zones.js                 — actes I et II (niveaux 1 à 50)
+js/data/zones-marches.js         — actes III et IV (niveaux 52 à 100), et le calcul des bornes du monde
 js/data/meta.js                  — métiers, hauts faits, familiers, quêtes
 
-js/donjons/epopees.js            — les 9 Épopées de Valciel
+js/donjons/epopees.js            — les 9 Épopées de Valciel (et le gabarit des verrous d'accès)
 js/donjons/chroniques.js         — les Chroniques des actes I et II
 js/donjons/chroniques-marches.js — les Chroniques des actes III et IV
 js/donjons/moteur.js             — moteur narratif (dialogues, votes, d20, Ascension)

@@ -219,7 +219,7 @@ const CLASSES_BASE = {
     nom: 'Devin', emoji: '✨', role: 'Soigneur', stat: 'esp', ligne: 'arriere', armure: 'tissu',
     armes: ['canne', 'calice', 'sceptre'],
     resume: 'Il décide qui survit. Personne ne s’en rend compte avant que ça manque.',
-    passif: 'Clairvoyance — les soins et les boucliers montent avec l’Esprit, et le surplus ne se perd pas.',
+    passif: 'Clairvoyance — les soins et les boucliers montent avec l’Esprit, et la moitié du surplus de soin se fige en bouclier (l’Oracle en fige la totalité).',
     competences: ['clerc-mot-de-soin', 'clerc-eclat-sacre', 'clerc-priere-protection',
       'clerc-souffle-vital', 'clerc-priere-fervente', 'clerc-chatiment-lumineux',
       'clerc-sanctuaire', 'signature-lumiere-salvatrice'],

@@ -3109,3 +3109,446 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('relancer').addEventListener('click', lancerTests);
   lancerTests();
 });
+
+// =====================================================================
+// v22 — La grande passe de cohérence : points de maîtrise, passifs de
+// sous-classe, bornes des actes, points de sauvegarde des tours et
+// verrous des donjons d'histoire.
+// =====================================================================
+suite('Cohérence v22', () => {
+  // Le journal de combat écrit dans le DOM du jeu, absent de cette page.
+  // On le neutralise une fois pour toutes : les tests lisent des chiffres,
+  // pas des lignes de récit.
+  window.rendreJournal = () => {};
+
+  // Un combattant de laboratoire, complet mais sans DOM ni sauvegarde.
+  function combattantTest(sousClasse, extra) {
+    const base = SOUS_CLASSES[sousClasse];
+    return Object.assign({
+      type: 'joueur', classe: base ? base.classe : 'guerrier', sousClasse,
+      niveau: 50, bid: 'x', nom: 'Cobaye', avatar: '🧪',
+      stats: { for: 40, int: 40, dex: 40, esp: 40, vit: 40, cha: 10 },
+      equipement: {}, familiers: [], familier: null, inventaire: [],
+      statuts: [], cooldowns: {}, competences: [], rangs: {}, ligne: 'avant',
+      hp: 1000, maxHp: 1000, mp: 100, maxMp: 100, ko: false,
+    }, extra || {});
+  }
+
+  function monstreTest(extra) {
+    return Object.assign({
+      type: 'monstre', id: 'm0', nom: 'Mannequin', emoji: '🎯', niveau: 50,
+      atk: 10, dex: 5, statuts: [], hp: 1000, maxHp: 1000, mort: false, defense: false,
+    }, extra || {});
+  }
+
+  // Un combat minimal : de quoi faire tourner les hooks de passif.
+  function combatTest(equipe, monstres) {
+    etat.combat = {
+      genre: 'exploration', equipe, monstres, manche: 1, file: [],
+      actif: null, termine: false, journalLignes: [], statuts: [],
+    };
+    return etat.combat;
+  }
+
+  // ------------------------------------------------------------------
+  // 1. Les points de maîtrise
+  // ------------------------------------------------------------------
+  test('les paliers de maîtrise découlent de la cadence annoncée', () => {
+    // La liste était écrite à la main et l'affichage aussi : ils se sont
+    // contredits pendant trois versions. Ils viennent maintenant du même
+    // endroit — ce test le vérifie en reconstruisant la liste à part.
+    const attendus = [];
+    let precedent = 0;
+    CADENCE_MAITRISE.forEach((tranche) => {
+      for (let n = precedent + tranche.tousLes; n <= tranche.jusqu; n += tranche.tousLes) attendus.push(n);
+      precedent = attendus[attendus.length - 1];
+    });
+    egal(SEUILS_MAITRISE.join(','), attendus.join(','), 'les paliers doivent suivre la cadence');
+    egal(TOTAL_POINTS_MAITRISE, SEUILS_MAITRISE.length, 'le total annoncé doit être le nombre de paliers');
+    egal(pointsMaitrisePourNiveau(NIVEAU_MAX), TOTAL_POINTS_MAITRISE,
+      'un héros au niveau maximum doit avoir touché tous les points');
+  });
+
+  test('le texte des points de maîtrise dit le compte exact', () => {
+    const texte = texteBudgetMaitrise();
+    verifier(texte.includes(String(TOTAL_POINTS_MAITRISE)),
+      `le texte doit annoncer les ${TOTAL_POINTS_MAITRISE} points — « ${texte} »`);
+    verifier(texte.includes(String(COMPETENCES_MAITRISABLES)),
+      'le texte doit dire combien de compétences on peut porter au rang maximum');
+    CADENCE_MAITRISE.forEach((tranche) => {
+      verifier(texte.includes(`tous les ${tranche.tousLes} niveaux jusqu’au ${tranche.jusqu}`),
+        `la cadence « tous les ${tranche.tousLes} jusqu'au ${tranche.jusqu} » doit être annoncée`);
+    });
+    // Et la promesse doit être tenable : le budget ne doit jamais dépasser
+    // ce qu'il y a à acheter (8 compétences de classe × 5 rangs).
+    verifier(COMPETENCES_MAITRISABLES >= 1 && COMPETENCES_MAITRISABLES <= 8,
+      `${COMPETENCES_MAITRISABLES} compétences maîtrisables : hors des clous`);
+  });
+
+  test('le prochain palier de maîtrise ne ment jamais', () => {
+    const faux = [];
+    for (let n = 1; n <= NIVEAU_MAX; n++) {
+      const prochain = prochainSeuilMaitrise(n);
+      if (prochain === null) { if (n < NIVEAU_MAX) faux.push(`niv. ${n} sans suite`); continue; }
+      if (prochain <= n) faux.push(`niv. ${n} → ${prochain}`);
+      if (pointsMaitrisePourNiveau(prochain) !== pointsMaitrisePourNiveau(n) + 1) faux.push(`niv. ${n} : saut`);
+    }
+    aucun(faux, 'paliers de maîtrise annoncés à tort');
+  });
+
+  // ------------------------------------------------------------------
+  // 2. Les bornes du monde
+  // ------------------------------------------------------------------
+  test('l\'étiquette d\'une carte dit exactement son niveau d\'entrée', () => {
+    const faux = ZONES.filter((z) => !z.plage.startsWith(`niv. ${z.niveauMin}-${z.niveauMax}`))
+      .map((z) => `${z.nom} : « ${z.plage} » pour un accès au niveau ${z.niveauMin}`);
+    aucun(faux, 'étiquettes de carte qui ne collent pas au niveau d\'entrée');
+  });
+
+  test('chaque acte annonce le niveau de sa PREMIÈRE carte', () => {
+    // Le bug d'origine : « Acte II — niv. 21-50 » alors que sa première
+    // carte ouvre au niveau 22. Le joueur atteignait 21 et ne trouvait
+    // qu'un cadenas.
+    const faux = [];
+    ACTES_MONDE.forEach((acte) => {
+      const cartes = ZONES.filter((z) => z.acte === acte.id);
+      if (!cartes.length) return;
+      const entree = Math.min(...cartes.map((z) => z.niveauMin));
+      const sortie = Math.max(...cartes.map((z) => z.niveauMax));
+      if (acte.niveauMin !== entree) faux.push(`${acte.nom} annonce ${acte.niveauMin}, ouvre à ${entree}`);
+      if (acte.niveauMax !== sortie) faux.push(`${acte.nom} annonce ${acte.niveauMax}, finit à ${sortie}`);
+      if (acte.plage !== `niv. ${entree}-${sortie}`) faux.push(`${acte.nom} : étiquette « ${acte.plage} »`);
+    });
+    aucun(faux, 'actes dont les bornes ne collent pas à leurs cartes');
+  });
+
+  test('chaque carte appartient à un acte et un seul', () => {
+    const orphelines = ZONES.filter((z) => !z.acte).map((z) => z.nom);
+    aucun(orphelines, 'cartes sans acte');
+    const doublons = ZONES.filter((z) => ACTES_MONDE
+      .filter((a) => z.niveauMin >= a.de && z.niveauMin <= a.a).length !== 1).map((z) => z.nom);
+    aucun(doublons, 'cartes réclamées par zéro ou deux actes');
+  });
+
+  // ------------------------------------------------------------------
+  // 3. Les passifs de sous-classe
+  // ------------------------------------------------------------------
+  test('les 27 sous-classes ont un passif chiffré, et leur fiche le récite', () => {
+    const sans = Object.keys(SOUS_CLASSES).filter((id) => !PASSIFS_SOUS_CLASSE[id]);
+    aucun(sans, 'sous-classes sans passif branché');
+    const orphelins = Object.keys(PASSIFS_SOUS_CLASSE).filter((id) => !SOUS_CLASSES[id]);
+    aucun(orphelins, 'passifs qui ne correspondent à aucune sous-classe');
+
+    const muets = [];
+    Object.entries(PASSIFS_SOUS_CLASSE).forEach(([id, passif]) => {
+      // Un passif sans le moindre réglage ne peut rien faire : c'est
+      // exactement l'état d'avant, et il ne doit pas revenir.
+      const reglages = Object.keys(passif)
+        .filter((cle) => !['nom', 'texte', 'description', 'id'].includes(cle));
+      if (!reglages.length && id !== 'assassin') muets.push(id);
+      // Et la fiche doit réciter ce que les chiffres disent, mot pour mot.
+      if (SOUS_CLASSES[id].passif !== `${passif.nom} — ${passif.description}`) {
+        muets.push(`${id} (fiche désaccordée)`);
+      }
+    });
+    aucun(muets, 'passifs sans réglage ou dont la fiche a divergé');
+  });
+
+  test('le Faucheur draine tous ses sorts et exécute les moribonds', () => {
+    // Le passif annoncé depuis toujours, et qui ne faisait rien : ni les
+    // 25 % de PV rendus, ni l'exécution sous 15 % de vie.
+    const faucheur = combattantTest('faucheur', { hp: 500 });
+    const proie = monstreTest();
+    combatTest([faucheur], [proie]);
+
+    moissonDuFaucheur(faucheur, 200);
+    verifier(faucheur.hp > 500, `« Moisson » doit rendre des PV (${faucheur.hp})`);
+    egal(faucheur.hp, 500 + Math.round(200 * PASSIFS_SOUS_CLASSE.faucheur.drainSorts),
+      'la part rendue doit être exactement celle de la fiche');
+
+    // Un Runelame sans spécialité ne draine pas tous ses sorts.
+    const nu = combattantTest(null, { hp: 500, classe: 'runelame' });
+    moissonDuFaucheur(nu, 200);
+    egal(nu.hp, 500, '« Moisson » n\'appartient qu\'au Faucheur');
+
+    // L'exécution : sous le seuil, la cible ne se relève pas.
+    proie.hp = Math.round(proie.maxHp * 0.1);
+    executerSiMoribonde(faucheur, proie);
+    verifier(proie.mort, 'une cible sous 15 % de vie doit être exécutée');
+
+    const debout = monstreTest({ id: 'm1', hp: 500 });
+    combatTest([faucheur], [debout]);
+    executerSiMoribonde(faucheur, debout);
+    verifier(!debout.mort, 'une cible à mi-vie ne doit surtout pas être exécutée');
+    etat.combat = null;
+  });
+
+  test('les passifs qui multiplient les dégâts multiplient vraiment', () => {
+    const cible = monstreTest();
+    const mesure = (sousClasse, extra, options) => {
+      const c = combattantTest(sousClasse, extra);
+      combatTest([c], [cible]);
+      const m = multiplicateurPassifs(c, cible, options || {});
+      etat.combat = null;
+      return m;
+    };
+    verifier(mesure('colosse', { maxHp: 1500 }) > 1, 'Colosse : la masse doit payer');
+    verifier(mesure('colosse', { maxHp: 1500 }) > mesure('colosse', { maxHp: 300 }),
+      'Colosse : plus massif, plus fort');
+    verifier(mesure('berserker', { hp: 100, maxHp: 1000 }) > mesure('berserker', { hp: 1000, maxHp: 1000 }),
+      'Berserker : blessé, il frappe plus fort');
+    verifier(mesure('runemaitre', { sortsDuCombat: ['a', 'b', 'c'] }, { compId: 'd' })
+      > mesure('runemaitre', { sortsDuCombat: [] }, { compId: 'd' }),
+      'Runemaître : varier son répertoire doit payer');
+    verifier(mesure('elementaliste', { avantDernierSort: 'a' }, { compId: 'b' })
+      > mesure('elementaliste', { avantDernierSort: 'b' }, { compId: 'b' }),
+      'Élémentaliste : alterner doit payer, marteler non');
+    egal(mesure('templier'), 1, 'un passif défensif ne doit pas gonfler les dégâts');
+  });
+
+  test('l\'Assassin ouvre sur un critique, le Moine frappe à la cinquième charge', () => {
+    verifier(critiqueForce(combattantTest('assassin')), 'Assassin : le premier coup est critique');
+    verifier(!critiqueForce(combattantTest('assassin', { premierCoupFait: true })),
+      'Assassin : le second coup redevient ordinaire');
+    const moine = combattantTest('moine', { chargesCadence: 4 });
+    verifier(!critiqueForce(moine), 'Moine : quatre charges ne suffisent pas');
+    moine.chargesCadence = 5;
+    verifier(critiqueForce(moine), 'Moine : la cinquième charge déclenche le critique');
+    verifier(!critiqueForce(combattantTest('duelliste', { chargesCadence: 9 })),
+      'les charges n\'appartiennent qu\'au Moine');
+  });
+
+  test('la marque du Traqueur profite à TOUTE l\'équipe', () => {
+    const traqueur = combattantTest('traqueur');
+    const cible = monstreTest();
+    combatTest([traqueur], [cible]);
+    egal(multiplicateurMarque(cible), 1, 'une cible non marquée ne subit rien de plus');
+    apresDegatsPassifs(traqueur, cible, 50);
+    verifier(cible.statuts.some((s) => s.type === 'marque'), 'le coup doit poser la marque');
+    egal(Math.round(multiplicateurMarque(cible) * 100),
+      Math.round((1 + PASSIFS_SOUS_CLASSE.traqueur.bonusMarque) * 100),
+      'la marque doit valoir exactement ce que dit la fiche');
+    etat.combat = null;
+  });
+
+  test('le Chevalier Noir paie ses sorts en sang quand le mana manque', () => {
+    const chevalier = combattantTest('chevalier-noir', { mp: 2, hp: 500 });
+    combatTest([chevalier], [monstreTest()]);
+    verifier(peutPayerSort(chevalier, 20), 'il doit pouvoir lancer un sort à sec');
+    verifier(payerSortEnSang(chevalier, 20), 'le paiement en sang doit aboutir');
+    egal(chevalier.mp, 0, 'la réserve part en premier');
+    verifier(chevalier.hp < 500, `le sang doit couler (${chevalier.hp})`);
+    const autre = combattantTest('berserker', { mp: 2 });
+    verifier(!peutPayerSort(autre, 20), 'les autres restent bloqués par le mana');
+    etat.combat = null;
+  });
+
+  test('le Métamorphe échange des PV contre de l\'initiative', () => {
+    const ours = combattantTest('metamorphe', { forme: 'ours' });
+    const corbeau = combattantTest('metamorphe', { forme: 'corbeau' });
+    delete ours.maxHp; delete corbeau.maxHp;
+    verifier(maxHpDe(ours) > maxHpDe(corbeau), 'l\'ours doit porter plus de PV que le corbeau');
+    egal(maxHpDe(ours), Math.round(maxHpDe(corbeau) * (1 + PASSIFS_SOUS_CLASSE.metamorphe.pvOurs)),
+      'l\'écart doit valoir exactement ce que dit la fiche');
+  });
+
+  test('le Voleur ramasse plus d\'or et tire de meilleures raretés', () => {
+    const voleur = combattantTest('voleur');
+    const honnete = combattantTest('rodeur');
+    verifier(multiplicateurOr(voleur) > multiplicateurOr(honnete), 'le Voleur doit gagner plus d\'or');
+    egal(Math.round((multiplicateurOr(voleur) - multiplicateurOr(honnete)) * 100),
+      Math.round(PASSIFS_SOUS_CLASSE.voleur.bonusOr * 100), 'l\'écart d\'or doit être celui de la fiche');
+    // La Chance de butin se compare à SA propre Chance : les deux
+    // spécialités n'ont pas les mêmes bonus de caractéristiques.
+    egal(chanceButin(voleur) - statsEffectives(voleur).cha, PASSIFS_SOUS_CLASSE.voleur.bonusRarete,
+      'la Chance de butin doit monter d\'autant');
+    egal(chanceButin(honnete) - statsEffectives(honnete).cha, 0,
+      'et rester intacte pour les autres');
+  });
+
+  test('l\'Oracle fige tout le surplus de soin, le Devin la moitié', () => {
+    const oracle = combattantTest('oracle', { classe: 'devin' });
+    const devin = combattantTest(null, { classe: 'devin' });
+    combatTest([oracle, devin], [monstreTest()]);
+    const blesseA = combattantTest(null, { classe: 'guerrier', hp: 1000, maxHp: 1000 });
+    const blesseB = combattantTest(null, { classe: 'guerrier', hp: 1000, maxHp: 1000 });
+    soigner(blesseA, 200, devin);
+    soigner(blesseB, 200, oracle);
+    const bouclier = (c) => (c.statuts.find((s) => s.type === 'bouclier') || {}).valeur || 0;
+    verifier(bouclier(blesseB) > bouclier(blesseA),
+      `l'Oracle doit figer plus que le tronc commun (${bouclier(blesseB)} contre ${bouclier(blesseA)})`);
+    verifier(bouclier(blesseB) <= Math.round(blesseB.maxHp * PASSIFS_SOUS_CLASSE.oracle.plafondSurplus),
+      'et jamais plus que son plafond');
+    etat.combat = null;
+  });
+
+  test('les brûlures du Pyromancien se cumulent, celles des autres non', () => {
+    const pyro = combattantTest('pyromancien', { classe: 'arcaniste' });
+    const proie = monstreTest();
+    combatTest([pyro], [proie]);
+    const effet = { type: 'poison', duree: 3, stat: 'int' };
+    appliquerEffet(pyro, proie, effet, null, null);
+    const premier = proie.statuts.find((x) => x.type === 'poison').valeur;
+    for (let i = 0; i < 8; i++) appliquerEffet(pyro, proie, effet, null, null);
+    const brulure = proie.statuts.find((x) => x.type === 'poison');
+    egal(brulure.cumuls, PASSIFS_SOUS_CLASSE.pyromancien.brulureMax, 'la brûlure doit plafonner');
+    egal(brulure.valeur, premier * PASSIFS_SOUS_CLASSE.pyromancien.brulureMax,
+      'et valoir exactement le cumul annoncé');
+
+    // Chez tout autre lanceur, un second poison REMPLACE le premier.
+    const autre = combattantTest('elementaliste', { classe: 'arcaniste' });
+    const cible2 = monstreTest({ id: 'm1' });
+    combatTest([autre], [cible2]);
+    appliquerEffet(autre, cible2, effet, null, null);
+    const seul = cible2.statuts.find((x) => x.type === 'poison').valeur;
+    appliquerEffet(autre, cible2, effet, null, null);
+    egal(cible2.statuts.find((x) => x.type === 'poison').valeur, seul,
+      'le poison ordinaire ne se cumule pas');
+    etat.combat = null;
+  });
+
+  test('le Corrupteur allonge ses états, le Barde ses bienfaits', () => {
+    const corrupteur = combattantTest('corrupteur', { classe: 'runelame' });
+    const barde = combattantTest('barde', { classe: 'devin' });
+    const neutre = combattantTest(null, { classe: 'runelame' });
+    egal(dureeAjustee(corrupteur, { type: 'poison', duree: 3 }),
+      3 + PASSIFS_SOUS_CLASSE.corrupteur.dureeBonusStatut, 'Corrupteur : ses états durent plus');
+    egal(dureeAjustee(corrupteur, { type: 'benediction', duree: 3 }), 3,
+      'mais pas ses bienfaits — ce n\'est pas son métier');
+    egal(dureeAjustee(barde, { type: 'benediction', duree: 3 }),
+      3 + PASSIFS_SOUS_CLASSE.barde.dureeBuffBonus, 'Barde : ses bénédictions durent plus');
+    egal(dureeAjustee(barde, { type: 'poison', duree: 3 }), 3, 'mais pas ses poisons');
+    egal(dureeAjustee(neutre, { type: 'poison', duree: 3 }), 3, 'et rien ne change pour les autres');
+  });
+
+  test('la sève du Druide arrose toute l\'équipe', () => {
+    const druide = combattantTest('druide', { classe: 'devin' });
+    const allie = combattantTest(null, { classe: 'guerrier', hp: 400, maxHp: 1000 });
+    combatTest([druide, allie], [monstreTest()]);
+    seveDuDruide(druide);
+    verifier(allie.hp > 400, `la sève doit soigner les alliés (${allie.hp})`);
+    const avant = allie.hp;
+    seveDuDruide(combattantTest('oracle', { classe: 'devin' }));
+    egal(allie.hp, avant, 'et n\'appartenir qu\'au Druide');
+    etat.combat = null;
+  });
+
+  // ------------------------------------------------------------------
+  // 4. Les points de sauvegarde des tours
+  // ------------------------------------------------------------------
+  test('un point de sauvegarde se grave tous les dix étages, et pas ailleurs', () => {
+    const p = herosTest({ niveau: 30 });
+    const faux = [];
+    for (let etage = 1; etage <= 45; etage++) {
+      const attendu = etage % PALIER_SAUVEGARDE_TOUR === 0;
+      if (estPalierDeSauvegarde(etage) !== attendu) faux.push(`étage ${etage}`);
+    }
+    aucun(faux, 'étages mal reconnus comme paliers');
+
+    egal(palierAtteint(p, 'tour'), 0, 'un héros neuf n\'a aucun palier');
+    franchirPalierDeSauvegarde(p, 'tour', 7);
+    egal(palierAtteint(p, 'tour'), 0, 'l\'étage 7 ne grave rien');
+    franchirPalierDeSauvegarde(p, 'tour', 20);
+    egal(palierAtteint(p, 'tour'), 20, 'l\'étage 20 grave le palier');
+    franchirPalierDeSauvegarde(p, 'tour', 10);
+    egal(palierAtteint(p, 'tour'), 20, 'un palier ne recule jamais');
+  });
+
+  test('les trois escaliers gardent chacun leur palier', () => {
+    const p = herosTest({ niveau: 60 });
+    franchirPalierDeSauvegarde(p, 'tour', 30);
+    franchirPalierDeSauvegarde(p, 'tourBoss:heroique', 10);
+    franchirPalierDeSauvegarde(p, 'ascension:crypte', 20);
+    egal(palierAtteint(p, 'tour'), 30, 'Tour Sans Fin');
+    egal(palierAtteint(p, 'tourBoss:heroique'), 10, 'Tour des Boss, en Héroïque');
+    egal(palierAtteint(p, 'tourBoss:normal'), 0, 'chaque difficulté a le sien');
+    egal(palierAtteint(p, 'ascension:crypte'), 20, 'Ascension de la Crypte');
+    egal(palierAtteint(p, 'ascension:volcan'), 0, 'chaque épopée a le sien');
+  });
+
+  test('le palier rend les PV et les PM — c\'est le seul repos de la Tour', () => {
+    const p = herosTest({ niveau: 30 });
+    bornerVie(p);
+    p.hp = 1;
+    p.mp = 0;
+    p.statuts = [{ type: 'poison', duree: 3, valeur: 9 }];
+    const ligne = franchirPalierDeSauvegarde(p, 'tour', 10);
+    verifier(!!ligne, 'le palier doit annoncer le repos');
+    egal(p.hp, p.maxHp, 'les PV reviennent au maximum');
+    egal(p.mp, p.maxMp, 'les PM aussi');
+    egal(p.statuts.length, 0, 'et le poison ne traverse pas le campement');
+
+    p.hp = 1;
+    egal(franchirPalierDeSauvegarde(p, 'tour', 13), null, 'un étage ordinaire ne soigne rien');
+    egal(p.hp, 1, 'et laisse le héros dans l\'état où il était');
+  });
+
+  // ------------------------------------------------------------------
+  // 5. Les verrous des donjons d'histoire
+  // ------------------------------------------------------------------
+  test('chaque donjon d\'histoire déclare de vrais verrous', () => {
+    const nus = DONJONS.filter((d) => !d.acces).map((d) => d.nom);
+    aucun(nus, 'donjons sans conditions d\'accès');
+    const pauvres = DONJONS.filter((d) => {
+      const a = d.acces;
+      const compte = (a.stat ? 1 : 0) + Object.keys(a.objets || {}).length
+        + (a.bossZones || []).length + (a.donjons || []).length + (d.requiert ? 1 : 0)
+        + (a.puissance ? 1 : 0) + (a.equipement ? 1 : 0) + (a.metier ? 1 : 0);
+      return compte < 3;
+    }).map((d) => d.nom);
+    aucun(pauvres, 'donjons dont l\'accès tient à moins de trois conditions');
+  });
+
+  test('un héros nu, au bon niveau, reste dehors', () => {
+    // Le niveau ne suffit plus : c'était tout le problème des Épopées.
+    const faux = [];
+    DONJONS.forEach((d) => {
+      const p = herosTest({ niveau: NIVEAU_MAX });
+      p.equipement = {};
+      p.inventaire = [];
+      p.bossVaincus = [];
+      p.donjons = {};
+      p.paliersTour = null;
+      if (verrousDonjon(p, d).length === 0) faux.push(d.nom);
+    });
+    aucun(faux, 'donjons qu\'un héros sans rien peut ouvrir');
+  });
+
+  test('un héros complètement équipé ouvre toutes les histoires de son palier', () => {
+    // L'inverse du test précédent, et le plus important : une condition
+    // d'accès ne doit JAMAIS être une impasse. On prend la classe la moins
+    // bien lotie de chaque récit et on vérifie qu'elle passe.
+    const materiaux = Object.keys(OBJETS).filter((id) => OBJETS[id].type === 'materiau');
+    const impasses = [];
+    DONJONS.forEach((d) => {
+      classesEtalon().forEach((classe) => {
+        const p = personaEquipeNormalement(classe, d.niveauMin);
+        p.type = 'joueur';
+        p.bossVaincus = ZONES.map((z) => z.id);
+        p.donjons = {};
+        DONJONS.forEach((autre) => { p.donjons[autre.id] = { fini: 1, drapeaux: {}, checkpoint: null }; });
+        p.metiers = { mineur: { niveau: 9, xp: 0 }, tanneur: { niveau: 9, xp: 0 }, tisseur: { niveau: 9, xp: 0 } };
+        p.inventaire = materiaux.map((id) => ({ id, qte: 9 }));
+        const verrous = verrousDonjon(p, d);
+        if (verrous.length) impasses.push(`${d.nom} / ${classe} : ${verrous.join(', ')}`);
+      });
+    });
+    aucun(impasses, 'histoires inaccessibles à une classe entièrement équipée');
+  });
+
+  test('un verrou manquant se dit toujours en clair', () => {
+    const p = herosTest({ niveau: 1 });
+    p.equipement = {};
+    p.inventaire = [];
+    p.bossVaincus = [];
+    const muets = [];
+    DONJONS.forEach((d) => {
+      verrousDonjon(p, d).forEach((v) => {
+        if (typeof v !== 'string' || v.trim().length < 3 || v.includes('undefined')) {
+          muets.push(`${d.nom} : « ${v} »`);
+        }
+      });
+    });
+    aucun(muets, 'verrous illisibles');
+  });
+});

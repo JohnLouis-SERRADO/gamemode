@@ -876,9 +876,11 @@ function executerActionDistante(j, a) {
   // Validation légère : compétence connue, mana et recharge disponibles.
   if (action.genre === 'competence') {
     const comp = COMPETENCES[action.compId];
+    // v22 : « pas assez de mana » ne suffit plus à refuser un sort — le
+    // Chevalier Noir a le droit de le payer en sang, ici comme en solo.
     if (!comp || !j.competences.includes(action.compId)
       || (j.cooldowns[action.compId] || 0) > 0
-      || j.mp < coutMpDe(comp, statsEffectives(j), j.maxMp)) {
+      || !peutPayerSort(j, coutMpDe(comp, statsEffectives(j), j.maxMp))) {
       action = { genre: 'defense' };
     }
   }
@@ -902,6 +904,9 @@ function executerActionDistante(j, a) {
     cible = j;
   }
 
+  // 'rejouer' (le pas gratuit de la Danselame) ne peut pas rendre la main
+  // à un écran distant au milieu du tour du chef : le bonus du pas est
+  // conservé, le tour est consommé. C'est la seule différence en groupe.
   const issue = executerActionCoeur(j, action, cible);
   if (issue === 'fuite') {
     cb.termine = true;

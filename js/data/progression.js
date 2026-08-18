@@ -149,7 +149,10 @@ function sousCarac(s, cle) {
 
 function maxHpDe(p) {
   const s = statsEffectives(p);
-  return 25 + s.vit * 7 + (p.niveau - 1) * 6 + s.pvMax;
+  const base = 25 + s.vit * 7 + (p.niveau - 1) * 6 + s.pvMax;
+  // Métamorphe : sous la forme d'ours, la carcasse s'épaissit.
+  const ours = p.forme === 'ours' ? reglagePassif(p, 'pvOurs', 0) : 0;
+  return Math.round(base * (1 + ours));
 }
 
 // La Piété gonfle la réserve de mana : c'est la sous-caractéristique des
