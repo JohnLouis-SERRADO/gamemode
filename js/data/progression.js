@@ -150,11 +150,17 @@ function sousCarac(s, cle) {
 function maxHpDe(p) {
   const s = statsEffectives(p);
   const base = 25 + s.vit * 7 + (p.niveau - 1) * 6 + s.pvMax;
-  // Métamorphe : sous la forme d'ours, la carcasse s'épaissit.
-  const ours = p.forme === 'ours' ? reglagePassif(p, 'pvOurs', 0) : 0;
+  // Métamorphe : sous la forme d'ours, la carcasse s'épaissit. Ses Éveils
+  // supérieurs lui laissent une part du bonus de l'AUTRE forme.
+  const partOurs = reglagePassif(p, 'pvOurs', 0);
+  const cumul = reglagePassif(p, 'formesCumulees', 0);
+  const ours = p.forme === 'ours' ? partOurs : partOurs * cumul;
   // Colosse du Géant, Métamorphe de l'Ours : la Voie ajoute sa masse.
   const voie = reglagePassif(p, 'pvMaxVoie', 0);
-  return Math.round(base * (1 + ours) * (1 + voie));
+  const total = Math.round(base * (1 + ours) * (1 + voie));
+  // Contrainte divine du tank : ses PV sont plafonnés.
+  const plafond = reglagePassif(p, 'plafondPvMax', 0);
+  return plafond ? Math.max(1, Math.round(total * plafond)) : total;
 }
 
 // La Piété gonfle la réserve de mana : c'est la sous-caractéristique des

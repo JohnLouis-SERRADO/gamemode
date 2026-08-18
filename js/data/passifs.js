@@ -54,12 +54,15 @@ const MEMO_REGLAGES = {};
 
 function reglagesDuCombattant(c) {
   if (!c || c.type !== 'joueur') return null;
-  const cleMemo = `${c.sousClasse || '-'}|${c.voie || '-'}`;
+  const idEveil = (c.eveil && c.eveil.id) || '-';
+  const cleMemo = `${c.sousClasse || '-'}|${c.voie || '-'}|${idEveil}`;
   if (MEMO_REGLAGES[cleMemo]) return MEMO_REGLAGES[cleMemo];
   const specialite = PASSIFS_SOUS_CLASSE[c.sousClasse] || null;
   const voie = (typeof PASSIFS_VOIE !== 'undefined' && PASSIFS_VOIE[c.voie]) || null;
-  if (!specialite && !voie) return null;
-  MEMO_REGLAGES[cleMemo] = { ...(specialite || {}), ...(voie || {}) };
+  // v24 : l'Éveil se pose par-dessus les deux, contrainte comprise.
+  const eveil = (typeof PASSIFS_EVEIL !== 'undefined' && PASSIFS_EVEIL[idEveil]) || null;
+  if (!specialite && !voie && !eveil) return null;
+  MEMO_REGLAGES[cleMemo] = { ...(specialite || {}), ...(voie || {}), ...(eveil || {}) };
   return MEMO_REGLAGES[cleMemo];
 }
 
@@ -278,5 +281,8 @@ Object.entries(PASSIFS_SOUS_CLASSE).forEach(([id, passif]) => {
 // « +10 de Chance sur les tirages » resterait une phrase sur une fiche.
 function chanceButin(p) {
   if (!p) return 0;
-  return (statsEffectives(p).cha || 0) + reglagePassif(p, 'bonusRarete', 0);
+  const cha = statsEffectives(p).cha || 0;
+  // Contrainte cachée du mage : plus aucun bonus de rareté, jamais.
+  if (reglagePassif(p, 'aucunBonusRarete', false)) return cha;
+  return cha + reglagePassif(p, 'bonusRarete', 0);
 }

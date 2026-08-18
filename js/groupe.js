@@ -239,6 +239,11 @@ async function creerGroupeLigne() {
 async function rejoindreGroupeLigne(code) {
   const p = await preparerHerosPourGroupe();
   if (!p) return;
+  // Contrainte cachée du corps à corps : il chasse seul, définitivement.
+  if (reglagePassif(p, 'groupeInterdit', false)) {
+    afficherToast('🚫 Votre Éveil vous interdit de rejoindre une expédition : vous chassez seul.');
+    return;
+  }
   const resultat = await apiRequete('/rest/v1/rpc/groupe_rejoindre', {
     methode: 'POST',
     corps: { p_id: p.cloud.id, p_token: p.cloud.token, p_code: code, p_snapshot: snapshotPourGroupe(p) },

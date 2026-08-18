@@ -3780,3 +3780,194 @@ suite('Voies (v23)', () => {
     aucun(excessives, 'Voies dont le multiplicateur de base sort de la fourchette');
   });
 });
+
+// =====================================================================
+// v24 — Les 162 Éveils et leurs 20 contraintes : branchés, chiffrés, et
+// leur fiche dit exactement ce que le moteur applique.
+// =====================================================================
+suite('Éveils (v24)', () => {
+  window.rendreJournal = () => {};
+
+  function heros(sousClasse, idEveil, extra) {
+    const base = SOUS_CLASSES[sousClasse];
+    return Object.assign({
+      type: 'joueur', classe: base ? base.classe : 'guerrier', sousClasse,
+      voie: null, eveil: idEveil ? { id: idEveil } : null,
+      niveau: 80, bid: 'x', nom: 'Cobaye', avatar: '🧪',
+      stats: { for: 60, int: 60, dex: 60, esp: 60, vit: 60, cha: 10 },
+      equipement: {}, familiers: [], familier: null, inventaire: [],
+      statuts: [], cooldowns: {}, competences: [], rangs: {}, ligne: 'avant',
+      hp: 1000, maxHp: 1000, mp: 200, maxMp: 200, ko: false,
+    }, extra || {});
+  }
+
+  function monstre(extra) {
+    return Object.assign({
+      type: 'monstre', id: 'm0', nom: 'Mannequin', emoji: '🎯', niveau: 80,
+      atk: 20, dex: 8, statuts: [], hp: 2000, maxHp: 2000, mort: false, defense: false,
+    }, extra || {});
+  }
+
+  function combat(equipe, monstres) {
+    etat.combat = {
+      genre: 'exploration', equipe, monstres, manche: 1, file: [],
+      actif: null, termine: false, journalLignes: [],
+    };
+    return etat.combat;
+  }
+
+  const eveilDeRarete = (sc, rarete) => Object.values(EVEILS)
+    .find((e) => e.sousClasse === sc && e.rarete === rarete);
+
+  test('les 162 Éveils ont des réglages, et leur fiche les récite', () => {
+    egal(Object.keys(EVEILS).length, 162, 'le compte des Éveils');
+    const sans = Object.values(EVEILS).filter((e) => !PASSIFS_EVEIL[e.id]).map((e) => e.nom);
+    aucun(sans, 'Éveils sans réglage mécanique');
+    const desaccordes = Object.values(EVEILS).filter((e) => {
+      const contrainte = RARETES_EVEIL[e.rarete].contrainte
+        ? MECANIQUES_CONTRAINTE[e.rarete][ROLE_CONTRAINTE[e.classe]] : null;
+      const effetSeul = { ...PASSIFS_EVEIL[e.id] };
+      Object.keys(contrainte || {}).forEach((cle) => delete effetSeul[cle]);
+      return e.effet !== textePassifComplet(effetSeul);
+    }).map((e) => e.nom);
+    aucun(desaccordes, 'Éveils dont la fiche a divergé de ses réglages');
+  });
+
+  test('chaque réglage d\'Éveil sait se dire en français', () => {
+    const orphelins = new Set();
+    const balayer = (m) => Object.keys(m).forEach((cle) => {
+      if (!PHRASES_PASSIF[cle] && !CLES_MUETTES_EVEIL.has(cle)) orphelins.add(cle);
+    });
+    Object.values(MECANIQUES_EVEIL).forEach((liste) => liste.forEach(balayer));
+    Object.values(MECANIQUES_CONTRAINTE).forEach((parRole) => Object.values(parRole).forEach(balayer));
+    aucun([...orphelins], 'réglages d\'Éveil sans phrase');
+  });
+
+  test('la contrainte suit la rareté, et elle est BRANCHÉE', () => {
+    // La règle §5.1 tient par la contrainte : un Divin sans contrainte
+    // branchée, c'est un Divin gratuitement meilleur.
+    const fautifs = [];
+    Object.values(EVEILS).forEach((e) => {
+      const doit = RARETES_EVEIL[e.rarete].contrainte;
+      if (doit && !e.contrainte) fautifs.push(`${e.nom} (${e.rarete}) sans contrainte`);
+      if (!doit && e.contrainte) fautifs.push(`${e.nom} (${e.rarete}) contraint à tort`);
+      if (!doit) return;
+      const attendue = MECANIQUES_CONTRAINTE[e.rarete][ROLE_CONTRAINTE[e.classe]];
+      const reglages = PASSIFS_EVEIL[e.id];
+      Object.entries(attendue).forEach(([cle, valeur]) => {
+        if (reglages[cle] !== valeur) fautifs.push(`${e.nom} : contrainte ${cle} absente des réglages`);
+      });
+    });
+    aucun(fautifs, 'contraintes mal accrochées');
+  });
+
+  test('l\'Éveil se pose PAR-DESSUS la Voie, qui se pose par-dessus la spécialité', () => {
+    const voieDrain = Object.values(VOIES).find((v) => v.sousClasse === 'faucheur' && v.rang === 0);
+    const eveilPasseur = eveilDeRarete('faucheur', 'legendaire');
+    const nu = heros('faucheur', null);
+    const avecVoie = heros('faucheur', null, { voie: voieDrain.id });
+    const complet = heros('faucheur', eveilPasseur.id, { voie: voieDrain.id });
+    egal(reglagePassif(nu, 'seuilExecution', 0), 0.15, 'spécialité seule');
+    egal(reglagePassif(avecVoie, 'drainSorts', 0), 0.40, 'la Voie relève le drain');
+    egal(reglagePassif(complet, 'seuilExecution', 0), 0.20, 'l\'Éveil relève l\'exécution');
+    verifier(reglagePassif(complet, 'drainSorts', 0) > 0, 'et rien du dessous n\'est perdu');
+  });
+
+  test('« Fléau Premier » rend tous les coups critiques — et coûte une manche sur deux', () => {
+    const fleau = eveilDeRarete('berserker', 'divin');
+    const brute = heros('berserker', fleau.id);
+    const cible = monstre();
+    combat([brute], [cible]);
+    let crits = 0;
+    for (let i = 0; i < 20; i++) {
+      cible.hp = cible.maxHp;
+      if (infligerDegats(brute, cible, 100).crit) crits++;
+    }
+    egal(crits, 20, 'tous les coups doivent être critiques');
+    verifier(reglagePassif(brute, 'unTourSurDeux', false), 'et la contrainte divine doit être là');
+    etat.combat = null;
+  });
+
+  test('les Éveils d\'immunité tiennent vraiment les états à distance', () => {
+    const basalte = eveilDeRarete('colosse', 'mythique');
+    const roc = heros('colosse', basalte.id);
+    combat([roc], [monstre()]);
+    ['poison', 'etourdi', 'affaibli'].forEach((type) => {
+      appliquerEffet(monstre(), roc, { type, duree: 3, chance: 1, stat: 'dex' }, null, null);
+    });
+    egal(roc.statuts.length, 0, 'aucun état ne doit prendre');
+    etat.combat = null;
+  });
+
+  test('« Muraille Vivante » empêche l\'équipe de tomber, et lui coupe les soins', () => {
+    const muraille = eveilDeRarete('templier', 'legendaire');
+    const gardien = heros('templier', muraille.id);
+    const allie = heros('berserker', null, { hp: 50, maxHp: 1000 });
+    combat([gardien, allie], [monstre()]);
+    infligerDegats(monstre(), allie, 5000);
+    verifier(allie.hp >= 1 && !allie.ko, `l'allié doit rester debout (${allie.hp} PV)`);
+    egal(soigner(gardien, 300, allie), 0, 'et le Templier ne peut plus être soigné par les siens');
+    etat.combat = null;
+  });
+
+  test('« Serment Immortel » relève son porteur une seule fois', () => {
+    const serment = eveilDeRarete('templier', 'mythique');
+    const gardien = heros('templier', serment.id, { hp: 0 });
+    combat([gardien], [monstre()]);
+    gererMort(gardien);
+    verifier(!gardien.ko, 'il doit se relever');
+    gardien.hp = 0;
+    gererMort(gardien);
+    verifier(gardien.ko, 'mais une seule fois par combat');
+    etat.combat = null;
+  });
+
+  test('la contrainte divine du tank plafonne vraiment ses PV', () => {
+    const aegis = eveilDeRarete('templier', 'divin');
+    const plafonne = heros('templier', aegis.id);
+    const libre = heros('templier', null);
+    delete plafonne.maxHp; delete libre.maxHp;
+    egal(maxHpDe(plafonne), Math.round(maxHpDe(libre) * 0.5), 'les PV doivent être coupés en deux');
+  });
+
+  test('la contrainte légendaire du corps à corps ferme vraiment les zones', () => {
+    const titan = eveilDeRarete('berserker', 'legendaire');
+    const brute = heros('berserker', titan.id, { competences: [], mp: 200 });
+    const zone = Object.entries(COMPETENCES).find(([, c]) => c.type === 'degats' && c.cible === 'ennemis');
+    const a = monstre({ id: 'm0' });
+    const b = monstre({ id: 'm1' });
+    combat([brute], [a, b]);
+    const avant = a.hp + b.hp;
+    lancerCompetence(brute, zone[0], a);
+    egal(a.hp + b.hp, avant, 'la compétence de zone ne doit rien faire du tout');
+    etat.combat = null;
+  });
+
+  test('aucun Éveil ne rend un héros ingérable', () => {
+    // Même garde-fou que pour les Voies : la rareté change la contrainte,
+    // pas le plafond de puissance (règle §5.1).
+    const cible = monstre({ hp: 1800, maxHp: 2000 });
+    const excessifs = [];
+    Object.values(EVEILS).forEach((e) => {
+      const c = heros(e.sousClasse, e.id, { hp: 1000, maxHp: 1000, premierCoupFait: true });
+      combat([c], [cible]);
+      const m = multiplicateurPassifs(c, cible, { compId: 'x' });
+      etat.combat = null;
+      if (!(m >= 0.4 && m <= 3.5)) excessifs.push(`${e.nom} (${e.rarete}) : ×${m.toFixed(2)}`);
+    });
+    aucun(excessifs, 'Éveils dont le multiplicateur de base sort de la fourchette');
+  });
+
+  test('les trois étages de passifs couvrent tout le jeu, sans trou', () => {
+    // Le bilan de la grande passe : plus une seule promesse sans moteur.
+    egal(Object.keys(PASSIFS_SOUS_CLASSE).length, 27, 'passifs de spécialité');
+    egal(Object.keys(PASSIFS_VOIE).length, 81, 'passifs de Voie');
+    egal(Object.keys(PASSIFS_EVEIL).length, 162, 'passifs d\'Éveil');
+    const sansTexte = [
+      ...Object.values(SOUS_CLASSES).filter((x) => !x.passif),
+      ...Object.values(VOIES).filter((x) => !x.passif),
+      ...Object.values(EVEILS).filter((x) => !x.effet),
+    ].map((x) => x.nom);
+    aucun(sansTexte, 'paliers d\'identité sans fiche');
+  });
+});
