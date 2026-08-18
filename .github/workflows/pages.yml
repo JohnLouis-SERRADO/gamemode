@@ -1,8 +1,13 @@
 name: Déployer sur GitHub Pages
 
+# Une seule branche déclenche le déploiement, et c'est voulu :
+# l'environnement `github-pages` n'accepte QUE la branche configurée comme
+# source des Pages. Une autre branche ici ne déploie rien — elle échoue en
+# deux secondes, avant même le premier pas, et envoie un mail « run
+# failed » à chaque poussée. Pour publier, on avance cette branche-là.
 on:
   push:
-    branches: ["claude/turn-based-mmorpg-game-kb73gi", "claude/game-consistency-skills-kya0l5"]
+    branches: ["claude/turn-based-mmorpg-game-kb73gi"]
   workflow_dispatch:
 
 permissions:
