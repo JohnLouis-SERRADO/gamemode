@@ -1,10 +1,18 @@
 name: Déployer sur GitHub Pages
 
-# Une seule branche déclenche le déploiement, et c'est voulu :
-# l'environnement `github-pages` n'accepte QUE la branche configurée comme
-# source des Pages. Une autre branche ici ne déploie rien — elle échoue en
-# deux secondes, avant même le premier pas, et envoie un mail « run
-# failed » à chaque poussée. Pour publier, on avance cette branche-là.
+# =====================================================================
+# UNE SEULE BRANCHE PUBLIE, ET CE N'EST PAS UN OUBLI.
+#
+# L'environnement `github-pages` n'accepte QUE la branche configurée comme
+# source des Pages. Lancé depuis n'importe quelle autre, le job est rejeté
+# par les règles de protection de l'environnement : il échoue en deux
+# secondes, avant même le premier pas, et envoie un mail « run failed ».
+#
+# Publier, c'est donc avancer la branche nommée ci-dessous — pas ajouter
+# sa branche de travail ici. Elle apparaît à deux endroits, le filtre de
+# `push` et le test du job : changer l'une sans l'autre ne casse rien, ça
+# rend seulement le garde-fou inutile.
+# =====================================================================
 on:
   push:
     branches: ["claude/turn-based-mmorpg-game-kb73gi"]
@@ -21,6 +29,13 @@ concurrency:
 
 jobs:
   deployer:
+    # Ceinture ET bretelles. Le filtre de branches ci-dessus couvre les
+    # poussées ; ce test-ci couvre le reste — un lancement manuel
+    # (`workflow_dispatch`) depuis une branche de travail, ou une relance
+    # d'un vieux run. Sans lui, ces deux cas repartent droit dans le mur
+    # de l'environnement et repeignent l'historique en rouge. Avec lui, le
+    # job est simplement IGNORÉ : gris, pas rouge, et pas de mail.
+    if: github.ref == format('refs/heads/{0}', 'claude/turn-based-mmorpg-game-kb73gi')
     runs-on: ubuntu-latest
     environment:
       name: github-pages
