@@ -3971,3 +3971,144 @@ suite('Éveils (v24)', () => {
     aucun(sansTexte, 'paliers d\'identité sans fiche');
   });
 });
+
+// =====================================================================
+// v25 — L'OBSERVABILITÉ. Un passif qui agit sans laisser de trace est,
+// du point de vue du joueur, un passif qui ne marche pas. Ces tests-là
+// ne vérifient pas que la mécanique calcule juste — les suites v22 à v24
+// s'en chargent — mais qu'elle SE VOIT.
+// =====================================================================
+suite('Passifs visibles (v25)', () => {
+  window.rendreJournal = () => {};
+
+  function combattant(sousClasse, extra) {
+    const base = SOUS_CLASSES[sousClasse];
+    return Object.assign({
+      type: 'joueur', classe: base ? base.classe : 'guerrier', sousClasse,
+      voie: null, eveil: null, niveau: 50, bid: 'x', nom: 'Cobaye', avatar: '🧪',
+      stats: { for: 40, int: 40, dex: 40, esp: 40, vit: 40, cha: 10 },
+      equipement: {}, familiers: [], familier: null, inventaire: [],
+      statuts: [], cooldowns: {}, competences: [], rangs: {}, ligne: 'avant',
+      hp: 1000, maxHp: 1000, mp: 100, maxMp: 100, ko: false,
+    }, extra || {});
+  }
+
+  function cible(extra) {
+    return Object.assign({
+      type: 'monstre', id: 'm0', nom: 'Mannequin', emoji: '🎯', niveau: 50,
+      atk: 10, dex: 5, statuts: [], hp: 2000, maxHp: 2000, mort: false, defense: false,
+    }, extra || {});
+  }
+
+  function combat(equipe, monstres) {
+    etat.combat = {
+      genre: 'exploration', equipe, monstres, manche: 1, file: [],
+      actif: null, termine: false, journalLignes: [],
+    };
+    return etat.combat;
+  }
+
+  test('un drain de passif parle MÊME à pleine vie — la plainte d\'origine', () => {
+    // Le bug tel qu'il était vécu : le joueur entre en combat à pleine
+    // vie, lance un sort, son Faucheur draine 25 % — et rien, nulle part,
+    // ne le lui dit. Il en conclut que le passif ne marche pas. Il a
+    // raison de le conclure : rien ne prouvait le contraire.
+    const faucheur = combattant('faucheur', { classe: 'runelame', hp: 1000, maxHp: 1000 });
+    const cb = combat([faucheur], [cible()]);
+    moissonDuFaucheur(faucheur, 200);
+    egal(faucheur.hp, 1000, 'à pleine vie, il ne gagne rien — c\'est normal');
+    verifier(cb.journalLignes.some((l) => /Moisson/.test(l)),
+      'mais le journal DOIT dire que la Moisson a pris sa part');
+    verifier(cb.journalLignes.some((l) => /déjà au maximum/.test(l)),
+      'et expliquer pourquoi le joueur ne voit pas ses PV monter');
+    etat.combat = null;
+  });
+
+  test('tous les drains de passif suivent la même règle', () => {
+    const cas = [
+      ['faucheur', 'runelame', (c) => moissonDuFaucheur(c, 200), /Moisson/],
+      ['chevalier-noir', 'gardien', (c) => apresDegatsPassifs(c, cible(), 200), /Soif/],
+    ];
+    const muets = [];
+    cas.forEach(([sc, classe, declencher, motif]) => {
+      const heros = combattant(sc, { classe, hp: 1000, maxHp: 1000 });
+      const cb = combat([heros], [cible()]);
+      declencher(heros);
+      if (!cb.journalLignes.some((l) => motif.test(l))) muets.push(sc);
+      etat.combat = null;
+    });
+    aucun(muets, 'drains de passif silencieux à pleine vie');
+
+    // Et la Gravure du Runelame, qui est un passif de CLASSE de base.
+    const runelame = combattant(null, { classe: 'runelame', hp: 1000, maxHp: 1000 });
+    const cb = combat([runelame], [cible()]);
+    draineDeGravure(runelame, 200);
+    verifier(cb.journalLignes.some((l) => /Gravure/.test(l)), 'Gravure muette à pleine vie');
+    etat.combat = null;
+  });
+
+  test('la ligne de dégâts montre ce que les passifs ont pesé', () => {
+    // Sans ça, un Colosse n'a aucun moyen de savoir que sa Masse
+    // s'applique : le chiffre affiché est juste « un chiffre ».
+    const colosse = combattant('colosse', { classe: 'gardien', maxHp: 2000, hp: 2000 });
+    combat([colosse], [cible()]);
+    const r = infligerDegats(colosse, cible(), 100);
+    verifier(r.multPassifs > 1, `le Colosse doit avoir un multiplicateur (${r.multPassifs})`);
+    verifier(/🏅/.test(texteDegats(r)), `la ligne doit porter la marque du passif — « ${texteDegats(r)} »`);
+    etat.combat = null;
+
+    // Un héros sans passif multiplicateur ne doit PAS polluer la ligne.
+    const nu = combattant(null, { classe: 'guerrier' });
+    combat([nu], [cible()]);
+    const r2 = infligerDegats(nu, cible(), 100);
+    verifier(!/🏅/.test(texteDegats(r2)), 'pas de marque quand aucun passif ne joue');
+    etat.combat = null;
+  });
+
+  test('chaque spécialité à multiplicateur le rend visible sur ses coups', () => {
+    // On balaie les 27 : celles dont le passif pèse sur les dégâts doivent
+    // toutes produire la marque « 🏅 ». Aucune exception silencieuse.
+    const invisibles = [];
+    Object.keys(SOUS_CLASSES).forEach((sc) => {
+      const heros = combattant(sc, { classe: SOUS_CLASSES[sc].classe, hp: 600, maxHp: 1000, maxMp: 200 });
+      const proie = cible({ hp: 1500, maxHp: 2000, statuts: [{ type: 'poison', duree: 3, valeur: 10 }] });
+      combat([heros, combattant(null, { classe: 'guerrier', bid: 'y' })], [proie]);
+      const mult = multiplicateurPassifs(heros, proie, { compId: 'x' });
+      if (Math.abs(mult - 1) >= 0.005) {
+        const r = { degats: 100, crit: false, direct: false, absorbe: 0, multPassifs: mult };
+        if (!/🏅/.test(texteDegats(r))) invisibles.push(sc);
+      }
+      etat.combat = null;
+    });
+    aucun(invisibles, 'spécialités dont le multiplicateur ne s\'affiche pas');
+  });
+
+  test('le bandeau de tour annonce les passifs actifs du héros', () => {
+    const faucheur = combattant('faucheur', { classe: 'runelame' });
+    const texte = texteInlinePassifs(faucheur);
+    verifier(/🏅/.test(texte), 'le bandeau doit porter la puce des passifs');
+    verifier(texte.includes('Moisson'), `il doit nommer la spécialité — « ${texte} »`);
+    verifier(texte.includes('Gravure'), 'et le passif de la classe de base');
+
+    // Voie et Éveil s'y ajoutent quand ils existent.
+    const voie = Object.values(VOIES).find((v) => v.sousClasse === 'faucheur');
+    const eveil = Object.values(EVEILS).find((e) => e.sousClasse === 'faucheur');
+    const complet = combattant('faucheur', { classe: 'runelame', voie: voie.id, eveil: { id: eveil.id } });
+    const texteComplet = texteInlinePassifs(complet);
+    verifier(texteComplet.includes(voie.nom.replace(/^Voie /, '')), 'la Voie doit apparaître');
+    verifier(texteComplet.includes(eveil.nom), 'l\'Éveil aussi');
+
+    // Un héros sans classe ne doit pas afficher une puce vide.
+    egal(texteInlinePassifs(combattant(null, { classe: null })), '', 'rien à annoncer, rien d\'affiché');
+  });
+
+  test('l\'exécution du Faucheur laisse une trace, elle aussi', () => {
+    const faucheur = combattant('faucheur', { classe: 'runelame' });
+    const moribonde = cible({ hp: 100, maxHp: 2000 });
+    const cb = combat([faucheur], [moribonde]);
+    executerSiMoribonde(faucheur, moribonde);
+    verifier(moribonde.mort, 'la cible doit tomber');
+    verifier(cb.journalLignes.some((l) => /exécute/.test(l)), 'et le journal doit le dire');
+    etat.combat = null;
+  });
+});

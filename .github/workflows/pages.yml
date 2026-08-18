@@ -47,6 +47,27 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
+      # =============================================================
+      # ANTI-CACHE : le vrai « ça ne marche pas ».
+      #
+      # Le jeu charge 32 fichiers JS par de simples balises <script>. Sans
+      # marqueur de version, un joueur qui a déjà ouvert le jeu garde en
+      # cache la version d'AVANT le déploiement : le correctif est en
+      # ligne, et lui continue de jouer l'ancien code. Impossible à
+      # diagnostiquer depuis son écran — il voit juste que « ça ne marche
+      # toujours pas ».
+      #
+      # On estampille donc chaque script et chaque feuille de style avec
+      # le SHA du commit déployé, ici et seulement ici : le dépôt reste
+      # propre, et deux déploiements ne peuvent jamais se confondre.
+      # =============================================================
+      - name: Estampiller les scripts et les styles (anti-cache)
+        run: |
+          court="${GITHUB_SHA::7}"
+          sed -E -i "s|(src=\"js/[^\"]+\.js)\"|\1?v=$court\"|g; s|(href=\"css/[^\"]+\.css)\"|\1?v=$court\"|g" index.html tests.html
+          echo "Version déployée : $court"
+          grep -c "?v=$court" index.html
+
       - name: Empaqueter le site
         uses: actions/upload-pages-artifact@v3
         with:

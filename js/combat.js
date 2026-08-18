@@ -154,10 +154,7 @@ const PART_GRAVURE = 0.1;
 
 function draineDeGravure(source, degats) {
   if (degats <= 0 || !aPassif(source, 'Gravure')) return;
-  const rendu = Math.max(1, Math.round(degats * PART_GRAVURE));
-  const avant = source.hp;
-  source.hp = Math.min(source.maxHp, source.hp + rendu);
-  if (source.hp > avant) journal(`🌑 Gravure : ${source.nom} reprend ${source.hp - avant} PV à sa cible.`);
+  drainPassif(source, degats, PART_GRAVURE, '🌑', 'Gravure');
 }
 
 // Devin : ce qui déborde d'un soin ne se perd pas — il se fige en bouclier
@@ -407,12 +404,7 @@ function apresDegatsPassifs(source, cible, degats) {
   if (!p || degats <= 0) return;
 
   // Chevalier Noir : ses coups lui rendent de la vie.
-  if (p.volDeVie) {
-    const rendu = Math.max(1, Math.round(degats * p.volDeVie));
-    const avant = source.hp;
-    source.hp = Math.min(source.maxHp, source.hp + rendu);
-    if (source.hp > avant) journal(`🖤 Soif : ${source.nom} reprend ${source.hp - avant} PV.`);
-  }
+  if (p.volDeVie) drainPassif(source, degats, p.volDeVie, '🖤', 'Soif');
   // Moine : chaque coup accumule une charge (et la dépense au cinquième).
   if (p.chargesPourCritique) {
     if ((source.chargesCadence || 0) >= p.chargesPourCritique) source.chargesCadence = 0;
@@ -525,17 +517,48 @@ function seveDuDruide(source) {
     x.hp = Math.min(x.maxHp, x.hp + soin);
     total += x.hp - avant;
   });
-  if (total > 0) journal(`🐻 La sève de ${source.nom} traverse l'équipe : ${total} PV rendus au total.`);
+  journal(total > 0
+    ? `🐻 La sève de ${source.nom} traverse l'équipe : ${total} PV rendus au total.`
+    : `🐻 La sève de ${source.nom} traverse l'équipe — personne n'en avait besoin.`);
+}
+
+// =====================================================================
+// v25 — UN PASSIF QUI SE TAIT EST UN PASSIF QUI N'EXISTE PAS.
+//
+// CE QUI N'ALLAIT PAS. Les mécaniques étaient branchées depuis la v22,
+// et pourtant un joueur pouvait jouer un Faucheur entier sans jamais voir
+// sa Moisson. Deux raisons, et aucune n'était un bug de calcul :
+//
+//   • Un drain SOIGNE. À pleine vie, il rend zéro — et le code ne
+//     journalisait QUE s'il avait rendu quelque chose. Or on entre dans
+//     un combat à pleine vie. Le passif se déclenchait, prenait sa part,
+//     et ne laissait aucune trace. Huit passifs de soin étaient dans ce cas.
+//   • Les multiplicateurs de dégâts (Colosse, Berserker, Nécromancien,
+//     Duelliste, Rôdeur…) n'écrivaient RIEN, jamais. Le joueur n'avait
+//     aucun moyen de savoir si son +30 % s'appliquait.
+//
+// LA RÈGLE DE LA v25. Un passif qui se déclenche laisse une trace, même
+// quand son effet est plafonné ou nul. Et tout multiplicateur de passif
+// s'affiche sur la ligne de dégâts qu'il a modifiée. « Ça ne marche pas »
+// devient une question qu'on peut trancher en lisant le journal.
+// =====================================================================
+
+// Le drain d'un passif : il prend toujours sa part, et il le dit toujours
+// — qu'il reste de la place dans la barre de vie ou non.
+function drainPassif(source, degats, part, emoji, nom) {
+  if (!part || degats <= 0) return;
+  const pris = Math.max(1, Math.round(degats * part));
+  const avant = source.hp;
+  source.hp = Math.min(source.maxHp, source.hp + pris);
+  const rendu = source.hp - avant;
+  journal(rendu > 0
+    ? `${emoji} ${nom} : ${source.nom} reprend ${rendu} PV.`
+    : `${emoji} ${nom} : ${pris} PV drainés — ${source.nom} est déjà au maximum.`);
 }
 
 // Faucheur : « TOUS ses sorts lui rendent une part de ce qu'ils prennent ».
 function moissonDuFaucheur(source, degats) {
-  const part = reglagePassif(source, 'drainSorts', 0);
-  if (!part || degats <= 0) return;
-  const rendu = Math.max(1, Math.round(degats * part));
-  const avant = source.hp;
-  source.hp = Math.min(source.maxHp, source.hp + rendu);
-  if (source.hp > avant) journal(`⚰️ Moisson : ${source.nom} reprend ${source.hp - avant} PV.`);
+  drainPassif(source, degats, reglagePassif(source, 'drainSorts', 0), '⚰️', 'Moisson');
 }
 
 // Chevalier Noir : quand la réserve de mana ne suffit plus, il paie en
@@ -749,7 +772,9 @@ function apresDegatsVoies(source, cible, degats, options) {
       x.hp = Math.min(x.maxHp, x.hp + soin);
       total += x.hp - avant;
     });
-    if (total > 0) journal(`🌅 La lumière de ${source.nom} rend ${total} PV à l'équipe.`);
+    journal(total > 0
+      ? `🌅 La lumière de ${source.nom} rend ${total} PV à l'équipe.`
+      : `🌅 La lumière de ${source.nom} passe sur une équipe déjà au maximum.`);
   }
   // Métamorphe du Serpent, Rôdeur du Poison : le coup empoisonne.
   if (p.poisonParCoup && !estMort(cible)) {
@@ -785,7 +810,9 @@ function encaisserSelonLesVoies(source, cible, degats, options) {
       x.hp = Math.min(x.maxHp, x.hp + soin);
       total += x.hp - avant;
     });
-    if (total > 0) journal(`🏛️ Le Bastion tient : ${total} PV rendus à l'équipe.`);
+    journal(total > 0
+      ? `🏛️ Le Bastion tient : ${total} PV rendus à l'équipe.`
+      : `🏛️ Le Bastion tient : l'équipe est déjà au maximum.`);
   }
   // Chevalier Noir du Linceul : on ne le touche pas impunément.
   if (p.statutAleatoireRiposte && source.type === 'monstre'
@@ -957,10 +984,12 @@ function passifsSurMortEnnemi(source, cible) {
   if (!p) return;
   // Berserker : tuer le soigne.
   if (p.soinParMise) {
-    const rendu = Math.max(1, Math.round(source.maxHp * p.soinParMise));
+    const pris = Math.max(1, Math.round(source.maxHp * p.soinParMise));
     const avant = source.hp;
-    source.hp = Math.min(source.maxHp, source.hp + rendu);
-    if (source.hp > avant) journal(`🪓 Rage : la mise à mort rend ${source.hp - avant} PV à ${source.nom}.`);
+    source.hp = Math.min(source.maxHp, source.hp + pris);
+    journal(source.hp > avant
+      ? `🪓 Rage : la mise à mort rend ${source.hp - avant} PV à ${source.nom}.`
+      : `🪓 Rage : la mise à mort vaut ${pris} PV — ${source.nom} est déjà au maximum.`);
   }
   // Assassin de l'Ombre : la fenêtre ouverte par une mise à mort.
   if (p.bonusApresAbattu) source.coupsDeLOmbre = p.dureeApresAbattu || 2;
@@ -1416,7 +1445,9 @@ function debutTour(c) {
       x.hp = Math.min(x.maxHp, x.hp + Math.max(1, Math.round(x.maxHp * partRegenEquipe)));
       total += x.hp - avant;
     });
-    if (total > 0) journal(`🌿 ${c.nom} fait refleurir l'équipe : ${total} PV.`);
+    journal(total > 0
+      ? `🌿 ${c.nom} fait refleurir l'équipe : ${total} PV.`
+      : `🌿 ${c.nom} veille sur une équipe déjà au maximum.`);
   }
   // Éveils « Porte-Peste », « La Grande Peste » : les états sautent seuls.
   propagerSpontanement(c);
@@ -1518,7 +1549,10 @@ function infligerDegats(source, cible, brut, options = {}) {
   if (options.element) d *= multElementMonde(options.element);
   d *= bonusElan(source);            // « Élan » : chaque coup nourrit le suivant
   d *= bonusRempart(source);         // « Rempart » : provoquer, c'est frapper
-  d *= multiplicateurPassifs(source, cible, options); // passifs de sous-classe
+  // v25 : on retient ce que les passifs ont pesé dans ce coup précis —
+  // c'est ce chiffre qui s'affichera sur la ligne de dégâts.
+  const multPassifs = multiplicateurPassifs(source, cible, options);
+  d *= multPassifs;
   d *= multiplicateurMarque(cible);  // « Marque » du Traqueur : pour toute l'équipe
   if (source.statuts.some((s) => s.type === 'benediction')) d *= 1.3;
   if (source.statuts.some((s) => s.type === 'affaibli')) d *= 0.7;
@@ -1641,7 +1675,7 @@ function infligerDegats(source, cible, brut, options = {}) {
     cible.hp = 1;
     journal(`🐱 ${cible.nom} retombe sur ses pattes : Neuf vies le laisse à 1 PV !`);
   }
-  return { degats: d, crit, direct, absorbe };
+  return { degats: d, crit, direct, absorbe, multPassifs };
 }
 
 function texteDegats(r) {
@@ -1649,6 +1683,13 @@ function texteDegats(r) {
   if (r.crit) t += ' 💥 CRITIQUE !';
   else if (r.direct) t += ' 🎲 coup direct !';
   if (r.absorbe > 0) t += ` (${r.absorbe} absorbés par le bouclier)`;
+  // v25 : le poids des passifs sur CE coup. Sans ça, un Colosse n'a
+  // aucun moyen de savoir que sa Masse s'applique — et « ça ne marche
+  // pas » devient impossible à trancher.
+  if (r.multPassifs != null && Math.abs(r.multPassifs - 1) >= 0.005) {
+    const signe = r.multPassifs > 1 ? '+' : '−';
+    t += ` · 🏅 ${signe}${Math.round(Math.abs(r.multPassifs - 1) * 100)} % (passifs)`;
+  }
   return t;
 }
 
@@ -1894,6 +1935,27 @@ function consommablesDe(j) {
   });
 }
 
+// v25 — Les passifs actifs, sous les yeux du joueur, à chaque tour.
+//
+// Savoir QUE l'on a un passif et savoir qu'il A JOUÉ sont deux choses
+// différentes. Le journal dit la seconde (voir texteDegats) ; cette ligne
+// dit la première. Sans elle, un joueur qui doute de son passif doit
+// aller le relire dans un autre écran, en plein combat.
+function texteInlinePassifs(j) {
+  const morceaux = [];
+  const base = classeBaseDuCombattant(j);
+  if (base && base.passif) morceaux.push(base.passif.split('—')[0].trim());
+  const sc = typeof sousClasseDe === 'function' ? sousClasseDe(j) : null;
+  if (sc && sc.passif) morceaux.push(sc.passif.split('—')[0].trim());
+  const voie = typeof voieDe === 'function' ? voieDe(j) : null;
+  if (voie) morceaux.push(voie.nom.replace(/^Voie /, ''));
+  const eveil = typeof eveilDe === 'function' ? eveilDe(j) : null;
+  if (eveil) morceaux.push(eveil.nom);
+  if (!morceaux.length) return '';
+  return `<br><span class="actions-passifs" title="Vos passifs actifs — leur effet s'affiche sur chaque ligne de dégâts">🏅 ${
+    morceaux.map((m) => echapper(m)).join(' · ')}</span>`;
+}
+
 function rendreActions(j) {
   const cb = etat.combat;
   const zone = el('zone-actions');
@@ -1903,7 +1965,8 @@ function rendreActions(j) {
   entete.className = 'actions-entete';
   entete.innerHTML = `<span class="avatar-grand">${j.avatar}</span>
     <div>Au tour de <strong>${echapper(j.nom)}</strong>${cb.equipe.length > 1 ? ' — passe-lui l’écran !' : ''}<br>
-    <span class="actions-vie">❤️ ${j.hp}/${j.maxHp} PV · 💧 ${j.mp}/${j.maxMp} PM</span></div>`;
+    <span class="actions-vie">❤️ ${j.hp}/${j.maxHp} PV · 💧 ${j.mp}/${j.maxMp} PM</span>
+    ${texteInlinePassifs(j)}</div>`;
   zone.appendChild(entete);
 
   if (cb.cibleEnAttente) {

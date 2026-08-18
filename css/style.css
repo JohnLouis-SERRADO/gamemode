@@ -2282,3 +2282,12 @@ button:focus-visible,
 .classe-role { font-size: 0.8rem; opacity: 0.75; }
 .classe-passif { opacity: 0.95; }
 .classe-resume { font-size: 0.85rem; opacity: 0.7; }
+
+/* v25 — La ligne des passifs actifs, dans le bandeau de tour. */
+.actions-passifs {
+  display: inline-block;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: var(--or, #d9a441);
+  opacity: 0.9;
+}
