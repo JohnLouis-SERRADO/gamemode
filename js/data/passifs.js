@@ -163,6 +163,10 @@ const PASSIFS_SOUS_CLASSE = {
   voltigeur: {
     nom: 'Voltige',
     ignoreLigne: true,
+    // La relance a sa propre clé. Elle passait par `ignoreLigne`, que les
+    // douze Voies de la famille portent aussi : un Rôdeur ayant choisi
+    // n'importe quelle Voie héritait donc de la relance du Voltigeur.
+    relanceCelerite: true,
     texte: () => 'aucun malus depuis la ligne arrière, et sa Célérité lui offre parfois une action de plus dans la manche.',
   },
 

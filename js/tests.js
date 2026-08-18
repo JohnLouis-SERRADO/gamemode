@@ -4112,3 +4112,161 @@ suite('Passifs visibles (v25)', () => {
     etat.combat = null;
   });
 });
+
+// =====================================================================
+// v25.1 — Les neuf angles morts trouvés par l'audit.
+//
+// Un banc de 50 agents a exercé 233 passifs en combat réel et en a trouvé
+// neuf qui pouvaient agir sans laisser la moindre trace. Huit d'entre eux
+// avaient la MÊME cause : leur multiplicateur était appliqué en dehors de
+// multiplicateurPassifs(), donc en dehors du chiffre remonté au journal.
+// Ces tests-là ferment chacun des neuf.
+// =====================================================================
+suite('Angles morts refermés (v25.1)', () => {
+  window.rendreJournal = () => {};
+
+  const heros = (classe, extra) => Object.assign({
+    type: 'joueur', classe, sousClasse: null, voie: null, eveil: null,
+    niveau: 50, bid: 'x', nom: 'Cobaye', avatar: '🧪',
+    stats: { for: 40, int: 40, dex: 40, esp: 40, vit: 40, cha: 10 },
+    equipement: {}, familiers: [], familier: null, inventaire: [],
+    statuts: [], cooldowns: {}, competences: [], rangs: {}, ligne: 'avant',
+    hp: 1000, maxHp: 1000, mp: 100, maxMp: 100, ko: false, elan: 0,
+  }, extra || {});
+
+  const monstre = (extra) => Object.assign({
+    type: 'monstre', id: 'm0', nom: 'Mannequin', emoji: '🎯', niveau: 50,
+    atk: 20, dex: 5, statuts: [], hp: 3000, maxHp: 3000, mort: false, defense: false,
+  }, extra || {});
+
+  const combat = (equipe, monstres) => {
+    etat.combat = { genre: 'exploration', equipe, monstres, manche: 1, file: [],
+      actif: null, termine: false, journalLignes: [] };
+    return etat.combat;
+  };
+
+  test('l\'Élan du Guerrier entre dans le chiffre affiché, et se dit', () => {
+    // Le passif que TOUS les Guerriers portent, et le seul multiplicateur
+    // du moteur qui restait hors du badge.
+    const g = heros('guerrier', { elan: 3 });
+    const cb = combat([g], [monstre()]);
+    const r = infligerDegats(g, monstre(), 100);
+    verifier(r.multPassifs > 1.2, `l'Élan doit peser dans multPassifs (${r.multPassifs})`);
+    verifier(/🏅/.test(texteDegats(r)), 'et donc apparaître sur la ligne');
+
+    const neuf = heros('guerrier', { elan: 0 });
+    nourrirElan(neuf);
+    verifier(cb.journalLignes.concat(etat.combat.journalLignes).some((l) => /Élan/.test(l)),
+      'la montée en palier doit être annoncée');
+    etat.combat = null;
+  });
+
+  test('le Rempart du Gardien se voit des deux côtés du coup', () => {
+    // Moitié offensive : il frappe plus fort tant qu'il provoque.
+    const off = heros('gardien', { statuts: [{ type: 'provocation', duree: 3 }] });
+    combat([off], [monstre()]);
+    const r = infligerDegats(off, monstre(), 100);
+    verifier(r.multPassifs > 1, `« Rempart » offensif doit compter (${r.multPassifs})`);
+    etat.combat = null;
+
+    // Moitié défensive : il encaisse 12 % de moins, et ça s'affiche.
+    const def = heros('gardien');
+    combat([def], [monstre()]);
+    const r2 = infligerDegats(monstre(), def, 200);
+    verifier(r2.multDefense < 1, `« Rempart » défensif doit compter (${r2.multDefense})`);
+    verifier(/🛡️/.test(texteDegats(r2)), `la défense doit s'afficher — « ${texteDegats(r2)} »`);
+    etat.combat = null;
+  });
+
+  test('le Bouclier partagé du Templier s\'affiche sur l\'allié qu\'il couvre', () => {
+    const templier = heros('gardien', { sousClasse: 'templier' });
+    const allie = heros('guerrier', { bid: 'y', ligne: 'avant' });
+    combat([templier, allie], [monstre()]);
+    const r = infligerDegats(monstre(), allie, 200);
+    verifier(r.multDefense < 1, `l'allié doit encaisser moins (${r.multDefense})`);
+    verifier(/🛡️/.test(texteDegats(r)), 'et la ligne doit le montrer');
+    etat.combat = null;
+  });
+
+  test('la fragilité d\'un Éveil mythique se voit sur chaque coup reçu', () => {
+    // La contrainte la plus punitive du jeu, et la plus silencieuse :
+    // elle DOUBLE les dégâts subis.
+    const mythique = Object.values(EVEILS).find((e) => e.sousClasse === 'berserker' && e.rarete === 'mythique');
+    const fragile = heros('guerrier', { sousClasse: 'berserker', eveil: { id: mythique.id } });
+    combat([fragile], [monstre()]);
+    verifier(reglagePassif(fragile, 'fragilite', 0) > 0, 'la contrainte doit être présente');
+    const r = infligerDegats(monstre(), fragile, 200);
+    verifier(r.multDefense > 1.5, `il doit encaisser bien plus (${r.multDefense})`);
+    verifier(/💔/.test(texteDegats(r)), `et la ligne doit le dire — « ${texteDegats(r)} »`);
+    etat.combat = null;
+  });
+
+  test('la Ligne de tir du Franc-tireur se compte comme un bonus visible', () => {
+    const tireur = heros('franc-tireur', { ligne: 'arriere' });
+    const autre = heros('guerrier', { ligne: 'arriere' });
+    combat([tireur, autre], [monstre()]);
+    const rt = infligerDegats(tireur, monstre(), 100, {});
+    const ra = infligerDegats(autre, monstre(), 100, {});
+    verifier(rt.multPassifs > 1.5, `« Ligne de tir » doit rendre le −40 % (${rt.multPassifs})`);
+    egal(Math.round(ra.multPassifs * 100), 100, 'les autres n\'ont rien de plus');
+    verifier(/🏅/.test(texteDegats(rt)), 'et ça se voit sur la ligne');
+    etat.combat = null;
+  });
+
+  test('quitter sa ligne avec l\'Éveil caché du tir est ANNONCÉ', () => {
+    const cache = Object.values(EVEILS).find((e) => e.sousClasse === 'rodeur' && e.rarete === 'cache');
+    const tireur = heros('franc-tireur', { sousClasse: 'rodeur', eveil: { id: cache.id }, ligne: 'arriere' });
+    const cb = combat([tireur], [monstre()]);
+    verifier(reglagePassif(tireur, 'bonusPerdusSiLigneChangee', false), 'la contrainte doit être là');
+    executerActionCoeur(tireur, { genre: 'ligne' }, null);
+    verifier(cb.journalLignes.some((l) => /retire tous ses bonus/.test(l)),
+      'la perte doit être annoncée au moment où elle se produit');
+    etat.combat = null;
+  });
+
+  test('la Voie du Soleil dit que le ciel ne la touche pas', () => {
+    const voie = Object.values(VOIES).find((v) => v.id.includes('pyromancien') && PASSIFS_VOIE[v.id].ignoreMeteoSubis);
+    verifier(!!voie, 'la Voie du Soleil doit exister');
+    const mage = heros('arcaniste', { sousClasse: 'pyromancien', voie: voie.id });
+    verifier(reglagePassif(mage, 'ignoreMeteoSubis', false), 'et porter le réglage');
+  });
+
+  test('l\'initiative gagnée est annoncée, pas seulement subie', () => {
+    const voie = Object.values(VOIES).find((v) => PASSIFS_VOIE[v.id].celeriteBonus);
+    const rapide = heros(VOIES[voie.id].classe, { sousClasse: VOIES[voie.id].sousClasse, voie: voie.id });
+    const cb = combat([rapide], [monstre()]);
+    annoncerInitiative(rapide);
+    verifier(cb.journalLignes.some((l) => /prend les devants/.test(l)),
+      'un bonus d\'initiative doit s\'annoncer');
+    // Et personne d'autre ne doit polluer le journal.
+    const lent = heros('guerrier');
+    const cb2 = combat([lent], [monstre()]);
+    annoncerInitiative(lent);
+    egal(cb2.journalLignes.length, 0, 'un héros sans bonus ne dit rien');
+    etat.combat = null;
+  });
+
+  test('la Chance de butin affichée est celle qui sert vraiment', () => {
+    // Le Voleur ajoute +10, un Éveil caché annule tout : ni l'un ni
+    // l'autre n'apparaissait nulle part.
+    const voleur = heros('franc-tireur', { sousClasse: 'voleur' });
+    verifier(chanceButin(voleur) > statsEffectives(voleur).cha, 'le Voleur doit voir sa Chance montée');
+    const cacheVoleur = Object.values(EVEILS).find((e) => e.sousClasse === 'voleur' && e.rarete === 'cache');
+    const bride = heros('franc-tireur', { sousClasse: 'voleur', eveil: { id: cacheVoleur.id } });
+    egal(chanceButin(bride), statsEffectives(bride).cha, 'et son Éveil caché doit vraiment l\'annuler');
+  });
+
+  test('la relance du Voltigeur n\'appartient qu\'au Voltigeur', () => {
+    // Elle passait par `ignoreLigne`, que les douze Voies de la famille
+    // portent aussi : un Rôdeur avec n'importe quelle Voie héritait de la
+    // relance du Voltigeur.
+    const voltigeur = heros('franc-tireur', { sousClasse: 'voltigeur' });
+    verifier(reglagePassif(voltigeur, 'relanceCelerite', false), 'le Voltigeur garde sa relance');
+    const voieRodeur = Object.values(VOIES).find((v) => v.sousClasse === 'rodeur');
+    const rodeur = heros('franc-tireur', { sousClasse: 'rodeur', voie: voieRodeur.id });
+    verifier(!reglagePassif(rodeur, 'relanceCelerite', false),
+      'un Rôdeur avec une Voie ne doit PAS l\'hériter');
+    verifier(reglagePassif(rodeur, 'ignoreLigne', false),
+      'mais il garde bien l\'absence de malus de ligne');
+  });
+});

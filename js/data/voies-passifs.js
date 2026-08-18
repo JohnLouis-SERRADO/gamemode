@@ -99,6 +99,7 @@ const PHRASES_VOIE = {
   pasGratuit: () => 'changer de ligne ne consomme pas son tour',
   bonusApresPas: (v) => `et le coup qui suit ce pas gagne +${pct(v)}`,
   ignoreLigne: () => 'aucun malus depuis la ligne arrière',
+  relanceCelerite: () => 'et sa Célérité lui offre parfois une action de plus dans la manche',
 
   // --- États ---
   dureeBonusStatut: (v) => `les états qu'il inflige durent ${v} tour${v > 1 ? 's' : ''} de plus`,
@@ -249,9 +250,9 @@ const MECANIQUES_VOIE = {
     { contreEntravee: 0.30, bonusMarque: 0.12, dureeMarque: 3, ignoreLigne: true },
   ],
   voltigeur: [
-    { coupsSupp: 2, partCoupsSupp: 0.60, ignoreLigne: true },
-    { celeriteBonus: 25, actionSurCritique: 2, ignoreLigne: true },
-    { bonusLigneArriere: 0.50, interditAvant: true, ignoreLigne: true },
+    { coupsSupp: 2, partCoupsSupp: 0.60, ignoreLigne: true, relanceCelerite: true },
+    { celeriteBonus: 25, actionSurCritique: 2, ignoreLigne: true, relanceCelerite: true },
+    { bonusLigneArriere: 0.50, interditAvant: true, ignoreLigne: true, relanceCelerite: true },
   ],
 
   // ---------------- 🔮 Arcaniste ----------------

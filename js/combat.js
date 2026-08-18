@@ -57,7 +57,10 @@ function aPassif(c, cle) {
 // Franc-tireur : la ligne arrière est sa position de travail, pas une
 // punition. Ses tirs partent à pleine puissance.
 function ignoreMalusDeLigne(c) {
-  return aPassif(c, 'Ligne de tir');
+  // Le passif de la classe de base, ET le réglage que les spécialités et
+  // les Voies de la famille reprennent — il annonçait « aucun malus
+  // depuis la ligne arrière » sans que rien ne le lise.
+  return aPassif(c, 'Ligne de tir') || reglagePassif(c, 'ignoreLigne', false);
 }
 
 // Guerrier : chaque coup porté dans la manche nourrit le suivant. Trois
@@ -73,7 +76,13 @@ function bonusElan(c) {
 
 function nourrirElan(c) {
   if (!aPassif(c, 'Élan')) return;
-  c.elan = Math.min(ELAN_MAX, (c.elan || 0) + 1);
+  const avant = c.elan || 0;
+  c.elan = Math.min(ELAN_MAX, avant + 1);
+  // Le palier monte : on le dit. Sans ça, le joueur voit ses dégâts
+  // grimper de 8 % par coup et l'attribue au hasard des jets.
+  if (c.elan > avant) {
+    journal(`⚡ Élan : ${c.nom} enchaîne — ses coups gagnent +${Math.round(c.elan * ELAN_PAR_COUP * 100)} %.`);
+  }
 }
 
 // Gardien : « attirer les coups est une arme ». Son passif annonçait
@@ -256,6 +265,21 @@ function multiplicateurPassifs(source, cible, options) {
   const p = reglagesDuCombattant(source);
   const cb = etat.combat;
   let mult = auraDesAllies(source);
+
+  // v25.1 — LES PASSIFS DE CLASSE DE BASE ENTRENT ICI, EUX AUSSI.
+  //
+  // Ils étaient appliqués quatre lignes plus haut dans infligerDegats,
+  // donc HORS du chiffre remonté à texteDegats : le badge « 🏅 » ne les
+  // comptait pas. Un Guerrier voyait ses dégâts monter de 8 % par coup
+  // sans un mot — exactement le symptôme du Faucheur, sur le passif que
+  // TOUS les Guerriers portent. Trois classes étaient dans ce cas.
+  mult *= bonusElan(source);      // Guerrier : chaque coup nourrit le suivant
+  mult *= bonusRempart(source);   // Gardien : provoquer, c'est frapper
+  // Franc-tireur : « Ligne de tir » annule le −40 % de la ligne arrière.
+  // On le compte comme un bonus plutôt que comme une exception silencieuse
+  // dans le calcul des lignes : le résultat est le même, mais il se voit.
+  if (!options.magique && source.ligne === 'arriere' && ignoreMalusDeLigne(source)) mult /= 0.6;
+
   if (!p) return mult;
 
   // Colosse : la masse comme argument.
@@ -624,7 +648,7 @@ function rejouerParVoltige(j) {
     journal(`🐲 ${j.nom} n'a rien encaissé : il repart pour un tour.`);
     return true;
   }
-  if (!reglagePassif(j, 'ignoreLigne', false) || j.actionRejouee) return false;
+  if (!reglagePassif(j, 'relanceCelerite', false) || j.actionRejouee) return false;
   const chance = sousCarac(statsEffectives(j), 'celerite');
   if (chance <= 0 || Math.random() >= chance) return false;
   j.actionRejouee = true;
@@ -651,6 +675,18 @@ function propagerStatutsDuCorrupteur(c, expires) {
       journal(`🦠 Contagion : ${NOM_STATUT[st.type] || st.type} passe de ${c.nom} à ${
         totale ? 'TOUS les autres' : receveurs[0].nom}.`);
     });
+}
+
+// Métamorphe en corbeau, Voies rapides : la Célérité gagnée ne se voit
+// que dans l'ordre de passage — c'est-à-dire nulle part. On l'annonce.
+function annoncerInitiative(j) {
+  const corbeau = j.forme === 'corbeau' ? reglagePassif(j, 'initiativeCorbeau', 0) : 0;
+  const celerite = reglagePassif(j, 'celeriteBonus', 0);
+  if (!corbeau && !celerite) return;
+  const bouts = [];
+  if (corbeau) bouts.push(`+${Math.round(corbeau * 100)} % d'initiative (corbeau)`);
+  if (celerite) bouts.push(`+${celerite} de Célérité`);
+  journal(`💨 ${j.nom} prend les devants : ${bouts.join(' et ')}.`);
 }
 
 // v23 — Ce qu'une Voie met en place au tout premier tour : les pièges,
@@ -1315,7 +1351,7 @@ async function boucleTour() {
         j.manchesDuel = (j.manchesDuel || 0) + 1; // « Duel » : la traque s'installe
         // Voies de la Rage et du Souffle : une manche sans encaisser paie.
         if (cb.manche > 1) j.manchesPropres = (j.manchesPropres || 0) + 1;
-        if (cb.manche === 1) { ouvertureDesVoies(j); ouvertureDesEveils(j); }
+        if (cb.manche === 1) { ouvertureDesVoies(j); ouvertureDesEveils(j); annoncerInitiative(j); }
       });
       traiterMecaniquesManche(cb);
     }
@@ -1547,10 +1583,8 @@ function infligerDegats(source, cible, brut, options = {}) {
   // sous l'orage la foudre porte. Le physique reste neutre — le temps
   // qu'il fait ne change rien à un coup d'épée.
   if (options.element) d *= multElementMonde(options.element);
-  d *= bonusElan(source);            // « Élan » : chaque coup nourrit le suivant
-  d *= bonusRempart(source);         // « Rempart » : provoquer, c'est frapper
-  // v25 : on retient ce que les passifs ont pesé dans ce coup précis —
-  // c'est ce chiffre qui s'affichera sur la ligne de dégâts.
+  // v25 : on retient ce que les passifs de l'ATTAQUANT ont pesé dans ce
+  // coup précis — Élan, Rempart et Ligne de tir compris depuis la v25.1.
   const multPassifs = multiplicateurPassifs(source, cible, options);
   d *= multPassifs;
   d *= multiplicateurMarque(cible);  // « Marque » du Traqueur : pour toute l'équipe
@@ -1603,32 +1637,54 @@ function infligerDegats(source, cible, brut, options = {}) {
   // v21 — Plus de réduction plate venue de l'équipement : encaisser se joue
   // avec ce qui se voit en combat. Seul le Gardien en garde une, parce que
   // c'est son métier et qu'elle ne dépend d'aucun objet.
-  d *= resistanceDeClasse(cible);
-  d *= reductionTemplier(cible);     // « Bouclier partagé » : la ligne avant tient
+  // v25.1 — CE QUE LA CIBLE DOIT À SES PROPRES PASSIFS.
+  //
+  // Ces multiplicateurs-là ne viennent pas de l'attaquant : ils viennent
+  // de celui qui encaisse. Ils n'entraient donc dans aucun chiffre
+  // affiché — et la contrainte la plus punitive du jeu (« fragilité »,
+  // qui DOUBLE les dégâts reçus) était aussi la plus silencieuse. On les
+  // rassemble, et on les affiche à part.
+  let multDefense = resistanceDeClasse(cible);
+  multDefense *= reductionTemplier(cible);  // « Bouclier partagé » : la ligne avant tient
+  multDefense *= 1 + reglagePassif(cible, 'fragilite', 0);
+  d *= multDefense;
   // La nuit, ce qui rôde frappe plus fort — c'est le prix du butin majoré.
   // Voie du Soleil : sur lui, le ciel n'a pas de prise.
-  if (source.type === 'monstre' && cible.type === 'joueur'
-    && !reglagePassif(cible, 'ignoreMeteoSubis', false)) {
-    d *= (mondeMaintenant().effets.degatsSubis || 1);
+  if (source.type === 'monstre' && cible.type === 'joueur') {
+    const ciel = mondeMaintenant().effets.degatsSubis || 1;
+    if (reglagePassif(cible, 'ignoreMeteoSubis', false)) {
+      if (ciel > 1 && !cible.cielAnnonce) {
+        cible.cielAnnonce = true;
+        journal(`☀️ Le ciel n'a pas de prise sur ${cible.nom} : les ${Math.round((ciel - 1) * 100)} % de la nuit ne le touchent pas.`);
+      }
+    } else {
+      d *= ciel;
+    }
   }
   // Voie du Vide / du Néant : rien n'arrête ce coup — ni la garde, ni un
   // bouclier — et il se paie sur les propres PV du lanceur.
   const perce = reglagePassif(source, 'perceArmure', 0);
   if (!perce && cible.defense) d *= 0.5;
   if (cible.race === 'nain') d *= 0.9; // Peau de pierre
-  // Contrainte mythique du corps à corps : il encaisse beaucoup plus.
-  d *= 1 + reglagePassif(cible, 'fragilite', 0);
   // v16 : les lignes de combat — un coup PHYSIQUE perd 40 % quand il part
   // de la ligne arrière ou qu'il la vise. La magie ignore les lignes.
   if (!options.magique) {
     // « Ligne de tir » : le Franc-tireur travaille de loin, sans pénalité.
-    if (source.ligne === 'arriere' && !ignoreMalusDeLigne(source)) d *= 0.6;
+    // Le malus s'applique à tout le monde ; « Ligne de tir » le rend au
+    // Franc-tireur via multiplicateurPassifs, où il se voit.
+    if (source.ligne === 'arriere') d *= 0.6;
     if (cible.ligne === 'arriere') d *= 0.6;
   }
   d = Math.max(1, Math.round(d));
   // Colosse « L'Inébranlable » : aucun coup ne dépasse son plafond.
   const plafondCoup = reglagePassif(cible, 'plafondDegatsParCoup', 0);
-  if (plafondCoup) d = Math.min(d, Math.max(1, Math.round(cible.maxHp * plafondCoup)));
+  if (plafondCoup) {
+    const borne = Math.max(1, Math.round(cible.maxHp * plafondCoup));
+    if (d > borne) {
+      multDefense *= borne / d;   // le plafond EST une réduction : il se compte comme telle
+      d = borne;
+    }
+  }
 
   let absorbe = 0;
   const bouclier = !perce && cible.statuts.find((s) => s.type === 'bouclier' && s.valeur > 0);
@@ -1675,7 +1731,7 @@ function infligerDegats(source, cible, brut, options = {}) {
     cible.hp = 1;
     journal(`🐱 ${cible.nom} retombe sur ses pattes : Neuf vies le laisse à 1 PV !`);
   }
-  return { degats: d, crit, direct, absorbe, multPassifs };
+  return { degats: d, crit, direct, absorbe, multPassifs, multDefense };
 }
 
 function texteDegats(r) {
@@ -1689,6 +1745,13 @@ function texteDegats(r) {
   if (r.multPassifs != null && Math.abs(r.multPassifs - 1) >= 0.005) {
     const signe = r.multPassifs > 1 ? '+' : '−';
     t += ` · 🏅 ${signe}${Math.round(Math.abs(r.multPassifs - 1) * 100)} % (passifs)`;
+  }
+  // Et ce que la CIBLE doit aux siens : le Rempart du Gardien, le
+  // Bouclier partagé du Templier, la fragilité d'un Éveil mythique.
+  if (r.multDefense != null && Math.abs(r.multDefense - 1) >= 0.005) {
+    t += r.multDefense < 1
+      ? ` · 🛡️ −${Math.round((1 - r.multDefense) * 100)} % (défense)`
+      : ` · 💔 +${Math.round((r.multDefense - 1) * 100)} % (fragilité)`;
   }
   return t;
 }
@@ -2178,7 +2241,14 @@ function executerActionCoeur(j, action, cible) {
     // Danselame, dont c'est justement le passif (et le coup suivant paie).
     j.ligne = j.ligne === 'arriere' ? 'avant' : 'arriere';
     journal(`🔁 ${j.nom} se replace en ligne ${j.ligne === 'arriere' ? 'arrière (physique −40 %, donné et subi)' : 'avant'} !`);
-    j.ligneChangee = true;   // Éveil caché du tir : ses bonus tombent
+    // Éveil caché du tir : quitter sa ligne coûte TOUS les bonus de passif
+    // jusqu'à la fin du combat. C'était la perte la plus silencieuse du
+    // jeu — et le badge « 🏅 » disparaissait en même temps que le bonus,
+    // emportant la seule trace qui aurait pu prévenir.
+    if (!j.ligneChangee && reglagePassif(j, 'bonusPerdusSiLigneChangee', false)) {
+      journal(`🚫 ${j.nom} a quitté sa ligne : son Éveil lui retire tous ses bonus de passif jusqu'à la fin du combat.`);
+    }
+    j.ligneChangee = true;
     if (reglagePassif(j, 'pasGratuit', false)) {
       j.pasDeDanse = true;
       const cumul = reglagePassif(j, 'cumulPas', 0);
