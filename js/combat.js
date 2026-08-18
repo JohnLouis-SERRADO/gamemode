@@ -1003,6 +1003,26 @@ function eclabousserSelonLaVoie(source, cible, degats, comp) {
   });
 }
 
+// v25.2 — L'EXÉCUTION NE REGARDAIT QUE LES SORTS.
+//
+// La fiche dit « il exécute sur place TOUTE CIBLE LAISSÉE sous 15 % de
+// ses PV ». Elle ne dit pas « toute cible qu'il touche d'un sort ». Or
+// executerSiMoribonde() n'était appelé que depuis lancerCompetence() :
+// une attaque simple qui laissait un monstre à 14 % le laissait vivre, et
+// une éclaboussure ou une riposte non plus. Le joueur voyait donc son
+// exécution marcher une fois sur deux, sans comprendre la règle.
+//
+// Le balayage de fin de tour ferme la question pour de bon : quoi qu'il
+// ait fait de son tour — sort, attaque, riposte, onde de choc — ce qui
+// reste debout sous le seuil tombe. Un seul endroit à tenir, et aucun
+// chemin de dégâts ne peut plus être oublié.
+function acheverLesMoribonds(j) {
+  const cb = etat.combat;
+  if (!cb || cb.termine || estMort(j)) return;
+  if (!reglagePassif(j, 'seuilExecution', 0)) return;
+  cb.monstres.filter((m) => !m.mort).forEach((m) => executerSiMoribonde(j, m));
+}
+
 // Faucheur : l'exécution. Une cible laissée sous son seuil ne se relève
 // pas — c'est le second membre de son passif, celui qui ne marchait pas.
 function executerSiMoribonde(source, cible) {
@@ -2290,6 +2310,11 @@ function executerActionCoeur(j, action, cible) {
   } else {
     lancerCompetence(j, action.compId, cible);
   }
+  // Faucheur : quoi qu'il vienne de faire — sort, attaque, riposte, onde
+  // de choc —, ce qui reste debout sous son seuil tombe. Ici, et pas dans
+  // la boucle de tour : c'est le seul point par lequel passent TOUTES les
+  // actions d'un héros, solo et expédition confondues.
+  acheverLesMoribonds(j);
   return null;
 }
 

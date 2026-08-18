@@ -4270,3 +4270,124 @@ suite('Angles morts refermés (v25.1)', () => {
       'mais il garde bien l\'absence de malus de ligne');
   });
 });
+
+// =====================================================================
+// v25.2 — L'exécution du Faucheur, cas par cas.
+//
+// Le passif dit « toute cible LAISSÉE sous 15 % de ses PV ». Il ne dit
+// pas « toute cible touchée par un sort » — or c'était le seul cas
+// couvert : une attaque simple qui laissait un monstre à 14 % le laissait
+// vivre. Ces tests balaient tous les chemins par lesquels un Faucheur
+// peut laisser quelqu'un sous le seuil.
+// =====================================================================
+suite('Exécution du Faucheur (v25.2)', () => {
+  window.rendreJournal = () => {};
+
+  function faucheur(sousClasse) {
+    return {
+      type: 'joueur', classe: 'runelame', sousClasse: sousClasse || 'faucheur',
+      voie: null, eveil: null, niveau: 30, bid: 'x', nom: 'Faucheur', avatar: '⚰️',
+      stats: { for: 4, int: 40, dex: 5, vit: 20, esp: 4, cha: 4 },
+      equipement: {}, familiers: [], familier: null, inventaire: [],
+      statuts: [], cooldowns: {}, competences: [], rangs: {}, ligne: 'avant',
+      hp: 600, maxHp: 600, mp: 999, maxMp: 999, ko: false,
+    };
+  }
+
+  const proie = (id, part) => ({
+    type: 'monstre', id, nom: 'Proie ' + id, emoji: '🎯', niveau: 30, atk: 5, dex: 5,
+    statuts: [], maxHp: 1000, hp: Math.round(1000 * part), mort: false, defense: false,
+    attaques: [{ nom: 'coup', emoji: '💥', mult: 1, poids: 1, type: 'mono' }],
+  });
+
+  function combat(j, monstres) {
+    etat.combat = { genre: 'exploration', equipe: [j], monstres, manche: 1, file: [],
+      actif: j, termine: false, journalLignes: [] };
+    reinitialiserPassifsCombat(j);
+    return etat.combat;
+  }
+
+  test('une ATTAQUE SIMPLE qui laisse la cible sous le seuil exécute — le trou d\'origine', () => {
+    const j = faucheur();
+    const c = proie('a', 0.16);
+    combat(j, [c]);
+    executerActionCoeur(j, { genre: 'attaque' }, c);
+    verifier(c.mort, `l'attaque simple doit achever la proie (${c.hp}/${c.maxHp} PV restants)`);
+    etat.combat = null;
+  });
+
+  test('un SORT qui laisse la cible sous le seuil exécute', () => {
+    const j = faucheur();
+    j.competences = ['runelame-lame-gravee'];
+    const c = proie('b', 0.16);
+    combat(j, [c]);
+    executerActionCoeur(j, { genre: 'competence', compId: 'runelame-lame-gravee' }, c);
+    verifier(c.mort, 'le sort doit achever la proie');
+    etat.combat = null;
+  });
+
+  test('une cible au-dessus du seuil ne meurt PAS', () => {
+    const j = faucheur();
+    const c = proie('c', 0.9);
+    combat(j, [c]);
+    executerActionCoeur(j, { genre: 'attaque' }, c);
+    verifier(!c.mort, `une proie à 90 % doit survivre (${Math.round(c.hp / c.maxHp * 100)} %)`);
+    verifier(c.hp > c.maxHp * 0.15, 'et rester au-dessus du seuil');
+    etat.combat = null;
+  });
+
+  test('le seuil est inclusif : pile 15 %, elle tombe', () => {
+    const j = faucheur();
+    const c = proie('d', 0.15);
+    combat(j, [c]);
+    executerSiMoribonde(j, c);
+    verifier(c.mort, 'exactement au seuil, la cible est exécutée');
+    etat.combat = null;
+  });
+
+  test('même une action SANS attaque balaie les moribonds', () => {
+    // « Toute cible LAISSÉE sous 15 % » : si un poison l'a amenée là, se
+    // mettre en garde suffit à l'achever.
+    const j = faucheur();
+    const c = proie('e', 0.10);
+    combat(j, [c]);
+    executerActionCoeur(j, { genre: 'defense' }, null);
+    verifier(c.mort, 'la proie laissée sous le seuil doit tomber');
+    etat.combat = null;
+  });
+
+  test('toutes les cibles sous le seuil tombent, pas seulement celle visée', () => {
+    const j = faucheur();
+    const trio = [proie('f1', 0.10), proie('f2', 0.12), proie('f3', 0.80)];
+    combat(j, trio);
+    executerActionCoeur(j, { genre: 'attaque' }, trio[2]);
+    egal(trio.filter((m) => m.mort).length, 2, 'les deux moribondes tombent, la troisième non');
+    verifier(!trio[2].mort, 'celle à 80 % survit');
+    etat.combat = null;
+  });
+
+  test('les autres spécialités n\'exécutent rien', () => {
+    const faux = faucheur('corrupteur');
+    const c = proie('g', 0.05);
+    combat(faux, [c]);
+    executerActionCoeur(faux, { genre: 'attaque' }, c);
+    verifier(!c.mort || c.hp <= 0, 'un Corrupteur ne doit pas exécuter par passif');
+    egal(reglagePassif(faux, 'seuilExecution', 0), 0, 'et ne porte aucun seuil d\'exécution');
+    etat.combat = null;
+  });
+
+  test('les seuils des autres porteurs d\'exécution valent ce que dit leur fiche', () => {
+    // Assassin, Traqueur et les Voies/Éveils qui reprennent la clé.
+    const porteurs = [];
+    Object.entries(PASSIFS_SOUS_CLASSE).forEach(([id, p]) => {
+      if (p.seuilExecution) porteurs.push([`spécialité ${id}`, p.seuilExecution]);
+    });
+    verifier(porteurs.length >= 1, 'au moins une spécialité doit porter l\'exécution');
+    const horsBornes = porteurs.filter(([, v]) => !(v > 0 && v <= 0.3)).map(([n]) => n);
+    aucun(horsBornes, 'seuils d\'exécution hors de toute mesure');
+
+    // Et le seuil du Faucheur est bien celui annoncé sur sa fiche.
+    egal(PASSIFS_SOUS_CLASSE.faucheur.seuilExecution, 0.15, 'le seuil du Faucheur');
+    verifier(SOUS_CLASSES.faucheur.passif.includes('15 %'), 'et sa fiche annonce bien 15 %');
+  });
+});
