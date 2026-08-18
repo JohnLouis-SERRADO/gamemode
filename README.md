@@ -32,7 +32,9 @@ Les six classes couvrent la trinité MMORPG au complet :
 
 **Les points de maîtrise** montent les compétences de classe : +15 % de puissance par rang, cinq rangs au maximum. Un point **tous les 3 niveaux jusqu'au 18, puis tous les 4 jusqu'au 50, puis tous les 5 jusqu'au 100** — soit **24 points** sur toute la carrière, de quoi porter **4 de vos 8 compétences de classe** au rang 5. La cadence est la source : la liste des paliers et la phrase affichée dans le jeu en découlent toutes les deux, elles ne peuvent plus se contredire.
 
-**Chaque spécialité a son passif, et il fonctionne** — les vingt-sept. Le Faucheur reprend 25 % en PV sur *tous* ses sorts et exécute les cibles sous 15 % de vie, le Chevalier Noir paie ses sorts en sang quand le mana manque, l'Assassin ouvre sur un critique garanti, le Traqueur marque ses cibles pour toute l'équipe, le Chaman retient l'esprit d'un allié tombé. Le texte du passif n'est plus écrit à la main : il est **produit à partir des chiffres qui le font tourner** (`js/data/passifs.js`), donc une fiche ne peut plus promettre autre chose que ce que le moteur applique. *Les 81 passifs de Voie (niveau 50), eux, sont encore descriptifs — c'est le prochain lot.*
+**Chaque palier a son passif, et il fonctionne** — les 27 spécialités *et* les 81 Voies. Le Faucheur reprend 25 % en PV sur *tous* ses sorts et exécute les cibles sous 15 % de vie, le Chevalier Noir paie ses sorts en sang quand le mana manque, l'Assassin ouvre sur un critique garanti, le Chaman retient l'esprit d'un allié tombé. Au niveau 50, la Voie prend le relais : le Colosse du Géant porte vraiment +60 % de PV, le Rôdeur de la Meute entre en combat avec trois compagnons, la Danselame du Miroir riposte à chaque coup encaissé, l'Oracle de la Vision fait esquiver toute l'équipe, le Corrupteur de la Peste contamine l'arène entière.
+
+Le texte d'un passif n'est plus écrit à la main : il est **produit à partir des chiffres qui le font tourner** (`js/data/passifs.js`, `js/data/voies-passifs.js`). Une fiche ne peut donc plus promettre autre chose que ce que le moteur applique — et un réglage sans phrase, comme une phrase sans réglage, fait échouer les tests. Les réglages d'une Voie **recouvrent** ceux de sa spécialité sans jamais l'effacer : le Faucheur de la Voie du Drain passe de 25 à 40 % de vol de vie et garde son exécution.
 
 **701 compétences** au total : 56 de classe (48 pour les six classes jouables, plus les 8 de l'Aventurier historique, gardées pour les vieilles sauvegardes), 216 de spécialité, 81 de Voie, 324 d'Éveil et 24 du pool commun acheté à l'Arcanium. Ce pool commun est le seul qui s'achète : les compétences de spécialité, de Voie et d'Éveil se méritent à leur palier, jamais en boutique. Toujours **8 sorts équipés au maximum** — l'arbitrage ne disparaît jamais.
 
@@ -201,7 +203,8 @@ js/data/competences.js           — moteur de compétences, coût en mana, port
 js/data/classes.js               — les 6 classes de base
 js/data/sous-classes.js          — 27 spécialités et leurs compétences
 js/data/passifs.js               — les 27 passifs de spécialité : leurs réglages, et le texte qu'ils produisent
-js/data/voies.js                 — 81 Voies (niveau 50)
+js/data/voies.js                 — 81 Voies (niveau 50) et leurs compétences
+js/data/voies-passifs.js         — les 81 passifs de Voie : leurs réglages, et le texte qu'ils produisent
 js/data/eveils.js                — 162 Éveils (niveau 80), tirage et garanties
 js/data/tour-eveil.js            — la Tour de l'Éveil, Sceaux et 7 services
 js/data/progression.js           — courbe d'XP jusqu'au niveau 100, stats effectives, échelle de l'équipement

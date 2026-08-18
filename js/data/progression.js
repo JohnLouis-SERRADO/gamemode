@@ -152,7 +152,9 @@ function maxHpDe(p) {
   const base = 25 + s.vit * 7 + (p.niveau - 1) * 6 + s.pvMax;
   // Métamorphe : sous la forme d'ours, la carcasse s'épaissit.
   const ours = p.forme === 'ours' ? reglagePassif(p, 'pvOurs', 0) : 0;
-  return Math.round(base * (1 + ours));
+  // Colosse du Géant, Métamorphe de l'Ours : la Voie ajoute sa masse.
+  const voie = reglagePassif(p, 'pvMaxVoie', 0);
+  return Math.round(base * (1 + ours) * (1 + voie));
 }
 
 // La Piété gonfle la réserve de mana : c'est la sous-caractéristique des

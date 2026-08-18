@@ -2,7 +2,7 @@ name: Déployer sur GitHub Pages
 
 on:
   push:
-    branches: ["claude/turn-based-mmorpg-game-kb73gi"]
+    branches: ["claude/turn-based-mmorpg-game-kb73gi", "claude/game-consistency-skills-kya0l5"]
   workflow_dispatch:
 
 permissions:

@@ -31,10 +31,42 @@ function passifSousClasse(c) {
   return PASSIFS_SOUS_CLASSE[c.sousClasse] || null;
 }
 
-// Le réglage `cle` du passif de `c`, ou `defaut` si ce n'est pas sa
-// sous-classe. Les hooks du moteur de combat ne font que ça.
+// =====================================================================
+// v23 — LA FUSION SPÉCIALITÉ + VOIE.
+//
+// Une Voie n'est pas un second système : c'est le même, poussé plus loin.
+// Ses réglages RECOUVRENT ceux de la spécialité, clé par clé. Trois
+// conséquences, toutes voulues :
+//
+//   • une Voie qui reprend une clé déjà connue du moteur n'a rien à
+//     brancher — le Faucheur de la Voie du Drain écrit `drainSorts: 0.40`
+//     et le drain passe de 25 à 40 % sans une ligne de moteur en plus ;
+//   • une Voie qui n'en parle pas laisse le passif de spécialité intact,
+//     donc choisir une Voie n'a jamais enlevé quoi que ce soit ;
+//   • les réglages d'une Voie répètent volontiers ceux de leur spécialité
+//     (voir js/data/voies-passifs.js) : c'est ce qui rend la fiche de Voie
+//     complète et lisible d'un coup d'œil.
+//
+// Le résultat est mémorisé par couple (spécialité, Voie) : cette fonction
+// est appelée plusieurs fois par coup porté.
+// =====================================================================
+const MEMO_REGLAGES = {};
+
+function reglagesDuCombattant(c) {
+  if (!c || c.type !== 'joueur') return null;
+  const cleMemo = `${c.sousClasse || '-'}|${c.voie || '-'}`;
+  if (MEMO_REGLAGES[cleMemo]) return MEMO_REGLAGES[cleMemo];
+  const specialite = PASSIFS_SOUS_CLASSE[c.sousClasse] || null;
+  const voie = (typeof PASSIFS_VOIE !== 'undefined' && PASSIFS_VOIE[c.voie]) || null;
+  if (!specialite && !voie) return null;
+  MEMO_REGLAGES[cleMemo] = { ...(specialite || {}), ...(voie || {}) };
+  return MEMO_REGLAGES[cleMemo];
+}
+
+// Le réglage `cle` du passif de `c` — spécialité, puis Voie par-dessus —
+// ou `defaut` s'il n'en porte pas. Les hooks du moteur ne font que ça.
 function reglagePassif(c, cle, defaut = 0) {
-  const p = passifSousClasse(c);
+  const p = reglagesDuCombattant(c);
   return p && p[cle] !== undefined ? p[cle] : defaut;
 }
 

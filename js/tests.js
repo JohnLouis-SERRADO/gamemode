@@ -3552,3 +3552,231 @@ suite('Cohérence v22', () => {
     aucun(muets, 'verrous illisibles');
   });
 });
+
+// =====================================================================
+// v23 — Les quatre-vingt-une Voies branchées : leurs réglages existent,
+// leur fiche les récite, et le moteur les lit vraiment.
+// =====================================================================
+suite('Voies (v23)', () => {
+  window.rendreJournal = () => {};
+
+  function combattantVoie(sousClasse, voie, extra) {
+    const base = SOUS_CLASSES[sousClasse];
+    return Object.assign({
+      type: 'joueur', classe: base ? base.classe : 'guerrier', sousClasse, voie,
+      niveau: 50, bid: 'x', nom: 'Cobaye', avatar: '🧪',
+      stats: { for: 40, int: 40, dex: 40, esp: 40, vit: 60, cha: 10 },
+      equipement: {}, familiers: [], familier: null, inventaire: [],
+      statuts: [], cooldowns: {}, competences: [], rangs: {}, ligne: 'avant',
+      hp: 1000, maxHp: 1000, mp: 100, maxMp: 100, ko: false,
+    }, extra || {});
+  }
+
+  function monstreVoie(extra) {
+    return Object.assign({
+      type: 'monstre', id: 'm0', nom: 'Mannequin', emoji: '🎯', niveau: 50,
+      atk: 10, dex: 5, statuts: [], hp: 1000, maxHp: 1000, mort: false, defense: false,
+    }, extra || {});
+  }
+
+  function combatVoie(equipe, monstres) {
+    etat.combat = {
+      genre: 'exploration', equipe, monstres, manche: 1, file: [],
+      actif: null, termine: false, journalLignes: [],
+    };
+    return etat.combat;
+  }
+
+  // Retrouve une Voie par sa spécialité et son rang (0, 1 ou 2).
+  function voieDeRang(sousClasse, rang) {
+    return Object.values(VOIES).find((v) => v.sousClasse === sousClasse && v.rang === rang);
+  }
+
+  test('les 81 Voies ont des réglages, et pas seulement une phrase', () => {
+    egal(Object.keys(VOIES).length, 81, 'le compte des Voies');
+    const sans = Object.values(VOIES).filter((v) => !PASSIFS_VOIE[v.id]).map((v) => v.titre);
+    aucun(sans, 'Voies sans réglage mécanique');
+    const vides = Object.values(VOIES)
+      .filter((v) => Object.keys(PASSIFS_VOIE[v.id] || {}).length === 0).map((v) => v.titre);
+    aucun(vides, 'Voies dont les réglages sont vides');
+  });
+
+  test('la fiche d\'une Voie récite EXACTEMENT ses réglages', () => {
+    // C'est toute la garantie : le texte n'est pas écrit, il est produit.
+    const desaccordees = Object.values(VOIES)
+      .filter((v) => v.passif !== texteMecaniquesVoie(PASSIFS_VOIE[v.id]))
+      .map((v) => v.titre);
+    aucun(desaccordees, 'Voies dont la fiche a divergé de ses réglages');
+    const muettes = Object.values(VOIES).filter((v) => !v.passif || v.passif.length < 20)
+      .map((v) => v.titre);
+    aucun(muettes, 'Voies dont la fiche ne dit rien');
+  });
+
+  test('chaque réglage de Voie sait se dire en français', () => {
+    // Un réglage sans phrase serait un effet invisible : le joueur le
+    // subirait sans jamais l'avoir lu. Interdit.
+    const orphelins = new Set();
+    Object.values(MECANIQUES_VOIE).forEach((liste) => liste.forEach((m) => {
+      Object.keys(m).forEach((cle) => {
+        if (!PHRASES_VOIE[cle] && !CLES_MUETTES.has(cle)) orphelins.add(cle);
+      });
+    }));
+    aucun([...orphelins], 'réglages de Voie sans phrase ni statut de complément');
+  });
+
+  test('une Voie recouvre sa spécialité sans jamais l\'effacer', () => {
+    // Le Faucheur draine 25 % ; sa Voie du Drain monte à 40 % — et son
+    // exécution, qui vient de la spécialité, reste en place.
+    const drain = voieDeRang('faucheur', 0);
+    const nu = combattantVoie('faucheur', null);
+    const voie = combattantVoie('faucheur', drain.id);
+    egal(reglagePassif(nu, 'drainSorts', 0), PASSIFS_SOUS_CLASSE.faucheur.drainSorts,
+      'sans Voie, le drain de la spécialité');
+    egal(reglagePassif(voie, 'drainSorts', 0), 0.4, 'avec la Voie du Drain, il monte');
+    egal(reglagePassif(voie, 'seuilExecution', 0), PASSIFS_SOUS_CLASSE.faucheur.seuilExecution,
+      'et l\'exécution de la spécialité reste');
+  });
+
+  test('les Voies qui multiplient les dégâts multiplient vraiment', () => {
+    const cible = monstreVoie();
+    const mesure = (sousClasse, rang, extra, options) => {
+      const v = voieDeRang(sousClasse, rang);
+      const c = combattantVoie(sousClasse, v.id, extra);
+      combatVoie([c], [cible]);
+      const m = multiplicateurPassifs(c, cible, options || {});
+      etat.combat = null;
+      return m;
+    };
+    // Templier du Zèle : +15 % par allié — seul, il n'a personne.
+    const zele = voieDeRang('templier', 2);
+    const seul = combattantVoie('templier', zele.id);
+    const epaule = combattantVoie('templier', zele.id);
+    combatVoie([seul, epaule], [cible]);
+    const aDeux = multiplicateurPassifs(seul, cible, {});
+    combatVoie([seul], [cible]);
+    const toutSeul = multiplicateurPassifs(seul, cible, {});
+    etat.combat = null;
+    verifier(aDeux > toutSeul, 'Templier du Zèle : un allié de plus, des dégâts en plus');
+
+    verifier(mesure('berserker', 0, { manchesPropres: 4 }) > mesure('berserker', 0, { manchesPropres: 0 }),
+      'Berserker de la Rage : la manche propre paie');
+    const moribonde = monstreVoie({ id: 'm1', hp: 100, maxHp: 1000 });
+    const miseAMort = voieDeRang('assassin', 2);
+    const tueur = combattantVoie('assassin', miseAMort.id, { premierCoupFait: true });
+    combatVoie([tueur], [moribonde]);
+    verifier(multiplicateurPassifs(tueur, moribonde, {}) >= 2,
+      'Assassin de la Mise à Mort : dégâts doublés sous le seuil');
+    etat.combat = null;
+
+    verifier(mesure('voltigeur', 2, { ligne: 'arriere' }) > mesure('voltigeur', 2, { ligne: 'avant' }),
+      'Voltigeur de la Distance : la portée paie');
+    verifier(mesure('colosse', 2, {}, { zone: true }) > mesure('colosse', 2, {}, { zone: false }),
+      'Colosse du Séisme : les zones frappent plus fort');
+    verifier(mesure('vibrelame', 0, {}, { coupIndex: 3 }) > mesure('vibrelame', 0, {}, { coupIndex: 0 }),
+      'Vibrelame de la Résonance : la série se renforce');
+  });
+
+  test('la Voie du Vide traverse les boucliers, et se paie', () => {
+    const vide = voieDeRang('chevalier-noir', 2);
+    const perceur = combattantVoie('chevalier-noir', vide.id, { hp: 1000 });
+    const cible = monstreVoie({ statuts: [{ type: 'bouclier', duree: 5, valeur: 5000 }] });
+    combatVoie([perceur], [cible]);
+    const r = infligerDegats(perceur, cible, 200);
+    egal(r.absorbe, 0, 'le bouclier ne doit rien absorber');
+    verifier(r.degats > 0, 'et le coup doit passer');
+    verifier(perceur.hp < 1000, 'la percée se paie sur ses propres PV');
+    etat.combat = null;
+  });
+
+  test('la Voie du Sang vole de la vie, mais coupe les soins reçus', () => {
+    const sang = voieDeRang('berserker', 1);
+    const buveur = combattantVoie('berserker', sang.id, { hp: 500 });
+    const soigneur = combattantVoie('druide', null);
+    combatVoie([buveur, soigneur], [monstreVoie()]);
+    const plein = soigner(buveur, 200, soigneur);
+    const temoin = combattantVoie('berserker', null, { hp: 500 });
+    const normal = soigner(temoin, 200, soigneur);
+    verifier(plein < normal, `les soins reçus doivent être réduits (${plein} contre ${normal})`);
+    etat.combat = null;
+  });
+
+  test('le Colosse de la Montagne ne se laisse ni assommer ni presser', () => {
+    const montagne = voieDeRang('colosse', 1);
+    const roc = combattantVoie('colosse', montagne.id);
+    combatVoie([roc], [monstreVoie()]);
+    appliquerEffet(monstreVoie(), roc, { type: 'etourdi', duree: 3, chance: 1 }, null, null);
+    verifier(!roc.statuts.some((s) => s.type === 'etourdi'), 'rien ne doit l\'étourdir');
+    verifier(reglagePassif(roc, 'initiativeMoitie', false), 'et il agit en dernier');
+    etat.combat = null;
+  });
+
+  test('le Colosse du Géant et l\'Ours portent vraiment leurs PV', () => {
+    const geant = voieDeRang('colosse', 0);
+    const gros = combattantVoie('colosse', geant.id);
+    const normal = combattantVoie('colosse', null);
+    delete gros.maxHp; delete normal.maxHp;
+    verifier(maxHpDe(gros) > maxHpDe(normal), 'la Voie du Géant doit épaissir la carcasse');
+    egal(maxHpDe(gros), Math.round(maxHpDe(normal) * (1 + PASSIFS_VOIE[geant.id].pvMaxVoie)),
+      'et exactement de ce que dit sa fiche');
+  });
+
+  test('la Voie de la Peste propage à TOUS, la Contagion à un seul', () => {
+    const peste = voieDeRang('corrupteur', 0);
+    const semeur = combattantVoie('corrupteur', peste.id);
+    const a = monstreVoie({ id: 'm0' });
+    const b = monstreVoie({ id: 'm1' });
+    const c = monstreVoie({ id: 'm2' });
+    combatVoie([semeur], [a, b, c]);
+    propagerStatutsDuCorrupteur(a, [{ type: 'poison', duree: 0, valeur: 12 }]);
+    const touches = [b, c].filter((m) => m.statuts.some((s) => s.type === 'poison')).length;
+    egal(touches, 2, 'la Peste doit toucher tous les voisins');
+    etat.combat = null;
+  });
+
+  test('la résurrection d\'une Voie ne joue qu\'une fois par combat', () => {
+    const renouveau = voieDeRang('druide', 2);
+    const gardien = combattantVoie('druide', renouveau.id);
+    const a = combattantVoie('berserker', null, { hp: 0 });
+    const b = combattantVoie('moine', null, { hp: 0 });
+    combatVoie([gardien, a, b], [monstreVoie()]);
+    gererMort(a);
+    verifier(!a.ko, 'le premier tombé doit se relever');
+    gererMort(b);
+    verifier(b.ko, 'le second reste à terre : une seule relève par combat');
+    etat.combat = null;
+  });
+
+  test('la Voie de la Meute et celle des Pièges entrent en scène au premier tour', () => {
+    const meute = voieDeRang('rodeur', 1);
+    const chasseur = combattantVoie('rodeur', meute.id);
+    const proie = monstreVoie();
+    const cb = combatVoie([chasseur], [proie]);
+    ouvertureDesVoies(chasseur);
+    egal(cb.equipe.filter((x) => x.type === 'invocation').length, 3, 'trois compagnons');
+
+    const pieges = voieDeRang('rodeur', 0);
+    const piegeur = combattantVoie('rodeur', pieges.id);
+    const proie2 = monstreVoie({ id: 'm1' });
+    combatVoie([piegeur], [proie2]);
+    ouvertureDesVoies(piegeur);
+    verifier(proie2.statuts.some((s) => s.type === 'poison'), 'le piège doit se refermer');
+    etat.combat = null;
+  });
+
+  test('aucune Voie ne rend un héros ingérable', () => {
+    // Garde-fou d'équilibrage : on mesure le multiplicateur de dégâts que
+    // chaque Voie procure dans une situation de combat ORDINAIRE — pas de
+    // cible moribonde, pas de compteur gonflé. Au-delà de 3, une Voie
+    // cesse d'être un parti pris et devient le seul choix possible.
+    const cible = monstreVoie({ hp: 900, maxHp: 1000 });
+    const excessives = [];
+    Object.values(VOIES).forEach((v) => {
+      const c = combattantVoie(v.sousClasse, v.id, { hp: 1000, maxHp: 1000 });
+      combatVoie([c], [cible]);
+      const m = multiplicateurPassifs(c, cible, { compId: 'x' });
+      etat.combat = null;
+      if (!(m >= 0.5 && m <= 3)) excessives.push(`${v.titre} : ×${m.toFixed(2)}`);
+    });
+    aucun(excessives, 'Voies dont le multiplicateur de base sort de la fourchette');
+  });
+});

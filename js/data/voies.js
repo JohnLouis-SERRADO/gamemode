@@ -34,20 +34,16 @@ const PROFILS_VOIE = {
 };
 
 // =====================================================================
-// ⚠️ ÉTAT DES PASSIFS DE VOIE — à lire avant d'y toucher.
+// ⚠️ LES PHRASES CI-DESSOUS NE SONT PLUS CE QUE LE JEU AFFICHE.
 //
-// La v22 a branché les vingt-sept passifs de SOUS-CLASSE (voir
-// js/data/passifs.js) : ils ne sont plus des phrases, ce sont des
-// mécaniques, et leur texte est produit par leurs chiffres.
+// Depuis la v23, le passif de chaque Voie est PRODUIT à partir de ses
+// réglages — voir js/data/voies-passifs.js, qui les écrase tous à la fin
+// du chargement. Les phrases gardées ici servent encore à deux choses :
+// la description de la COMPÉTENCE de la Voie (première phrase), et la
+// mémoire de l'intention d'origine.
 //
-// Les quatre-vingt-une phrases ci-dessous, elles, sont ENCORE
-// DESCRIPTIVES : une Voie donne bien son titre et sa compétence, mais son
-// passif n'est pas encore lu par le moteur de combat. C'est le prochain
-// lot, et il est de la même taille que celui des sous-classes.
-//
-// Règle à tenir quand il sera fait : le texte devra descendre dans un
-// tableau de réglages, comme PASSIFS_SOUS_CLASSE, plutôt que d'être écrit
-// à la main ici — c'est le seul moyen qu'il ne redevienne jamais faux.
+// Autrement dit : pour changer ce qu'une Voie FAIT et ce qu'elle DIT, on
+// touche à voies-passifs.js, jamais ici.
 // =====================================================================
 
 // Les 81 Voies. Trois par sous-classe : une qui pousse l'identité à
