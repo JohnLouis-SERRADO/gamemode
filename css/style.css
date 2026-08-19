@@ -1010,6 +1010,30 @@ body.avec-navbar #zone-toasts { bottom: calc(72px + env(safe-area-inset-bottom, 
 
 .combattant-statuts { min-height: 22px; font-size: 1rem; }
 
+/* =====================================================================
+   v26 — ON NE VOYAIT PAS SA CIBLE EN CHOISISSANT SON SORT.
+   Mesuré en combat sur un écran de 900 px : l'écran de combat en fait
+   1029 — trente pour l'en-tête, 143 pour les ennemis, 140 pour le
+   journal, 187 pour l'équipe et 442 pour les treize actions. Autrement
+   dit, dès qu'on descend vers ses sorts, la barre de vie de l'ennemi
+   sort du champ, et on choisit à l'aveugle.
+   La rangée d'ennemis reste donc collée en haut du défilement. Le combat
+   n'ayant pas de barre supérieure, elle peut se poser à zéro.
+   ===================================================================== */
+#zone-ennemis {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  /* Un fond plein, pas un dégradé : ce qui défile doit passer DERRIÈRE
+     la rangée, pas transparaître à côté des cartes d'ennemis. */
+  background: var(--fond);
+  border-bottom: 1px solid var(--bordure);
+  padding: 4px 0 8px;
+  /* Beaucoup d'ennemis à la fois ne doivent pas manger l'écran entier. */
+  max-height: 42vh;
+  overflow-y: auto;
+}
+
 #combat-log {
   background: rgba(10, 12, 18, 0.85);
   border: 1px solid var(--bordure);
