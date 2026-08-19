@@ -44,13 +44,13 @@ const OBJETS_DONJONS = {
     desc: 'Il sent encore le sel et l’orage. Récompense du Brise-Brume.',
   },
   'marteau-de-la-forge-eternelle': {
-    nom: 'Marteau de la Forge éternelle', emoji: '🔨', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 17,
-    rarete: 'mythique', prixVente: 700, bonus: { for: 15, vit: 4, pvMax: 25 },
+    nom: 'Marteau de la Forge éternelle', emoji: '🔨', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 35,
+    rarete: 'mythique', prixVente: 1226, bonus: { for: 26, vit: 7, pvMax: 44 },
     desc: 'Forgé par Barguzan dans une Forge ravivée. Il chante en frappant.',
   },
   'lame-de-la-derniere-cendre': {
-    nom: 'Lame de la Dernière Cendre', emoji: '🌑', type: 'equipement', slot: 'arme', familleArme: 'arc', niveau: 17,
-    rarete: 'mythique', prixVente: 700, bonus: { dex: 12, for: 8, crit: 6 },
+    nom: 'Lame de la Dernière Cendre', emoji: '🌑', type: 'equipement', slot: 'arme', familleArme: 'arc', niveau: 35,
+    rarete: 'mythique', prixVente: 1226, bonus: { dex: 21, for: 14, crit: 11 },
     desc: 'Trempée dans le dernier feu du volcan éteint. Froide, et pourtant…',
   },
 };
@@ -219,7 +219,7 @@ const MONSTRES_DONJONS = {
 
   // ----- Le Cœur du Volcan (niv. 16+) -----
   'golem-basalte': {
-    nom: 'Golem de basalte', emoji: '🗿', niveau: 16, hp: 190, atk: 28, dex: 6, xp: 150, po: [30, 50],
+    nom: 'Golem de basalte', emoji: '🗿', niveau: 34, hp: 280, atk: 40, dex: 6, xp: 221, po: [44, 74],
     drops: [{ id: 'noyau-golem', chance: 0.6 }],
     attaques: [
       { nom: 'Poing tellurique', emoji: '🗿', mult: 1.1, poids: 3, type: 'mono' },
@@ -227,14 +227,14 @@ const MONSTRES_DONJONS = {
     ],
   },
   'elementaire-magma': {
-    nom: 'Élémentaire de magma', emoji: '🔥', niveau: 16, hp: 115, atk: 24, dex: 9, xp: 62, po: [10, 18],
+    nom: 'Élémentaire de magma', emoji: '🔥', niveau: 34, hp: 170, atk: 34, dex: 9, xp: 221, po: [15, 27],
     drops: [],
     attaques: [
       { nom: 'Projection de lave', emoji: '🌋', mult: 1.0, poids: 1, type: 'mono' },
     ],
   },
   'ignarok': {
-    nom: 'Ignarok, Cœur de Magma', emoji: '🌋', niveau: 18, boss: true, hp: 950, atk: 33, dex: 10, xp: 1600, po: [250, 350],
+    nom: 'Ignarok, Cœur de Magma', emoji: '🌋', niveau: 36, boss: true, hp: 1491, atk: 48, dex: 10, xp: 1808, po: [392, 549],
     drops: [{ id: 'ecaille-draconique', chance: 1 }, { id: 'noyau-golem', chance: 1 }],
     attaques: [
       { nom: 'Poing de magma', emoji: '🌋', mult: 1.15, poids: 3, type: 'mono' },
@@ -778,15 +778,15 @@ const DONJONS = [
     id: 'volcan',
     nom: 'Le Cœur du Volcan',
     emoji: '🌋',
-    niveauMin: 16,
+    niveauMin: 34,
     // La Forge première ne s'ouvre pas à qui n'a jamais tenu un marteau :
-    // de la Force, du fer, les Pics Gelés domptés — et un vrai mineur.
-    acces: accesHistoire(16, 'for', {
-      objets: { 'minerai-fer': 5 },
-      bossZones: ['pics'],
+    // de la Force, du feu, la Steppe des Cendres domptée — et un vrai mineur.
+    acces: accesHistoire(34, 'for', {
+      objets: { 'coeur-de-braise': 2 },
+      bossZones: ['steppe-cendres'],
       metier: { id: 'mineur', niveau: 3 },
     }),
-    resume: 'Au fond des Pics Hurlants brûle la Forge première, gardée par le dernier des forgerons géants.',
+    resume: 'Sous la Steppe des Cendres brûle la Forge première, gardée par le dernier des forgerons géants.',
     hautFait: 'donjon-volcan',
     depart: 'intro',
     familier: 'salamandre-de-forge',
@@ -799,7 +799,7 @@ const DONJONS = [
       intro: {
         type: 'dialogue',
         scenes: [
-          { qui: 'Narrateur', emoji: '📜', texte: 'Les Pics Hurlants portent bien leur nom, mais ce soir ils font autre chose : ils battent. Un pouls sourd, minéral, qui monte des profondeurs. Les nains de Cuivre ont une expression pour ça : « la Forge rêve ». Ils ajoutent en général : « fuyez ».' },
+          { qui: 'Narrateur', emoji: '📜', texte: 'La Steppe des Cendres couve depuis toujours, mais ce soir elle fait autre chose : elle bat. Un pouls sourd, minéral, qui monte des profondeurs. Les nains de Cuivre ont une expression pour ça : « la Forge rêve ». Ils ajoutent en général : « fuyez ».' },
           { qui: 'Barguzan', emoji: '🗿', texte: 'À l’entrée de la caldeira, un géant de pierre grise est assis, un marteau grand comme un chêne posé sur les genoux. « Je suis Barguzan, dernier apprenti de la Forge première. Mon maître, Ignarok, en était le Cœur. Mille ans sans personne à qui forger… ça l’a rendu fou. Il veut faire éruption et “forger le monde à neuf”. »' },
           { qui: 'Barguzan', emoji: '🗿', texte: '« Je suis trop vieux pour l’arrêter, trop fidèle pour l’aider. Descendez. Au fond, il faudra choisir ce que devient la Forge — et mon maître avec. Je respecterai votre choix. C’est plus que ce que je peux dire de lui. »' },
         ],
@@ -955,7 +955,7 @@ const DONJONS = [
       fin: {
         type: 'fin',
         variantes: [
-          { drapeau: 'forge-ravivee', cle: 'forge-ravivee', texte: 'Barguzan s’avance sans un mot et pose les deux mains sur l’enclume première. La lave l’enveloppe comme un manteau — et quand elle retombe, ses yeux sont deux braises calmes. « Je forgerai mieux que lui, » dit le nouveau Cœur du volcan. Sa première œuvre est pour vous : un marteau qui chante en frappant. Dans les Pics, désormais, le pouls de la montagne a le rythme tranquille d’un artisan au travail.' },
+          { drapeau: 'forge-ravivee', cle: 'forge-ravivee', texte: 'Barguzan s’avance sans un mot et pose les deux mains sur l’enclume première. La lave l’enveloppe comme un manteau — et quand elle retombe, ses yeux sont deux braises calmes. « Je forgerai mieux que lui, » dit le nouveau Cœur du volcan. Sa première œuvre est pour vous : un marteau qui chante en frappant. Dans la Steppe, désormais, le pouls de la terre a le rythme tranquille d’un artisan au travail.' },
           { drapeau: 'forge-eteinte', cle: 'forge-eteinte', texte: 'Vous laissez la Forge s’éteindre. La lave se fige en un lac de verre noir, si calme qu’on y voit les étoiles par le cratère. Barguzan trempe une dernière lame dans le dernier feu — la vôtre. « Mille ans que je n’avais pas eu froid, » dit-il en souriant pour la première fois. « C’est une sensation d’avenir. » Il descendra à Valciel, dit-il. Ouvrir une échoppe. Forger des charrues.' },
         ],
         texte: 'Le Cœur du volcan s’est tu, et la montagne attend de savoir ce qu’elle deviendra.',
@@ -1486,23 +1486,23 @@ DONJONS.push(
 // =====================================================================
 Object.assign(OBJETS, {
   'linceul-de-nihelm': {
-    nom: 'Linceul de Nihelm', emoji: '🕳️', type: 'equipement', slot: 'torse', niveau: 50,
-    rarete: 'divin', prixVente: 3200, bonus: { vit: 22, for: 10, pvMax: 120, deter: 6 },
+    nom: 'Linceul de Nihelm', emoji: '🕳️', type: 'equipement', slot: 'torse', niveau: 53,
+    rarete: 'divin', prixVente: 3369, bonus: { vit: 23, for: 11, pvMax: 126, deter: 6 },
     desc: 'Tissé dans l’ombre de tous les monstres vaincus. Il pèse exactement le poids d’une conscience tranquille.',
   },
   'couronne-des-heures': {
-    nom: 'Couronne des Heures', emoji: '⏰', type: 'equipement', slot: 'tete', niveau: 50,
-    rarete: 'divin', prixVente: 3600, bonus: { int: 20, dex: 12, pmMax: 50, celerite: 6 },
+    nom: 'Couronne des Heures', emoji: '⏰', type: 'equipement', slot: 'tete', niveau: 60,
+    rarete: 'divin', prixVente: 4232, bonus: { int: 24, dex: 14, pmMax: 59, celerite: 7 },
     desc: 'Chaque pointe est une aiguille arrêtée sur un instant parfait. Récompense de la Forteresse du Temps Brisé.',
   },
   'coeur-du-neant': {
-    nom: 'Cœur du Néant', emoji: '🖤', type: 'equipement', slot: 'arme', familleArme: 'runique', niveau: 50,
-    rarete: 'divin', prixVente: 4500, bonus: { for: 26, int: 26, crit: 10 },
+    nom: 'Cœur du Néant', emoji: '🖤', type: 'equipement', slot: 'arme', familleArme: 'runique', niveau: 88,
+    rarete: 'divin', prixVente: 7502, bonus: { for: 43, int: 43, crit: 17 },
     desc: 'Ce qui restait de Celui-qui-Attend, dévoré et forgé. Il bat encore, très lentement.',
   },
   'sceau-de-l-aube': {
-    nom: 'Sceau de l’Aube', emoji: '🌅', type: 'equipement', slot: 'accessoire', niveau: 50,
-    rarete: 'divin', prixVente: 4500, bonus: { cha: 12, vit: 14, pvMax: 90, celerite: 5 },
+    nom: 'Sceau de l’Aube', emoji: '🌅', type: 'equipement', slot: 'accessoire', niveau: 88,
+    rarete: 'divin', prixVente: 7502, bonus: { cha: 20, vit: 23, pvMax: 150, celerite: 8 },
     desc: 'La marque de qui a refermé l’Œil sans le regarder mourir. Le matin lui obéit un peu.',
   },
 });
@@ -1510,7 +1510,7 @@ Object.assign(OBJETS, {
 Object.assign(MONSTRES_DONJONS, {
   // ----- Le Gouffre de Nihelm (défi 50) -----
   'ombre-de-heros': {
-    nom: 'Ombre de héros', emoji: '👤', niveau: 52, hp: 2550, atk: 79, dex: 14, xp: 879, po: [52, 104],
+    nom: 'Ombre de héros', emoji: '👤', niveau: 52, hp: 2550, atk: 79, dex: 14, xp: 387, po: [52, 104],
     drops: [{ id: 'essence-primordiale', chance: 0.1 }],
     attaques: [
       { nom: 'Lame retournée', emoji: '🗡️', mult: 1.1, poids: 3, type: 'mono' },
@@ -1518,7 +1518,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'deuil-rampant': {
-    nom: 'Deuil rampant', emoji: '🕷️', niveau: 53, hp: 2648, atk: 81, dex: 10, xp: 913, po: [53, 106],
+    nom: 'Deuil rampant', emoji: '🕷️', niveau: 53, hp: 2648, atk: 81, dex: 10, xp: 437, po: [53, 106],
     drops: [{ id: 'poussiere-spectre', chance: 0.5 }],
     attaques: [
       { nom: 'Morsure de chagrin', emoji: '🕷️', mult: 1.0, poids: 3, type: 'mono', effet: { type: 'poison', degats: 22, duree: 2 } },
@@ -1526,7 +1526,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'porteur-de-cendres': {
-    nom: 'Porteur de cendres', emoji: '⚱️', niveau: 54, hp: 2748, atk: 82, dex: 11, xp: 947, po: [54, 108],
+    nom: 'Porteur de cendres', emoji: '⚱️', niveau: 54, hp: 2748, atk: 82, dex: 11, xp: 491, po: [54, 108],
     drops: [{ id: 'os-ancien', chance: 0.45 }],
     attaques: [
       { nom: 'Urne brisée', emoji: '⚱️', mult: 1.15, poids: 3, type: 'mono' },
@@ -1534,7 +1534,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'avatar-de-nihelm': {
-    nom: 'L’Avatar de Nihelm', emoji: '🕳️', niveau: 55, boss: true, hp: 11950, atk: 105, dex: 13, xp: 4910, po: [400, 600],
+    nom: 'L’Avatar de Nihelm', emoji: '🕳️', niveau: 55, boss: true, hp: 11950, atk: 105, dex: 13, xp: 4368, po: [400, 600],
     drops: [{ id: 'essence-primordiale', chance: 1 }, { id: 'poussiere-spectre', chance: 1 }],
     attaques: [
       { nom: 'Poigne du gouffre', emoji: '🕳️', mult: 1.2, poids: 3, type: 'mono' },
@@ -1629,7 +1629,7 @@ Object.assign(MONSTRES_DONJONS, {
 
   // ----- L'Œil du Néant (défi 70) -----
   'annonciateur-du-neant': {
-    nom: 'Annonciateur du Néant', emoji: '🌑', niveau: 70, hp: 4593, atk: 106, dex: 14, xp: 1582, po: [70, 140],
+    nom: 'Annonciateur du Néant', emoji: '🌑', niveau: 86, hp: 6768, atk: 128, dex: 14, xp: 7604, po: [103, 206],
     drops: [{ id: 'essence-primordiale', chance: 0.25 }],
     attaques: [
       { nom: 'Verbe d’effacement', emoji: '🌑', mult: 1.15, poids: 3, type: 'mono' },
@@ -1637,7 +1637,7 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'mange-etoiles': {
-    nom: 'Mange-étoiles', emoji: '🐋', niveau: 71, hp: 4724, atk: 107, dex: 12, xp: 1627, po: [71, 142],
+    nom: 'Mange-étoiles', emoji: '🐋', niveau: 87, hp: 6988, atk: 130, dex: 12, xp: 8548, po: [105, 210],
     drops: [{ id: 'eclat-d-etoile', chance: 0.6 }],
     attaques: [
       { nom: 'Gober la lumière', emoji: '🐋', mult: 1.3, poids: 2, type: 'mono' },
@@ -1645,14 +1645,14 @@ Object.assign(MONSTRES_DONJONS, {
     ],
   },
   'echo-du-devoreur': {
-    nom: 'Écho du Dévoreur', emoji: '💫', niveau: 70, hp: 2300, atk: 95, dex: 15, xp: 380, po: [20, 40],
+    nom: 'Écho du Dévoreur', emoji: '💫', niveau: 86, hp: 3389, atk: 115, dex: 15, xp: 7604, po: [29, 59],
     drops: [],
     attaques: [
       { nom: 'Réplique du vide', emoji: '💫', mult: 1.0, poids: 1, type: 'mono' },
     ],
   },
   'celui-qui-attend': {
-    nom: 'Celui-qui-Attend', emoji: '👁️', niveau: 72, boss: true, hp: 20400, atk: 135, dex: 15, xp: 8400, po: [700, 1000],
+    nom: 'Celui-qui-Attend', emoji: '👁️', niveau: 88, boss: true, hp: 30188, atk: 155, dex: 15, xp: 76312, po: [1036, 1480],
     drops: [{ id: 'essence-primordiale', chance: 1 }, { id: 'plume-d-archon', chance: 0.8 }],
     attaques: [
       { nom: 'Regard qui défait', emoji: '👁️', mult: 1.2, poids: 3, type: 'mono' },
@@ -1697,17 +1697,17 @@ DONJONS.push(
     id: 'nihelm',
     nom: 'Le Gouffre de Nihelm',
     emoji: '🕳️',
-    niveauMin: 50,
-    defi: 50,
+    niveauMin: 52,
+    defi: 52,
     requiert: 'couronne-celeste',
     // Le gouffre où coulent les vaincus : il faut de quoi tenir debout,
     // une plume d'Archonte pour éclairer la descente, et la Citadelle de
     // Foudre déjà tombée.
-    acces: accesHistoire(50, 'vit', {
-      objets: { 'plume-d-archon': 1, 'etoffe-du-neant': 2 },
-      bossZones: ['citadelle-foudre'],
+    acces: accesHistoire(52, 'vit', {
+      objets: { 'echo-fossilise': 3, 'graine-renversee': 2 },
+      bossZones: ['jardins-renverses'],
     }),
-    resume: 'Tout ce que les héros ont vaincu coule quelque part. Ce quelque part vient de déborder. Défi de niveau 50 — équipe complète recommandée.',
+    resume: 'Tout ce que les héros ont vaincu coule quelque part. Ce quelque part vient de déborder. Défi de niveau 52 — équipe complète recommandée.',
     hautFait: 'donjon-nihelm',
     depart: 'intro',
     recompenses: { xp: 14000, po: 9000, objet: 'linceul-de-nihelm' },
@@ -1865,14 +1865,14 @@ DONJONS.push(
     id: 'temps-brise',
     nom: 'La Forteresse du Temps Brisé',
     emoji: '⏰',
-    niveauMin: 50,
+    niveauMin: 56,
     defi: 60,
     requiert: 'nihelm',
     // On ne court pas après le temps sans vitesse — ni sans une essence
     // primordiale, la seule matière que les heures ne rongent pas.
-    acces: accesHistoire(60, 'dex', {
-      objets: { 'essence-primordiale': 2 },
-      bossZones: ['neant-scintillant'],
+    acces: accesHistoire(58, 'dex', {
+      objets: { 'encre-noyee': 2, 'echo-fossilise': 2 },
+      bossZones: ['balance-des-heures'],
     }),
     resume: 'Une forteresse fige sa dernière heure en boucle depuis mille ans. Son Horloger refuse que minuit sonne. Défi de niveau 60 — équipe complète recommandée.',
     hautFait: 'donjon-temps-brise',
@@ -2030,17 +2030,17 @@ DONJONS.push(
     id: 'neant',
     nom: 'L’Œil du Néant',
     emoji: '👁️',
-    niveauMin: 50,
-    defi: 70,
+    niveauMin: 86,
+    defi: 88,
     requiert: 'temps-brise',
     // Celui-qui-Attend regarde en retour : il faut un Esprit solide, trois
     // éclats d'étoile pour ne pas se perdre, et les deux dernières terres
     // des Royaumes lointains derrière soi.
-    acces: accesHistoire(70, 'esp', {
+    acces: accesHistoire(86, 'esp', {
       objets: { 'eclat-d-etoile': 3 },
-      bossZones: ['citadelle-foudre', 'neant-scintillant'],
+      bossZones: ['neant-scintillant'],
     }),
-    resume: 'Sous le gouffre, derrière le temps, quelque chose attendait depuis avant les Royaumes. Il a fini d’attendre. Défi de niveau 70 — le dernier.',
+    resume: 'Sous le gouffre, derrière le temps, quelque chose attendait depuis avant les Royaumes. Il a fini d’attendre. Défi de niveau 88 — le dernier.',
     hautFait: 'donjon-neant',
     depart: 'intro',
     recompenses: {

@@ -2173,12 +2173,43 @@ button:focus-visible,
   text-align: left;
 }
 .acte-entete:hover { background: var(--bordure); }
-.acte-titre { font-weight: 700; font-size: var(--txt-m); flex: 1; }
+.acte-titre { font-weight: 700; font-size: var(--txt-m); }
+/* v26 : l'acte porte son sous-titre de chapitre — le récit se lit dès la carte. */
+.acte-identite { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.acte-resume { color: var(--texte-doux); font-size: var(--txt-xs); font-style: italic; }
 .acte-plage {
   color: var(--texte-doux);
   font-size: var(--txt-xs);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+/* Sur grand écran, un acte occupe toute la largeur : ses cartes forment
+   leur propre grille, au lieu d'écraser six actes en colonnes étroites. */
+#carte-zones .acte-monde { grid-column: 1 / -1; }
+.zone-chapitre {
+  display: inline-block;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-clair);
+  border: 1px solid var(--bordure);
+  border-radius: 999px;
+  padding: 0.1em 0.65em;
+  margin-bottom: 4px;
+}
+.zone-fil {
+  color: var(--accent-clair);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  margin: 2px 0 6px;
+}
+/* Sur écran étroit, l'en-tête d'un acte respire sur deux lignes plutôt
+   que d'écraser son titre. (Placé APRÈS les règles qu'il surcharge :
+   à spécificité égale, c'est la dernière écrite qui gagne.) */
+@media (max-width: 680px) {
+  .acte-entete { flex-wrap: wrap; row-gap: 2px; }
+  .acte-identite { flex-basis: 100%; }
+  .acte-plage { white-space: normal; }
 }
 .acte-chevron { color: var(--accent); font-size: var(--txt-m); }
 .acte-cartes { padding: var(--esp-3); }

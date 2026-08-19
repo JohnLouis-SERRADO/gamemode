@@ -22,14 +22,14 @@
 // Les matériaux des Marches et de la Couture.
 // ---------------------------------------------------------------------
 Object.assign(OBJETS, {
-  'cendre-grise':      { nom: 'Cendre grise', emoji: '🌫️', type: 'materiau', rarete: 'rare', prixVente: 260, desc: 'Elle ne vient d’aucun feu. Elle est là depuis avant les feux.' },
-  'echo-fossilise':    { nom: 'Écho fossilisé', emoji: '🔔', type: 'materiau', rarete: 'rare', prixVente: 280, desc: 'Un son qui a duré si longtemps qu’il a durci.' },
-  'verre-de-mer':      { nom: 'Verre de mer', emoji: '🔷', type: 'materiau', rarete: 'epique', prixVente: 420, desc: 'L’océan y a été figé en pleine vague. On voit encore l’écume.' },
-  'graine-renversee':  { nom: 'Graine renversée', emoji: '🌺', type: 'materiau', rarete: 'epique', prixVente: 440, desc: 'Elle pousse vers le bas. Personne n’a jamais su vers quoi.' },
-  'os-divin':          { nom: 'Os divin', emoji: '💀', type: 'materiau', rarete: 'epique', prixVente: 620, desc: 'Trop grand pour un géant, trop fin pour une bête.' },
-  'encre-noyee':       { nom: 'Encre noyée', emoji: '🖋️', type: 'materiau', rarete: 'epique', prixVente: 640, desc: 'Elle continue d’écrire sous l’eau, toute seule, très lentement.' },
-  'braise-crepusculaire': { nom: 'Braise crépusculaire', emoji: '🌇', type: 'materiau', rarete: 'legendaire', prixVente: 900, desc: 'La dernière lumière d’un jour qui n’a jamais fini de tomber.' },
-  'fil-de-suture':     { nom: 'Fil de suture', emoji: '🧵', type: 'materiau', rarete: 'legendaire', prixVente: 950, desc: 'C’est avec ça que le monde tient. Il en manque beaucoup.' },
+  'cendre-grise':      { nom: 'Cendre grise', emoji: '🌫️', type: 'materiau', rarete: 'legendaire', prixVente: 760, desc: 'Elle ne vient d’aucun feu. Elle est là depuis avant les feux.' },
+  'echo-fossilise':    { nom: 'Écho fossilisé', emoji: '🔔', type: 'materiau', rarete: 'rare', prixVente: 240, desc: 'Un son qui a duré si longtemps qu’il a durci.' },
+  'verre-de-mer':      { nom: 'Verre de mer', emoji: '🔷', type: 'materiau', rarete: 'epique', prixVente: 620, desc: 'L’océan y a été figé en pleine vague. On voit encore l’écume.' },
+  'graine-renversee':  { nom: 'Graine renversée', emoji: '🌺', type: 'materiau', rarete: 'rare', prixVente: 280, desc: 'Elle pousse vers le bas. Personne n’a jamais su vers quoi.' },
+  'os-divin':          { nom: 'Os divin', emoji: '💀', type: 'materiau', rarete: 'legendaire', prixVente: 700, desc: 'Trop grand pour un géant, trop fin pour une bête.' },
+  'encre-noyee':       { nom: 'Encre noyée', emoji: '🖋️', type: 'materiau', rarete: 'epique', prixVente: 330, desc: 'Elle continue d’écrire sous l’eau, toute seule, très lentement.' },
+  'braise-crepusculaire': { nom: 'Braise crépusculaire', emoji: '🌇', type: 'materiau', rarete: 'legendaire', prixVente: 950, desc: 'La dernière lumière d’un jour qui n’a jamais fini de tomber.' },
+  'fil-de-suture':     { nom: 'Fil de suture', emoji: '🧵', type: 'materiau', rarete: 'legendaire', prixVente: 1100, desc: 'C’est avec ça que le monde tient. Il en manque beaucoup.' },
   'aiguille-premiere': { nom: 'Aiguille première', emoji: '🪡', type: 'materiau', rarete: 'mythique', prixVente: 1600, desc: 'Elle a recousu un monde entier. Elle n’a pas l’air fatiguée.' },
   'eclat-de-couronne': { nom: 'Éclat de couronne', emoji: '👑', type: 'materiau', rarete: 'mythique', prixVente: 1800, desc: 'Le Premier Roi en portait une. Il l’a brisée lui-même.' },
 });
@@ -80,11 +80,14 @@ function combatsPourNiveau(niveau) {
 }
 
 function statsMonstreMarches(niveau, boss) {
+  // v26 : ces monstres s'étalent désormais du niveau 44 au niveau 100 —
+  // trop loin de la référence 52 pour extrapoler une exponentielle. Leurs
+  // chiffres se lisent directement sur les tables cibles de la calibration
+  // (js/data/monstres.js) : c'est de toute façon là qu'ils finiraient.
+  const hp = cibleMonstre(boss ? PV_CIBLE_BOSS : PV_CIBLE_MONSTRE, niveau);
+  const atk = cibleMonstre(boss ? ATK_CIBLE_BOSS : ATK_CIBLE_MONSTRE, niveau);
+  const xp = Math.round(cibleMonstre(XP_CIBLE_MONSTRE, niveau) * (boss ? MULT_XP_BOSS : 1));
   const d = niveau - REFERENCE_MARCHES.niveau;
-  const hp = Math.round(REFERENCE_MARCHES.hp * Math.pow(CROISSANCE_MARCHES.hp, d) * (boss ? 4.6 : 1));
-  const atk = Math.round(REFERENCE_MARCHES.atk * Math.pow(CROISSANCE_MARCHES.atk, d) * (boss ? 1.35 : 1));
-  // incrementXp vient de progression.js, chargé avant ce fichier.
-  const xp = Math.round((incrementXp(niveau) / combatsPourNiveau(niveau)) * (boss ? 3.4 : 1));
   const po = Math.round(REFERENCE_MARCHES.po * Math.pow(CROISSANCE_MARCHES.po, d) * (boss ? 6 : 1));
   return { hp, atk, xp, po: [po, po * 2] };
 }
@@ -92,25 +95,25 @@ function statsMonstreMarches(niveau, boss) {
 // nom · emoji · niveau · initiative · butin · attaques
 const BESTIAIRE_MARCHES = {
   // ---------- Acte III · Les Marches Grises (52-58) ----------
-  arpenteurGris: { nom: 'Arpenteur gris', emoji: '🚶', niveau: 53, dex: 12,
+  arpenteurGris: { nom: 'Arpenteur gris', emoji: '🚶', niveau: 81, dex: 12,
     drops: [{ id: 'cendre-grise', chance: 0.4 }],
     attaques: [
       { nom: 'Pas sans fin', emoji: '👣', mult: 1.1, poids: 3, type: 'mono' },
       { nom: 'Regard d’avant', emoji: '👁️', mult: 0.85, poids: 1, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
     ] },
-  bornetremblante: { nom: 'Borne tremblante', emoji: '🪨', niveau: 55, dex: 6,
+  bornetremblante: { nom: 'Borne tremblante', emoji: '🪨', niveau: 82, dex: 6,
     drops: [{ id: 'cendre-grise', chance: 0.5 }, { id: 'echo-fossilise', chance: 0.2 }],
     attaques: [
       { nom: 'Chute de repère', emoji: '💢', mult: 1.25, poids: 3, type: 'mono' },
       { nom: 'Effacement', emoji: '🌫️', mult: 0.9, poids: 1, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.35 } },
     ] },
-  gardienDeLaLimite: { nom: 'Gardien de la limite', emoji: '⛩️', niveau: 57, dex: 10,
+  gardienDeLaLimite: { nom: 'Gardien de la limite', emoji: '⛩️', niveau: 82, dex: 10,
     drops: [{ id: 'cendre-grise', chance: 0.6 }, { id: 'fil-de-suture', chance: 0.08 }],
     attaques: [
       { nom: 'Refus', emoji: '🛑', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Frontière close', emoji: '⛓️', mult: 0.95, poids: 2, type: 'aoe' },
     ] },
-  celuiQuiCompte: { nom: 'Celui Qui Compte', emoji: '🕯️', niveau: 58, boss: true, dex: 13,
+  celuiQuiCompte: { nom: 'Celui Qui Compte', emoji: '🕯️', niveau: 83, boss: true, dex: 13,
     drops: [{ id: 'cendre-grise', chance: 1 }, { id: 'echo-fossilise', chance: 0.8 }],
     attaques: [
       { nom: 'Décompte', emoji: '🔢', mult: 1.25, poids: 3, type: 'mono' },
@@ -119,25 +122,25 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Acte III · Le Chant des Ruines (52-58) ----------
-  choeurDePierre: { nom: 'Chœur de pierre', emoji: '🗿', niveau: 53, dex: 7,
+  choeurDePierre: { nom: 'Chœur de pierre', emoji: '🗿', niveau: 45, dex: 7,
     drops: [{ id: 'echo-fossilise', chance: 0.45 }],
     attaques: [
       { nom: 'Note grave', emoji: '🎵', mult: 1.15, poids: 3, type: 'mono' },
       { nom: 'Accord tenu', emoji: '🎶', mult: 0.8, poids: 2, type: 'aoe' },
     ] },
-  veuveDesArcades: { nom: 'Veuve des arcades', emoji: '🕸️', niveau: 55, dex: 14,
+  veuveDesArcades: { nom: 'Veuve des arcades', emoji: '🕸️', niveau: 46, dex: 14,
     drops: [{ id: 'echo-fossilise', chance: 0.35 }, { id: 'cendre-grise', chance: 0.3 }],
     attaques: [
       { nom: 'Fil tendu', emoji: '🧵', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Berceuse de ruines', emoji: '🌙', mult: 0.75, poids: 1, type: 'aoe', effet: { type: 'poison', degats: 60, duree: 3 } },
     ] },
-  refrainRevenant: { nom: 'Refrain revenant', emoji: '👻', niveau: 57, dex: 15,
+  refrainRevenant: { nom: 'Refrain revenant', emoji: '👻', niveau: 47, dex: 15,
     drops: [{ id: 'echo-fossilise', chance: 0.55 }],
     attaques: [
       { nom: 'Reprise', emoji: '🔁', mult: 1.15, poids: 3, type: 'mono' },
       { nom: 'Da capo', emoji: '🎼', mult: 1.5, poids: 1, type: 'mono' },
     ] },
-  maitreDeChapelle: { nom: 'Le Maître de Chapelle', emoji: '🎻', niveau: 58, boss: true, dex: 12,
+  maitreDeChapelle: { nom: 'Le Maître de Chapelle', emoji: '🎻', niveau: 48, boss: true, dex: 12,
     drops: [{ id: 'echo-fossilise', chance: 1 }, { id: 'fil-de-suture', chance: 0.3 }],
     attaques: [
       { nom: 'Ouverture', emoji: '🎺', mult: 1.2, poids: 3, type: 'mono' },
@@ -146,25 +149,25 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Acte III · La Mer de Verre (60-68) ----------
-  vagueFigee: { nom: 'Vague figée', emoji: '🌊', niveau: 61, dex: 9,
+  vagueFigee: { nom: 'Vague figée', emoji: '🌊', niveau: 75, dex: 9,
     drops: [{ id: 'verre-de-mer', chance: 0.45 }],
     attaques: [
       { nom: 'Déferlante immobile', emoji: '💧', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Éclats', emoji: '🔷', mult: 0.85, poids: 2, type: 'aoe' },
     ] },
-  noyeDebout: { nom: 'Noyé debout', emoji: '🧍', niveau: 63, dex: 11,
+  noyeDebout: { nom: 'Noyé debout', emoji: '🧍', niveau: 76, dex: 11,
     drops: [{ id: 'verre-de-mer', chance: 0.35 }, { id: 'encre-noyee', chance: 0.15 }],
     attaques: [
       { nom: 'Étreinte salée', emoji: '🫧', mult: 1.15, poids: 3, type: 'mono', effet: { type: 'drain', part: 0.3 } },
       { nom: 'Marée arrêtée', emoji: '🌀', mult: 0.9, poids: 1, type: 'aoe' },
     ] },
-  banquiseVive: { nom: 'Banquise vive', emoji: '🧊', niveau: 66, dex: 7,
+  banquiseVive: { nom: 'Banquise vive', emoji: '🧊', niveau: 76, dex: 7,
     drops: [{ id: 'verre-de-mer', chance: 0.6 }],
     attaques: [
       { nom: 'Fracture', emoji: '💢', mult: 1.3, poids: 3, type: 'mono' },
       { nom: 'Craquement long', emoji: '❄️', mult: 0.95, poids: 2, type: 'aoe', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
     ] },
-  celleQuiNaJamaisCoule: { nom: 'Celle Qui N’a Jamais Coulé', emoji: '⛵', niveau: 68, boss: true, dex: 13,
+  celleQuiNaJamaisCoule: { nom: 'Celle Qui N’a Jamais Coulé', emoji: '⛵', niveau: 77, boss: true, dex: 13,
     drops: [{ id: 'verre-de-mer', chance: 1 }, { id: 'fil-de-suture', chance: 0.4 }],
     attaques: [
       { nom: 'Étrave', emoji: '⚓', mult: 1.25, poids: 3, type: 'mono' },
@@ -173,25 +176,25 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Acte III · Les Jardins Renversés (60-68) ----------
-  ronceInversee: { nom: 'Ronce inversée', emoji: '🌿', niveau: 61, dex: 8,
+  ronceInversee: { nom: 'Ronce inversée', emoji: '🌿', niveau: 49, dex: 8,
     drops: [{ id: 'graine-renversee', chance: 0.45 }],
     attaques: [
       { nom: 'Racine au ciel', emoji: '🌱', mult: 1.15, poids: 3, type: 'mono' },
       { nom: 'Étranglement lent', emoji: '🪢', mult: 0.85, poids: 1, type: 'mono', effet: { type: 'poison', degats: 70, duree: 3 } },
     ] },
-  jardinierSansTete: { nom: 'Jardinier sans tête', emoji: '🪓', niveau: 64, dex: 12,
+  jardinierSansTete: { nom: 'Jardinier sans tête', emoji: '🪓', niveau: 50, dex: 12,
     drops: [{ id: 'graine-renversee', chance: 0.4 }, { id: 'echo-fossilise', chance: 0.2 }],
     attaques: [
       { nom: 'Taille', emoji: '✂️', mult: 1.25, poids: 3, type: 'mono' },
       { nom: 'Élagage', emoji: '🍂', mult: 0.9, poids: 2, type: 'aoe' },
     ] },
-  fleurQuiRegarde: { nom: 'Fleur qui regarde', emoji: '🌺', niveau: 66, dex: 10,
+  fleurQuiRegarde: { nom: 'Fleur qui regarde', emoji: '🌺', niveau: 51, dex: 10,
     drops: [{ id: 'graine-renversee', chance: 0.55 }],
     attaques: [
       { nom: 'Pollen fixe', emoji: '🌼', mult: 0.9, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
       { nom: 'Éclosion brusque', emoji: '💥', mult: 1.45, poids: 1, type: 'mono' },
     ] },
-  grandMereRonce: { nom: 'Grand-Mère Ronce', emoji: '🥀', niveau: 68, boss: true, dex: 9,
+  grandMereRonce: { nom: 'Grand-Mère Ronce', emoji: '🥀', niveau: 52, boss: true, dex: 9,
     drops: [{ id: 'graine-renversee', chance: 1 }, { id: 'fil-de-suture', chance: 0.4 }],
     attaques: [
       { nom: 'Sarment maternel', emoji: '🌿', mult: 1.2, poids: 3, type: 'mono' },
@@ -200,25 +203,25 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Acte III · L'Ossuaire des Dieux (70-78) ----------
-  reliquaireMarcheur: { nom: 'Reliquaire marcheur', emoji: '⚱️', niveau: 71, dex: 8,
+  reliquaireMarcheur: { nom: 'Reliquaire marcheur', emoji: '⚱️', niveau: 78, dex: 8,
     drops: [{ id: 'os-divin', chance: 0.4 }],
     attaques: [
       { nom: 'Procession', emoji: '🕯️', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Litanie brisée', emoji: '📿', mult: 0.9, poids: 2, type: 'aoe' },
     ] },
-  cotesDuCiel: { nom: 'Côtes du ciel', emoji: '🦴', niveau: 74, dex: 6,
+  cotesDuCiel: { nom: 'Côtes du ciel', emoji: '🦴', niveau: 79, dex: 6,
     drops: [{ id: 'os-divin', chance: 0.5 }],
     attaques: [
       { nom: 'Cage', emoji: '⛓️', mult: 1.15, poids: 3, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
       { nom: 'Effondrement', emoji: '💢', mult: 1.55, poids: 1, type: 'mono' },
     ] },
-  prieurDuVide: { nom: 'Prieur du vide', emoji: '🙏', niveau: 76, dex: 13,
+  prieurDuVide: { nom: 'Prieur du vide', emoji: '🙏', niveau: 79, dex: 13,
     drops: [{ id: 'os-divin', chance: 0.45 }, { id: 'fil-de-suture', chance: 0.12 }],
     attaques: [
       { nom: 'Oraison creuse', emoji: '🕳️', mult: 1.2, poids: 3, type: 'mono', effet: { type: 'drain', part: 0.35 } },
       { nom: 'Absolution forcée', emoji: '✨', mult: 0.95, poids: 2, type: 'aoe' },
     ] },
-  leDieuRecousu: { nom: 'Le Dieu Recousu', emoji: '💀', niveau: 78, boss: true, dex: 11,
+  leDieuRecousu: { nom: 'Le Dieu Recousu', emoji: '💀', niveau: 80, boss: true, dex: 11,
     drops: [{ id: 'os-divin', chance: 1 }, { id: 'aiguille-premiere', chance: 0.15 }],
     attaques: [
       { nom: 'Main d’avant', emoji: '🖐️', mult: 1.25, poids: 3, type: 'mono' },
@@ -227,25 +230,25 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Acte III · La Bibliothèque Noyée (70-78) ----------
-  copisteNoye: { nom: 'Copiste noyé', emoji: '🖋️', niveau: 71, dex: 12,
+  copisteNoye: { nom: 'Copiste noyé', emoji: '🖋️', niveau: 57, dex: 12,
     drops: [{ id: 'encre-noyee', chance: 0.45 }],
     attaques: [
       { nom: 'Rature', emoji: '✖️', mult: 1.15, poids: 3, type: 'mono' },
       { nom: 'Note en marge', emoji: '📝', mult: 0.9, poids: 1, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
     ] },
-  rayonnageVorace: { nom: 'Rayonnage vorace', emoji: '📚', niveau: 74, dex: 5,
+  rayonnageVorace: { nom: 'Rayonnage vorace', emoji: '📚', niveau: 58, dex: 5,
     drops: [{ id: 'encre-noyee', chance: 0.4 }, { id: 'os-divin', chance: 0.15 }],
     attaques: [
       { nom: 'Refermement', emoji: '📕', mult: 1.3, poids: 3, type: 'mono' },
       { nom: 'Avalanche de tomes', emoji: '📖', mult: 0.9, poids: 2, type: 'aoe' },
     ] },
-  indexVivant: { nom: 'Index vivant', emoji: '🗂️', niveau: 76, dex: 15,
+  indexVivant: { nom: 'Index vivant', emoji: '🗂️', niveau: 59, dex: 15,
     drops: [{ id: 'encre-noyee', chance: 0.55 }],
     attaques: [
       { nom: 'Renvoi', emoji: '↩️', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Table des matières', emoji: '📑', mult: 0.95, poids: 2, type: 'aoe', effet: { type: 'etourdi', duree: 1, chance: 0.25 } },
     ] },
-  archivisteDesFins: { nom: 'L’Archiviste des Fins', emoji: '📜', niveau: 78, boss: true, dex: 14,
+  archivisteDesFins: { nom: 'L’Archiviste des Fins', emoji: '📜', niveau: 60, boss: true, dex: 14,
     drops: [{ id: 'encre-noyee', chance: 1 }, { id: 'aiguille-premiere', chance: 0.15 }],
     attaques: [
       { nom: 'Citation exacte', emoji: '❝', mult: 1.25, poids: 3, type: 'mono' },
@@ -254,25 +257,25 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Acte IV · Le Rempart du Crépuscule (80-88) ----------
-  sentinelleDuSoir: { nom: 'Sentinelle du soir', emoji: '🌇', niveau: 81, dex: 11,
+  sentinelleDuSoir: { nom: 'Sentinelle du soir', emoji: '🌇', niveau: 90, dex: 11,
     drops: [{ id: 'braise-crepusculaire', chance: 0.35 }],
     attaques: [
       { nom: 'Dernière ronde', emoji: '🔦', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Couvre-feu', emoji: '🔕', mult: 0.9, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
     ] },
-  porteurDeLanterne: { nom: 'Porteur de lanterne', emoji: '🏮', niveau: 84, dex: 13,
+  porteurDeLanterne: { nom: 'Porteur de lanterne', emoji: '🏮', niveau: 91, dex: 13,
     drops: [{ id: 'braise-crepusculaire', chance: 0.4 }],
     attaques: [
       { nom: 'Lumière tenue', emoji: '💡', mult: 1.25, poids: 3, type: 'mono' },
       { nom: 'Éblouissement', emoji: '✨', mult: 0.95, poids: 2, type: 'aoe' },
     ] },
-  brecheAmbulante: { nom: 'Brèche ambulante', emoji: '🕳️', niveau: 86, dex: 9,
+  brecheAmbulante: { nom: 'Brèche ambulante', emoji: '🕳️', niveau: 91, dex: 9,
     drops: [{ id: 'braise-crepusculaire', chance: 0.45 }, { id: 'fil-de-suture', chance: 0.2 }],
     attaques: [
       { nom: 'Déchirure', emoji: '✂️', mult: 1.35, poids: 3, type: 'mono' },
       { nom: 'Ce qui passe au travers', emoji: '🌌', mult: 1.0, poids: 2, type: 'aoe', effet: { type: 'drain', part: 0.3 } },
     ] },
-  capitaineDuDernierSoir: { nom: 'Le Capitaine du Dernier Soir', emoji: '🌆', niveau: 88, boss: true, dex: 12,
+  capitaineDuDernierSoir: { nom: 'Le Capitaine du Dernier Soir', emoji: '🌆', niveau: 92, boss: true, dex: 12,
     drops: [{ id: 'braise-crepusculaire', chance: 1 }, { id: 'aiguille-premiere', chance: 0.25 }],
     attaques: [
       { nom: 'Ordre tenu', emoji: '⚔️', mult: 1.3, poids: 3, type: 'mono' },
@@ -281,25 +284,25 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Acte IV · Les Terres Recousues (80-88) ----------
-  cousuVivant: { nom: 'Cousu vivant', emoji: '🧵', niveau: 81, dex: 10,
+  cousuVivant: { nom: 'Cousu vivant', emoji: '🧵', niveau: 93, dex: 10,
     drops: [{ id: 'fil-de-suture', chance: 0.35 }],
     attaques: [
       { nom: 'Point serré', emoji: '🪡', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Ça tire', emoji: '😬', mult: 0.9, poids: 1, type: 'mono', effet: { type: 'poison', degats: 130, duree: 3 } },
     ] },
-  paysageEnDouble: { nom: 'Paysage en double', emoji: '🪞', niveau: 84, dex: 12,
+  paysageEnDouble: { nom: 'Paysage en double', emoji: '🪞', niveau: 93, dex: 12,
     drops: [{ id: 'fil-de-suture', chance: 0.3 }, { id: 'graine-renversee', chance: 0.25 }],
     attaques: [
       { nom: 'Répétition', emoji: '🔁', mult: 1.25, poids: 3, type: 'mono' },
       { nom: 'Superposition', emoji: '🌫️', mult: 0.95, poids: 2, type: 'aoe' },
     ] },
-  raccordRate: { nom: 'Raccord raté', emoji: '🩹', niveau: 86, dex: 14,
+  raccordRate: { nom: 'Raccord raté', emoji: '🩹', niveau: 94, dex: 14,
     drops: [{ id: 'fil-de-suture', chance: 0.45 }],
     attaques: [
       { nom: 'Couture qui lâche', emoji: '✂️', mult: 1.35, poids: 3, type: 'mono' },
       { nom: 'Bord à vif', emoji: '🩸', mult: 1.0, poids: 2, type: 'aoe', effet: { type: 'poison', degats: 150, duree: 2 } },
     ] },
-  laCouturiere: { nom: 'La Couturière', emoji: '🪡', niveau: 88, boss: true, dex: 15,
+  laCouturiere: { nom: 'La Couturière', emoji: '🪡', niveau: 94, boss: true, dex: 15,
     drops: [{ id: 'fil-de-suture', chance: 1 }, { id: 'aiguille-premiere', chance: 0.3 }],
     attaques: [
       { nom: 'Reprise à l’aiguille', emoji: '🪡', mult: 1.3, poids: 3, type: 'mono' },
@@ -308,25 +311,25 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Acte IV · La Couture du Monde (90-100) ----------
-  gardeDeLaCouture: { nom: 'Garde de la Couture', emoji: '⚔️', niveau: 91, dex: 13,
+  gardeDeLaCouture: { nom: 'Garde de la Couture', emoji: '⚔️', niveau: 97, dex: 13,
     drops: [{ id: 'aiguille-premiere', chance: 0.2 }, { id: 'fil-de-suture', chance: 0.5 }],
     attaques: [
       { nom: 'Devoir', emoji: '🛡️', mult: 1.3, poids: 3, type: 'mono' },
       { nom: 'Serment tenu', emoji: '📜', mult: 1.0, poids: 2, type: 'aoe' },
     ] },
-  pointDeRupture: { nom: 'Point de rupture', emoji: '💢', niveau: 94, dex: 11,
+  pointDeRupture: { nom: 'Point de rupture', emoji: '💢', niveau: 97, dex: 11,
     drops: [{ id: 'aiguille-premiere', chance: 0.25 }],
     attaques: [
       { nom: 'Ça craque', emoji: '⚡', mult: 1.4, poids: 3, type: 'mono' },
       { nom: 'Propagation', emoji: '🕸️', mult: 1.05, poids: 2, type: 'aoe' },
     ] },
-  memoireDuMondeAncien: { nom: 'Mémoire du monde ancien', emoji: '🌍', niveau: 97, dex: 12,
+  memoireDuMondeAncien: { nom: 'Mémoire du monde ancien', emoji: '🌍', niveau: 98, dex: 12,
     drops: [{ id: 'aiguille-premiere', chance: 0.3 }, { id: 'eclat-de-couronne', chance: 0.1 }],
     attaques: [
       { nom: 'Ce qui était avant', emoji: '🕰️', mult: 1.35, poids: 3, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
       { nom: 'Retour de vague', emoji: '🌊', mult: 1.1, poids: 2, type: 'aoe' },
     ] },
-  laDerniereSuture: { nom: 'La Dernière Suture', emoji: '🪡', niveau: 100, boss: true, dex: 14,
+  laDerniereSuture: { nom: 'La Dernière Suture', emoji: '🪡', niveau: 98, boss: true, dex: 14,
     drops: [{ id: 'aiguille-premiere', chance: 1 }, { id: 'eclat-de-couronne', chance: 0.6 }],
     attaques: [
       { nom: 'Elle cède', emoji: '✂️', mult: 1.35, poids: 3, type: 'mono' },
@@ -335,19 +338,19 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Acte IV · Le Trône du Premier Roi (90-100) ----------
-  heraultSansVoix: { nom: 'Héraut sans voix', emoji: '📯', niveau: 91, dex: 14,
+  heraultSansVoix: { nom: 'Héraut sans voix', emoji: '📯', niveau: 99, dex: 14,
     drops: [{ id: 'eclat-de-couronne', chance: 0.15 }],
     attaques: [
       { nom: 'Annonce muette', emoji: '🤐', mult: 1.3, poids: 3, type: 'mono' },
       { nom: 'Protocole', emoji: '📜', mult: 1.0, poids: 2, type: 'aoe', effet: { type: 'etourdi', duree: 1, chance: 0.25 } },
     ] },
-  conseillerDeLaPremiereHeure: { nom: 'Conseiller de la première heure', emoji: '🎭', niveau: 94, dex: 12,
+  conseillerDeLaPremiereHeure: { nom: 'Conseiller de la première heure', emoji: '🎭', niveau: 99, dex: 12,
     drops: [{ id: 'eclat-de-couronne', chance: 0.2 }],
     attaques: [
       { nom: 'Mauvais conseil', emoji: '🗣️', mult: 1.35, poids: 3, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
       { nom: 'Cabale', emoji: '🕯️', mult: 1.05, poids: 2, type: 'aoe' },
     ] },
-  ombreCouronnee: { nom: 'Ombre couronnée', emoji: '👤', niveau: 97, dex: 15,
+  ombreCouronnee: { nom: 'Ombre couronnée', emoji: '👤', niveau: 100, dex: 15,
     drops: [{ id: 'eclat-de-couronne', chance: 0.3 }, { id: 'aiguille-premiere', chance: 0.15 }],
     attaques: [
       { nom: 'Ce qu’il fut', emoji: '👑', mult: 1.4, poids: 3, type: 'mono' },
@@ -362,25 +365,25 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Passage · La Balance des Heures (68-70) ----------
-  peseurDHeures: { nom: 'Peseur d’heures', emoji: '🕰️', niveau: 69, dex: 11,
+  peseurDHeures: { nom: 'Peseur d’heures', emoji: '🕰️', niveau: 53, dex: 11,
     drops: [{ id: 'echo-fossilise', chance: 0.4 }],
     attaques: [
       { nom: 'Prélèvement', emoji: '⏳', mult: 1.15, poids: 3, type: 'mono' },
       { nom: 'Compte rond', emoji: '⚖️', mult: 0.9, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
     ] },
-  creancierGris: { nom: 'Créancier gris', emoji: '📜', niveau: 69, dex: 9,
+  creancierGris: { nom: 'Créancier gris', emoji: '📜', niveau: 54, dex: 9,
     drops: [{ id: 'graine-renversee', chance: 0.35 }, { id: 'echo-fossilise', chance: 0.3 }],
     attaques: [
       { nom: 'Rappel d’échéance', emoji: '📅', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Intérêts', emoji: '💱', mult: 0.85, poids: 2, type: 'mono', effet: { type: 'poison', duree: 3 } },
     ] },
-  aiguilleAffolee: { nom: 'Aiguille affolée', emoji: '🧭', niveau: 70, dex: 16,
+  aiguilleAffolee: { nom: 'Aiguille affolée', emoji: '🧭', niveau: 55, dex: 16,
     drops: [{ id: 'os-divin', chance: 0.25 }],
     attaques: [
       { nom: 'Tour de cadran', emoji: '🔄', mult: 1.1, poids: 3, type: 'mono' },
       { nom: 'Minute volée', emoji: '⏱️', mult: 0.95, poids: 1, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
     ] },
-  leGrandComptable: { nom: 'Le Grand Comptable', emoji: '🧮', niveau: 70, boss: true, dex: 12,
+  leGrandComptable: { nom: 'Le Grand Comptable', emoji: '🧮', niveau: 56, boss: true, dex: 12,
     drops: [{ id: 'echo-fossilise', chance: 1 }, { id: 'os-divin', chance: 0.7 }],
     attaques: [
       { nom: 'Solde', emoji: '➖', mult: 1.3, poids: 3, type: 'mono' },
@@ -389,25 +392,25 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Passage · Le Gué des Serments (78-80) ----------
-  passeurSansBarque: { nom: 'Passeur sans barque', emoji: '🚣', niveau: 79, dex: 13,
+  passeurSansBarque: { nom: 'Passeur sans barque', emoji: '🚣', niveau: 87, dex: 13,
     drops: [{ id: 'os-divin', chance: 0.4 }],
     attaques: [
       { nom: 'Traversée due', emoji: '〰️', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Le prix d’abord', emoji: '🪙', mult: 0.9, poids: 2, type: 'mono', effet: { type: 'drain', part: 0.25 } },
     ] },
-  paroleGelee: { nom: 'Parole gelée', emoji: '🗨️', niveau: 79, dex: 8,
+  paroleGelee: { nom: 'Parole gelée', emoji: '🗨️', niveau: 88, dex: 8,
     drops: [{ id: 'braise-crepusculaire', chance: 0.2 }, { id: 'os-divin', chance: 0.3 }],
     attaques: [
       { nom: 'Ce qui a été dit', emoji: '❄️', mult: 1.25, poids: 3, type: 'mono' },
       { nom: 'Silence tenu', emoji: '🤫', mult: 0.85, poids: 2, type: 'aoe', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
     ] },
-  temoinDeGalet: { nom: 'Témoin de galet', emoji: '🏛️', niveau: 80, dex: 10,
+  temoinDeGalet: { nom: 'Témoin de galet', emoji: '🏛️', niveau: 88, dex: 10,
     drops: [{ id: 'os-divin', chance: 0.45 }],
     attaques: [
       { nom: 'Déposition', emoji: '📖', mult: 1.15, poids: 3, type: 'mono' },
       { nom: 'Contre-serment', emoji: '⛓️', mult: 1, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
     ] },
-  celuiQuiNaJamaisJure: { nom: 'Celui Qui N’a Jamais Juré', emoji: '🤐', niveau: 80, boss: true, dex: 14,
+  celuiQuiNaJamaisJure: { nom: 'Celui Qui N’a Jamais Juré', emoji: '🤐', niveau: 89, boss: true, dex: 14,
     drops: [{ id: 'os-divin', chance: 1 }, { id: 'braise-crepusculaire', chance: 0.6 }],
     attaques: [
       { nom: 'Parole retenue', emoji: '🔇', mult: 1.35, poids: 3, type: 'mono' },
@@ -416,25 +419,25 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Passage · L’Effilochure (88-90) ----------
-  filQuiLache: { nom: 'Fil qui lâche', emoji: '🧵', niveau: 89, dex: 12,
+  filQuiLache: { nom: 'Fil qui lâche', emoji: '🧵', niveau: 95, dex: 12,
     drops: [{ id: 'fil-de-suture', chance: 0.35 }],
     attaques: [
       { nom: 'Maille sautée', emoji: '➰', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Ça file', emoji: '📉', mult: 0.9, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
     ] },
-  trameNue: { nom: 'Trame nue', emoji: '🕸️', niveau: 89, dex: 10,
+  trameNue: { nom: 'Trame nue', emoji: '🕸️', niveau: 95, dex: 10,
     drops: [{ id: 'braise-crepusculaire', chance: 0.3 }, { id: 'fil-de-suture', chance: 0.25 }],
     attaques: [
       { nom: 'Le blanc d’avant', emoji: '⬜', mult: 1.25, poids: 3, type: 'mono' },
       { nom: 'Rien dessous', emoji: '🕳️', mult: 0.95, poids: 2, type: 'mono', effet: { type: 'drain', part: 0.3 } },
     ] },
-  bordSansOurlet: { nom: 'Bord sans ourlet', emoji: '✂️', niveau: 90, dex: 15,
+  bordSansOurlet: { nom: 'Bord sans ourlet', emoji: '✂️', niveau: 96, dex: 15,
     drops: [{ id: 'fil-de-suture', chance: 0.4 }],
     attaques: [
       { nom: 'Coupe franche', emoji: '🔪', mult: 1.3, poids: 3, type: 'mono' },
       { nom: 'S’effiloche', emoji: '🧶', mult: 1, poids: 1, type: 'aoe', effet: { type: 'poison', duree: 3 } },
     ] },
-  laMailleTombee: { nom: 'La Maille Tombée', emoji: '🧷', niveau: 90, boss: true, dex: 13,
+  laMailleTombee: { nom: 'La Maille Tombée', emoji: '🧷', niveau: 96, boss: true, dex: 13,
     drops: [{ id: 'fil-de-suture', chance: 1 }, { id: 'braise-crepusculaire', chance: 0.7 }],
     attaques: [
       { nom: 'Une de moins', emoji: '➖', mult: 1.35, poids: 3, type: 'mono' },
@@ -481,80 +484,80 @@ Object.entries(BESTIAIRE_MARCHES).forEach(([cle, def]) => {
 // ---------------------------------------------------------------------
 ZONES.push(
   {
-    id: 'marches-grises', nom: 'Les Marches Grises', emoji: '🌫️', niveauMin: 52, niveauMax: 58, note: 'équipe conseillée',
-    desc: 'Au-delà de la dernière carte connue, le paysage cesse de se décider. Les bornes changent de place, la cendre ne vient d’aucun feu — et les voyageurs qu’on y croise marchent tous dans la même direction, sans savoir laquelle.',
+    id: 'marches-grises', nom: 'Les Marches Grises', emoji: '🌫️', niveauMin: 80, niveauMax: 83, note: 'équipe conseillée',
+    desc: 'Au-delà de l’Ossuaire, le paysage cesse de se décider. Les bornes changent de place, la cendre ne vient d’aucun feu, et les voyageurs qu’on y croise marchent tous dans la même direction sans savoir laquelle. C’est le bord du tissu : plus assez de monde pour tenir la forme.',
     monstres: ['arpenteurGris', 'bornetremblante', 'gardienDeLaLimite'], boss: 'celuiQuiCompte',
-    recolte: [{ id: 'cendre-grise', chance: 0.8 }, { id: 'echo-fossilise', chance: 0.35 }, { id: 'cendre-fertile', chance: 0.4 }],
+    recolte: [{ id: 'cendre-grise', chance: 0.8 }, { id: 'os-divin', chance: 0.35 }, { id: 'plume-d-archon', chance: 0.25 }, { id: 'encre-noyee', chance: 0.25 }],
   },
   {
-    id: 'chant-ruines', nom: 'Le Chant des Ruines', emoji: '🏚️', niveauMin: 52, niveauMax: 58, note: 'équipe conseillée',
-    desc: 'Une cité dont il ne reste que l’acoustique. Les murs sont tombés, la musique est restée : elle rejoue chaque soir un concert que personne n’a donné. Les pierres, elles, se souviennent d’un autre plan que celui d’aujourd’hui.',
+    id: 'chant-ruines', nom: 'Le Chant des Ruines', emoji: '🏚️', niveauMin: 44, niveauMax: 48,
+    desc: 'Une cité dont il ne reste que l’acoustique. Les murs sont tombés, la musique est restée : chaque soir, les ruines rejouent un concert que personne n’a donné. Les archives du royaume disparu commencent ici — gravées dans le son, faute de pierre.',
     monstres: ['choeurDePierre', 'veuveDesArcades', 'refrainRevenant'], boss: 'maitreDeChapelle',
-    recolte: [{ id: 'echo-fossilise', chance: 0.8 }, { id: 'cendre-grise', chance: 0.4 }, { id: 'liane-tressee', chance: 0.4 }, { id: 'essence-primordiale', chance: 0.15 }],
+    recolte: [{ id: 'echo-fossilise', chance: 0.8 }, { id: 'poussiere-spectre', chance: 0.4 }, { id: 'os-ancien', chance: 0.35 }, { id: 'sphere-runique', chance: 0.25 }, { id: 'cendre-fertile', chance: 0.3 }],
   },
   {
-    id: 'mer-de-verre', nom: 'La Mer de Verre', emoji: '🔷', niveauMin: 60, niveauMax: 68, note: 'équipe conseillée',
-    desc: 'Un océan arrêté en pleine vague, il y a si longtemps que l’écume est devenue de la pierre. On marche dessus. Dessous, on distingue des villes — et elles ne ressemblent à aucune ville de Valciel.',
+    id: 'mer-de-verre', nom: 'La Mer de Verre', emoji: '🔷', niveauMin: 74, niveauMax: 77, note: 'équipe conseillée',
+    desc: 'Le dernier des déchaînements élémentaires, et le plus ancien : un océan arrêté en pleine vague, il y a si longtemps que l’écume est devenue pierre. On marche dessus. Dessous, on distingue des villes — celles de la sixième version du monde, exactement comme la Bibliothèque les décrivait.',
     monstres: ['vagueFigee', 'noyeDebout', 'banquiseVive'], boss: 'celleQuiNaJamaisCoule',
-    recolte: [{ id: 'verre-de-mer', chance: 0.8 }, { id: 'encre-noyee', chance: 0.3 }, { id: 'corail-sanglant', chance: 0.4 }, { id: 'echo-fossilise', chance: 0.25 }],
+    recolte: [{ id: 'verre-de-mer', chance: 0.8 }, { id: 'encre-noyee', chance: 0.3 }, { id: 'corail-sanglant', chance: 0.35 }, { id: 'acier-celeste', chance: 0.25 }],
   },
   {
-    id: 'jardins-renverses', nom: 'Les Jardins Renversés', emoji: '🌺', niveauMin: 60, niveauMax: 68, note: 'équipe conseillée',
-    desc: 'Ici tout pousse à l’envers : les racines vers le ciel, les fleurs vers la terre. Les jardiniers entretiennent encore les allées. Interrogés, ils répondent qu’ils attendent que le monde soit remis à l’endroit — et qu’ils attendent depuis longtemps.',
+    id: 'jardins-renverses', nom: 'Les Jardins Renversés', emoji: '🌺', niveauMin: 48, niveauMax: 52,
+    desc: 'Ici tout pousse à l’envers : les racines vers le ciel, les fleurs vers la terre. Les jardiniers entretiennent encore les allées et répondent, quand on insiste, qu’ils attendent que le monde soit « remis à l’endroit ». Remis. Comme quelque chose qui a déjà été défait une fois.',
     monstres: ['ronceInversee', 'jardinierSansTete', 'fleurQuiRegarde'], boss: 'grandMereRonce',
-    recolte: [{ id: 'graine-renversee', chance: 0.8 }, { id: 'echo-fossilise', chance: 0.3 }, { id: 'basalte-poli', chance: 0.45 }, { id: 'verre-de-mer', chance: 0.25 }],
+    recolte: [{ id: 'graine-renversee', chance: 0.8 }, { id: 'echo-fossilise', chance: 0.3 }, { id: 'os-ancien', chance: 0.3 }, { id: 'relique-antique', chance: 0.25 }, { id: 'cendre-fertile', chance: 0.35 }],
   },
   {
-    id: 'balance-des-heures', nom: 'La Balance des Heures', emoji: '⚖️', niveauMin: 68, niveauMax: 70, note: 'passage',
-    desc: 'Une halle sans toit où pendent des milliers de balances. Sur un plateau, une heure ; sur l’autre, ce qu’elle a coûté. Personne n’est venu relever les comptes depuis très longtemps — mais les balances, elles, n’ont jamais cessé de peser.',
+    id: 'balance-des-heures', nom: 'La Balance des Heures', emoji: '⚖️', niveauMin: 52, niveauMax: 56,
+    desc: 'Une halle sans toit où pendent des milliers de balances. Sur un plateau, une heure ; sur l’autre, ce qu’elle a coûté. Les registres remontent bien plus haut que la fondation officielle de Valciel — et les toutes premières lignes sont écrites dans une langue d’AVANT le monde.',
     monstres: ['peseurDHeures', 'creancierGris', 'aiguilleAffolee'], boss: 'leGrandComptable',
-    recolte: [{ id: 'echo-fossilise', chance: 0.7 }, { id: 'graine-renversee', chance: 0.45 }, { id: 'os-divin', chance: 0.3 }, { id: 'basalte-poli', chance: 0.35 }],
+    recolte: [{ id: 'echo-fossilise', chance: 0.6 }, { id: 'graine-renversee', chance: 0.45 }, { id: 'os-ancien', chance: 0.3 }, { id: 'sphere-runique', chance: 0.3 }],
   },
   {
-    id: 'ossuaire-dieux', nom: 'L’Ossuaire des Dieux', emoji: '💀', niveauMin: 70, niveauMax: 78, note: 'équipe requise',
-    desc: 'Des ossements trop grands pour des géants, trop fins pour des bêtes, alignés comme dans un atelier. Aucun n’est complet. Tous portent des coutures — et ce sont les mêmes points que ceux qu’on a vus, en plus petit, sur les fêlures des Terres lointaines.',
+    id: 'ossuaire-dieux', nom: 'L’Ossuaire des Dieux', emoji: '💀', niveauMin: 77, niveauMax: 80, note: 'équipe conseillée',
+    desc: 'L’acte du Sanctuaire s’ouvre sur ses reliques : des ossements trop grands pour des géants, trop fins pour des bêtes, rangés comme dans un atelier. Tous portent des coutures — les mêmes points que sur les fémurs de la Vallée des Géants, en plus grand. Quelqu’un a réparé des dieux. Au fil, à l’aiguille.',
     monstres: ['reliquaireMarcheur', 'cotesDuCiel', 'prieurDuVide'], boss: 'leDieuRecousu',
-    recolte: [{ id: 'os-divin', chance: 0.8 }, { id: 'fil-de-suture', chance: 0.2 }, { id: 'ecaille-draconique', chance: 0.35 }, { id: 'echo-fossilise', chance: 0.3 }],
+    recolte: [{ id: 'os-divin', chance: 0.8 }, { id: 'ecaille-draconique', chance: 0.35 }, { id: 'plume-d-archon', chance: 0.25 }, { id: 'encre-noyee', chance: 0.25 }],
   },
   {
-    id: 'bibliotheque-noyee', nom: 'La Bibliothèque Noyée', emoji: '📚', niveauMin: 70, niveauMax: 78, note: 'équipe requise',
-    desc: 'Tout le savoir d’avant, sous trois mètres d’eau immobile. Les livres s’y lisent encore. Le catalogue est complet, méthodique — et il recense sept versions du monde. Valciel porte le numéro sept.',
+    id: 'bibliotheque-noyee', nom: 'La Bibliothèque Noyée', emoji: '📚', niveauMin: 56, niveauMax: 60, note: 'équipe conseillée',
+    desc: 'Tout le savoir d’avant, sous trois mètres d’eau immobile. Les livres s’y lisent encore, et le catalogue est formel : il recense SEPT versions du monde. Six sont closes, avec leur date de fin. La septième — la nôtre — porte la mention « en cours ». Voilà le secret des royaumes oubliés. Reste à comprendre qui recommence le monde, et pourquoi.',
     monstres: ['copisteNoye', 'rayonnageVorace', 'indexVivant'], boss: 'archivisteDesFins',
-    recolte: [{ id: 'encre-noyee', chance: 0.8 }, { id: 'os-divin', chance: 0.3 }, { id: 'peau-de-mammouth', chance: 0.35 }, { id: 'echo-fossilise', chance: 0.3 }],
+    recolte: [{ id: 'encre-noyee', chance: 0.8 }, { id: 'graine-renversee', chance: 0.3 }, { id: 'echo-fossilise', chance: 0.35 }, { id: 'relique-antique', chance: 0.3 }],
   },
   {
-    id: 'gue-des-serments', nom: 'Le Gué des Serments', emoji: '🌉', niveauMin: 78, niveauMax: 80, note: 'passage',
-    desc: 'Une rivière qu’on traverse à pied sec : l’eau s’est retirée le jour où le premier serment a été rompu. Sur les galets, des promesses déposées par milliers, comme des offrandes. Elles attendent encore qu’on revienne les chercher.',
+    id: 'gue-des-serments', nom: 'Le Gué des Serments', emoji: '🌉', niveauMin: 86, niveauMax: 89, note: 'équipe requise',
+    desc: 'Une rivière qu’on traverse à pied sec : l’eau s’est retirée le jour où le premier serment a été rompu. Sur les galets, des promesses déposées par milliers. Les gardiens du Sanctuaire juraient de veiller sur la couture du monde — c’est ici qu’on apprend qu’ils ont cessé, et ce que ça a coûté.',
     monstres: ['passeurSansBarque', 'paroleGelee', 'temoinDeGalet'], boss: 'celuiQuiNaJamaisJure',
-    recolte: [{ id: 'os-divin', chance: 0.7 }, { id: 'echo-fossilise', chance: 0.4 }, { id: 'braise-crepusculaire', chance: 0.35 }, { id: 'encre-noyee', chance: 0.25 }],
+    recolte: [{ id: 'cendre-grise', chance: 0.5 }, { id: 'etoffe-du-neant', chance: 0.4 }, { id: 'os-divin', chance: 0.3 }, { id: 'plume-d-archon', chance: 0.25 }, { id: 'essence-primordiale', chance: 0.12 }],
   },
   {
-    id: 'rempart-crepuscule', nom: 'Le Rempart du Crépuscule', emoji: '🌇', niveauMin: 80, niveauMax: 88, note: 'équipe requise',
-    desc: 'Un mur sans fin, bâti face au vide, où le soleil tombe sans jamais se coucher. La garnison tient depuis la première reconstruction. Elle n’a reçu aucun ordre depuis, et elle n’en attend plus : elle sait ce qu’il y a de l’autre côté.',
+    id: 'rempart-crepuscule', nom: 'Le Rempart du Crépuscule', emoji: '🌇', niveauMin: 89, niveauMax: 92, note: 'équipe requise',
+    desc: 'Le dernier mur avant la fin du monde, bâti face au vide, où le soleil tombe sans jamais se coucher. La garnison tient depuis la première reconstruction, sans relève et sans ordre nouveau. Elle sait ce qu’il y a de l’autre côté. Passé cette porte, vous le saurez aussi.',
     monstres: ['sentinelleDuSoir', 'porteurDeLanterne', 'brecheAmbulante'], boss: 'capitaineDuDernierSoir',
-    recolte: [{ id: 'braise-crepusculaire', chance: 0.8 }, { id: 'fil-de-suture', chance: 0.35 }, { id: 'plume-d-archon', chance: 0.35 }, { id: 'echo-fossilise', chance: 0.3 }],
+    recolte: [{ id: 'braise-crepusculaire', chance: 0.8 }, { id: 'etoffe-du-neant', chance: 0.35 }, { id: 'eclat-d-etoile', chance: 0.3 }, { id: 'plume-d-archon', chance: 0.25 }, { id: 'essence-primordiale', chance: 0.15 }],
   },
   {
-    id: 'terres-recousues', nom: 'Les Terres Recousues', emoji: '🧵', niveauMin: 80, niveauMax: 88, note: 'équipe requise',
-    desc: 'Des morceaux de pays cousus les uns aux autres : une plaine contre une falaise, un fleuve qui s’arrête net contre un désert. Les points sont visibles à l’œil nu. Certains lâchent. C’est de là que sortait tout ce qu’on a combattu depuis le premier jour.',
+    id: 'terres-recousues', nom: 'Les Terres Recousues', emoji: '🧵', niveauMin: 92, niveauMax: 94, note: 'équipe requise',
+    desc: 'Le dernier acte commence, et tout s’explique d’un coup d’œil : des morceaux de pays cousus les uns aux autres, une plaine contre une falaise, un fleuve qui s’arrête net contre un désert. Les points sont visibles à l’œil nu. Certains lâchent. C’est de là que sortait tout ce que vous avez combattu depuis le premier jour.',
     monstres: ['cousuVivant', 'paysageEnDouble', 'raccordRate'], boss: 'laCouturiere',
-    recolte: [{ id: 'fil-de-suture', chance: 0.85 }, { id: 'graine-renversee', chance: 0.3 }, { id: 'verre-de-mer', chance: 0.35 }, { id: 'braise-crepusculaire', chance: 0.25 }, { id: 'echo-fossilise', chance: 0.35 }, { id: 'peau-de-mammouth', chance: 0.3 }],
+    recolte: [{ id: 'fil-de-suture', chance: 0.85 }, { id: 'braise-crepusculaire', chance: 0.35 }, { id: 'etoffe-du-neant', chance: 0.3 }, { id: 'aiguille-premiere', chance: 0.15 }, { id: 'essence-primordiale', chance: 0.2 }],
   },
   {
-    id: 'effilochure', nom: 'L’Effilochure', emoji: '🧶', niveauMin: 88, niveauMax: 90, note: 'passage',
-    desc: 'Ici la trame du monde perd ses fils un par un, et on voit au travers : derrière le paysage il n’y a pas d’autre paysage, juste le blanc d’avant. Les habitants recousent chaque matin ce qui a lâché pendant la nuit, et perdent un peu de terrain chaque jour.',
+    id: 'effilochure', nom: 'L’Effilochure', emoji: '🧶', niveauMin: 94, niveauMax: 96, note: 'équipe requise',
+    desc: 'Ici la trame du monde perd ses fils un par un, et on voit au travers : derrière le paysage, pas d’autre paysage — juste le blanc d’avant. Les habitants recousent chaque matin ce qui a lâché dans la nuit, et perdent un peu de terrain chaque jour. Il faut faire vite, maintenant.',
     monstres: ['filQuiLache', 'trameNue', 'bordSansOurlet'], boss: 'laMailleTombee',
-    recolte: [{ id: 'fil-de-suture', chance: 0.6 }, { id: 'braise-crepusculaire', chance: 0.5 }, { id: 'echo-fossilise', chance: 0.4 }, { id: 'os-divin', chance: 0.35 }, { id: 'essence-primordiale', chance: 0.15 }],
+    recolte: [{ id: 'fil-de-suture', chance: 0.6 }, { id: 'braise-crepusculaire', chance: 0.5 }, { id: 'eclat-d-etoile', chance: 0.35 }, { id: 'aiguille-premiere', chance: 0.18 }, { id: 'essence-primordiale', chance: 0.2 }],
   },
   {
-    id: 'couture-monde', nom: 'La Couture du Monde', emoji: '🪡', niveauMin: 90, niveauMax: 100, note: 'équipe requise',
-    desc: 'La suture maîtresse, celle qui tient les six mondes précédents ensemble sous celui-ci. Elle est en train de céder. Ce n’est pas une menace : c’est un compte à rebours, et il a commencé bien avant votre naissance.',
+    id: 'couture-monde', nom: 'La Couture du Monde', emoji: '🪡', niveauMin: 96, niveauMax: 98, note: 'équipe requise',
+    desc: 'La suture maîtresse, celle qui tient les six mondes précédents ensemble sous celui-ci. Elle est en train de céder. Ce n’est pas une menace : c’est un compte à rebours, et il a commencé bien avant votre naissance. Au bout de la Couture, une salle du trône.',
     monstres: ['gardeDeLaCouture', 'pointDeRupture', 'memoireDuMondeAncien'], boss: 'laDerniereSuture',
-    recolte: [{ id: 'fil-de-suture', chance: 0.9 }, { id: 'aiguille-premiere', chance: 0.25 }, { id: 'braise-crepusculaire', chance: 0.35 }, { id: 'eclat-de-couronne', chance: 0.2 }],
+    recolte: [{ id: 'fil-de-suture', chance: 0.9 }, { id: 'aiguille-premiere', chance: 0.25 }, { id: 'braise-crepusculaire', chance: 0.35 }, { id: 'eclat-de-couronne', chance: 0.15 }],
   },
   {
-    id: 'trone-premier-roi', nom: 'Le Trône du Premier Roi', emoji: '👑', niveauMin: 90, niveauMax: 100, note: 'le dernier pas',
-    desc: 'Au bout de la Couture, une salle du trône bâtie avant Valciel. Celui qui y siège n’est pas un tyran : c’est le couturier. Il a recousu le monde six fois, il s’apprête à recommencer, et il n’a jamais demandé à personne s’il fallait continuer.',
+    id: 'trone-premier-roi', nom: 'Le Trône du Premier Roi', emoji: '👑', niveauMin: 98, niveauMax: 100, note: 'le dernier pas',
+    desc: 'Le bout du chemin. Celui qui siège ici n’est pas un tyran : c’est le couturier. Il a recousu le monde six fois, il s’apprête à recommencer — et en six mondes, personne ne lui a jamais demandé s’il fallait continuer. Vous, vous pouvez encore poser la question. Ou l’en empêcher.',
     monstres: ['heraultSansVoix', 'conseillerDeLaPremiereHeure', 'ombreCouronnee'], boss: 'lePremierRoi',
     recolte: [{ id: 'eclat-de-couronne', chance: 0.6 }, { id: 'aiguille-premiere', chance: 0.4 }, { id: 'fil-de-suture', chance: 0.4 }, { id: 'essence-primordiale', chance: 0.2 }],
   },
@@ -570,20 +573,20 @@ ZONES.push(
 // Les trophées des dix nouveaux boss.
 // ---------------------------------------------------------------------
 Object.assign(OBJETS, {
-  'boulier-du-comptable': { nom: 'Boulier du Comptable', emoji: '🧮', type: 'equipement', slot: 'accessoire', niveau: 70, rarete: 'legendaire', prixVente: 2400, bonus: { int: 24, esp: 14, celerite: 8 }, desc: 'Trophée du Grand Comptable. Les boules glissent encore toutes seules, et le total tombe toujours juste.' },
-  'baillon-du-taciturne': { nom: 'Bâillon du Taciturne', emoji: '🤐', type: 'equipement', slot: 'accessoire', niveau: 80, rarete: 'mythique', prixVente: 3600, bonus: { esp: 30, vit: 16, deter: 11 }, desc: 'Trophée de Celui Qui N’a Jamais Juré. Le porter n’empêche pas de parler — ça rappelle seulement le prix.' },
-  'epingle-de-la-maille': { nom: 'Épingle de la Maille', emoji: '🧷', type: 'equipement', slot: 'accessoire', niveau: 90, rarete: 'mythique', prixVente: 5200, bonus: { dex: 30, int: 18, crit: 13 }, desc: 'Trophée de la Maille Tombée. Elle tient ce qui allait céder, le temps qu’on trouve mieux. On n’a jamais trouvé mieux.' },
+  'boulier-du-comptable': { nom: 'Boulier du Comptable', emoji: '🧮', type: 'equipement', slot: 'accessoire', niveau: 56, rarete: 'legendaire', prixVente: 1963, bonus: { int: 20, esp: 11, celerite: 7 }, desc: 'Trophée du Grand Comptable. Les boules glissent encore toutes seules, et le total tombe toujours juste.' },
+  'baillon-du-taciturne': { nom: 'Bâillon du Taciturne', emoji: '🤐', type: 'equipement', slot: 'accessoire', niveau: 89, rarete: 'mythique', prixVente: 3973, bonus: { esp: 33, vit: 18, deter: 12 }, desc: 'Trophée de Celui Qui N’a Jamais Juré. Le porter n’empêche pas de parler — ça rappelle seulement le prix.' },
+  'epingle-de-la-maille': { nom: 'Épingle de la Maille', emoji: '🧷', type: 'equipement', slot: 'accessoire', niveau: 96, rarete: 'mythique', prixVente: 5522, bonus: { dex: 32, int: 19, crit: 14 }, desc: 'Trophée de la Maille Tombée. Elle tient ce qui allait céder, le temps qu’on trouve mieux. On n’a jamais trouvé mieux.' },
   'de-du-couturier': { nom: 'Dé du Couturier', emoji: '✋', type: 'equipement', slot: 'accessoire', niveau: 100, rarete: 'mythique', prixVente: 7000, bonus: { for: 26, dex: 26, esp: 20, deter: 14 }, desc: 'Trophée de la Main Qui Coud. Sept mondes d’usure sur le métal, et pas une éraflure sur le bord.' },
-  'sablier-du-compteur':  { nom: 'Sablier du Compteur', emoji: '⏳', type: 'equipement', slot: 'accessoire', niveau: 58, rarete: 'legendaire', prixVente: 1400, bonus: { int: 16, esp: 10, celerite: 6 }, desc: 'Trophée de Celui Qui Compte. Il compte encore, mais plus les mêmes choses.' },
-  'diapason-fele':        { nom: 'Diapason fêlé', emoji: '🎻', type: 'equipement', slot: 'accessoire', niveau: 58, rarete: 'legendaire', prixVente: 1400, bonus: { dex: 16, cha: 8, crit: 7 }, desc: 'Trophée du Maître de Chapelle. Il donne le la d’un monde disparu.' },
-  'quille-de-verre':      { nom: 'Quille de verre', emoji: '⛵', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 68, rarete: 'legendaire', prixVente: 2200, bonus: { for: 26, vit: 12, deter: 8 }, desc: 'Trophée de Celle Qui N’a Jamais Coulé. Taillée dans une étrave qui n’a jamais touché l’eau.' },
-  'couronne-de-ronces':   { nom: 'Couronne de ronces', emoji: '🥀', type: 'equipement', slot: 'tete', armure: 'tissu', niveau: 68, rarete: 'legendaire', prixVente: 2200, bonus: { esp: 24, vit: 10, piete: 12 }, desc: 'Trophée de Grand-Mère Ronce. Elle pique celui qui la porte, et personne d’autre.' },
-  'phalange-divine':      { nom: 'Phalange divine', emoji: '🦴', type: 'equipement', slot: 'arme', familleArme: 'runique', niveau: 78, rarete: 'mythique', prixVente: 3400, bonus: { int: 32, vit: 14, direct: 10 }, desc: 'Trophée du Dieu Recousu. Un seul doigt, et il pèse le poids d’un culte.' },
-  'index-des-fins':       { nom: 'Index des Fins', emoji: '📜', type: 'equipement', slot: 'accessoire', niveau: 78, rarete: 'mythique', prixVente: 3400, bonus: { int: 22, esp: 16, crit: 9, piete: 10 }, desc: 'Trophée de l’Archiviste. Il liste les six fins précédentes. La septième est en blanc.' },
-  'lanterne-du-dernier-soir': { nom: 'Lanterne du Dernier Soir', emoji: '🏮', type: 'equipement', slot: 'accessoire', niveau: 88, rarete: 'mythique', prixVente: 4800, bonus: { vit: 28, for: 18, deter: 12 }, desc: 'Trophée du Capitaine. Elle éclaire encore un poste que plus personne ne relève.' },
-  'de-a-coudre-de-fer':   { nom: 'Dé à coudre de fer', emoji: '🪡', type: 'equipement', slot: 'mains', armure: 'maille', niveau: 88, rarete: 'mythique', prixVente: 4800, bonus: { int: 26, dex: 16, deter: 12 }, desc: 'Trophée de la Couturière. Il protège un doigt qui a recousu des continents.' },
-  'aiguille-de-la-fin':   { nom: 'Aiguille de la Fin', emoji: '🪡', type: 'equipement', slot: 'arme', familleArme: 'runique', niveau: 100, rarete: 'divin', prixVente: 9000, bonus: { int: 44, esp: 24, vit: 20, crit: 12, deter: 12 }, desc: 'Trophée de la Dernière Suture. Ce qu’elle traverse ne se referme plus.' },
-  'couronne-du-premier-roi': { nom: 'Couronne du Premier Roi', emoji: '👑', type: 'equipement', slot: 'tete', armure: 'plaque', niveau: 100, rarete: 'divin', prixVente: 9500, bonus: { for: 34, vit: 34, esp: 20, deter: 15, deter: 12 }, desc: 'Il l’avait brisée lui-même, six mondes plus tôt. Elle a tenu quand même.' },
+  'sablier-du-compteur':  { nom: 'Sablier du Compteur', emoji: '⏳', type: 'equipement', slot: 'accessoire', niveau: 83, rarete: 'legendaire', prixVente: 1939, bonus: { int: 22, esp: 14, celerite: 8 }, desc: 'Trophée de Celui Qui Compte. Il compte encore, mais plus les mêmes choses.' },
+  'diapason-fele':        { nom: 'Diapason fêlé', emoji: '🎻', type: 'equipement', slot: 'accessoire', niveau: 48, rarete: 'legendaire', prixVente: 1185, bonus: { dex: 14, cha: 7, crit: 6 }, desc: 'Trophée du Maître de Chapelle. Il donne le la d’un monde disparu.' },
+  'quille-de-verre':      { nom: 'Quille de verre', emoji: '⛵', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 77, rarete: 'legendaire', prixVente: 2464, bonus: { for: 29, vit: 13, deter: 9 }, desc: 'Trophée de Celle Qui N’a Jamais Coulé. Taillée dans une étrave qui n’a jamais touché l’eau.' },
+  'couronne-de-ronces':   { nom: 'Couronne de ronces', emoji: '🥀', type: 'equipement', slot: 'tete', armure: 'tissu', niveau: 52, rarete: 'legendaire', prixVente: 1730, bonus: { esp: 19, vit: 8, piete: 9 }, desc: 'Trophée de Grand-Mère Ronce. Elle pique celui qui la porte, et personne d’autre.' },
+  'phalange-divine':      { nom: 'Phalange divine', emoji: '🦴', type: 'equipement', slot: 'arme', familleArme: 'runique', niveau: 80, rarete: 'mythique', prixVente: 3480, bonus: { int: 33, vit: 14, direct: 10 }, desc: 'Trophée du Dieu Recousu. Un seul doigt, et il pèse le poids d’un culte.' },
+  'index-des-fins':       { nom: 'Index des Fins', emoji: '📜', type: 'equipement', slot: 'accessoire', niveau: 60, rarete: 'mythique', prixVente: 2680, bonus: { int: 17, esp: 13, crit: 7, piete: 8 }, desc: 'Trophée de l’Archiviste. Il liste les six fins précédentes. La septième est en blanc.' },
+  'lanterne-du-dernier-soir': { nom: 'Lanterne du Dernier Soir', emoji: '🏮', type: 'equipement', slot: 'accessoire', niveau: 92, rarete: 'mythique', prixVente: 5002, bonus: { vit: 29, for: 19, deter: 13 }, desc: 'Trophée du Capitaine. Elle éclaire encore un poste que plus personne ne relève.' },
+  'de-a-coudre-de-fer':   { nom: 'Dé à coudre de fer', emoji: '🪡', type: 'equipement', slot: 'mains', armure: 'maille', niveau: 94, rarete: 'mythique', prixVente: 5103, bonus: { int: 28, dex: 17, deter: 13 }, desc: 'Trophée de la Couturière. Il protège un doigt qui a recousu des continents.' },
+  'aiguille-de-la-fin':   { nom: 'Aiguille de la Fin', emoji: '🪡', type: 'equipement', slot: 'arme', familleArme: 'runique', niveau: 98, rarete: 'divin', prixVente: 8832, bonus: { int: 43, esp: 24, vit: 20, crit: 12, deter: 12 }, desc: 'Trophée de la Dernière Suture. Ce qu’elle traverse ne se referme plus.' },
+  'couronne-du-premier-roi': { nom: 'Couronne du Premier Roi', emoji: '👑', type: 'equipement', slot: 'tete', armure: 'plaque', niveau: 100, rarete: 'divin', prixVente: 9500, bonus: { for: 34, vit: 34, esp: 20, deter: 15 }, desc: 'Il l’avait brisée lui-même, six mondes plus tôt. Elle a tenu quand même.' },
 });
 
 Object.assign(COFFRES_BOSS, {
@@ -607,8 +610,8 @@ Object.assign(COFFRES_BOSS, {
 // Artisanat des Marches : les raffinés et les grandes séries de la fin.
 // ---------------------------------------------------------------------
 Object.assign(OBJETS, {
-  'acier-de-suture':  { nom: 'Acier de suture', emoji: '⚙️', type: 'materiau', rarete: 'legendaire', prixVente: 1500, desc: 'Fondu autour d’un fil de suture. Il tient tout ce qu’on lui confie.' },
-  'toile-des-fins':   { nom: 'Toile des Fins', emoji: '🕸️', type: 'materiau', rarete: 'legendaire', prixVente: 1500, desc: 'Tissée d’encre noyée et de graines renversées. Elle se lit, un peu.' },
+  'acier-de-suture':  { nom: 'Acier de suture', emoji: '⚙️', type: 'materiau', rarete: 'mythique', prixVente: 2100, desc: 'Fondu autour d’un fil de suture. Il tient tout ce qu’on lui confie.' },
+  'toile-des-fins':   { nom: 'Toile des Fins', emoji: '🕸️', type: 'materiau', rarete: 'epique', prixVente: 900, desc: 'Tissée d’encre noyée et de graines renversées. Elle se lit, un peu.' },
   'essence-du-septieme': { nom: 'Essence du Septième', emoji: '7️⃣', type: 'materiau', rarete: 'divin', prixVente: 4200, desc: 'Ce qui reste du septième monde une fois qu’on a tout retiré. C’est nous.' },
 });
 
@@ -617,17 +620,17 @@ Object.assign(FAMILLE_MATERIAU, {
 });
 
 [
-  { resultat: 'acier-de-suture', niveau: 62, po: 900, materiaux: { 'cendre-grise': 4, 'verre-de-mer': 3, 'fil-de-suture': 1 } },
-  { resultat: 'toile-des-fins', niveau: 72, po: 1100, materiaux: { 'encre-noyee': 4, 'graine-renversee': 3, 'echo-fossilise': 2 } },
-  { resultat: 'essence-du-septieme', niveau: 92, po: 3200, materiaux: { 'aiguille-premiere': 2, 'eclat-de-couronne': 1, 'braise-crepusculaire': 3 } },
+  { resultat: 'acier-de-suture', niveau: 93, po: 1900, materiaux: { 'fil-de-suture': 1, 'verre-de-mer': 3, 'cendre-grise': 3 } },
+  { resultat: 'toile-des-fins', niveau: 58, po: 800, materiaux: { 'encre-noyee': 4, 'graine-renversee': 3, 'echo-fossilise': 2 } },
+  { resultat: 'essence-du-septieme', niveau: 97, po: 3200, materiaux: { 'aiguille-premiere': 2, 'eclat-de-couronne': 1, 'braise-crepusculaire': 3 } },
 ].forEach((recette) => RECETTES.push(recette));
 
 // Quatre séries pour la fin du voyage — une par acte, plus celle du Roi.
 SETS_CRAFT.push(
-  { suffixe: 'des Marches', armure: 'cuir', niveau: 58, rarete: 'legendaire', po: 2600, materiaux: { 'acier-de-suture': 1, 'cendre-grise': 4, 'echo-fossilise': 3 } },
-  { suffixe: 'de Verre', armure: 'tissu', niveau: 68, rarete: 'mythique', po: 4200, materiaux: { 'acier-de-suture': 2, 'verre-de-mer': 4, 'graine-renversee': 3 } },
-  { suffixe: 'des Fins', armure: 'maille', niveau: 78, rarete: 'mythique', po: 6500, materiaux: { 'toile-des-fins': 2, 'os-divin': 4, 'encre-noyee': 3 } },
-  { suffixe: 'du Crépuscule', armure: 'plaque', niveau: 88, rarete: 'divin', po: 11000, materiaux: { 'toile-des-fins': 2, 'acier-de-suture': 3, 'braise-crepusculaire': 4 } },
+  { suffixe: 'des Fins', armure: 'maille', niveau: 59, rarete: 'epique', po: 2600, materiaux: { 'toile-des-fins': 2, 'encre-noyee': 3, 'echo-fossilise': 3 } },
+  { suffixe: 'de Verre', armure: 'tissu', niveau: 75, rarete: 'mythique', po: 4200, materiaux: { 'verre-de-mer': 4, 'acier-celeste': 3, 'fragment-de-foudre': 2 } },
+  { suffixe: 'des Marches', armure: 'cuir', niveau: 81, rarete: 'mythique', po: 6500, materiaux: { 'cendre-grise': 4, 'os-divin': 3, 'plume-d-archon': 2 } },
+  { suffixe: 'du Crépuscule', armure: 'plaque', niveau: 90, rarete: 'divin', po: 11000, materiaux: { 'braise-crepusculaire': 4, 'etoffe-du-neant': 3, 'eclat-d-etoile': 3 } },
   { suffixe: 'du Premier Roi', armure: 'plaque', niveau: 100, rarete: 'divin', po: 22000, materiaux: { 'essence-du-septieme': 2, 'aiguille-premiere': 3, 'eclat-de-couronne': 2 } },
 );
 
@@ -665,7 +668,7 @@ Object.assign(HISTOIRES_ZONES, {
     { titre: 'Le piquet du grand-père', texte: 'Un piquet planté comme limite il y a trois générations. Il est à quarante pas derrière la limite actuelle. Personne ne l’a déplacé.', recompense: { xp: 380 } },
     { titre: 'La reprise du dimanche', texte: 'Une reprise faite avec soin, en couleur, presque décorative. Quelqu’un a décidé que si on devait ravauder toute sa vie, autant que ce soit joli.', recompense: { materiau: 'fil-de-suture' } },
     { titre: 'Le blanc qui ne renvoie rien', texte: 'Vous criez dans un trou de la trame. Aucun écho ne revient — et ce n’est pas parce que c’est grand. C’est parce qu’il n’y a rien pour renvoyer.', recompense: { po: 220 } },
-    { titre: 'L’envers du tissu', texte: 'En soulevant un pan mal recousu, on aperçoit l’envers. Il est couvert de reprises, sur toute sa surface, jusqu’aussi loin qu’on voit.', recompense: { materiau: 'echo-fossilise' } },
+    { titre: 'L’envers du tissu', texte: 'En soulevant un pan mal recousu, on aperçoit l’envers. Il est couvert de reprises, sur toute sa surface, jusqu’aussi loin qu’on voit.', recompense: { materiau: 'braise-crepusculaire' } },
     { titre: 'La nuit où ça n’a pas lâché', texte: 'Ysoline vous montre une entrée dans son carnet, vieille de douze ans : « rien à recoudre ce matin ». Une seule ligne. Elle n’a jamais su pourquoi.', recompense: { soinPct: 0.5, xp: 260 } },
   ],
   'dernier-point': [
@@ -756,6 +759,11 @@ Object.assign(HISTOIRES_ZONES, {
 // d'entrée — ni l'une, ni les autres.
 // =====================================================================
 function normaliserBornesDuMonde() {
+  // v26 : les cartes viennent de deux fichiers mais se lisent comme UNE
+  // histoire — l'ordre canonique est celui des niveaux d'entrée, et le tri
+  // est stable : à niveau égal, l'ordre d'écriture départage (le Trône
+  // avant l'épilogue du Dernier Point).
+  ZONES.sort((a, b) => a.niveauMin - b.niveauMin);
   ZONES.forEach((z) => {
     if (z.niveauMax == null) z.niveauMax = z.niveauMin;
     z.plage = `niv. ${z.niveauMin}-${z.niveauMax}${z.note ? ` · ${z.note}` : ''}`;

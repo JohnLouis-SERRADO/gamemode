@@ -58,6 +58,13 @@ function rendreCarte() {
     if (zones.length) groupes.push({ acte, zones });
   });
 
+  // v26 : la carte se lit comme un livre — chaque terre est un chapitre
+  // numéroté du grand récit, l'épilogue vient après le Trône.
+  const numeroChapitre = (z) => {
+    if (z.id === 'dernier-point') return 'Épilogue';
+    return `Chapitre ${ZONES.indexOf(z) + 1}`;
+  };
+
   const carteDeZone = (z) => {
     const verrouillee = p.niveau < z.niveauMin;
     const carte = document.createElement('div');
@@ -65,6 +72,7 @@ function rendreCarte() {
     const bossVaincu = p.bossVaincus.includes(z.id);
     carte.innerHTML = `
       <div class="zone-emoji">${z.emoji}${verrouillee ? '<span class="cadenas-zone">🔒</span>' : ''}</div>
+      <div class="zone-chapitre">${numeroChapitre(z)}</div>
       <div class="zone-nom">${z.nom} ${bossVaincu ? '🏆' : ''}</div>
       <div class="zone-plage">${z.plage} · ${texteRecommandation(p, z.niveauMin)}</div>
       <div class="zone-desc">${verrouillee ? `🔒 Atteignez le niveau ${z.niveauMin} pour entrer.` : z.desc}</div>`;
@@ -88,13 +96,20 @@ function rendreCarte() {
     const bloc = document.createElement('section');
     bloc.className = 'acte-monde' + (toutFerme ? ' acte-verrouille' : '');
 
+    // La progression de l'acte se lit d'un coup d'œil : ses boss couchés.
+    const trophees = zones.filter((z) => p.bossVaincus.includes(z.id)).length;
+
     const entete = document.createElement('button');
     entete.type = 'button';
     entete.className = 'acte-entete';
     entete.setAttribute('aria-expanded', String(!toutFerme));
     entete.innerHTML = `
-      <span class="acte-titre">${acte.emoji} ${acte.nom}</span>
+      <span class="acte-identite">
+        <span class="acte-titre">${acte.emoji} ${acte.nom}</span>
+        <span class="acte-resume">${acte.resume}</span>
+      </span>
       <span class="acte-plage">${acte.plage} · ${zones.length} carte${zones.length > 1 ? 's' : ''}${
+        trophees ? ` · 🏆 ${trophees}/${zones.length}` : ''}${
         fermees.length ? ` · ${fermees.length} 🔒` : ''}</span>
       <span class="acte-chevron">${toutFerme ? '▸' : '▾'}</span>`;
 
@@ -221,6 +236,13 @@ function rendreZone(z) {
       <h2>${z.emoji} ${z.nom} <span class="badge">${z.plage}</span> ${texteRecommandation(p, z.niveauMin)}</h2>
       <button class="btn-choix btn-compact" id="zone-retour">🗺️ Carte</button>
     </div>
+    ${(() => {
+    // Le chapitre et l'acte : la carte se lit comme un livre, l'écran de
+    // la terre rappelle où l'on en est du récit.
+    const acte = ACTES_MONDE.find((a) => a.id === z.acte);
+    const chapitre = z.id === 'dernier-point' ? 'Épilogue' : `Chapitre ${ZONES.indexOf(z) + 1}`;
+    return acte ? `<p class="zone-fil">${chapitre} · ${acte.emoji} ${acte.nom}</p>` : '';
+  })()}
     <p class="sous-titre gauche">${z.desc}</p>
     ${menace ? `<p class="bandeau-menace">⚠️ <strong>Un très grand danger vous guette…</strong> ${boss.emoji} ${boss.nom} rôde : il peut surgir à chaque exploration. Restez sur vos gardes — ou repartez tant qu'il est temps.</p>` : ''}
     <div class="rangee-chips" id="zone-difficultes"></div>`;

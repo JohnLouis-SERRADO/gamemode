@@ -2575,21 +2575,21 @@ suite('Équilibrage (v20)', () => {
     // On vérifie avec un héros bien équipé (légendaire) : aucune classe ne
     // doit survivre au contenu de niveau 46, et l'écart avec son propre
     // contenu doit être franc.
-    const chezSoi = ZONES.filter((z) => z.niveauMin === 22)[0];
-    const tropHaut = ZONES.filter((z) => z.niveauMin >= 46)[0];
+    const chezSoi = ZONES.filter((z) => z.niveauMin === 20)[0];
+    const tropHaut = ZONES.filter((z) => z.niveauMin >= 44)[0];
     const mSoi = chezSoi.monstres.map((c) => MONSTRES[c]).filter(Boolean);
     const mHaut = tropHaut.monstres.map((c) => MONSTRES[c]).filter(Boolean);
     const survivants = [];
     classesEtalon().forEach((classe) => {
-      const p = personaEquipeNormalement(classe, 22);
+      const p = personaEquipeNormalement(classe, 20);
       const marge = tensionCombat(mHaut, p, 3).marge;
       if (marge >= 1) survivants.push(`${classe} (${marge.toFixed(2)}×)`);
     });
-    aucun(survivants, 'classes de niveau 22 qui passent quand même le contenu de niveau 46');
+    aucun(survivants, 'classes de niveau 20 qui passent quand même le contenu de niveau 44');
 
     // Et la chute doit être nette, pas marginale.
     classesEtalon().forEach((classe) => {
-      const p = personaEquipeNormalement(classe, 22);
+      const p = personaEquipeNormalement(classe, 20);
       const ici = tensionCombat(mSoi, p, 3).marge;
       const laBas = tensionCombat(mHaut, p, 3).marge;
       verifier(laBas < ici * 0.55,

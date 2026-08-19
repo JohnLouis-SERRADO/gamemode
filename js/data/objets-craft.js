@@ -21,37 +21,46 @@ const RECETTES = [
   { resultat: 'elixir-heroique',    niveau: 9,  po: 25,  materiaux: { 'lotus-noir': 2, 'seve-ambree': 1 } },
   { resultat: 'potion-supreme-soin', niveau: 10, po: 30, materiaux: { 'herbe-lunaire': 3, 'lotus-noir': 2 } },
   { resultat: 'potion-supreme-mana', niveau: 11, po: 40, materiaux: { 'seve-ambree': 3, 'lotus-noir': 2 } },
-  { resultat: 'bombe-ardente',       niveau: 12, po: 45, materiaux: { 'poussiere-spectre': 1, 'minerai-fer': 1, 'seve-ambree': 1 } },
-  { resultat: 'orbe-des-dunes',     niveau: 13, po: 150, materiaux: { 'perle-des-sables': 2, 'minerai-cuivre': 2 } },
-  { resultat: 'couronne-mystique',  niveau: 14, po: 200, materiaux: { 'cristal-givre': 1, 'poussiere-spectre': 2, 'minerai-cuivre': 2 } },
-  { resultat: 'jambieres-zephyr',   niveau: 14, po: 200, materiaux: { 'soie-araignee': 2, 'peau-de-loup': 2, 'cristal-givre': 1 } },
-  { resultat: 'coeur-givre',        niveau: 15, po: 250, materiaux: { 'cristal-givre': 2, 'noyau-golem': 1 } },
-  { resultat: 'armure-draconique',  niveau: 16, po: 250, materiaux: { 'ecaille-draconique': 2, 'minerai-fer': 3, 'peau-de-loup': 2 } },
-  { resultat: 'oeil-dragon',        niveau: 16, po: 350, materiaux: { 'ecaille-draconique': 1, 'cristal-givre': 1, 'noyau-golem': 1 } },
-  { resultat: 'lame-crepuscule',    niveau: 16, po: 300, materiaux: { 'minerai-fer': 3, 'os-ancien': 2, 'ecaille-draconique': 1 } },
-  { resultat: 'sceptre-neant',      niveau: 16, po: 300, materiaux: { 'cristal-givre': 2, 'poussiere-spectre': 3, 'noyau-golem': 1 } },
-  { resultat: 'arc-du-vent',        niveau: 16, po: 300, materiaux: { 'cristal-givre': 2, 'soie-araignee': 2, 'ecaille-draconique': 1 } },
+  { resultat: 'bombe-ardente',       niveau: 12, po: 45, materiaux: { 'venin-concentre': 1, 'minerai-cuivre': 1, 'seve-ambree': 1 } },
+  { resultat: 'orbe-des-dunes',     niveau: 28, po: 420, materiaux: { 'perle-des-sables': 2, 'minerai-fer': 2 } },
+  { resultat: 'couronne-mystique',  niveau: 64, po: 2400, materiaux: { 'cristal-givre': 1, 'poussiere-spectre': 2, 'nacre-abyssale': 2 } },
+  { resultat: 'jambieres-zephyr',   niveau: 16, po: 220, materiaux: { 'soie-araignee': 2, 'peau-de-loup': 2, 'ambre-noir': 1 } },
+  { resultat: 'coeur-givre',        niveau: 68, po: 2800, materiaux: { 'cristal-givre': 2, 'noyau-golem': 1 } },
+  { resultat: 'armure-draconique',  niveau: 68, po: 3000, materiaux: { 'ecaille-draconique': 2, 'noyau-golem': 1, 'peau-de-mammouth': 2 } },
+  { resultat: 'oeil-dragon',        niveau: 68, po: 3200, materiaux: { 'ecaille-draconique': 1, 'cristal-givre': 1, 'noyau-golem': 1 } },
+  { resultat: 'lame-crepuscule',    niveau: 68, po: 3000, materiaux: { 'obsidienne-brute': 3, 'os-ancien': 2, 'ecaille-draconique': 1 } },
+  { resultat: 'sceptre-neant',      niveau: 68, po: 3000, materiaux: { 'cristal-givre': 2, 'poussiere-spectre': 3, 'noyau-golem': 1 } },
+  { resultat: 'arc-du-vent',        niveau: 68, po: 3000, materiaux: { 'cristal-givre': 2, 'plume-d-archon': 1, 'ecaille-draconique': 1 } },
 ];
 
 // =====================================================================
 // Séries d'artisanat : 14 séries × 5 pièces, générées ci-dessous.
 // Chaque série a son niveau, sa rareté, ses matériaux et son coût.
 // =====================================================================
+// v26 — Les séries suivent la nouvelle route du monde : chaque acte a
+// ses panoplies, forgées avec les matériaux de SES terres.
 const SETS_CRAFT = [
+  // Acte I — Le Réveil des Terres Sauvages (niv. 1-20)
   { suffixe: 'du Loup', armure: 'cuir',      niveau: 3,  rarete: 'commun',     po: 18,  materiaux: { 'peau-de-loup': 2, 'fibre-sauvage': 2 } },
-  { suffixe: 'du Sanglier', armure: 'cuir',  niveau: 4,  rarete: 'commun',     po: 26,  materiaux: { 'defense-sanglier': 2, 'peau-de-loup': 1 } },
-  { suffixe: 'des Murmures', armure: 'tissu', niveau: 6,  rarete: 'inhabituel', po: 50,  materiaux: { 'bois-chene': 2, 'seve-ambree': 2 } },
-  { suffixe: 'de la Veuve', armure: 'tissu',  niveau: 7,  rarete: 'inhabituel', po: 65,  materiaux: { 'soie-araignee': 3, 'fibre-sauvage': 2 } },
-  { suffixe: 'du Cuivre', armure: 'maille',    niveau: 8,  rarete: 'inhabituel', po: 80,  materiaux: { 'minerai-cuivre': 3, 'defense-sanglier': 1 } },
-  { suffixe: 'du Marais', armure: 'tissu',    niveau: 9,  rarete: 'rare',       po: 110, materiaux: { 'lotus-noir': 2, 'herbe-lunaire': 2, 'seve-ambree': 1 } },
-  { suffixe: 'de Fer', armure: 'plaque',       niveau: 11, rarete: 'rare',       po: 150, materiaux: { 'minerai-fer': 3, 'minerai-cuivre': 2 } },
-  { suffixe: 'des Cryptes', armure: 'maille',  niveau: 12, rarete: 'rare',       po: 190, materiaux: { 'os-ancien': 2, 'poussiere-spectre': 2 } },
-  { suffixe: 'des Dunes', armure: 'cuir',    niveau: 13, rarete: 'rare',       po: 230, materiaux: { 'perle-des-sables': 2, 'minerai-fer': 2 } },
-  { suffixe: 'du Spectre', armure: 'tissu',   niveau: 14, rarete: 'epique',     po: 280, materiaux: { 'poussiere-spectre': 3, 'os-ancien': 2 } },
-  { suffixe: 'des Glaces', armure: 'maille',   niveau: 15, rarete: 'epique',     po: 330, materiaux: { 'cristal-givre': 2, 'minerai-fer': 2 } },
-  { suffixe: 'du Golem', armure: 'plaque',     niveau: 16, rarete: 'epique',     po: 390, materiaux: { 'noyau-golem': 2, 'minerai-fer': 3 } },
-  { suffixe: 'du Dragon', armure: 'plaque',    niveau: 17, rarete: 'legendaire', po: 500, materiaux: { 'ecaille-draconique': 2, 'noyau-golem': 1, 'minerai-fer': 2 } },
-  { suffixe: 'de l’Aube', armure: 'tissu',    niveau: 19, rarete: 'legendaire', po: 650, materiaux: { 'ecaille-draconique': 2, 'cristal-givre': 2, 'perle-des-sables': 2 } },
+  { suffixe: 'du Sanglier', armure: 'cuir',  niveau: 5,  rarete: 'commun',     po: 30,  materiaux: { 'defense-sanglier': 2, 'peau-de-loup': 1 } },
+  { suffixe: 'des Murmures', armure: 'tissu', niveau: 7,  rarete: 'inhabituel', po: 55,  materiaux: { 'bois-chene': 2, 'seve-ambree': 2 } },
+  { suffixe: 'de la Veuve', armure: 'tissu',  niveau: 9,  rarete: 'inhabituel', po: 75,  materiaux: { 'soie-araignee': 3, 'fibre-sauvage': 2 } },
+  { suffixe: 'du Marais', armure: 'tissu',    niveau: 11, rarete: 'rare',       po: 120, materiaux: { 'lotus-noir': 2, 'herbe-lunaire': 2, 'seve-ambree': 1 } },
+  { suffixe: 'de Vaï-Sombre', armure: 'cuir', niveau: 13, rarete: 'rare',       po: 170, materiaux: { 'liane-tressee': 3, 'orchidee-lunaire': 2, 'venin-concentre': 1 } },
+  { suffixe: 'de l’Aube', armure: 'maille',   niveau: 15, rarete: 'rare',       po: 210, materiaux: { 'resine-de-jungle': 1, 'liane-tressee': 2, 'lotus-noir': 2 } },
+  { suffixe: 'du Spectre', armure: 'tissu',   niveau: 17, rarete: 'epique',     po: 280, materiaux: { 'bois-petrifie': 2, 'ambre-noir': 2 } },
+  { suffixe: 'du Golem', armure: 'plaque',    niveau: 19, rarete: 'epique',     po: 340, materiaux: { 'quartz-eveille': 1, 'bois-petrifie': 2, 'sphere-runique': 1 } },
+  // Acte II — L'Épreuve des Arides (niv. 20-40)
+  { suffixe: 'de Fer', armure: 'plaque',      niveau: 21, rarete: 'rare',       po: 380, materiaux: { 'minerai-fer': 3, 'minerai-cuivre': 2 } },
+  { suffixe: 'du Cuivre', armure: 'maille',   niveau: 23, rarete: 'rare',       po: 430, materiaux: { 'lingot-ferreux': 1, 'minerai-cuivre': 3, 'peau-de-loup': 1 } },
+  { suffixe: 'des Falaises', armure: 'cuir',  niveau: 27, rarete: 'rare',       po: 520, materiaux: { 'alliage-hurlant': 1, 'basalte-poli': 3, 'plume-de-rokh': 2 } },
+  { suffixe: 'des Dunes', armure: 'cuir',     niveau: 29, rarete: 'epique',     po: 600, materiaux: { 'perle-des-sables': 2, 'basalte-poli': 2, 'lingot-ferreux': 1 } },
+  { suffixe: 'du Béhémoth', armure: 'plaque', niveau: 35, rarete: 'epique',     po: 780, materiaux: { 'perle-de-magma': 1, 'obsidienne-brute': 3, 'lingot-ferreux': 2 } },
+  { suffixe: 'des Titans', armure: 'plaque',  niveau: 39, rarete: 'legendaire', po: 950, materiaux: { 'moelle-titanesque': 1, 'os-de-geant': 3, 'peau-de-mammouth': 2 } },
+  // Acte III — Les Mémoires Perdues (niv. 40-60)
+  { suffixe: 'des Cryptes', armure: 'maille', niveau: 41, rarete: 'epique',     po: 1100, materiaux: { 'os-ancien': 3, 'poussiere-spectre': 2 } },
+  { suffixe: 'des Glaces', armure: 'maille',  niveau: 45, rarete: 'epique',     po: 1300, materiaux: { 'toile-runique': 1, 'echo-fossilise': 2, 'os-ancien': 2 } },
+  { suffixe: 'du Dragon', armure: 'plaque',   niveau: 53, rarete: 'legendaire', po: 1800, materiaux: { 'graine-renversee': 2, 'echo-fossilise': 2, 'sphere-runique': 2 } },
 ];
 
 const MULT_RARETE_CRAFT = { commun: 1, inhabituel: 1.12, rare: 1.25, epique: 1.4, legendaire: 1.6, mythique: 1.85, divin: 2.2 };
@@ -62,45 +71,45 @@ const MULT_RARETE_CRAFT = { commun: 1, inhabituel: 1.12, rare: 1.25, epique: 1.4
 // falloir farmer — c'est le but.
 // ---------------------------------------------------------------------
 Object.assign(OBJETS, {
-  'lingot-ferreux':    { nom: 'Lingot ferreux', emoji: '🧱', type: 'materiau', rarete: 'inhabituel', prixVente: 90, desc: 'Fer et cuivre fondus ensemble à l’atelier.' },
-  'cuir-double':       { nom: 'Cuir doublé', emoji: '🟫', type: 'materiau', rarete: 'inhabituel', prixVente: 80, desc: 'Deux peaux, une couture, zéro courant d’air.' },
-  'essence-sylvestre': { nom: 'Essence sylvestre', emoji: '🍃', type: 'materiau', rarete: 'rare', prixVente: 110, desc: 'La forêt distillée goutte à goutte.' },
-  'toile-runique':     { nom: 'Toile runique', emoji: '🕸️', type: 'materiau', rarete: 'rare', prixVente: 150, desc: 'Tissée de poussière de spectre et de givre.' },
-  'alliage-hurlant':   { nom: 'Alliage hurlant', emoji: '🔩', type: 'materiau', rarete: 'rare', prixVente: 260, desc: 'Il vibre encore du chant des falaises.' },
-  'resine-de-jungle':  { nom: 'Résine de jungle', emoji: '🫙', type: 'materiau', rarete: 'rare', prixVente: 260, desc: 'Colle tout. Y compris les doigts. Surtout les doigts.' },
-  'perle-de-magma':    { nom: 'Perle de magma', emoji: '🔴', type: 'materiau', rarete: 'epique', prixVente: 420, desc: 'Une goutte de volcan, ronde et patiente.' },
-  'sel-d-abysse':      { nom: 'Sel d’abysse', emoji: '🧂', type: 'materiau', rarete: 'epique', prixVente: 420, desc: 'Le sel des larmes de sirène. Hors de prix, comme le chagrin.' },
-  'moelle-titanesque': { nom: 'Moelle titanesque', emoji: '🦴', type: 'materiau', rarete: 'legendaire', prixVente: 680, desc: 'La force des géants, réduite en concentré.' },
-  'quartz-eveille':    { nom: 'Quartz éveillé', emoji: '💠', type: 'materiau', rarete: 'legendaire', prixVente: 680, desc: 'Il cligne doucement quand on lui parle.' },
-  'coeur-d-orage':     { nom: 'Cœur d’orage', emoji: '🌩️', type: 'materiau', rarete: 'mythique', prixVente: 1100, desc: 'Un orage entier, plié en huit.' },
-  'fil-du-neant':      { nom: 'Fil du néant', emoji: '🧵', type: 'materiau', rarete: 'mythique', prixVente: 1100, desc: 'On coud avec du rien. Ça tient très bien.' },
+  'lingot-ferreux':    { nom: 'Lingot ferreux', emoji: '🧱', type: 'materiau', rarete: 'rare', prixVente: 130, desc: 'Fer et cuivre fondus ensemble à l’atelier.' },
+  'cuir-double':       { nom: 'Cuir doublé', emoji: '🟫', type: 'materiau', rarete: 'inhabituel', prixVente: 30, desc: 'Deux peaux, une couture, zéro courant d’air.' },
+  'essence-sylvestre': { nom: 'Essence sylvestre', emoji: '🍃', type: 'materiau', rarete: 'inhabituel', prixVente: 40, desc: 'La forêt distillée goutte à goutte.' },
+  'toile-runique':     { nom: 'Toile runique', emoji: '🕸️', type: 'materiau', rarete: 'epique', prixVente: 300, desc: 'Tissée de poussière de spectre et de givre.' },
+  'alliage-hurlant':   { nom: 'Alliage hurlant', emoji: '🔩', type: 'materiau', rarete: 'rare', prixVente: 180, desc: 'Il vibre encore du chant des falaises.' },
+  'resine-de-jungle':  { nom: 'Résine de jungle', emoji: '🫙', type: 'materiau', rarete: 'rare', prixVente: 70, desc: 'Colle tout. Y compris les doigts. Surtout les doigts.' },
+  'perle-de-magma':    { nom: 'Perle de magma', emoji: '🔴', type: 'materiau', rarete: 'epique', prixVente: 260, desc: 'Une goutte de volcan, ronde et patiente.' },
+  'sel-d-abysse':      { nom: 'Sel d’abysse', emoji: '🧂', type: 'materiau', rarete: 'epique', prixVente: 600, desc: 'Le sel des larmes de sirène. Hors de prix, comme le chagrin.' },
+  'moelle-titanesque': { nom: 'Moelle titanesque', emoji: '🦴', type: 'materiau', rarete: 'epique', prixVente: 300, desc: 'La force des géants, réduite en concentré.' },
+  'quartz-eveille':    { nom: 'Quartz éveillé', emoji: '💠', type: 'materiau', rarete: 'rare', prixVente: 90, desc: 'Il cligne doucement quand on lui parle.' },
+  'coeur-d-orage':     { nom: 'Cœur d’orage', emoji: '🌩️', type: 'materiau', rarete: 'legendaire', prixVente: 850, desc: 'Un orage entier, plié en huit.' },
+  'fil-du-neant':      { nom: 'Fil du néant', emoji: '🧵', type: 'materiau', rarete: 'mythique', prixVente: 1250, desc: 'On coud avec du rien. Ça tient très bien.' },
 });
 
 // Recettes de raffinage : beaucoup de brut pour un seul raffiné.
 [
-  { resultat: 'lingot-ferreux',    niveau: 12, po: 25,  materiaux: { 'minerai-fer': 5, 'minerai-cuivre': 3 } },
-  { resultat: 'cuir-double',       niveau: 10, po: 20,  materiaux: { 'peau-de-loup': 4, 'soie-araignee': 3 } },
-  { resultat: 'essence-sylvestre', niveau: 12, po: 30,  materiaux: { 'seve-ambree': 4, 'herbe-lunaire': 4, 'lotus-noir': 3 } },
-  { resultat: 'toile-runique',     niveau: 16, po: 45,  materiaux: { 'poussiere-spectre': 3, 'os-ancien': 2, 'cristal-givre': 2 } },
-  { resultat: 'alliage-hurlant',   niveau: 24, po: 80,  materiaux: { 'basalte-poli': 4, 'cristal-hurleur': 2, 'plume-de-rokh': 2 } },
-  { resultat: 'resine-de-jungle',  niveau: 24, po: 80,  materiaux: { 'liane-tressee': 4, 'orchidee-lunaire': 3, 'venin-concentre': 2 } },
-  { resultat: 'perle-de-magma',    niveau: 32, po: 140, materiaux: { 'obsidienne-brute': 4, 'coeur-de-braise': 2, 'cendre-fertile': 3 } },
-  { resultat: 'sel-d-abysse',      niveau: 32, po: 140, materiaux: { 'nacre-abyssale': 4, 'larme-de-sirene': 2, 'corail-sanglant': 3 } },
-  { resultat: 'moelle-titanesque', niveau: 40, po: 240, materiaux: { 'os-de-geant': 4, 'peau-de-mammouth': 3, 'relique-antique': 1 } },
-  { resultat: 'quartz-eveille',    niveau: 40, po: 240, materiaux: { 'bois-petrifie': 4, 'ambre-noir': 3, 'sphere-runique': 1 } },
-  { resultat: 'coeur-d-orage',     niveau: 47, po: 400, materiaux: { 'fragment-de-foudre': 4, 'acier-celeste': 3, 'plume-d-archon': 1 } },
-  { resultat: 'fil-du-neant',      niveau: 47, po: 400, materiaux: { 'etoffe-du-neant': 4, 'eclat-d-etoile': 3, 'essence-primordiale': 1 } },
+  { resultat: 'lingot-ferreux',    niveau: 22, po: 60,  materiaux: { 'minerai-fer': 5, 'minerai-cuivre': 3 } },
+  { resultat: 'cuir-double',       niveau: 8,  po: 20,  materiaux: { 'peau-de-loup': 4, 'soie-araignee': 3 } },
+  { resultat: 'essence-sylvestre', niveau: 10, po: 30,  materiaux: { 'seve-ambree': 4, 'herbe-lunaire': 4, 'lotus-noir': 3 } },
+  { resultat: 'toile-runique',     niveau: 42, po: 320, materiaux: { 'poussiere-spectre': 3, 'os-ancien': 2, 'echo-fossilise': 2 } },
+  { resultat: 'alliage-hurlant',   niveau: 26, po: 130, materiaux: { 'basalte-poli': 4, 'cristal-hurleur': 2, 'plume-de-rokh': 2 } },
+  { resultat: 'resine-de-jungle',  niveau: 14, po: 60,  materiaux: { 'liane-tressee': 4, 'orchidee-lunaire': 3, 'venin-concentre': 2 } },
+  { resultat: 'perle-de-magma',    niveau: 34, po: 220, materiaux: { 'obsidienne-brute': 4, 'coeur-de-braise': 2, 'cendre-fertile': 3 } },
+  { resultat: 'sel-d-abysse',      niveau: 62, po: 780, materiaux: { 'nacre-abyssale': 4, 'larme-de-sirene': 2, 'corail-sanglant': 3 } },
+  { resultat: 'moelle-titanesque', niveau: 38, po: 260, materiaux: { 'os-de-geant': 4, 'peau-de-mammouth': 3, 'relique-antique': 1 } },
+  { resultat: 'quartz-eveille',    niveau: 18, po: 90,  materiaux: { 'bois-petrifie': 4, 'ambre-noir': 3, 'sphere-runique': 1 } },
+  { resultat: 'coeur-d-orage',     niveau: 72, po: 1200, materiaux: { 'fragment-de-foudre': 4, 'acier-celeste': 3, 'plume-d-archon': 1 } },
+  { resultat: 'fil-du-neant',      niveau: 84, po: 1800, materiaux: { 'etoffe-du-neant': 4, 'eclat-d-etoile': 3, 'essence-primordiale': 1 } },
 ].forEach((recette) => RECETTES.push(recette));
 
 // Les grandes séries des Terres lointaines : chaque pièce coûte des
 // matériaux raffinés en quantité — des heures de récolte bien investies.
+// Acte IV — L'Abîme Élémen-Terre (niv. 60-77) : les grandes séries
+// élémentaires, gourmandes en matériaux raffinés.
 SETS_CRAFT.push(
-  { suffixe: 'des Falaises', armure: 'cuir',  niveau: 24, rarete: 'rare',       po: 320,  materiaux: { 'alliage-hurlant': 2, 'lingot-ferreux': 2 } },
-  { suffixe: 'de Vaï-Sombre', armure: 'cuir', niveau: 28, rarete: 'epique',     po: 450,  materiaux: { 'resine-de-jungle': 2, 'cuir-double': 3, 'essence-sylvestre': 1 } },
-  { suffixe: 'des Abysses', armure: 'maille',   niveau: 33, rarete: 'epique',     po: 620,  materiaux: { 'sel-d-abysse': 2, 'toile-runique': 2 } },
-  { suffixe: 'du Béhémoth', armure: 'plaque',   niveau: 38, rarete: 'legendaire', po: 900,  materiaux: { 'perle-de-magma': 2, 'moelle-titanesque': 1, 'lingot-ferreux': 3 } },
-  { suffixe: 'des Titans', armure: 'plaque',    niveau: 44, rarete: 'mythique',   po: 1400, materiaux: { 'moelle-titanesque': 2, 'quartz-eveille': 2, 'sel-d-abysse': 1 } },
-  { suffixe: 'du Firmament', armure: 'tissu',  niveau: 50, rarete: 'divin',      po: 2200, materiaux: { 'coeur-d-orage': 2, 'fil-du-neant': 2, 'quartz-eveille': 1 } },
+  { suffixe: 'des Abysses', armure: 'maille',  niveau: 63, rarete: 'legendaire', po: 2800, materiaux: { 'sel-d-abysse': 1, 'nacre-abyssale': 3, 'corail-sanglant': 2 } },
+  { suffixe: 'du Blizzard', armure: 'maille',  niveau: 67, rarete: 'legendaire', po: 3200, materiaux: { 'cristal-givre': 3, 'peau-de-mammouth': 2, 'sel-d-abysse': 1 } },
+  { suffixe: 'du Magma', armure: 'plaque',     niveau: 70, rarete: 'legendaire', po: 3600, materiaux: { 'noyau-golem': 2, 'ecaille-draconique': 2, 'coeur-de-braise': 3 } },
+  { suffixe: 'du Firmament', armure: 'tissu',  niveau: 73, rarete: 'mythique',   po: 4200, materiaux: { 'coeur-d-orage': 1, 'acier-celeste': 3, 'fragment-de-foudre': 3 } },
 );
 
 // ---------------------------------------------------------------------
@@ -120,7 +129,7 @@ Object.assign(OBJETS, {
 [
   { resultat: 'lingot-arcanique', niveau: 30, po: 200, materiaux: { 'pierre-magique': 4, 'lingot-ferreux': 2 } },
   { resultat: 'cuir-de-legende',  niveau: 30, po: 200, materiaux: { 'cuir-primal': 4, 'cuir-double': 2 } },
-  { resultat: 'etoffe-enchantee', niveau: 30, po: 200, materiaux: { 'tissu-magique': 4, 'toile-runique': 2 } },
+  { resultat: 'etoffe-enchantee', niveau: 30, po: 200, materiaux: { 'tissu-magique': 4, 'essence-sylvestre': 2 } },
 ].forEach((recette) => RECETTES.push(recette));
 
 // v17 : les matériaux RAFFINÉS rejoignent les familles de la halle aux
@@ -137,20 +146,20 @@ Object.assign(FAMILLE_MATERIAU, {
 
 // Le grand œuvre des artisans : une série qui exige les trois métiers.
 SETS_CRAFT.push(
-  { suffixe: 'des Trois Maîtres', armure: 'maille', niveau: 36, rarete: 'mythique', po: 1600, materiaux: { 'lingot-arcanique': 1, 'cuir-de-legende': 1, 'etoffe-enchantee': 1 } },
+  { suffixe: 'des Trois Maîtres', armure: 'maille', niveau: 47, rarete: 'mythique', po: 2200, materiaux: { 'lingot-arcanique': 1, 'cuir-de-legende': 1, 'etoffe-enchantee': 1 } },
 );
 
 // L'alchimiste apprend à fabriquer les objets tactiques : potions,
 // bombes et philtres, à base de plantes, venins et pierres magiques.
 [
-  { resultat: 'poudre-evasion',  niveau: 10, po: 20,  materiaux: { 'fibre-sauvage': 2, 'poussiere-spectre': 1 } },
+  { resultat: 'poudre-evasion',  niveau: 10, po: 20,  materiaux: { 'fibre-sauvage': 2, 'lotus-noir': 1 } },
   { resultat: 'trefle-seche',    niveau: 12, po: 45,  materiaux: { 'herbe-lunaire': 2, 'fibre-sauvage': 3 } },
-  { resultat: 'bombe-de-givre',  niveau: 14, po: 40,  materiaux: { 'pierre-magique': 1, 'cristal-givre': 1, 'herbe-lunaire': 1 } },
-  { resultat: 'fiole-acide',     niveau: 22, po: 50,  materiaux: { 'venin-concentre': 1, 'seve-ambree': 2 } },
-  { resultat: 'bombe-foudre',    niveau: 24, po: 60,  materiaux: { 'pierre-magique': 1, 'cristal-hurleur': 1, 'lotus-noir': 1 } },
+  { resultat: 'bombe-de-givre',  niveau: 14, po: 40,  materiaux: { 'pierre-magique': 1, 'ambre-noir': 1, 'herbe-lunaire': 1 } },
+  { resultat: 'fiole-acide',     niveau: 14, po: 50,  materiaux: { 'venin-concentre': 1, 'seve-ambree': 2 } },
+  { resultat: 'bombe-foudre',    niveau: 26, po: 60,  materiaux: { 'pierre-magique': 1, 'cristal-hurleur': 1, 'lotus-noir': 1 } },
   { resultat: 'potion-colosse',  niveau: 26, po: 160, materiaux: { 'essence-sylvestre': 1, 'lotus-noir': 3, 'seve-ambree': 3 } },
-  { resultat: 'elixir-titan',    niveau: 28, po: 90,  materiaux: { 'essence-sylvestre': 1, 'coeur-de-braise': 1 } },
-  { resultat: 'bombe-obscure',   niveau: 30, po: 110, materiaux: { 'pierre-magique': 2, 'poussiere-spectre': 3, 'obsidienne-brute': 1 } },
+  { resultat: 'elixir-titan',    niveau: 34, po: 90,  materiaux: { 'essence-sylvestre': 1, 'coeur-de-braise': 1 } },
+  { resultat: 'bombe-obscure',   niveau: 42, po: 110, materiaux: { 'pierre-magique': 2, 'poussiere-spectre': 3, 'obsidienne-brute': 1 } },
 ].forEach((recette) => RECETTES.push(recette));
 
 // =====================================================================
@@ -240,9 +249,9 @@ function texteSet(objet) {
 // de récolteur devient précieuse pour un pan de l'artisanat.
 // ---------------------------------------------------------------------
 const ECHELLE_FILIERE = {
-  mine:   [[1, 'minerai-cuivre'], [14, 'minerai-fer'], [22, 'basalte-poli'], [30, 'obsidienne-brute'], [38, 'bois-petrifie'], [46, 'fragment-de-foudre']],
-  peau:   [[1, 'peau-de-loup'], [14, 'os-ancien'], [22, 'plume-de-rokh'], [30, 'corail-sanglant'], [38, 'os-de-geant'], [46, 'plume-d-archon']],
-  plante: [[1, 'fibre-sauvage'], [14, 'lotus-noir'], [22, 'liane-tressee'], [30, 'nacre-abyssale'], [38, 'cendre-fertile'], [46, 'etoffe-du-neant']],
+  mine:   [[1, 'minerai-cuivre'], [16, 'bois-petrifie'], [20, 'minerai-fer'], [32, 'obsidienne-brute'], [64, 'cristal-givre'], [74, 'verre-de-mer'], [89, 'braise-crepusculaire']],
+  peau:   [[1, 'peau-de-loup'], [12, 'venin-concentre'], [24, 'plume-de-rokh'], [36, 'peau-de-mammouth'], [40, 'os-ancien'], [60, 'corail-sanglant'], [77, 'plume-d-archon']],
+  plante: [[1, 'fibre-sauvage'], [8, 'lotus-noir'], [12, 'liane-tressee'], [32, 'cendre-fertile'], [48, 'graine-renversee'], [60, 'nacre-abyssale'], [83, 'etoffe-du-neant']],
 };
 const SIGNATURE_FILIERE = { mine: 'pierre-magique', peau: 'cuir-primal', plante: 'tissu-magique' };
 

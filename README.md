@@ -62,7 +62,16 @@ Le header affiche en permanence **l'heure du jour** (🌅 aube · ☀️ jour ·
 
 ### Explorer, raconter, mourir
 
-- **30 zones** (niveaux 1 à 100) en **quatre actes** qui se répondent, du champ de blé des Plaines de l'Aube jusqu'au Trône du Premier Roi. Les bornes d'un acte ne sont pas déclarées à la main : elles sont **mesurées sur ses cartes**, donc le niveau annoncé en tête d'acte est exactement celui qui ouvre sa première carte (Acte I : 1-20 · Acte II : 22-50 · Acte III : 52-80 · Acte IV : 80-100).
+- **30 cartes** (niveaux 1 à 100) en **six actes** qui racontent UNE histoire continue, façon FFXIV — chaque carte est un **chapitre numéroté**, et l'épilogue vient après le Trône. Les bornes d'un acte ne sont pas déclarées à la main : elles sont **mesurées sur ses cartes**.
+
+  | Acte | Niveaux | L'arc |
+  | --- | --- | --- |
+  | 🌿 **I — Le Réveil des Terres Sauvages** | 1-20 | Les premiers pas — et la Forêt Pétrifiée pose la première vraie question. |
+  | 🏜️ **II — L'Épreuve des Arides** | 20-40 | Sable, roche, cendre — et des ossements de géants qui portent des *coutures*. |
+  | 🕯️ **III — Les Mémoires Perdues** | 40-60 | Les archives des royaumes oubliés : sept versions du monde, la nôtre est la septième. |
+  | 🌋 **IV — L'Abîme Élémen-Terre** | 60-77 | Mer, glace, magma, foudre : les éléments sentent la couture faiblir avant tout le monde. |
+  | 💀 **V — Les Frontières du Sanctuaire** | 77-92 | Les dieux recousus, le néant, le gué des serments, le dernier rempart. |
+  | 🪡 **VI — Le Crépuscule de la Réalité** | 92-100 | La Couture du monde, et celui qui coud : le Premier Roi. |
 
   Chaque carte se joue par **cinq modes** — les mêmes partout, et **chacun avec sa ressource** :
 
@@ -218,8 +227,8 @@ js/data/objets-generes.js        — générateurs par niveau, rareté et catég
 js/data/objets-craft.js          — séries de craft, panoplies, raffinage
 js/data/monde-vivant.js          — heure du jour, météo partagée, effets
 js/data/monstres.js              — bestiaire commun
-js/data/zones.js                 — actes I et II (niveaux 1 à 50)
-js/data/zones-marches.js         — actes III et IV (niveaux 52 à 100), et le calcul des bornes du monde
+js/data/zones.js                 — les 6 actes et les 16 cartes historiques (re-niveautées v26)
+js/data/zones-marches.js         — les 14 cartes des Mémoires au Crépuscule, et le calcul des bornes du monde
 js/data/meta.js                  — métiers, hauts faits, familiers, quêtes
 
 js/donjons/epopees.js            — les 9 Épopées de Valciel (et le gabarit des verrous d'accès)

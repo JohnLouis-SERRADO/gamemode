@@ -27,118 +27,183 @@
 // l'en-tête affiche est calculé sur les cartes réellement présentes —
 // impossible de promettre un niveau d'entrée qui n'existe pas.
 // =====================================================================
+// =====================================================================
+// v26 — LE MONDE EN SIX ACTES : une seule histoire, du niveau 1 au 100.
+//
+// Le fil conducteur reste celui de Valciel : le monde est une
+// RECONSTRUCTION, recousue six fois par le Premier Roi. Mais il se
+// raconte désormais en six chapitres qui se suivent — chaque acte est un
+// arc, chaque carte un chapitre, et les cartes se lisent dans l'ordre.
+//
+//   I    Le Réveil des Terres Sauvages   on part de rien, et les terres
+//        elles-mêmes semblent mal réveillées — premiers indices.
+//   II   L'Épreuve des Arides            sable, roche et cendre : les
+//        ossements qu'on y déterre portent des COUTURES.
+//   III  Les Mémoires Perdues            les archives des royaumes
+//        oubliés : sept versions du monde, la nôtre est la septième.
+//   IV   L'Abîme Élémen-Terre            les forces primordiales se
+//        déchaînent — la couture faiblit, les éléments le sentent.
+//   V    Les Frontières du Sanctuaire    aux portes du vide : les dieux
+//        recousus, le néant, le dernier rempart.
+//   VI   Le Crépuscule de la Réalité     la Couture, et celui qui coud.
+//
+// `de` et `a` ne servent qu'à RECRUTER les cartes d'un acte (par leur
+// niveau d'entrée) ; les bornes affichées sont mesurées sur les cartes.
+// =====================================================================
 const ACTES_MONDE = [
-  { id: 'royaumes', nom: 'Acte I — Les Royaumes', emoji: '🌾', de: 1, a: 20,
-    resume: 'La petite histoire des huit premières terres — et ce qu’elles déterrent.' },
-  { id: 'lointaines', nom: 'Acte II — Les Terres lointaines', emoji: '🌴', de: 21, a: 50,
-    resume: 'Au-delà des Royaumes, le monde commence à se fêler.' },
-  { id: 'marches', nom: 'Acte III — Les Marches Fêlées', emoji: '🌫️', de: 51, a: 78,
-    resume: 'Là où le monde a déjà fini une fois.' },
-  { id: 'couture', nom: 'Acte IV — La Couture', emoji: '🪡', de: 79, a: 100,
-    resume: 'Jusqu’au Premier Roi, celui qui a recousu le monde.' },
+  { id: 'reveil', nom: 'Acte I — Le Réveil des Terres Sauvages', emoji: '🌿', de: 1, a: 19,
+    resume: 'Inscrit les premiers pas du héros face aux mystères d’un monde indompté.' },
+  { id: 'arides', nom: 'Acte II — L’Épreuve des Arides', emoji: '🏜️', de: 20, a: 39,
+    resume: 'Forge l’esprit du voyageur au travers des enfers de sable et de roche.' },
+  { id: 'memoires', nom: 'Acte III — Les Mémoires Perdues', emoji: '🕯️', de: 40, a: 59,
+    resume: 'Lève le voile sur les secrets séculaires des royaumes oubliés.' },
+  { id: 'abime', nom: 'Acte IV — L’Abîme Élémen-Terre', emoji: '🌋', de: 60, a: 76,
+    resume: 'Bouscule la destinée de l’aventurier face au déchaînement des forces primordiales.' },
+  { id: 'sanctuaire', nom: 'Acte V — Les Frontières du Sanctuaire', emoji: '💀', de: 77, a: 91,
+    resume: 'Éprouve la foi du champion aux portes du vide et des reliques divines.' },
+  { id: 'crepuscule', nom: 'Acte VI — Le Crépuscule de la Réalité', emoji: '🪡', de: 92, a: 100,
+    resume: 'Scelle l’ultime marche du champion vers le trône où se joue le sort du monde.' },
 ];
 
 const EXPLORATIONS_POUR_BOSS = 3;
 
+// ---------------------------------------------------------------------
+// Acte I — Le Réveil des Terres Sauvages (niv. 1-20).
+// Les chapitres 1 à 5 : le héros se lève, et les terres sauvages avec
+// lui. À la fin de l'acte, la Forêt Pétrifiée pose la première vraie
+// question : qu'est-ce qui peut changer une forêt en pierre EN UNE NUIT ?
+// ---------------------------------------------------------------------
 const ZONES = [
   {
-    id: 'plaines', nom: 'Plaines de l’Aube', emoji: '🌾', niveauMin: 1, niveauMax: 3,
-    desc: 'Des prairies dorées où rôdent gobelins et bêtes sauvages. Le point de départ de tous les aventuriers.',
+    id: 'plaines', nom: 'Plaines de l’Aube', emoji: '🌾', niveauMin: 1, niveauMax: 4,
+    desc: 'Tout commence ici : des prairies dorées, des gobelins voleurs de poules, et une route qui part vers l’inconnu. Les anciens disent que même le Premier Roi a foulé ces herbes — personne ne sait plus qui c’était.',
     monstres: ['gobelin', 'loup', 'sanglier'], boss: 'loupAlpha',
     recolte: [{ id: 'fibre-sauvage', chance: 0.9 }, { id: 'herbe-lunaire', chance: 0.55 }, { id: 'peau-de-loup', chance: 0.55 }, { id: 'defense-sanglier', chance: 0.4 }, { id: 'minerai-cuivre', chance: 0.3 }],
   },
   {
-    id: 'foret', nom: 'Forêt des Murmures', emoji: '🌲', niveauMin: 3, niveauMax: 6,
-    desc: 'Une forêt dense où les arbres semblent chuchoter. Méfiez-vous des toiles entre les branches.',
+    id: 'foret', nom: 'Forêt des Murmures', emoji: '🌲', niveauMin: 4, niveauMax: 8,
+    desc: 'Passé les Plaines, les arbres se resserrent et se mettent à chuchoter. Ils ne parlent pas de vous : ils répètent, en boucle, quelque chose qu’ils ont vu il y a très longtemps — et que personne ne comprend encore.',
     monstres: ['araignee', 'bandit', 'treant'], boss: 'araigneeMatriarche',
-    recolte: [{ id: 'bois-chene', chance: 0.8 }, { id: 'seve-ambree', chance: 0.5 }, { id: 'soie-araignee', chance: 0.25 }, { id: 'minerai-cuivre', chance: 0.3 }],
+    recolte: [{ id: 'bois-chene', chance: 0.8 }, { id: 'seve-ambree', chance: 0.5 }, { id: 'soie-araignee', chance: 0.35 }, { id: 'fibre-sauvage', chance: 0.4 }, { id: 'minerai-cuivre', chance: 0.3 }],
   },
   {
-    id: 'collines', nom: 'Collines de Cuivre', emoji: '⛰️', niveauMin: 6, niveauMax: 10,
-    desc: 'Des collines rousses percées de mines. Les clans orcs y font régner leur loi.',
-    monstres: ['orc', 'chamanGobelin', 'golemMineur'], boss: 'chefOrc',
-    recolte: [{ id: 'minerai-cuivre', chance: 0.8 }, { id: 'minerai-fer', chance: 0.45 }, { id: 'peau-de-loup', chance: 0.4 }, { id: 'fibre-sauvage', chance: 0.5 }, { id: 'herbe-lunaire', chance: 0.4 }],
-  },
-  {
-    id: 'marais', nom: 'Marais de Brumeciel', emoji: '🐸', niveauMin: 8, niveauMax: 11,
-    desc: 'Des eaux stagnantes voilées de brume, où fleurit le précieux lotus noir. Ne buvez pas l’eau.',
+    id: 'marais', nom: 'Marais de Brumeciel', emoji: '🐸', niveauMin: 8, niveauMax: 12,
+    desc: 'La forêt s’enfonce et devient marais. La brume y monte à heure fixe, comme réglée par une main invisible — et sous l’eau noire, des pierres taillées affleurent, trop droites pour être naturelles. Ne buvez pas l’eau.',
     monstres: ['grenouilleGeante', 'sorciereMarais', 'serpentVoile'], boss: 'hydreBrumes',
-    recolte: [{ id: 'lotus-noir', chance: 0.6 }, { id: 'herbe-lunaire', chance: 0.5 }, { id: 'seve-ambree', chance: 0.35 }, { id: 'minerai-fer', chance: 0.3 }, { id: 'os-ancien', chance: 0.4 }],
+    recolte: [{ id: 'lotus-noir', chance: 0.7 }, { id: 'herbe-lunaire', chance: 0.45 }, { id: 'soie-araignee', chance: 0.3 }, { id: 'seve-ambree', chance: 0.3 }, { id: 'minerai-cuivre', chance: 0.25 }],
   },
   {
-    id: 'cryptes', nom: 'Cryptes Oubliées', emoji: '🕯️', niveauMin: 10, niveauMax: 14,
-    desc: 'Les tombeaux d’un royaume disparu. Ses habitants n’apprécient pas les visites.',
-    monstres: ['squelette', 'archerSquelette', 'pretreDechu', 'spectre'], boss: 'roiDechu',
-    recolte: [{ id: 'os-ancien', chance: 0.8 }, { id: 'poussiere-spectre', chance: 0.4 }, { id: 'minerai-fer', chance: 0.35 }, { id: 'herbe-lunaire', chance: 0.4 }, { id: 'lotus-noir', chance: 0.2 }],
+    id: 'jungle-vai', nom: 'Jungle de Vaï-Sombre', emoji: '🌴', niveauMin: 12, niveauMax: 16,
+    desc: 'Au sud du marais, la végétation devient folle : une jungle si dense que le jour n’y descend jamais tout à fait. Tout y pousse trop vite, tout y mord — comme si la terre elle-même avait la fièvre. Les chasseurs parlent d’arbres qui poussent en une nuit. Vous allez bientôt voir pire.',
+    monstres: ['grenouilleDard', 'panthereOmbre', 'hommeLiane'], boss: 'matriarcheSarpense',
+    recolte: [{ id: 'liane-tressee', chance: 0.8 }, { id: 'orchidee-lunaire', chance: 0.5 }, { id: 'venin-concentre', chance: 0.35 }, { id: 'lotus-noir', chance: 0.3 }, { id: 'minerai-cuivre', chance: 0.25 }],
   },
   {
-    id: 'desert', nom: 'Désert d’Ambrezine', emoji: '🏜️', niveauMin: 12, niveauMax: 16,
-    desc: 'Un océan de dunes ambrées. Sous le sable dorment des perles… et des choses qui n’aiment pas être dérangées.',
-    monstres: ['scorpionGeant', 'banditDunes', 'elementaireSable'], boss: 'verDesSables',
-    recolte: [{ id: 'perle-des-sables', chance: 0.5 }, { id: 'minerai-fer', chance: 0.4 }, { id: 'os-ancien', chance: 0.3 }, { id: 'herbe-lunaire', chance: 0.3 }, { id: 'lotus-noir', chance: 0.2 }],
-  },
-  {
-    id: 'pics', nom: 'Pics Gelés', emoji: '🏔️', niveauMin: 14, niveauMax: 18,
-    desc: 'Des sommets balayés par le blizzard. Le froid y est une arme, et les cristaux un trésor.',
-    monstres: ['loupGlaces', 'elementaireGivre', 'yeti'], boss: 'elementaireAncien',
-    recolte: [{ id: 'cristal-givre', chance: 0.75 }, { id: 'minerai-fer', chance: 0.35 }, { id: 'peau-de-loup', chance: 0.5 }, { id: 'os-ancien', chance: 0.25 }, { id: 'herbe-lunaire', chance: 0.3 }],
-  },
-  {
-    id: 'profondeurs', nom: 'Cœur des Profondeurs', emoji: '🌋', niveauMin: 18, niveauMax: 20,
-    desc: 'Le cœur incandescent du monde, où veille le Gardien éternel. Le défi ultime.',
-    monstres: ['golemAncien', 'ombre', 'dragonnet'], boss: 'gardienEternel',
-    recolte: [{ id: 'noyau-golem', chance: 0.5 }, { id: 'ecaille-draconique', chance: 0.3 }, { id: 'poussiere-spectre', chance: 0.5 }, { id: 'lotus-noir', chance: 0.3 }, { id: 'seve-ambree', chance: 0.25 }],
+    id: 'foret-petrifiee', nom: 'Forêt Pétrifiée', emoji: '🗿', niveauMin: 16, niveauMax: 20,
+    desc: 'Et soudain, plus un bruit. Une forêt entière changée en pierre en une seule nuit, il y a mille ans — chaque feuille, chaque oiseau, figés en plein geste. C’est ici que le monde pose sa première vraie question : QU’EST-CE qui peut faire ça à une forêt ? La réponse est plus loin sur la route.',
+    monstres: ['treantPetrifie', 'basilicRunique', 'moissonneurRunique'], boss: 'avatarQuartz',
+    recolte: [{ id: 'bois-petrifie', chance: 0.75 }, { id: 'ambre-noir', chance: 0.45 }, { id: 'sphere-runique', chance: 0.2 }, { id: 'venin-concentre', chance: 0.3 }, { id: 'seve-ambree', chance: 0.35 }],
   },
 ];
 
+// ---------------------------------------------------------------------
+// Acte II — L'Épreuve des Arides (niv. 20-40).
+// Chapitres 6 à 10 : le sable, la roche et la cendre. On y découvre les
+// traces d'une civilisation d'AVANT les Royaumes — et dans la Vallée,
+// des ossements qui portent des coutures. C'est le premier indice.
+// ---------------------------------------------------------------------
 ZONES.push(
   {
-    id: 'jungle-vai', nom: 'Jungle de Vaï-Sombre', emoji: '🌴', niveauMin: 22, niveauMax: 28,
-    desc: 'Une jungle si dense que le jour n’y descend jamais tout à fait. Tout y pousse, tout y mord.',
-    monstres: ['grenouilleDard', 'panthereOmbre', 'hommeLiane'], boss: 'matriarcheSarpense',
-    recolte: [{ id: 'liane-tressee', chance: 0.8 }, { id: 'orchidee-lunaire', chance: 0.5 }, { id: 'venin-concentre', chance: 0.3 }, { id: 'basalte-poli', chance: 0.45 }],
+    id: 'collines', nom: 'Collines de Cuivre', emoji: '⛰️', niveauMin: 20, niveauMax: 24,
+    desc: 'Passé la forêt de pierre, la terre devient rousse et sèche. Les clans orcs tiennent les mines — et leurs galeries les plus profondes butent toutes sur le même mur lisse, trop parfait, qu’aucun pic n’entame. Les orcs creusent AILLEURS, et ne disent pas pourquoi.',
+    monstres: ['orc', 'chamanGobelin', 'golemMineur'], boss: 'chefOrc',
+    recolte: [{ id: 'minerai-fer', chance: 0.8 }, { id: 'minerai-cuivre', chance: 0.5 }, { id: 'peau-de-loup', chance: 0.35 }, { id: 'fibre-sauvage', chance: 0.35 }, { id: 'ambre-noir', chance: 0.25 }],
   },
   {
-    id: 'falaises-hurlantes', nom: 'Falaises Hurlantes', emoji: '🪨', niveauMin: 22, niveauMax: 28,
-    desc: 'Des à-pics battus par des vents qui hurlent des noms. Le minerai y est superbe — l’accrochage aussi.',
+    id: 'falaises-hurlantes', nom: 'Falaises Hurlantes', emoji: '🪨', niveauMin: 24, niveauMax: 28,
+    desc: 'Des à-pics battus par des vents qui hurlent — et en écoutant bien, ce ne sont pas des cris : ce sont des NOMS. Des milliers de noms, récités sans fin, comme une liste qu’on refuse d’oublier. Personne n’a jamais retrouvé un seul de leurs porteurs.',
     monstres: ['harpieHurlante', 'gargouilleVigie', 'elementaireBourrasque'], boss: 'rokhTempetueux',
-    recolte: [{ id: 'basalte-poli', chance: 0.8 }, { id: 'plume-de-rokh', chance: 0.5 }, { id: 'cristal-hurleur', chance: 0.3 }, { id: 'liane-tressee', chance: 0.4 }, { id: 'orchidee-lunaire', chance: 0.25 }],
+    recolte: [{ id: 'basalte-poli', chance: 0.8 }, { id: 'plume-de-rokh', chance: 0.5 }, { id: 'cristal-hurleur', chance: 0.3 }, { id: 'minerai-fer', chance: 0.35 }, { id: 'orchidee-lunaire', chance: 0.25 }],
   },
   {
-    id: 'abysses-emeraude', nom: 'Abysses d’Émeraude', emoji: '🐚', niveauMin: 30, niveauMax: 36,
-    desc: 'Une cité engloutie dont les lanternes brûlent encore sous l’eau. Ses trésors n’attendent que des poumons solides.',
-    monstres: ['mureneRodeuse', 'crabeCuirasse', 'sireneFuneste'], boss: 'leviathanCorallien',
-    recolte: [{ id: 'nacre-abyssale', chance: 0.7 }, { id: 'corail-sanglant', chance: 0.45 }, { id: 'larme-de-sirene', chance: 0.25 }, { id: 'obsidienne-brute', chance: 0.35 }],
+    id: 'desert', nom: 'Désert d’Ambrezine', emoji: '🏜️', niveauMin: 28, niveauMax: 32,
+    desc: 'Un océan de dunes ambrées, brûlant le jour, glacial la nuit. Sous le sable, les caravaniers déterrent des perles parfaites — et parfois des pans de murailles qui n’appartiennent à aucun royaume connu. Le désert recouvre quelque chose. Il le fait très bien.',
+    monstres: ['scorpionGeant', 'banditDunes', 'elementaireSable'], boss: 'verDesSables',
+    recolte: [{ id: 'perle-des-sables', chance: 0.6 }, { id: 'basalte-poli', chance: 0.35 }, { id: 'plume-de-rokh', chance: 0.3 }, { id: 'venin-concentre', chance: 0.25 }, { id: 'herbe-lunaire', chance: 0.3 }],
   },
   {
-    id: 'steppe-cendres', nom: 'Steppe des Cendres', emoji: '🌋', niveauMin: 30, niveauMax: 36,
-    desc: 'Une plaine grise où la terre couve encore. Les cendres fertilisent tout — surtout les ennuis.',
+    id: 'steppe-cendres', nom: 'Steppe des Cendres', emoji: '🌋', niveauMin: 32, niveauMax: 36,
+    desc: 'Après le sable, la cendre. Une plaine grise où la terre couve encore, comme au lendemain d’un incendie que personne n’a vu brûler. Les cendres fertilisent tout — et quand le vent les soulève, elles dessinent une seconde les contours d’un paysage qui n’est pas celui-ci.',
     monstres: ['chacalCendre', 'salamandreBraise', 'ogreMagmatique'], boss: 'behemothCendre',
-    recolte: [{ id: 'cendre-fertile', chance: 0.7 }, { id: 'obsidienne-brute', chance: 0.45 }, { id: 'coeur-de-braise', chance: 0.25 }, { id: 'os-ancien', chance: 0.5 }, { id: 'ecaille-draconique', chance: 0.2 }],
+    recolte: [{ id: 'cendre-fertile', chance: 0.7 }, { id: 'obsidienne-brute', chance: 0.45 }, { id: 'coeur-de-braise', chance: 0.25 }, { id: 'plume-de-rokh', chance: 0.3 }, { id: 'basalte-poli', chance: 0.3 }],
   },
   {
-    id: 'foret-petrifiee', nom: 'Forêt Pétrifiée', emoji: '🗿', niveauMin: 38, niveauMax: 44, note: 'équipe conseillée',
-    desc: 'Une forêt changée en pierre en une seule nuit, il y a mille ans. Les arbres se souviennent. En équipe, de préférence.',
-    monstres: ['treantPetrifie', 'basilicRunique', 'moissonneurRunique'], boss: 'avatarQuartz',
-    recolte: [{ id: 'bois-petrifie', chance: 0.75 }, { id: 'ambre-noir', chance: 0.45 }, { id: 'sphere-runique', chance: 0.2 }, { id: 'os-ancien', chance: 0.5 }, { id: 'venin-concentre', chance: 0.25 }, { id: 'seve-ambree', chance: 0.45 }, { id: 'cendre-fertile', chance: 0.25 }],
-  },
-  {
-    id: 'vallee-geants', nom: 'Vallée des Géants', emoji: '🦴', niveauMin: 38, niveauMax: 44, note: 'équipe conseillée',
-    desc: 'Le cimetière des géants d’avant les Royaumes. Leurs os valent des fortunes — et ils y tiennent. Venez accompagnés.',
+    id: 'vallee-geants', nom: 'Vallée des Géants', emoji: '🦴', niveauMin: 36, niveauMax: 40, note: 'équipe conseillée',
+    desc: 'Le cimetière des géants d’avant les Royaumes. En dégageant les os, les pilleurs ont remarqué un détail qui change tout : certains fémurs portent des COUTURES. De grands points réguliers, comme si quelqu’un avait réparé les géants — ou le monde autour d’eux. Gardez cette image en tête. Elle reviendra.',
     monstres: ['geantDechu', 'mammouthSpectral', 'chamanOsseux'], boss: 'roiOssements',
-    recolte: [{ id: 'os-de-geant', chance: 0.75 }, { id: 'peau-de-mammouth', chance: 0.45 }, { id: 'relique-antique', chance: 0.2 }, { id: 'liane-tressee', chance: 0.4 }, { id: 'cendre-fertile', chance: 0.3 }],
+    recolte: [{ id: 'os-de-geant', chance: 0.75 }, { id: 'peau-de-mammouth', chance: 0.45 }, { id: 'relique-antique', chance: 0.2 }, { id: 'obsidienne-brute', chance: 0.3 }, { id: 'cendre-fertile', chance: 0.3 }],
+  },
+);
+
+// ---------------------------------------------------------------------
+// Acte III (début) — Les Mémoires Perdues (niv. 40-60).
+// Chapitre 11 : les Cryptes ouvrent l'acte des archives. La suite de
+// l'acte (chant-ruines, jardins, balance, bibliothèque) vit dans
+// zones-marches.js — c'est là que la vérité des sept mondes se lit.
+// ---------------------------------------------------------------------
+ZONES.push(
+  {
+    id: 'cryptes', nom: 'Cryptes Oubliées', emoji: '🕯️', niveauMin: 40, niveauMax: 44,
+    desc: 'Sous la frontière des Arides, les tombeaux d’un royaume que l’Histoire a rayé. Ses rois n’ont pas de noms, ses dates ne collent à aucun calendrier — comme si ce royaume avait existé AVANT le début officiel du monde. Ses habitants, eux, se souviennent. Et ils n’apprécient pas les visites.',
+    monstres: ['squelette', 'archerSquelette', 'pretreDechu', 'spectre'], boss: 'roiDechu',
+    recolte: [{ id: 'os-ancien', chance: 0.8 }, { id: 'poussiere-spectre', chance: 0.45 }, { id: 'relique-antique', chance: 0.25 }, { id: 'os-de-geant', chance: 0.3 }, { id: 'cendre-fertile', chance: 0.3 }],
+  },
+);
+
+// ---------------------------------------------------------------------
+// Acte IV (chapitres 16 à 19) — L'Abîme Élémen-Terre (niv. 60-77).
+// Les forces primordiales se déchaînent : mer, glace, magma, foudre.
+// On comprendra à l'acte V POURQUOI les éléments s'affolent — la
+// couture du monde faiblit, et ils le sentent avant tout le monde.
+// ---------------------------------------------------------------------
+ZONES.push(
+  {
+    id: 'abysses-emeraude', nom: 'Abysses d’Émeraude', emoji: '🐚', niveauMin: 60, niveauMax: 64,
+    desc: 'L’acte des éléments s’ouvre sous la mer : une cité engloutie dont les lanternes brûlent encore, à des profondeurs où aucune flamme ne devrait vivre. L’océan y est agité de courants qui n’obéissent plus à aucune marée — le premier élément à s’affoler. Pas le dernier.',
+    monstres: ['mureneRodeuse', 'crabeCuirasse', 'sireneFuneste'], boss: 'leviathanCorallien',
+    recolte: [{ id: 'nacre-abyssale', chance: 0.7 }, { id: 'corail-sanglant', chance: 0.45 }, { id: 'larme-de-sirene', chance: 0.25 }, { id: 'perle-des-sables', chance: 0.35 }, { id: 'encre-noyee', chance: 0.2 }],
   },
   {
-    id: 'citadelle-foudre', nom: 'Citadelle de Foudre', emoji: '⛈️', niveauMin: 46, niveauMax: 50, note: 'équipe requise',
-    desc: 'La forteresse volante des Archontes, échouée entre deux nuages. Tout y est sous tension. Ne venez pas seul.',
+    id: 'pics', nom: 'Pics Gelés', emoji: '🏔️', niveauMin: 64, niveauMax: 68,
+    desc: 'Après l’eau, le froid. Des sommets où le blizzard souffle depuis des années sans une seule accalmie — les glaciers avancent à vue d’œil, comme si l’hiver cherchait à recouvrir quelque chose avant qu’on ne le trouve. Les cristaux qu’on y taille ne fondent jamais. Jamais.',
+    monstres: ['loupGlaces', 'elementaireGivre', 'yeti'], boss: 'elementaireAncien',
+    recolte: [{ id: 'cristal-givre', chance: 0.75 }, { id: 'peau-de-mammouth', chance: 0.4 }, { id: 'nacre-abyssale', chance: 0.25 }, { id: 'obsidienne-brute', chance: 0.3 }],
+  },
+  {
+    id: 'profondeurs', nom: 'Cœur des Profondeurs', emoji: '🌋', niveauMin: 68, niveauMax: 71,
+    desc: 'Sous la glace, le feu. Le cœur incandescent du monde — et il a le hoquet : les coulées remontent, redescendent, s’arrêtent en plein air. Le Gardien éternel veille ici depuis la première aube, et pour la première fois de sa très longue garde, il a l’air INQUIET.',
+    monstres: ['golemAncien', 'ombre', 'dragonnet'], boss: 'gardienEternel',
+    recolte: [{ id: 'noyau-golem', chance: 0.6 }, { id: 'ecaille-draconique', chance: 0.35 }, { id: 'cristal-givre', chance: 0.35 }, { id: 'coeur-de-braise', chance: 0.3 }, { id: 'cendre-fertile', chance: 0.25 }],
+  },
+  {
+    id: 'citadelle-foudre', nom: 'Citadelle de Foudre', emoji: '⛈️', niveauMin: 71, niveauMax: 74, note: 'équipe conseillée',
+    desc: 'La forteresse volante des Archontes, échouée entre deux nuages. Ses maîtres commandaient à la foudre — et leurs registres, encore lisibles, parlent d’un « déséquilibre des fondations du monde » qu’ils avaient juré de surveiller. La foudre, elle, n’a pas cessé de monter la garde.',
     monstres: ['sentinelleAcier', 'vouivreOrage', 'forgeronFoudroye'], boss: 'archonteTempete',
-    recolte: [{ id: 'fragment-de-foudre', chance: 0.7 }, { id: 'acier-celeste', chance: 0.4 }, { id: 'plume-d-archon', chance: 0.15 }, { id: 'orchidee-lunaire', chance: 0.3 }, { id: 'etoffe-du-neant', chance: 0.2 }],
+    recolte: [{ id: 'fragment-de-foudre', chance: 0.7 }, { id: 'acier-celeste', chance: 0.4 }, { id: 'plume-d-archon', chance: 0.15 }, { id: 'noyau-golem', chance: 0.3 }, { id: 'orchidee-lunaire', chance: 0.25 }],
   },
+);
+
+// ---------------------------------------------------------------------
+// Acte V (chapitre 23) — Les Frontières du Sanctuaire (niv. 77-92).
+// Le Néant Scintillant : la déchirure elle-même. Le reste de l'acte
+// (ossuaire, marches grises, gué, rempart) vit dans zones-marches.js.
+// ---------------------------------------------------------------------
+ZONES.push(
   {
-    id: 'neant-scintillant', nom: 'Néant Scintillant', emoji: '🌌', niveauMin: 46, niveauMax: 50, note: 'équipe requise',
-    desc: 'Une déchirure dans le monde, pleine d’étoiles qui ne sont pas les nôtres. Ce qui en sort n’a pas de nom. Équipe obligatoire — sérieusement.',
+    id: 'neant-scintillant', nom: 'Néant Scintillant', emoji: '🌌', niveauMin: 83, niveauMax: 86, note: 'équipe requise',
+    desc: 'Une déchirure dans le monde, pleine d’étoiles qui ne sont pas les nôtres. C’est par des fentes comme celle-ci que tout ce que vous avez combattu s’est infiltré — et ce qui vit DANS la déchirure n’a pas de nom. Équipe obligatoire. Sérieusement.',
     monstres: ['horreurDuVide', 'tisseuseEtoiles', 'echoNeant'], boss: 'devoreurMondes',
-    recolte: [{ id: 'etoffe-du-neant', chance: 0.7 }, { id: 'eclat-d-etoile', chance: 0.4 }, { id: 'essence-primordiale', chance: 0.15 }, { id: 'poussiere-spectre', chance: 0.4 }, { id: 'plume-d-archon', chance: 0.2 }],
+    recolte: [{ id: 'etoffe-du-neant', chance: 0.7 }, { id: 'eclat-d-etoile', chance: 0.4 }, { id: 'essence-primordiale', chance: 0.15 }, { id: 'cendre-grise', chance: 0.3 }, { id: 'plume-d-archon', chance: 0.2 }],
   },
 );
 
