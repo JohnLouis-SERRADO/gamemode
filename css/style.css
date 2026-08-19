@@ -2130,6 +2130,29 @@ button:focus-visible,
   .avatar-titan { font-size: 2.4rem; }
 }
 
+/* ----- Grand écran : la barre basse devient un dock centré -----
+   En pleine largeur, cinq boutons écartés sur 1366px se perdaient
+   aux quatre coins ; regroupés, ils restent sous le pouce et l'œil. */
+@media (min-width: 900px) {
+  #navbar-bas {
+    left: 50%;
+    right: auto;
+    bottom: 12px;
+    transform: translateX(-50%);
+    width: auto;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid var(--bordure);
+    border-radius: 18px;
+    padding: 6px 10px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  #navbar-bas button { flex: 0 0 auto; width: 96px; max-width: none; }
+
+  #app { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
+}
+
 @media (max-width: 420px) {
   .grille-zones { grid-template-columns: 1fr; }
   .barre-actions { grid-template-columns: 1fr; }
