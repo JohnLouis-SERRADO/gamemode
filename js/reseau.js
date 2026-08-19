@@ -929,7 +929,7 @@ async function ouvrirFichePublique(idJoueur) {
       · ⚡ ${formatNombre(puissanceDe(pp))} de puissance · 💰 ${formatNombre(d.po || 0)} po · ⚔️ ${formatNombre(ligne.degats_boss_total || 0)} dégâts au boss du monde</p>
     <div class="panneau"><h3>Caractéristiques effectives</h3>
       <p>${statsTexte}</p>
-      <p class="joueur-detail">❤️ ${maxHpDe(pp)} PV max · 💧 ${maxMpDe(pp)} PM max${s.deter ? ` · ⚖️ ${Math.min(60, s.deter)} % determination` : ''}${s.celerite ? ` · 💨 ${Math.min(35, s.celerite)} % celerite` : ''}</p>
+      <p class="joueur-detail">❤️ ${maxHpDe(pp)} PV max · 💧 ${maxMpDe(pp)} PM max${s.deter ? ` · ⚖️ ${Math.min(PLAFONDS_SOUS_CARACS.deter, s.deter)} % determination` : ''}${s.celerite ? ` · 💨 ${Math.min(PLAFONDS_SOUS_CARACS.celerite, s.celerite)} % celerite` : ''}</p>
       <p class="joueur-detail">⚙️ ${panoplies}${compagnon ? ` · 🐾 ${compagnon.emoji} ${compagnon.nom}` : ''} · 🏅 ${(d.hautsFaits || []).length}/${HAUTS_FAITS.length} hauts faits</p>
       <p class="joueur-detail">${Object.entries(METIERS).map(([idMetier, metier]) => {
         const m = (d.metiers && d.metiers[idMetier]) || { niveau: 1 };

@@ -2167,12 +2167,14 @@ function rendreConsoleAdmin(zone, p) {
   // ----- ⚡ Compétences -----
   section('⚡ Compétences', 'Le grimoire, sans passer par la caisse de l’Arcanium.', [
     ['📚 Toutes les compétences', () => {
-      Object.keys(COMPETENCES).forEach((id) => {
-        if (!COMPETENCES[id].classe || COMPETENCES[id].classe === p.classe) apprendreCompetence(p, id);
-      });
+      Object.keys(COMPETENCES).forEach((id) => apprendreCompetence(p, id));
     }],
+    // v26 — « Toutes les communes » filtrait sur l'absence de classe. Or
+    // les compétences de spécialité, de Voie et d'Éveil n'ont pas de
+    // classe non plus : le bouton en octroyait 645 au lieu de 24. C'est
+    // estCompetenceCommune qui définit le pool commun, ici comme ailleurs.
     ['✨ Toutes les communes', () => {
-      Object.keys(COMPETENCES).forEach((id) => { if (!COMPETENCES[id].classe) apprendreCompetence(p, id); });
+      Object.entries(COMPETENCES).forEach(([id, c]) => { if (estCompetenceCommune(c)) apprendreCompetence(p, id); });
     }],
     ['🏅 Toutes celles de ma classe', () => {
       Object.keys(COMPETENCES).forEach((id) => { if (COMPETENCES[id].classe === p.classe) apprendreCompetence(p, id); });
@@ -2432,7 +2434,7 @@ function rendreHeros() {
         <span>${suivant ? `${p.xp} / ${suivant} XP` : 'niveau maximum'}</span></div>
       <div class="heros-puissance">⚡ Puissance : <strong>${puissanceDe(p).toLocaleString('fr-FR')}</strong>
         <span class="aide-inline">(caractéristiques + équipement + niveau)</span></div>
-      <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${formatNombre(p.po)} po · 💥 ${Math.round(5 + s.dex + s.crit + (p.race === 'elfe' ? 5 : 0))} % crit. · 🍀 +${Math.round((multChanceDrop(chanceButin(p)) - 1) * 100)} % butin${s.deter ? ` · ⚖️ ${Math.min(60, s.deter)} % determination` : ''}${s.celerite ? ` · 💨 ${Math.min(35, s.celerite)} % celerite` : ''}</div>
+      <div class="heros-vitaux">❤️ ${p.hp}/${p.maxHp} PV · 💧 ${p.mp}/${p.maxMp} PM · 💰 ${formatNombre(p.po)} po · 💥 ${Math.round(Math.min(PLAFONDS_SOUS_CARACS.crit, 5 + s.crit + (p.race === 'elfe' ? 5 : 0)))} % crit. · 🍀 +${Math.round((multChanceDrop(chanceButin(p)) - 1) * 100)} % butin${s.deter ? ` · ⚖️ ${Math.min(PLAFONDS_SOUS_CARACS.deter, s.deter)} % determination` : ''}${s.celerite ? ` · 💨 ${Math.min(PLAFONDS_SOUS_CARACS.celerite, s.celerite)} % celerite` : ''}</div>
     </div>`;
   zone.appendChild(entete);
   ajouterBasculeDeForme(entete, p);

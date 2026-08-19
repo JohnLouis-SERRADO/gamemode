@@ -779,6 +779,10 @@ function esquiveDeLEquipe(source, cible) {
 // vraiment, jamais dans une liste inventée pour la fiche.
 const STATUTS_AU_HASARD = ['poison', 'affaibli', 'etourdi'];
 
+// Les seuls combats qu'on peut quitter en cours de route. La battue n'en
+// fait pas partie : on l'a cherchée, on la finit.
+const GENRES_FUYABLES = ['exploration', 'embuscade'];
+
 function semerUnStatut(source, cible, duree) {
   if (!cible || estMort(cible)) return;
   const type = STATUTS_AU_HASARD[alea(0, STATUTS_AU_HASARD.length - 1)];
@@ -1791,7 +1795,18 @@ function soigner(cible, brut, source) {
   // « Clairvoyance » : ce qui dépasse les points de vie maximum ne tombe
   // pas dans le vide, il se fige en bouclier.
   if (source) surplusDeSoin(source, cible, soin - (cible.hp - avant));
-  return cible.hp - avant || soin;
+  // v26 — Ce qui est rendu, et rien d'autre. Le repli « || soin » faisait
+  // écrire « rend 240 PV » au journal quand la cible était déjà pleine et
+  // que zéro point de vie avait bougé.
+  return cible.hp - avant;
+}
+
+// v26 — Un soin qui ne rend rien ne doit pas s'annoncer « rend 0 PV ».
+// Tant que soigner() renvoyait le montant VOULU au lieu du montant RENDU,
+// le journal écrivait « rend 240 PV » sur une cible déjà pleine ; il dit
+// maintenant ce qui s'est passé.
+function textePV(cible, soin, quiEstCe) {
+  return soin > 0 ? `rend ${soin} PV à ${quiEstCe}` : `soigne ${quiEstCe} — déjà au maximum`;
 }
 
 function gererMort(c) {
@@ -1994,7 +2009,7 @@ function appliquerEffet(source, cible, effet, resultatDegats, comp) {
     case 'drain': {
       if (resultatDegats && resultatDegats.degats > 0) {
         const soin = soigner(source, resultatDegats.degats * effet.part);
-        journal(`🧛 ${source.nom} draine ${soin} PV.`);
+        if (soin > 0) journal(`🧛 ${source.nom} draine ${soin} PV.`);
       }
       break;
     }
@@ -2073,7 +2088,11 @@ function rendreActions(j) {
   barre.className = 'barre-actions';
 
   if (cb.modeActions === 'objet') {
-    const genreFuyable = ['exploration', 'embuscade', 'chasse'].includes(cb.genre);
+    // v26 — La liste des genres qu'on peut fuir était écrite ici ET dans
+    // surActionChoisie, et les deux ne disaient pas la même chose : la
+    // Poudre d'évasion s'affichait active en battue, puis se faisait
+    // refuser au clic. Une seule source, GENRES_FUYABLES.
+    const genreFuyable = GENRES_FUYABLES.includes(cb.genre);
     consommablesDe(j).forEach((entree) => {
       const objet = OBJETS[entree.id];
       const inutile = (objet.effet.type === 'pv' && j.hp >= j.maxHp)
@@ -2190,7 +2209,7 @@ function surActionChoisie(j, action) {
       afficherToast('Vous n’êtes pas empoisonné.');
       return;
     }
-    if (objet.effet.type === 'fuite' && cb.genre !== 'exploration' && cb.genre !== 'embuscade') {
+    if (objet.effet.type === 'fuite' && !GENRES_FUYABLES.includes(cb.genre)) {
       afficherToast('Impossible de fuir ce combat, même en poudre.');
       return;
     }
@@ -2427,7 +2446,7 @@ function lancerCompetence(j, compId, cible, relance) {
     const brutSoin = (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang;
     cibles.forEach((c) => {
       const soin = soigner(c, brutSoin, j);
-      journal(`${comp.emoji} ${j.nom} rend ${soin} PV à ${c === j ? 'lui-même' : c.nom}.`);
+      journal(`${comp.emoji} ${j.nom} ${textePV(c, soin, c === j ? 'lui-même' : c.nom)}.`);
       if (comp.effet) appliquerEffet(j, c, comp.effet, null, comp);
     });
     // Oracle du Verbe : un soin sur une seule tête arrose quand même
@@ -2592,7 +2611,7 @@ function tourInvocation(c) {
       : (comp.cible === 'soi' ? [c] : [[...vivants].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0]]);
     cibles.forEach((x) => {
       const soin = soigner(x, comp.puissance + statDeCompetence(comp, s) * comp.ratio);
-      journal(`${comp.emoji} ${c.nom} rend ${soin} PV à ${x === c ? 'lui-même' : x.nom}.`);
+      journal(`${comp.emoji} ${c.nom} ${textePV(x, soin, x === c ? 'lui-même' : x.nom)}.`);
       if (comp.effet) appliquerEffet(c, x, comp.effet, null, comp);
     });
   } else {
@@ -2705,7 +2724,7 @@ function tourMonstre(m) {
   if (att.type === 'soin') {
     const cible = [...blesses].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
     const soin = soigner(cible, att.valeur);
-    journal(`${att.emoji} ${m.nom} utilise ${att.nom} : ${cible.nom} récupère ${soin} PV.`);
+    journal(`${att.emoji} ${m.nom} utilise ${att.nom} : ${soin > 0 ? `${cible.nom} récupère ${soin} PV` : `${cible.nom} était déjà au maximum`}.`);
   } else if (att.type === 'aoe') {
     journal(`${att.emoji} ${m.nom} utilise ${att.nom} sur tout le groupe !`);
     joueursVivants.forEach((jv) => {
