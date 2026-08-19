@@ -1864,12 +1864,63 @@ function ajouterBlocSignature(p, id, comp, carte) {
   carte.appendChild(monter);
 }
 
+// Le nom que portera vraiment le héros : celui du champ, ou le nom de
+// repli — la même règle à la validation et à la création, pour que ce qui
+// est vérifié soit exactement ce qui est créé.
+function nomChoisiCreation() {
+  const b = etat.brouillon;
+  return el('creation-nom').value.trim()
+    || (b.admin ? `Admin ${etat.profils.filter((x) => x.admin).length + 1}` : `Héros ${etat.profils.length + 1}`);
+}
+
+// =====================================================================
+// L'identité d'un héros est UNIQUE — et on le vérifie à la création.
+//
+// Avant, on pouvait créer deux héros du même nom avec le même code de
+// récupération (type email) : le doublon local passait sans un mot, et le
+// monde en ligne n'apprenait le conflit d'email qu'après coup, par un
+// appel séparé qui échouait en silence. Désormais le doublon est refusé
+// ICI, avec la raison affichée, avant que quoi que ce soit ne soit créé.
+// =====================================================================
+async function refusCreation(nom, code) {
+  const memeNom = (x) => x.nom && x.nom.trim().toLowerCase() === nom.trim().toLowerCase();
+  if (etat.profils.some(memeNom)) {
+    return `Un héros nommé « ${nom} » existe déjà sur cet appareil — choisissez un autre nom.`;
+  }
+  if (code && etat.profils.some((x) => (x.recuperation || '').toLowerCase() === code)) {
+    return `Le code de récupération « ${code} » est déjà utilisé par un de vos héros — chaque héros doit avoir le sien.`;
+  }
+  // Un héros admin naît local : le monde n'a pas son mot à dire ici.
+  if (etat.brouillon.admin || !etat.enLigne || typeof verifierDisponibiliteCloud !== 'function') return null;
+  const dispo = await verifierDisponibiliteCloud(nom, code || null);
+  if (dispo && dispo.nom_pris) {
+    return `Le nom « ${nom} » est déjà porté par un héros du monde en ligne — choisissez-en un autre.`;
+  }
+  if (dispo && dispo.code_pris) {
+    return `Le code de récupération « ${code} » est déjà utilisé par un autre héros du monde.`;
+  }
+  return null;
+}
+
 // v15 : avant de créer le héros, une fenêtre confirme le choix du code
 // de récupération — qu'on en ait mis un… ou pas.
-function validerCreation() {
+async function validerCreation() {
   const code = el('creation-recuperation').value.trim().toLowerCase();
   const ancien = document.getElementById('voile-confirmation-code');
   if (ancien) ancien.remove();
+
+  const bouton = el('creation-valider');
+  bouton.disabled = true;
+  const refus = await refusCreation(nomChoisiCreation(), code);
+  bouton.disabled = false;
+  if (refus) {
+    afficherToast(`✋ ${refus}`);
+    etat.brouillon.page = 1;
+    rendreCreation();
+    window.scrollTo(0, 0);
+    el('creation-nom').focus();
+    return;
+  }
 
   const voile = document.createElement('div');
   voile.id = 'voile-confirmation-code';
@@ -1913,8 +1964,7 @@ function validerCreation() {
 
 function finaliserCreation(codeRecuperation) {
   const b = etat.brouillon;
-  const nom = el('creation-nom').value.trim()
-    || (b.admin ? `Admin ${etat.profils.filter((x) => x.admin).length + 1}` : `Héros ${etat.profils.length + 1}`);
+  const nom = nomChoisiCreation();
   const p = nouveauPersonnage({ nom, avatar: b.avatar, race: b.race, classe: b.classe, stats: b.stats, competences: [...b.competences] });
   if (codeRecuperation) p.recuperation = codeRecuperation;
   // v18 : le héros admin naît comme les autres — mais avec sa console et
@@ -2438,12 +2488,29 @@ function rendreHeros() {
     champ.value = p.nom;
     champ.focus();
   });
-  entete.querySelector('#btn-valider-renommage').addEventListener('click', () => {
+  entete.querySelector('#btn-valider-renommage').addEventListener('click', async () => {
     const nouveau = entete.querySelector('#champ-renommage').value.trim().slice(0, 16);
     if (!nouveau || nouveau === p.nom) { entete.querySelector('#zone-renommage').classList.add('cache'); return; }
+    // Même règle qu'à la création : un nom, un héros — ici comme en ligne.
+    if (etat.profils.some((x) => x.id !== p.id && x.nom.trim().toLowerCase() === nouveau.toLowerCase())) {
+      afficherToast(`✋ Un héros nommé « ${nouveau} » existe déjà sur cet appareil.`);
+      return;
+    }
+    const ancien = p.nom;
     p.nom = nouveau;
+    if (p.cloud && typeof renommerPersonnageCloud === 'function') {
+      const res = await renommerPersonnageCloud(p);
+      // Le monde a refusé (nom déjà porté par un autre) : on rend son nom
+      // au héros plutôt que de laisser le local et l'en ligne diverger.
+      if (res && res.erreur) {
+        p.nom = ancien;
+        afficherToast(`✋ ${res.erreur}`);
+        rendreHeros();
+        return;
+      }
+    }
+    p.conflitCloud = null; // un nouveau nom efface un refus de liaison passé
     sauvegarder(p);
-    if (typeof renommerPersonnageCloud === 'function') renommerPersonnageCloud(p);
     afficherToast(`✏️ Ce héros s'appelle désormais ${p.nom} !`);
     rendreHeros();
     rendreTopbar();
@@ -2853,6 +2920,11 @@ function rendreBlocCode(zone, p) {
     definir.addEventListener('click', async () => {
       const codeRecup = champRecup.value.trim().toLowerCase();
       if (!codeRecup) { afficherToast('🗝️ Saisissez un code (type email) avant de valider.'); return; }
+      // Un code, un héros — sur cet appareil comme dans le monde.
+      if (etat.profils.some((x) => x.id !== p.id && (x.recuperation || '').toLowerCase() === codeRecup)) {
+        afficherToast(`✋ Le code « ${codeRecup} » est déjà utilisé par un autre de vos héros.`);
+        return;
+      }
       p.recuperation = codeRecup;
       sauvegarderLocal();
       const res = typeof definirRecuperationCloud === 'function' ? await definirRecuperationCloud(p) : { ok: false };
@@ -2873,6 +2945,11 @@ function rendreBlocCode(zone, p) {
       note.innerHTML = '🛠️ Ce héros admin est <strong>local</strong> : rien de lui n’est publié en ligne. '
         + 'Vous pouvez le relier au monde quand vous voulez — il apparaîtra alors à la taverne, '
         + 'dans les classements et pourra échanger avec les autres joueurs, <strong>console d’admin comprise</strong>.';
+    } else if (p.conflitCloud) {
+      // La liaison a été refusée (nom ou code déjà pris en ligne) : la
+      // raison reste affichée ici tant qu'elle n'est pas réglée.
+      note.innerHTML = `⚠️ <strong>Liaison refusée :</strong> ${echapper(p.conflitCloud)}
+        Renommez ce héros (bouton ✏️ en haut de la fiche) puis réessayez.`;
     } else {
       note.textContent = 'Ce héros n’est pas encore relié au monde en ligne.';
     }
@@ -3199,6 +3276,12 @@ function chargerHerosImporte(donnees, id, token) {
   const champ = el('champ-code-import');
   const message = el('message-import');
   const d = donnees.donnees || {};
+  // Ce héros du monde est peut-être DÉJÀ sur cet appareil : importer son
+  // code une seconde fois doit rafraîchir la copie locale, pas en créer
+  // une deuxième — deux copies locales du même héros en ligne finissent
+  // par s'écraser mutuellement à chaque sauvegarde.
+  const dejaLocal = etat.profils.find((x) => x.cloud && x.cloud.id === id);
+  if (dejaLocal) etat.profils = etat.profils.filter((x) => x !== dejaLocal);
   const p = nouveauPersonnage({
     nom: donnees.nom, avatar: donnees.avatar || '⚔️',
     stats: d.stats || { for: 4, int: 4, dex: 4, vit: 4 },

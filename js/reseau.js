@@ -52,6 +52,7 @@ async function demarrerReseau() {
   majUiReseau();
   if (etat.enLigne) {
     chargerEvenementMonde();
+    purgerSuppressionsEnAttente();
     if (!minuterieEvenement) {
       minuterieEvenement = setInterval(chargerEvenementMonde, 5 * 60 * 1000);
     }
@@ -64,6 +65,7 @@ async function demarrerReseau() {
         clearInterval(minuterieReconnexion);
         minuterieReconnexion = null;
         majUiReseau();
+        purgerSuppressionsEnAttente();
         // Le monde revient : on récupère l'expédition laissée en plan.
         if (typeof restaurerGroupeLigne === 'function') restaurerGroupeLigne();
       } catch (e) { /* toujours hors ligne */ }
@@ -174,9 +176,26 @@ async function creerPersonnageCloud(p) {
   try {
     const resultat = await apiRequete('/rest/v1/rpc/creer_personnage', {
       methode: 'POST',
-      corps: { p_nom: p.nom, p_avatar: p.avatar, p_donnees: donneesCloud(p) },
+      // Le code de récupération part AVEC la création : le monde vérifie
+      // nom et code d'un seul bloc, atomiquement — fini le héros créé
+      // dont l'email était en réalité déjà pris.
+      corps: {
+        p_nom: p.nom, p_avatar: p.avatar, p_donnees: donneesCloud(p),
+        p_recuperation: p.recuperation || null,
+      },
     });
+    // Nom ou code déjà pris : le héros reste local, et on le DIT — une
+    // seule fois par motif, pas à chaque sauvegarde automatique.
+    if (resultat && resultat.erreur) {
+      if (p.conflitCloud !== resultat.erreur) {
+        p.conflitCloud = resultat.erreur;
+        sauvegarderLocal();
+        afficherToast(`☁️ ${resultat.erreur} Ce héros reste local — renommez-le (fiche du héros) pour le relier au monde.`);
+      }
+      return;
+    }
     if (resultat && resultat.id) {
+      p.conflitCloud = null;
       p.cloud = { id: resultat.id, token: resultat.token };
       // La création a abouti : le drapeau suit, quoi qu'ait fait entre-temps
       // un clic concurrent sur « Relier au monde ».
@@ -189,14 +208,26 @@ async function creerPersonnageCloud(p) {
           p_niveau: p.niveau, p_xp: p.xp, p_donnees: donneesCloud(p),
         },
       });
-      // v15 : le code de récupération choisi à la création s'attache dès
-      // que le héros existe en ligne.
-      if (p.recuperation) definirRecuperationCloud(p);
     }
   } catch (e) {
     /* on réessaiera plus tard */
   } finally {
     creationsCloudEnCours.delete(p.id);
+  }
+}
+
+// Demande au monde si un nom (et un code de récupération) sont libres —
+// AVANT de créer, pour que la création puisse refuser un doublon avec un
+// message clair au lieu d'échouer en silence après coup.
+async function verifierDisponibiliteCloud(nom, code) {
+  if (!etat.enLigne) return null;
+  try {
+    return await apiRequete('/rest/v1/rpc/verifier_disponibilite', {
+      methode: 'POST',
+      corps: { p_nom: nom, p_code: code || null },
+    });
+  } catch (e) {
+    return null;
   }
 }
 
@@ -246,14 +277,19 @@ async function envoyerMessageMonde(texte) {
 }
 
 // Renomme le personnage aussi dans le monde en ligne (taverne, classement).
+// Retourne la réponse du monde : un nom déjà porté par un autre héros y est
+// refusé, et l'appelant doit alors revenir en arrière au lieu de laisser le
+// nom local et le nom en ligne diverger.
 async function renommerPersonnageCloud(p) {
-  if (!etat.enLigne || !p.cloud) return;
+  if (!etat.enLigne || !p.cloud) return null;
   try {
-    await apiRequete('/rest/v1/rpc/renommer_personnage', {
+    return await apiRequete('/rest/v1/rpc/renommer_personnage', {
       methode: 'POST',
       corps: { p_id: p.cloud.id, p_token: p.cloud.token, p_nom: p.nom },
     });
-  } catch (e) { /* le nom local reste la référence */ }
+  } catch (e) {
+    return null; /* le nom local reste la référence */
+  }
 }
 
 // v15 — Code de récupération : un identifiant choisi par le joueur
@@ -291,15 +327,72 @@ async function recupererParCodeCloud(code) {
   }
 }
 
+// =====================================================================
+// Suppression : le héros doit VRAIMENT disparaître du monde en ligne.
+//
+// Avant, la purge était un tir sans filet : supprimé hors ligne (ou sur
+// un échec réseau), le héros restait publié pour toujours — fantôme à la
+// taverne et dans les classements, nom et code de récupération bloqués.
+// Désormais toute suppression est d'abord notée dans une file locale, et
+// n'en sort qu'une fois le monde d'accord ; la file se rejoue à chaque
+// retour en ligne.
+// =====================================================================
+const CLE_PURGE_CLOUD = 'gamemode2.purgeCloud';
+
+function purgesCloudEnAttente() {
+  try {
+    const brut = JSON.parse(localStorage.getItem(CLE_PURGE_CLOUD) || '[]');
+    return Array.isArray(brut) ? brut.filter((x) => x && x.id && x.token) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function memoriserPurgeCloud(liste) {
+  try { localStorage.setItem(CLE_PURGE_CLOUD, JSON.stringify(liste)); } catch (e) { /* tant pis */ }
+}
+
+async function purgerUneLigneCloud(cloud) {
+  const resultat = await apiRequete('/rest/v1/rpc/supprimer_personnage', {
+    methode: 'POST',
+    corps: { p_id: cloud.id, p_token: cloud.token },
+  });
+  // « personnage inconnu » = déjà parti : la purge est tout aussi finie.
+  return !!resultat && (resultat.ok === true || !!resultat.erreur);
+}
+
 // Efface le personnage du monde en ligne (appelé à la suppression locale).
 async function supprimerPersonnageCloud(p) {
   if (!p.cloud) return;
+  const file = purgesCloudEnAttente().filter((x) => x.id !== p.cloud.id);
+  file.push({ id: p.cloud.id, token: p.cloud.token });
+  memoriserPurgeCloud(file);
+  if (!etat.enLigne) {
+    afficherToast('📴 Monde injoignable : la fiche en ligne de ce héros sera retirée à la prochaine connexion.');
+    return;
+  }
   try {
-    await apiRequete('/rest/v1/rpc/supprimer_personnage', {
-      methode: 'POST',
-      corps: { p_id: p.cloud.id, p_token: p.cloud.token },
-    });
-  } catch (e) { /* au pire, la ligne s'éteindra d'elle-même (inactivité) */ }
+    if (await purgerUneLigneCloud(p.cloud)) {
+      memoriserPurgeCloud(purgesCloudEnAttente().filter((x) => x.id !== p.cloud.id));
+    }
+  } catch (e) { /* la file locale s'en chargera au retour du réseau */ }
+}
+
+// Rejoue les suppressions restées en attente (appelée quand le monde répond).
+async function purgerSuppressionsEnAttente() {
+  const file = purgesCloudEnAttente();
+  if (!file.length || !etat.enLigne) return;
+  const restantes = [];
+  for (const cloud of file) {
+    try {
+      if (!(await purgerUneLigneCloud(cloud))) restantes.push(cloud);
+    } catch (e) {
+      restantes.push(cloud);
+    }
+  }
+  memoriserPurgeCloud(restantes);
+  const purgees = file.length - restantes.length;
+  if (purgees > 0) afficherToast(`🗑 ${purgees} héros supprimé${purgees > 1 ? 's' : ''} aussi du monde en ligne.`);
 }
 
 // =====================================================================
