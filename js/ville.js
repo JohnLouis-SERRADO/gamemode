@@ -1077,7 +1077,7 @@ function rendreAtelier() {
   rangee.appendChild(separateur);
   const chipRealisables = document.createElement('button');
   chipRealisables.className = 'chip chip-filtre' + (filtresAtelier.realisables ? ' active' : '');
-  chipRealisables.textContent = '✅ Réalisables maintenant';
+  chipRealisables.textContent = '✅ Réalisables';
   chipRealisables.addEventListener('click', () => {
     filtresAtelier.realisables = !filtresAtelier.realisables;
     rendreAtelier();
@@ -1096,8 +1096,19 @@ function rendreAtelier() {
     rendreAtelier();
   });
   rangee.appendChild(chipClasse);
-  zone.appendChild(rangee);
 
+  // v26 — Devant l'établi, les cinq matières s'ajoutaient aux sept puces
+  // de catégorie : cinq rangées de puces avant la première recette sur un
+  // écran étroit. La matière se replie, comme la rareté en boutique, et
+  // le résumé dit celle qui est active.
+  const repliMatiere = document.createElement('details');
+  repliMatiere.className = 'affiner';
+  if (filtresAtelier.armure !== 'toutes') repliMatiere.open = true;
+  const resumeMatiere = document.createElement('summary');
+  resumeMatiere.textContent = filtresAtelier.armure === 'toutes'
+    ? '🧺 Matière'
+    : `🧺 Matière — ${CATEGORIES_ARMURE[filtresAtelier.armure].nom}`;
+  repliMatiere.appendChild(resumeMatiere);
   const rangeeMatiere = document.createElement('div');
   rangeeMatiere.className = 'rangee-chips rangee-sous-filtres';
   [['toutes', '🧺 Toutes matières'], ...Object.entries(CATEGORIES_ARMURE).map(([id, c]) => [id, `${c.emoji} ${c.nom}`])]
@@ -1109,7 +1120,13 @@ function rendreAtelier() {
       chip.addEventListener('click', () => { filtresAtelier.armure = id; rendreAtelier(); });
       rangeeMatiere.appendChild(chip);
     });
-  zone.appendChild(rangeeMatiere);
+  repliMatiere.appendChild(rangeeMatiere);
+
+  const outilsAtelier = document.createElement('div');
+  outilsAtelier.className = 'barre-outils barre-outils-filtres';
+  outilsAtelier.appendChild(rangee);
+  outilsAtelier.appendChild(repliMatiere);
+  zone.appendChild(outilsAtelier);
 
   // L'établi de CET artisan : ses recettes jusqu'au niveau du héros +6 —
   // les prochaines apparaissent grisées avec leur cadenas, pour donner

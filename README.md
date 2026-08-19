@@ -54,7 +54,7 @@ Elles étaient six : la **Ténacité** retranchait jusqu'à 40 % des dégâts su
 
 Un mage ne porte pas d'armure de fer. Quatre **catégories d'armure** (tissu · cuir · maille · plaque) et six **familles d'arme** (lame · arc · bâton · calice · runique · pavois), chacune réservée aux classes qui en ont l'usage — et l'inventaire dit *pourquoi* un objet vous est refusé plutôt que de le griser en silence.
 
-**18 298 objets** en 7 raretés (jusqu'au Divin ✨), dont **5 314 en boutique** et **386 recettes** d'artisanat. Chaque objet affiche, en face de ce que vous portez déjà, l'écart exact : `+3 💪 / −2 ❤️ ▲ mieux que l'équipé`.
+**18 306 objets** en 7 raretés (jusqu'au Divin ✨), dont **5 344 en boutique** et **386 recettes** d'artisanat. Chaque objet affiche, en face de ce que vous portez déjà, l'écart exact : `+3 💪 / −2 ❤️ ▲ mieux que l'équipé`.
 
 ### Un monde qui tourne sans vous
 
@@ -191,7 +191,7 @@ Le jeu embarque sa propre page de tests, qui charge exactement les mêmes fichie
 npx serve .   # puis ouvrir /tests.html
 ```
 
-**251 tests** en 23 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, l'instantané publié au groupe est toujours le héros tel qu'il est *maintenant* — et, depuis la v20, **l'équilibrage lui-même est sous test** : l'équipement ne doit jamais peser plus de la moitié d'un héros, la puissance conseillée doit rester atteignable par les six classes, la tension d'un combat doit rester dans la même fourchette du niveau 1 au niveau 100, et personne ne doit pouvoir tuer d'un seul coup — ni les monstres, ni vous.
+**326 tests** en 29 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, l'instantané publié au groupe est toujours le héros tel qu'il est *maintenant* — et, depuis la v20, **l'équilibrage lui-même est sous test** : l'équipement ne doit jamais peser plus de la moitié d'un héros, la puissance conseillée doit rester atteignable par les six classes, la tension d'un combat doit rester dans la même fourchette du niveau 1 au niveau 100, et personne ne doit pouvoir tuer d'un seul coup — ni les monstres, ni vous.
 
 ## 🗂️ Structure du projet
 
@@ -234,7 +234,7 @@ js/ville.js                      — le Bourg : boutiques, artisans, Arcanium, G
 js/combat.js                     — combat tour par tour (initiative, critiques, statuts, boss)
 js/groupe.js                     — expéditions en ligne à plusieurs appareils
 js/reseau.js                     — client REST Supabase, taverne, fiches publiques, échanges
-js/tests.js                      — les 251 tests
+js/tests.js                      — les 326 tests
 
 sql/                             — les fonctions RPC du backend Supabase, versionnées ici
 ```
