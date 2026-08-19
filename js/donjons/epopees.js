@@ -54,7 +54,7 @@ const OBJETS_DONJONS = {
     desc: 'Trempée dans le dernier feu du volcan éteint. Froide, et pourtant…',
   },
 };
-Object.assign(OBJETS, OBJETS_DONJONS);
+declarerObjetsDonjons(OBJETS_DONJONS); // garde-fou anti-collision (déclaré plus bas, hoisté)
 
 // ---------------------------------------------------------------------
 // Monstres exclusifs des donjons (mêmes gabarits que MONSTRES)
@@ -601,6 +601,7 @@ const DONJONS = [
         type: 'fin',
         variantes: [
           { drapeau: 'cobayes-liberes', cle: 'sauve-par-les-cobayes', texte: 'La Chimère s’effondre en une flaque fumante… d’où émerge, nu comme un ver et furieux, le mage Frivole. Les cobayes lui font une ovation. « Oui, bon, ÇA VA, » grogne-t-il en s’enroulant dans un rideau. « Expérience concluante : la n° 46 rend liquide. Notez, Boulon. » Il vous tend une fiole : « Votre paiement. Celle-ci fonctionne. Probablement. »' },
+          { drapeau: 'teint-vert', cle: 'teint-vert', texte: 'La Chimère s’effondre en une flaque fumante… d’où émerge, trempé et penaud, le mage Frivole. Il vous dévisage, s’arrête sur votre teinte encore vaguement pomme, et s’illumine : « Vous avez bu la 47 ! ET VOUS TENEZ DEBOUT ! » Il note fébrilement, puis vous tend votre paiement avec un respect nouveau. « Celle-ci fonctionne. Probablement. Vous, en tout cas, vous fonctionnez. »' },
         ],
         texte: 'La Chimère s’effondre en une flaque fumante… d’où émerge, trempé et penaud, le mage Frivole. « Trois lunes en flaque. J’ai eu le temps de réfléchir, » soupire-t-il pendant que Boulon lui apporte un peignoir. « Conclusion : je devrais tester sur les autres d’abord. Tenez — votre paiement. Celle-ci fonctionne. Probablement. »',
       },
@@ -765,6 +766,7 @@ const DONJONS = [
         type: 'fin',
         variantes: [
           { drapeau: 'promesse-maelle', cle: 'tous-libres', texte: 'Le sabre se brise sur le pont. La brume s’engouffre en hurlant, cherche son dû — et vous vous dressez en travers, tenant les deux moitiés de la lame comme un ultime marché. La brume hésite… puis se retire, bredouille et vexée. L’équipage s’élève dans le petit matin, Morvane en tête, qui vous rend un salut de capitaine à capitaine. Maëlle est la dernière à partir. « Terre, » dit-elle doucement. Et cette fois, tout le monde a entendu.' },
+          { drapeau: 'cale-fouillee', cle: 'cale-fouillee', texte: 'Le sabre se brise sur le pont. La brume s’engouffre en hurlant pour réclamer son dû, et Maëlle s’avance, très droite. « Terre, » dit-elle — et la brume l’emporte en libérant tout le reste. Morvane s’efface le dernier, non sans un coup d’œil vers la cale ouverte et vos poches pleines. « Au moins, » souffle-t-il, presque amusé, « mon trésor finira sur la terre ferme. C’est tout ce qu’il voulait. » Sur le nid-de-pie vide, le vent, par habitude, crie encore un peu.' },
         ],
         texte: 'Le sabre se brise sur le pont. La brume s’engouffre en hurlant pour réclamer son dû, et Maëlle s’avance, très droite, sans un regard en arrière. « Terre, » dit-elle — et la brume l’emporte avec elle en libérant tout le reste. L’équipage s’élève dans le petit matin, Morvane en tête, qui laisse son sabre brisé à vos pieds. Sur le nid-de-pie vide, le vent, par habitude, crie encore un peu.',
       },
@@ -967,7 +969,31 @@ const DONJONS = [
 // =====================================================================
 // Donjons des Terres lointaines (v10) : pensés pour l'équipe.
 // =====================================================================
-Object.assign(OBJETS, {
+// Un objet de donjon ne doit JAMAIS écraser un objet déjà au catalogue.
+// C'est arrivé : la série d'artisanat « du Firmament » engendre une pièce
+// d'id `lame-du-firmament`… l'id exact de la récompense de la Couronne
+// Céleste, définie ci-dessous. L'artisanat se charge AVANT ce fichier,
+// son garde-fou ne pouvait donc pas voir la collision — et l'arc du
+// donjon remplaçait silencieusement la lame de la série (recette
+// comprise : l'atelier forgeait l'objet exclusif de l'épopée).
+//
+// Le garde-fou vit désormais des deux côtés : ici, toute collision
+// re-identifie la pièce EXISTANTE en `craft-<id>` (avec sa recette),
+// puisque l'id historique des sauvegardes des joueurs — celui qui a
+// toujours été rendu à l'écran — est l'objet de donjon.
+function declarerObjetsDonjons(objets) {
+  Object.keys(objets).forEach((id) => {
+    if (!OBJETS[id]) return;
+    const nouvelId = `craft-${id}`;
+    OBJETS[nouvelId] = OBJETS[id];
+    if (typeof RECETTES !== 'undefined') {
+      RECETTES.forEach((r) => { if (r.resultat === id) r.resultat = nouvelId; });
+    }
+  });
+  Object.assign(OBJETS, objets);
+}
+
+declarerObjetsDonjons({
   'trident-des-profondeurs': {
     nom: 'Trident des Profondeurs', emoji: '🔱', type: 'equipement', slot: 'arme', familleArme: 'lame', niveau: 28,
     rarete: 'legendaire', prixVente: 900, bonus: { for: 16, int: 8, crit: 4 },
@@ -984,6 +1010,8 @@ Object.assign(OBJETS, {
     desc: 'Forgée dans la pluie d’étoiles d’un trône brisé. Récompense de la Couronne Céleste.',
   },
 });
+
+// Les autres lots d'objets de donjon passent par le même garde-fou.
 
 Object.assign(MONSTRES_DONJONS, {
   // ----- Le Sanctuaire des Marées (niv. 25-30) -----
@@ -1484,7 +1512,7 @@ DONJONS.push(
 // enchaînés — chacun exige d'avoir terminé le précédent. Pensés pour des
 // équipes complètes au niveau maximum.
 // =====================================================================
-Object.assign(OBJETS, {
+declarerObjetsDonjons({
   'linceul-de-nihelm': {
     nom: 'Linceul de Nihelm', emoji: '🕳️', type: 'equipement', slot: 'torse', niveau: 53,
     rarete: 'divin', prixVente: 3369, bonus: { vit: 23, for: 11, pvMax: 126, deter: 6 },

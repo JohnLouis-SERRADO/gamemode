@@ -3,9 +3,10 @@
 // =====================================================================
 // v19 — L'ÉVEIL, au niveau 80.
 //
-// À 80, le héros ne change pas de style : il change de nature. Cinq
-// propositions sont tirées, il en garde une. Deux Berserkers de la Rage
-// peuvent finir Roi Berserker et Dévoreur de Mondes.
+// À 80, le héros ne change pas de style : il change de nature. Trois
+// propositions sont tirées (voir PROPOSITIONS_PAR_TIRAGE et son pourquoi
+// plus bas), il en garde une. Deux Berserkers de la Rage peuvent finir
+// Roi Berserker et Dévoreur de Mondes.
 //
 // Six raretés par sous-classe, vingt-sept sous-classes : 162 Éveils.
 // Chacun apporte UN PASSIF MAJEUR et DEUX COMPÉTENCES — 324 en tout.

@@ -2315,7 +2315,7 @@ function rendreConsoleAdmin(zone, p) {
       const dispo = ZONES.filter((z) => p.niveau >= z.niveauMin);
       const z = dispo[dispo.length - 1] || ZONES[0];
       etat.menaces = etat.menaces || {};
-      etat.menaces[z.id] = { compteur: 0, declencheA: 1 };
+      etat.menaces[typeof cleMenace === 'function' ? cleMenace(p, z) : z.id] = { compteur: 0, declencheA: 1 };
       afficherToast(`⚠️ Menace armée sur ${z.nom} : le boss surgira à la prochaine exploration.`);
     }],
   ]);

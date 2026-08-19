@@ -412,10 +412,14 @@ function critiqueForce(source) {
 
 // Le Duelliste s'accroche à une cible : son critique grimpe manche après
 // manche, et repart de zéro dès qu'il en change.
-function bonusCritDuel(source, cible) {
+function bonusCritDuel(source, cible, options = {}) {
   const p = reglagesDuCombattant(source);
   if (!p || !p.critParManche || !cible) return 0;
   if (source.cibleDuel !== cible.id) {
+    // Seule une attaque DÉLIBÉRÉE change de duel : une bombe, une riposte
+    // ou une éclaboussure de zone n'est pas « changer de cible » au sens
+    // de la fiche — elle ne remet plus la traque à zéro.
+    if (options.zone || options.riposte || options.bombe) return 0;
     source.cibleDuel = cible.id;
     source.manchesDuel = 0;
   }
@@ -831,8 +835,13 @@ function apresDegatsVoies(source, cible, degats, options) {
 function encaisserSelonLesVoies(source, cible, degats, options) {
   const cb = etat.combat;
   if (!cb || degats <= 0 || options.riposte) return;
-  // Toute manche « propre » s'arrête ici : la cible vient d'encaisser.
-  if (cible.type === 'joueur') cible.manchesPropres = 0;
+  // Toute manche « propre » s'arrête ici : la cible vient d'encaisser —
+  // et le drapeau retient le coup jusqu'au début de la manche SUIVANTE,
+  // sinon un coup reçu après son tour était effacé par l'incrément.
+  if (cible.type === 'joueur') {
+    cible.manchesPropres = 0;
+    cible.toucheCetteManche = true;
+  }
 
   const p = reglagesDuCombattant(cible);
   if (!p || estMort(cible)) return;
@@ -1370,7 +1379,12 @@ async function boucleTour() {
         j.killsDuTour = 0;                     // contrainte divine du tir
         j.manchesDuel = (j.manchesDuel || 0) + 1; // « Duel » : la traque s'installe
         // Voies de la Rage et du Souffle : une manche sans encaisser paie.
-        if (cb.manche > 1) j.manchesPropres = (j.manchesPropres || 0) + 1;
+        // Le drapeau posé à l'encaissement fait foi : sans lui, un héros
+        // touché après son tour redémarrait la manche suivante à 1.
+        if (cb.manche > 1) {
+          j.manchesPropres = j.toucheCetteManche ? 0 : (j.manchesPropres || 0) + 1;
+        }
+        j.toucheCetteManche = false;
         if (cb.manche === 1) { ouvertureDesVoies(j); ouvertureDesEveils(j); annoncerInitiative(j); }
       });
       traiterMecaniquesManche(cb);
@@ -1378,17 +1392,23 @@ async function boucleTour() {
 
     const c = cb.file.shift();
     if (estMort(c)) continue;
-    // Contrainte divine du corps à corps : une manche sur deux, il regarde.
-    if (reglagePassif(c, 'unTourSurDeux', false) && cb.manche % 2 === 0) {
-      journal(`⏳ ${c.nom} laisse passer la manche : son Éveil l'exige.`);
-      continue;
-    }
     cb.actif = c;
 
     const debut = debutTour(c);
     rendreCombat();
     if (verifierFin()) break;
     if (estMort(c)) continue; // mort au poison pendant son propre tour
+
+    // Contrainte divine du corps à corps : une manche sur deux, il regarde.
+    // Le contrôle vient APRÈS debutTour : la manche sautée doit quand même
+    // lever la garde, décompter les recharges et faire vivre les statuts —
+    // sinon une Défense posée en manche impaire durait deux manches.
+    if (reglagePassif(c, 'unTourSurDeux', false) && cb.manche % 2 === 0) {
+      journal(`⏳ ${c.nom} laisse passer la manche : son Éveil l'exige.`);
+      rendreCombat();
+      await attendre(400);
+      continue;
+    }
 
     if (debut.skip) {
       const etourdi = c.statuts.find((s) => s.type === 'etourdi');
@@ -1445,13 +1465,15 @@ function debutTour(c) {
   }
   // Une invocation à durée limitée (l'esprit du Chaman) tient le compte.
   if (c.type === 'invocation' && c.toursRestants != null) {
-    c.toursRestants--;
+    // L'effacement se teste AVANT le décompte : « il combattra encore
+    // 3 tours » doit donner trois vrais tours, pas deux.
     if (c.toursRestants <= 0) {
       c.mort = true;
       c.ko = true;
       journal(`👻 ${c.nom} s'efface : son temps parmi les vivants est écoulé.`);
       return { skip: true };
     }
+    c.toursRestants--;
   }
 
   const poison = c.statuts.find((s) => s.type === 'poison');
@@ -1462,7 +1484,13 @@ function debutTour(c) {
     }
     c.hp -= poison.valeur;
     journal(`🧪 ${c.nom} souffre du poison : ${poison.valeur} dégâts.`);
-    gererMort(c);
+    if (c.hp <= 0) {
+      gererMort(c);
+      // Relevé sur-le-champ (Phénix, Voie des Ancêtres…) : sa relance est
+      // déjà poussée dans la file — jouer maintenant EN PLUS ferait deux
+      // actions dans la même manche.
+      if (!estMort(c)) return { skip: true };
+    }
   }
   if (estMort(c)) return { skip: true };
 
@@ -1633,7 +1661,7 @@ function infligerDegats(source, cible, brut, options = {}) {
     chanceDirect = sousCarac(s, 'direct');
     d *= 1 + sousCarac(s, 'deter');
     if (source.race === 'elfe') chanceCrit += 0.05; // Précision millénaire
-    chanceCrit += bonusCritDuel(source, cible); // « Duel » : un adversaire à la fois
+    chanceCrit += bonusCritDuel(source, cible, options); // « Duel » : un adversaire à la fois
   }
   const crit = critiqueForce(source) || reglagePassif(source, 'critTotal', false)
     || Math.random() < chanceCrit;
@@ -1791,7 +1819,10 @@ function soigner(cible, brut, source) {
   // « Clairvoyance » : ce qui dépasse les points de vie maximum ne tombe
   // pas dans le vide, il se fige en bouclier.
   if (source) surplusDeSoin(source, cible, soin - (cible.hp - avant));
-  return cible.hp - avant || soin;
+  // La vérité, rien qu'elle : les PV réellement rendus. Une cible à pleine
+  // vie renvoie 0 — au journal de le dire, plutôt que d'annoncer un soin
+  // qui n'a pas eu lieu.
+  return cible.hp - avant;
 }
 
 function gererMort(c) {
@@ -2046,7 +2077,7 @@ function rendreActions(j) {
 
   const entete = document.createElement('div');
   entete.className = 'actions-entete';
-  entete.innerHTML = `<span class="avatar-grand">${j.avatar}</span>
+  entete.innerHTML = `<span class="avatar-grand">${echapper(j.avatar)}</span>
     <div>Au tour de <strong>${echapper(j.nom)}</strong>${cb.equipe.length > 1 ? ' — passe-lui l’écran !' : ''}<br>
     <span class="actions-vie">❤️ ${j.hp}/${j.maxHp} PV · 💧 ${j.mp}/${j.maxMp} PM</span>
     ${texteInlinePassifs(j)}</div>`;
@@ -2101,7 +2132,9 @@ function rendreActions(j) {
 
   const btnAttaque = document.createElement('button');
   btnAttaque.className = 'btn-action';
-  btnAttaque.innerHTML = '⚔️ <strong>Attaque</strong><span class="action-detail">Gratuite · dégâts légers</span>';
+  const attaqueInterdite = reglagePassif(j, 'degatsDirectsInterdits', false);
+  btnAttaque.disabled = attaqueInterdite;
+  btnAttaque.innerHTML = `⚔️ <strong>Attaque</strong><span class="action-detail">${attaqueInterdite ? '🚫 Éveil : plus aucun dégât direct' : 'Gratuite · dégâts légers'}</span>`;
   btnAttaque.addEventListener('click', () => surActionChoisie(j, { genre: 'attaque' }));
   barre.appendChild(btnAttaque);
 
@@ -2130,15 +2163,23 @@ function rendreActions(j) {
     btn.className = 'btn-action competence';
     const cd = j.cooldowns[compId] || 0;
     const cout = coutMpDe(comp, statsJoueur, j.maxMp);
+    // Contraintes d'Éveil : le bouton se grise et DIT pourquoi, au lieu de
+    // laisser cliquer une compétence que le moteur refusera.
+    const interditZone = comp.cible === 'ennemis'
+      && reglagePassif(j, 'zonesInterdites', false);
+    const interditDirect = comp.type === 'degats'
+      && reglagePassif(j, 'degatsDirectsInterdits', false);
     // Détails chiffrés : dégâts/soins estimés, effets, coût, recharge.
     let detail = detailsCompetence(comp, statsJoueur, rangDe(j, compId), j.maxMp).join(' · ');
     const enSang = j.mp < cout && reglagePassif(j, 'sangParMana', 0) > 0;
-    if (cd > 0) detail = `⏳ Encore ${cd} tour${cd > 1 ? 's' : ''}`;
+    if (interditZone) detail = '🚫 Éveil : une seule cible à la fois';
+    else if (interditDirect) detail = '🚫 Éveil : plus aucun dégât direct';
+    else if (cd > 0) detail = `⏳ Encore ${cd} tour${cd > 1 ? 's' : ''}`;
     else if (enSang) detail = `${cout} PM — payé en sang (${Math.max(1, Math.round((cout - j.mp) * reglagePassif(j, 'sangParMana', 0)))} PV)`;
     else if (j.mp < cout) detail = `${cout} PM — pas assez de mana`;
     btn.innerHTML = `${comp.emoji} <strong>${comp.nom}</strong><span class="action-detail">${detail}</span>`;
     btn.title = comp.desc;
-    btn.disabled = cd > 0 || !peutPayerSort(j, cout);
+    btn.disabled = cd > 0 || !peutPayerSort(j, cout) || interditZone || interditDirect;
     btn.addEventListener('click', () => surActionChoisie(j, { genre: 'competence', compId }));
     barre.appendChild(btn);
   });
@@ -2190,7 +2231,7 @@ function surActionChoisie(j, action) {
       afficherToast('Vous n’êtes pas empoisonné.');
       return;
     }
-    if (objet.effet.type === 'fuite' && cb.genre !== 'exploration' && cb.genre !== 'embuscade') {
+    if (objet.effet.type === 'fuite' && !['exploration', 'embuscade', 'chasse'].includes(cb.genre)) {
       afficherToast('Impossible de fuir ce combat, même en poudre.');
       return;
     }
@@ -2244,6 +2285,12 @@ function executerActionCoeur(j, action, cible) {
       gererMort(m);
     });
   } else if (action.genre === 'attaque') {
+    // La contrainte « plus aucun dégât direct » vaut pour l'attaque de
+    // base aussi — sinon elle se contournait d'un clic.
+    if (reglagePassif(j, 'degatsDirectsInterdits', false)) {
+      journal(`🚫 L'Éveil de ${j.nom} lui interdit d'infliger des dégâts directs.`);
+      return 'rejouer';
+    }
     const s = statsEffectives(j);
     // v20 : la meilleure caractéristique offensive, pas seulement FOR/DEX
     // — sans quoi un lanceur frappe à 9 quand un guerrier frappe à 161.
@@ -2283,8 +2330,8 @@ function executerActionCoeur(j, action, cible) {
     journal(`🛡️ ${j.nom} se met en garde (+3 PM, dégâts subis réduits de moitié).`);
   } else if (action.genre === 'objet') {
     const objet = OBJETS[action.idObjet];
-    j.objetBu = true;   // Éveil « Le Pèlerin Silencieux » : le silence est rompu
     if (objet && retirerObjet(j, action.idObjet, 1)) {
+      j.objetBu = true; // Éveil « Le Pèlerin Silencieux » : le silence est rompu
       const issueObjet = utiliserObjetEnCombat(j, objet);
       if (j.distant && cb.consosDistantes) {
         const conso = cb.consosDistantes[j.bid] = cb.consosDistantes[j.bid] || {};
@@ -2308,7 +2355,9 @@ function executerActionCoeur(j, action, cible) {
     }
     journal(`💨 ${j.nom} tente de fuir… sans succès !`);
   } else {
-    lancerCompetence(j, action.compId, cible);
+    // Un refus du moteur (contrainte d'Éveil, mana insuffisant) ne coûte
+    // pas le tour : la main revient au joueur au lieu d'être consumée.
+    if (lancerCompetence(j, action.compId, cible) === 'refus') return 'rejouer';
   }
   // Faucheur : quoi qu'il vienne de faire — sort, attaque, riposte, onde
   // de choc —, ce qui reste debout sous son seuil tombe. Ici, et pas dans
@@ -2349,17 +2398,17 @@ function executerAction(j, action, cible) {
 function lancerCompetence(j, compId, cible, relance) {
   const cb = etat.combat;
   const comp = COMPETENCES[compId];
-  if (comp.type === 'invocation') { lancerInvocation(j, compId); return; }
+  if (comp.type === 'invocation') return lancerInvocation(j, compId);
   const s = statsEffectives(j);
   const zone = comp.cible === 'ennemis' || comp.cible === 'allies';
   // Contraintes d'Éveil : certaines options disparaissent purement.
   if (zone && comp.cible === 'ennemis' && reglagePassif(j, 'zonesInterdites', false)) {
     journal(`🚫 L'Éveil de ${j.nom} lui interdit de frapper plus d'un ennemi à la fois.`);
-    return;
+    return 'refus';
   }
   if (comp.type === 'degats' && reglagePassif(j, 'degatsDirectsInterdits', false)) {
     journal(`🚫 L'Éveil de ${j.nom} lui interdit d'infliger des dégâts directs.`);
-    return;
+    return 'refus';
   }
   // Voies sismiques : les zones frappent plus fort, et coûtent d'autant.
   const surcoutZone = zone ? reglagePassif(j, 'bonusZone', 0) : 0;
@@ -2368,7 +2417,13 @@ function lancerCompetence(j, compId, cible, relance) {
   // Une relance offerte par une Voie ne se paie ni en mana ni en recharge.
   if (!relance) {
     if (j.mp >= cout) j.mp -= cout;
-    else if (!payerSortEnSang(j, cout)) j.mp = 0;
+    else if (!payerSortEnSang(j, cout)) {
+      // L'interface interdit ce clic — mais une action distante (ou un
+      // client modifié) pouvait lancer n'importe quoi pour 1 PM. Le
+      // moteur est la seule vraie porte : elle refuse.
+      journal(`💧 ${j.nom} n'a pas assez de mana pour ${comp.nom} !`);
+      return 'refus';
+    }
     if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
   }
 
@@ -2427,7 +2482,9 @@ function lancerCompetence(j, compId, cible, relance) {
     const brutSoin = (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang;
     cibles.forEach((c) => {
       const soin = soigner(c, brutSoin, j);
-      journal(`${comp.emoji} ${j.nom} rend ${soin} PV à ${c === j ? 'lui-même' : c.nom}.`);
+      journal(soin > 0
+        ? `${comp.emoji} ${j.nom} rend ${soin} PV à ${c === j ? 'lui-même' : c.nom}.`
+        : `${comp.emoji} ${j.nom} soigne ${c === j ? 'lui-même' : c.nom}… déjà au maximum.`);
       if (comp.effet) appliquerEffet(j, c, comp.effet, null, comp);
     });
     // Oracle du Verbe : un soin sur une seule tête arrose quand même
@@ -2449,7 +2506,9 @@ function lancerCompetence(j, compId, cible, relance) {
   // Voie de l'Écho, Voie du Satiriste : la compétence se rejoue, gratuite.
   const relanceVoie = reglagePassif(j, 'relanceGratuite', 0);
   if (!relance && relanceVoie && !cb.termine && Math.random() < relanceVoie) {
-    const encore = comp.cible === 'ennemi' ? cb.monstres.find((m) => !m.mort) : cible;
+    const encore = comp.cible === 'ennemi'
+      ? ((cible && !estMort(cible)) ? cible : cb.monstres.find((m) => !m.mort))
+      : cible;
     journal(`🔁 L'écho reprend ${comp.nom} — gratuitement.`);
     lancerCompetence(j, compId, encore || cible, true);
   }
@@ -2482,7 +2541,10 @@ function lancerInvocation(j, compId) {
   }
   const coutInvocation = coutMpDe(comp, statsEffectives(j), j.maxMp);
   if (j.mp >= coutInvocation) j.mp -= coutInvocation;
-  else if (!payerSortEnSang(j, coutInvocation)) j.mp = 0;
+  else if (!payerSortEnSang(j, coutInvocation)) {
+    journal(`💧 ${j.nom} n'a pas assez de mana pour ${comp.nom} !`);
+    return 'refus';
+  }
   if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
 
   const modele = INVOCATIONS[comp.invocation];
@@ -2650,7 +2712,7 @@ function utiliserObjetEnCombat(j, objet) {
   } else if (effet.type === 'bombe') {
     journal(`${objet.emoji} ${j.nom} lance une ${objet.nom} sur les ennemis !`);
     cb.monstres.filter((m) => !m.mort).forEach((m) => {
-      const r = infligerDegats(j, m, effet.valeur);
+      const r = infligerDegats(j, m, effet.valeur, { bombe: true });
       journal(`→ ${m.nom} subit ${texteDegats(r)}`);
       gererMort(m);
       if (!estMort(m) && Math.random() < (effet.chanceEtourdi || 0)) {
@@ -2712,6 +2774,9 @@ function tourMonstre(m) {
       const r = infligerDegats(m, jv, m.atk * att.mult);
       journal(`→ ${jv.nom} subit ${texteDegats(r)}`);
       gererMort(jv);
+      // L'effet annoncé (poison, étourdissement…) frappe chaque survivant :
+      // 43 attaques de zone du bestiaire le portaient sans jamais l'appliquer.
+      if (att.effet && !estMort(jv)) appliquerEffet(m, jv, att.effet, r);
     });
   } else {
     const cible = choisirCibleJoueur(joueursVivants);
@@ -2755,7 +2820,7 @@ function rendreOrdreInitiative(cb) {
   if (cb.termine || aVenir.length === 0) { zone.innerHTML = ''; return; }
   zone.innerHTML = '⏱️ Ordre de la manche : ' + aVenir
     .map((c, i) => `<span class="ordre-combattant${i === 0 ? ' ordre-actif' : ''}${c.type === 'joueur' ? ' ordre-joueur' : ''}"
-      title="${echapper(c.nom)}">${c.type === 'joueur' ? c.avatar : c.emoji}</span>`)
+      title="${echapper(c.nom)}">${echapper(c.type === 'joueur' ? c.avatar : c.emoji)}</span>`)
     .join('<span class="ordre-fleche">→</span>');
 }
 
@@ -2839,7 +2904,7 @@ function carteCombattant(c) {
   }
 
   carte.innerHTML = `
-    <div class="combattant-avatar">${c.type === 'joueur' ? c.avatar : c.emoji}</div>
+    <div class="combattant-avatar">${echapper(c.type === 'joueur' ? c.avatar : c.emoji)}</div>
     <div class="combattant-nom">${echapper(c.nom)} <span class="niveau">niv. ${c.niveau}</span></div>
     ${barres}
     <div class="combattant-statuts">${statuts}${defense}${mort ? (c.type === 'joueur' ? '😵 KO' : '☠️') : ''}</div>`;

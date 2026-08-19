@@ -265,10 +265,13 @@ async function quitterGroupeLigne() {
   const groupe = etat.groupeLigne;
   oublierGroupeLigne();
   if (groupe && p && p.cloud) {
-    apiRequete('/rest/v1/rpc/groupe_quitter', {
+    // Un départ perdu par le réseau laissait un fantôme dans le groupe —
+    // que le chef attendait 60 s par manche. On retente une fois.
+    const partir = () => apiRequete('/rest/v1/rpc/groupe_quitter', {
       methode: 'POST',
       corps: { p_id: p.cloud.id, p_token: p.cloud.token, p_groupe: groupe.id },
-    }).catch(() => {});
+    });
+    partir().catch(() => { setTimeout(() => { partir().catch(() => {}); }, 5000); });
   }
   naviguer('taverne');
 }
@@ -341,7 +344,24 @@ function demarrerVeilleGroupe() {
       }
       return;
     }
-    if (ligne.statut === 'lobby') await pousserSnapshotGroupe();
+    if (ligne.statut === 'lobby') {
+      // Le dénouement a pu se jouer PENDANT que ce héros regardait
+      // ailleurs : sa part (récompense… ou mort du groupe) l'attend dans
+      // le résultat publié — sinon son état divergeait de tous les autres
+      // écrans, jusqu'à esquiver la mort commune.
+      const resultat = ligne.etat && ligne.etat.resultat;
+      if (resultat && resultat.jeton && groupe.dernierResultat !== resultat.jeton
+        && p && p.cloud && resultat.recompenses && resultat.recompenses[p.cloud.id]
+        && !combatEnCours()) {
+        groupe.dernierResultat = resultat.jeton;
+        memoriserGroupeLigne();
+        appliquerRecompenseGroupe(p, resultat.recompenses[p.cloud.id]);
+        if (!resultat.recompenses[p.cloud.id].defaite) {
+          afficherToast(`${resultat.titre} — votre part de l'expédition vous a été remise.`);
+        }
+      }
+      await pousserSnapshotGroupe();
+    }
   };
   tick();
   minuterieVeilleGroupe = setInterval(tick, 3000);
@@ -585,7 +605,9 @@ async function lancerExpeditionGroupe(ligne) {
       hp: Math.round(MONSTRES[cle].hp * multTour),
       atk: Math.round(MONSTRES[cle].atk * multTour),
     }));
-    genreCombat = 'exploration';
+    // Le même genre que le solo : « exploration » supprimait silencieusement
+    // tout le butin de matériaux (et autorisait la fuite dans la Tour).
+    genreCombat = 'tour';
     zoneCombat = z;
     difficulte = 'normal';
     titre = `🗼 Tour Sans Fin — Étage ${etage} (groupe)`;
@@ -609,7 +631,7 @@ async function lancerExpeditionGroupe(ligne) {
       hp: Math.round(base.hp * diff.hp * (1 + etage * 0.08 + cycle * 0.6) * multEquipe),
       atk: Math.round(base.atk * diff.atk * (1 + etage * 0.03) * multAtkEquipe),
     }];
-    genreCombat = 'boss';
+    genreCombat = 'tourBoss'; // comme en solo : les boss de tour gardent leur butin
     zoneCombat = null;
     titre = `🏯 Tour des Boss — Étage ${etage} (groupe)`;
     intro = `${defs[0].nom} garde l'étage ${etage}. L'équipe grimpe depuis le record du chef.`;
@@ -630,7 +652,7 @@ async function lancerExpeditionGroupe(ligne) {
       hp: Math.round(base.hp * multEquipe),
       atk: Math.round(base.atk * multAtkEquipe),
     }];
-    genreCombat = 'boss';
+    genreCombat = 'donjon'; // comme en solo : le boss d'un donjon garde son butin
     zoneCombat = null;
     difficulte = 'normal';
     titre = `🏰 ${donjon.emoji} ${donjon.nom} — l'assaut du boss`;
@@ -664,7 +686,19 @@ async function lancerExpeditionGroupe(ligne) {
   // La lecture vient APRÈS groupe_lancer : le groupe n'est plus au salon,
   // plus aucun instantané ne peut atterrir — ce qu'on lit est définitif,
   // et c'est bien la dernière version publiée par chacun (auberge comprise).
-  const membresFrais = (await lireGroupe(groupe.id)).membres;
+  let groupeFrais = null;
+  for (let essai = 0; essai < 3 && !groupeFrais; essai++) {
+    groupeFrais = await lireGroupe(groupe.id);
+    if (!groupeFrais) await attendre(1200);
+  }
+  if (!groupeFrais) {
+    // lireGroupe renvoie null sur une erreur réseau : lire `.membres`
+    // dessus crashait le chef et laissait les membres attendre à jamais.
+    afficherToast('📡 Le monde n’a pas répondu — retour au salon, relancez l’expédition.');
+    ouvrirLobbyGroupe();
+    return;
+  }
+  const membresFrais = groupeFrais.membres;
   const equipe = membresFrais.map((m) => {
     if (m.id === p.cloud.id) { p.bid = p.cloud.id; return p; }
     return creerJoueurDistant(m);
@@ -705,7 +739,17 @@ async function lancerEtageAscensionGroupe(idDonjon, etage, equipePrecedente) {
   arreterSondagesGroupe();
   groupe.seqTraite = 0;
 
-  const membresFrais = (await lireGroupe(groupe.id)).membres;
+  let groupeFrais = null;
+  for (let essai = 0; essai < 3 && !groupeFrais; essai++) {
+    groupeFrais = await lireGroupe(groupe.id);
+    if (!groupeFrais) await attendre(1200);
+  }
+  if (!groupeFrais) {
+    afficherToast('📡 Le monde n’a pas répondu — retour au salon, relancez l’Ascension.');
+    ouvrirLobbyGroupe();
+    return;
+  }
+  const membresFrais = groupeFrais.membres;
   // L'équipe : conservée d'un étage à l'autre (PV compris), en écartant
   // ceux qui ont quitté le groupe entre-temps.
   let equipe = (equipePrecedente || [])
@@ -754,7 +798,10 @@ async function lancerEtageAscensionGroupe(idDonjon, etage, equipePrecedente) {
   }
 
   demarrerCombat({
-    genre: 'boss', // pas de fuite : on grimpe jusqu'à la mort ou l'abandon
+    // « ascension » : hors des genres de carte, donc le butin de matériaux
+    // tombe — et hors des genres fuyables, donc on grimpe jusqu'à la mort
+    // ou l'abandon, la règle de l'Ascension.
+    genre: 'ascension',
     zone: null,
     difficulte: 'normal',
     titre: `⛰️ ${donjon.nom} — Ascension, étage ${etage} (groupe)`,
@@ -846,7 +893,7 @@ async function tourJoueurDistant(c) {
   cb.enAttenteDe = c.bid;
   rendreCombat();
   const zone = el('zone-actions');
-  zone.innerHTML = `<div class="actions-entete"><span class="avatar-grand">${c.avatar}</span>
+  zone.innerHTML = `<div class="actions-entete"><span class="avatar-grand">${echapper(c.avatar)}</span>
     <div>Au tour de <strong>${echapper(c.nom)}</strong> — il joue sur son propre écran…<br>
     <span class="actions-vie">⏳ En attente de son action</span></div></div>`;
   await publierEtatGroupe(cb);
@@ -1002,7 +1049,10 @@ function apresCombatGroupeHote(cb, type) {
   }
 
   const titres = { victoire: '🏆 Victoire du groupe !', defaite: '💫 Défaite du groupe…', fuite: '💨 Repli du groupe' };
-  cb.resultatGroupe = { type, titre: titres[type], lignes, recompenses };
+  // Le jeton identifie CE résultat : un membre absent au dénouement le
+  // retrouve à sa prochaine veille, et personne ne l'applique deux fois.
+  const jeton = `${cb.groupe.id}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  cb.resultatGroupe = { type, titre: titres[type], lignes, recompenses, jeton };
   publierEtatGroupe(cb, 'lobby');
 
   const maRecompense = recompenses[p.cloud.id];
@@ -1050,14 +1100,30 @@ function appliquerRecompenseGroupe(p, recompense) {
   }
   if (recompense.bossVaincu) progresserQuete(p, 'boss', 1);
   // v16 : les tours gravées en groupe font progresser les records solo.
+  // v26 : elles versent aussi leurs Sceaux — « monter n'importe quel
+  // escalier finance la Tour de l'Éveil », en groupe comme en solo.
   if (recompense.tourEtage) {
     if (p.tourMax < recompense.tourEtage) p.tourMax = recompense.tourEtage;
     progresserQuete(p, 'tour', 1);
+    if (p.niveau >= NIVEAU_TOUR_EVEIL && typeof gagnerSceaux === 'function') {
+      const gain = gagnerSceaux(p, recompense.tourEtage);
+      if (gain.normaux > 0) afficherToast(`🔹 +${gain.normaux} Sceau${gain.normaux > 1 ? 'x' : ''}${gain.majeurs > 0 ? ' et 💠 1 Sceau Majeur' : ''} (Tour en groupe).`);
+    }
+    if (typeof franchirPalierDeSauvegarde === 'function') {
+      franchirPalierDeSauvegarde(p, 'tour', recompense.tourEtage);
+    }
   }
   if (recompense.tourBoss && p.tourBoss) {
     const { etage, difficulte } = recompense.tourBoss;
     if ((p.tourBoss[difficulte] || 0) < etage) p.tourBoss[difficulte] = etage;
     progresserQuete(p, 'tourBoss', 1);
+    if (p.niveau >= NIVEAU_TOUR_EVEIL && typeof gagnerSceaux === 'function') {
+      const gain = gagnerSceaux(p, etage);
+      if (gain.normaux > 0) afficherToast(`🔹 +${gain.normaux} Sceau${gain.normaux > 1 ? 'x' : ''}${gain.majeurs > 0 ? ' et 💠 1 Sceau Majeur' : ''} (Tour des Boss en groupe).`);
+    }
+    if (typeof franchirPalierDeSauvegarde === 'function') {
+      franchirPalierDeSauvegarde(p, `tourBoss:${difficulte}`, etage);
+    }
   }
   // v16.2 : chaque étage d'Ascension conquis en groupe grave le record.
   if (recompense.ascension) {
@@ -1099,16 +1165,27 @@ function demarrerSuiviCombatDistant() {
       naviguer('taverne');
       return;
     }
-    // La fraîcheur de la publication trahit un chef déconnecté.
+    // La fraîcheur de la publication trahit un chef déconnecté — dit UNE
+    // fois par épisode, pas à chaque tick de 1,3 s.
     if (ligne.statut === 'aventure' && Date.now() - new Date(ligne.maj).getTime() > 30000) {
-      afficherToast('📡 Le chef semble déconnecté…');
+      if (!groupe.alerteChefMuette) {
+        groupe.alerteChefMuette = true;
+        afficherToast('📡 Le chef semble déconnecté…');
+      }
+    } else {
+      groupe.alerteChefMuette = false;
     }
     if (ligne.statut === 'lobby') {
       arreterSondagesGroupe();
       const resultat = ligne.etat && ligne.etat.resultat;
       etat.combat = null;
-      if (resultat) {
+      const dejaApplique = resultat && resultat.jeton && groupe.dernierResultat === resultat.jeton;
+      if (resultat && !dejaApplique) {
         const p = persoActif();
+        if (resultat.jeton) {
+          groupe.dernierResultat = resultat.jeton;
+          memoriserGroupeLigne();
+        }
         const maRecompense = resultat.recompenses[p.cloud.id];
         appliquerRecompenseGroupe(p, maRecompense);
         afficherButin({
@@ -1188,7 +1265,7 @@ function majCombatDistant(recu) {
     cb.cibleEnAttente = null;
     const zone = el('zone-actions');
     if (cb.actif) {
-      zone.innerHTML = `<div class="actions-entete"><span class="avatar-grand">${cb.actif.avatar}</span>
+      zone.innerHTML = `<div class="actions-entete"><span class="avatar-grand">${echapper(cb.actif.avatar)}</span>
         <div>Au tour de <strong>${echapper(cb.actif.nom)}</strong> (sur son écran)…</div></div>`;
     } else {
       zone.innerHTML = '';

@@ -220,13 +220,20 @@ const VIVRES_EXPEDITION = [
   { id: 'elixir-vie', niveauMin: 70 },
 ];
 
+// La menace d'un boss est un état de SESSION, mais elle appartient à UN
+// héros : sans cette clé, le héros B héritait de la menace armée par le
+// héros A et se faisait embusquer par un boss qu'il n'avait jamais défié.
+function cleMenace(p, z) {
+  return `${p.id}:${z.id}`;
+}
+
 function rendreZone(z) {
   const p = persoActif();
   const explorations = p.explorations[z.id] || 0;
   const bossVaincu = p.bossVaincus.includes(z.id);
   const boss = MONSTRES[z.boss];
   etat.menaces = etat.menaces || {};
-  const menace = etat.menaces[z.id];
+  const menace = etat.menaces[cleMenace(p, z)];
   if (!DIFFICULTES[etat.difficulte] || !difficulteDebloquee(p, z, etat.difficulte)) {
     etat.difficulte = 'normal';
   }
@@ -390,11 +397,11 @@ function explorer(z) {
   // ⚠️ La menace est armée : le boss peut surgir À TOUT MOMENT, au plus
   // tard 8 explorations après l'avertissement. On ne sait jamais quand.
   etat.menaces = etat.menaces || {};
-  const menace = etat.menaces[z.id];
+  const menace = etat.menaces[cleMenace(p, z)];
   if (menace) {
     menace.compteur++;
     if (menace.compteur >= menace.declencheA) {
-      delete etat.menaces[z.id];
+      delete etat.menaces[cleMenace(p, z)];
       const boss = MONSTRES[z.boss];
       afficherToast(`${boss.emoji} Le danger vous a trouvés !`);
       affronterBoss(z, true);
@@ -439,7 +446,7 @@ function explorer(z) {
   if (tirage < 0.30 && evenementHistoire(z)) {
     return;
   }
-  if (tirage < 0.36 && !p.bossVaincus.includes(z.id) && !etat.menaces[z.id]) {
+  if (tirage < 0.36 && !p.bossVaincus.includes(z.id) && !etat.menaces[cleMenace(p, z)]) {
     evenementMenaceBoss(z);
     return;
   }
@@ -454,10 +461,15 @@ function explorer(z) {
     const vivre = vivres[vivres.length - 1];
     if (vivre && Math.random() < 0.6) objets[vivre.id] = alea(1, 2);
     const po = alea(3, 6 + 3 * z.niveauMin);
-    const lignes = [`💰 +${po} pièces d'or pour chaque héros`];
+    const lignes = [`💰 ${texteGainPo(membresEquipe(), po)} pour chaque héros`];
     membresEquipe().forEach((m) => {
-      m.po += po;
+      // La même comptabilité que partout : bonus d'or appliqués, total
+      // compté pour les hauts faits « Amasser N po ».
+      const poGagne = Math.round(po * multiplicateurOr(m));
+      m.po += poGagne;
+      m.compteurs.orTotal += poGagne;
       Object.entries(objets).forEach(([id, qte]) => ajouterObjet(m, id, qte));
+      verifierHautsFaits(m);
       sauvegarder(m);
     });
     Object.entries(objets).forEach(([id, qte]) => lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}`));
@@ -502,7 +514,7 @@ function evenementMenaceBoss(z) {
         classe: 'btn-principal',
         action: () => {
           etat.menaces = etat.menaces || {};
-          etat.menaces[z.id] = { compteur: 0, declencheA: alea(1, 8) };
+          etat.menaces[cleMenace(persoActif(), z)] = { compteur: 0, declencheA: alea(1, 8) };
           afficherToast(`⚠️ ${boss.nom} vous traque… Chaque pas peut être le dernier.`);
           rendreZone(z);
           montrerEcran('ecran-zone');
@@ -1021,8 +1033,16 @@ function apresVictoireTour(cb) {
   const xpParHeros = Math.max(1, Math.round((butin.xp * multTour) / partage));
   const poParHeros = Math.max(0, Math.round((butin.po * multTour) / partage));
   lignes.push(`⭐ ${texteGainXp(membres, xpParHeros)} et 💰 ${texteGainPo(membres, poParHeros)} par héros (prime d'étage +${Math.round(etage * 12)} %)`);
+  // Comme après un combat de carte : les objets se RÉPARTISSENT entre les
+  // membres — chacun recevait la totalité, et grimper à quatre quadruplait
+  // le butin de la Tour.
+  const partsObjets = membres.map(() => ({}));
   Object.entries(butin.objets).forEach(([id, qte]) => {
-    lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
+    lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}${partage > 1 ? ' (réparti dans les sacs)' : ''}`);
+    for (let i = 0; i < qte; i++) {
+      const part = partsObjets[alea(0, partage - 1)];
+      part[id] = (part[id] || 0) + 1;
+    }
   });
 
   membres.forEach((m) => {
@@ -1033,7 +1053,7 @@ function apresVictoireTour(cb) {
     m.compteurs.monstres += cb.monstres.length;
     progresserQuete(m, 'monstres', cb.monstres.length);
     progresserQuete(m, 'tour', 1);
-    Object.entries(butin.objets).forEach(([id, qte]) => ajouterObjet(m, id, qte));
+    Object.entries(partsObjets[membres.indexOf(m)]).forEach(([id, qte]) => ajouterObjet(m, id, qte));
     if (m.tourMax < etage) m.tourMax = etage;
     recolterSceaux(m, etage, lignes);
 
@@ -1185,8 +1205,13 @@ function apresVictoireTourBoss(cb) {
   const xpParHeros = Math.max(1, Math.round((butin.xp * multEtage) / partage));
   const poParHeros = Math.max(0, Math.round((butin.po * multEtage) / partage));
   const lignes = [`⭐ ${texteGainXp(membres, xpParHeros)} et 💰 ${texteGainPo(membres, poParHeros)} par héros (prime d'étage +${Math.round(etage * 15)} %)`];
+  const partsObjets = membres.map(() => ({}));
   Object.entries(butin.objets).forEach(([id, qte]) => {
-    lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
+    lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}${partage > 1 ? ' (réparti dans les sacs)' : ''}`);
+    for (let i = 0; i < qte; i++) {
+      const part = partsObjets[alea(0, partage - 1)];
+      part[id] = (part[id] || 0) + 1;
+    }
   });
 
   membres.forEach((m) => {
@@ -1197,7 +1222,7 @@ function apresVictoireTourBoss(cb) {
     m.compteurs.monstres += cb.monstres.length;
     progresserQuete(m, 'monstres', cb.monstres.length);
     progresserQuete(m, 'tourBoss', 1);
-    Object.entries(butin.objets).forEach(([id, qte]) => ajouterObjet(m, id, qte));
+    Object.entries(partsObjets[membres.indexOf(m)]).forEach(([id, qte]) => ajouterObjet(m, id, qte));
     // Coffre de l'étage : deux tirages dopés par l'étage et la difficulté.
     const s = statsEffectives(m);
     const tirages = difficulte === 'cauchemar' ? 3 : 2;
@@ -1454,6 +1479,8 @@ async function apresBossMonde(cb) {
     `💰 +${poGagne} pièces d'or`,
   ];
   p.po += poGagne;
+  p.compteurs.orTotal += poGagne;
+  verifierHautsFaits(p);
   if (contribution >= 250) {
     const idRecompense = recompenseBossMonde(p.niveau);
     ajouterObjet(p, idRecompense, 1);

@@ -759,16 +759,18 @@ function valeurEffectiveCompetence(comp, stat = STAT_CALIBRATION) {
 // la Vitalité donnerait à la fois les points de vie ET les dégâts). Budget
 // 40 × rendement 0,6 : le Gardien frappait à 39 % d'un DPS.
 //
-// Les budgets bas remontent donc — 40 → 54 pour le tank, 30 → 42 pour le
+// Les budgets bas remontent donc — 40 → 46 pour le tank, 30 → 42 pour le
 // soigneur — et ceux du haut ne bougent pas. La hiérarchie des rôles reste
-// entière : après correction, le Gardien frappe encore à 52 % d'un DPS une
-// fois le bridage de la Vitalité appliqué, et le Devin à 68 %, lui qui
-// garde en échange le budget de soins le plus élevé du jeu.
+// entière : après correction, le Gardien frappe à ~45 % d'un DPS une
+// fois le bridage de la Vitalité appliqué (contre 39 % avant), et le
+// Devin à 68 %, lui qui garde en échange le budget de soins le plus
+// élevé du jeu.
 //
 // La borne haute n'est pas arbitraire : au-delà, l'écart de puissance entre
 // raretés d'Éveil dépasse les 10 % tolérés (les raretés ne portent pas le
-// même mélange de rôles), et la suite de tests passe au rouge. 54/42 laisse
-// une petite marge sous ce plafond.
+// même mélange de rôles), et la suite de tests passe au rouge. 46/42 laisse
+// une marge nette sous ce plafond — c'est d'ailleurs la valeur que le banc
+// de tension (marge 2-4× toutes classes confondues) autorise sans dépasser.
 // =====================================================================
 const BUDGET_DEGATS_ROLE = { dps: 62, tank: 46, soigneur: 42 };
 const BUDGET_SOIN_ROLE = { dps: 26, tank: 34, soigneur: 62 };

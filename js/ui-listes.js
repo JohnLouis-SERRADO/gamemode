@@ -111,7 +111,7 @@ const TRIS_OBJETS = {
 //   rendre     (element, index) => élément DOM à afficher
 //   tris       objet de tris disponibles (facultatif)
 //   trierAvec  (element) => { objet, prix } pour les tris d'objets
-//   parPage    nombre d'éléments par page (24 par défaut)
+//   parPage    nombre d'éléments par page (12 par défaut)
 //   placeholder texte de la barre de recherche
 //   vide       message quand la recherche ne donne rien
 //   nomListe   ce qu'on compte : « objets », « recettes »…

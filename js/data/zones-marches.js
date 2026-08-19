@@ -375,7 +375,7 @@ const BESTIAIRE_MARCHES = {
     drops: [{ id: 'graine-renversee', chance: 0.35 }, { id: 'echo-fossilise', chance: 0.3 }],
     attaques: [
       { nom: 'Rappel d’échéance', emoji: '📅', mult: 1.2, poids: 3, type: 'mono' },
-      { nom: 'Intérêts', emoji: '💱', mult: 0.85, poids: 2, type: 'mono', effet: { type: 'poison', duree: 3 } },
+      { nom: 'Intérêts', emoji: '💱', mult: 0.85, poids: 2, type: 'mono', effet: { type: 'poison', degats: 60, duree: 3 } },
     ] },
   aiguilleAffolee: { nom: 'Aiguille affolée', emoji: '🧭', niveau: 55, dex: 16,
     drops: [{ id: 'os-divin', chance: 0.25 }],
@@ -435,7 +435,7 @@ const BESTIAIRE_MARCHES = {
     drops: [{ id: 'fil-de-suture', chance: 0.4 }],
     attaques: [
       { nom: 'Coupe franche', emoji: '🔪', mult: 1.3, poids: 3, type: 'mono' },
-      { nom: 'S’effiloche', emoji: '🧶', mult: 1, poids: 1, type: 'aoe', effet: { type: 'poison', duree: 3 } },
+      { nom: 'S’effiloche', emoji: '🧶', mult: 1, poids: 1, type: 'aoe', effet: { type: 'poison', degats: 160, duree: 3 } },
     ] },
   laMailleTombee: { nom: 'La Maille Tombée', emoji: '🧷', niveau: 96, boss: true, dex: 13,
     drops: [{ id: 'fil-de-suture', chance: 1 }, { id: 'braise-crepusculaire', chance: 0.7 }],

@@ -383,8 +383,12 @@ function rendreVente(contenu, p) {
     toutVendre.addEventListener('click', () => {
       materiaux.forEach((e) => {
         const gain = prixVenteDe(e.id) * e.qte;
-        if (retirerObjet(p, e.id, e.qte)) p.po += gain;
+        if (retirerObjet(p, e.id, e.qte)) {
+          p.po += gain;
+          p.compteurs.orTotal += gain; // les ventes comptent pour « Amasser N po »
+        }
       });
+      verifierHautsFaits(p);
       sauvegarder(p);
       afficherToast(`💰 Matériaux vendus : +${formatNombre(total)} po !`);
       rendreBoutique();
@@ -431,6 +435,8 @@ function rendreVente(contenu, p) {
         const vendu = Math.min(qte, compterObjet(p, entree.id));
         if (vendu <= 0 || !retirerObjet(p, entree.id, vendu)) return;
         p.po += prix * vendu;
+        p.compteurs.orTotal += prix * vendu; // même comptabilité que le fournisseur
+        verifierHautsFaits(p);
         sauvegarder(p);
         afficherToast(`${objet.emoji} ${objet.nom} ×${vendu} vendu (+${formatNombre(prix * vendu)} po).`);
         rendreBoutique();
@@ -903,7 +909,7 @@ function rendreGuilde() {
         ${quete.reclamee ? '<span class="objet-qte">✔ récompense empochée</span>' : ''}</div>
       <div class="barre contrat"><div class="remplissage" style="width:${pct}%"></div>
         <span>${quete.fait} / ${quete.requis}</span></div>
-      <div class="objet-bonus">🎁 ${formatNombre(quete.recompense.po)} po · ⭐ ${quete.recompense.xp} XP${quete.recompense.coffre ? ` · 🎁 un objet surprise${(quete.recompense.bonusCoffre || 0) > 0 ? ' (chance dopée par la rareté du contrat)' : ''}` : ''}</div>`;
+      <div class="objet-bonus">🎁 ${formatNombre(Math.round(quete.recompense.po * multiplicateurOr(p)))} po · ⭐ ${formatNombre(xpReelle(p, quete.recompense.xp))} XP${quete.recompense.coffre ? ` · 🎁 un objet surprise${(quete.recompense.bonusCoffre || 0) > 0 ? ' (chance dopée par la rareté du contrat)' : ''}` : ''}</div>`;
     if (!quete.reclamee) {
       const reclamer = document.createElement('button');
       reclamer.className = complete && !quotaAtteint ? 'btn-principal btn-compact' : 'btn-choix btn-compact';

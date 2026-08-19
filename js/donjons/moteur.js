@@ -530,7 +530,7 @@ function rendreChoixDonjon(etape, sansCarte) {
     const bandeau = document.createElement('div');
     bandeau.className = 'bandeau-vote';
     bandeau.innerHTML = `🗳️ <strong>Vote d'équipe</strong> (${contexte.vote.tour + 1}/${membres.length}) —
-      au tour de <strong>${echapper(votant.nom)}</strong> ${votant.avatar} de choisir. Passez-lui l'écran !`;
+      au tour de <strong>${echapper(votant.nom)}</strong> ${echapper(votant.avatar)} de choisir. Passez-lui l'écran !`;
     boutons.appendChild(bandeau);
   }
   etape.options.forEach((option, indexOption) => {
@@ -540,7 +540,7 @@ function rendreChoixDonjon(etape, sansCarte) {
     btn.disabled = !verif.ok;
     const voix = enVote ? contexte.vote.votes.filter((v) => v === indexOption).length : 0;
     const detail = verif.ok
-      ? `${option.detail || ''}${verif.champion ? ` — c'est ${verif.champion.nom} qui agira` : ''}`
+      ? `${option.detail || ''}${verif.champion ? ` — c'est ${echapper(verif.champion.nom)} qui agira` : ''}`
       : `🔒 ${option.detail || ''} — ${verif.raison}`;
     btn.innerHTML = `<strong>${option.texte}</strong>${voix ? ` <span class="badge">${voix} voix</span>` : ''}${detail ? `<span class="action-detail">${detail}</span>` : ''}`;
     btn.addEventListener('click', () => {
@@ -558,8 +558,11 @@ function rendreChoixDonjon(etape, sansCarte) {
       contexte.vote.votes.forEach((v) => { compte[v] = (compte[v] || 0) + 1; });
       const maxVoix = Math.max(...Object.values(compte));
       const exaequo = Object.keys(compte).filter((k) => compte[k] === maxVoix).map(Number);
+      // Le chef départage — mais UNIQUEMENT entre les ex-aequo : si son
+      // propre vote a perdu, il choisit parmi les options arrivées en tête
+      // (le premier de ses votes qui en fait partie, sinon la première).
       const gagnante = exaequo.length > 1
-        ? contexte.vote.votes[0] // le vote du chef départage
+        ? (contexte.vote.votes.find((v) => exaequo.includes(v)) ?? exaequo[0])
         : exaequo[0];
       const elue = etape.options[gagnante];
       afficherToast(`🗳️ L'équipe a tranché : « ${elue.texte} » (${maxVoix} voix${exaequo.length > 1 ? ' — le chef départage' : ''}).`);
