@@ -237,8 +237,16 @@ function rendreChipsFiltres(conteneur, contexte, surChangement) {
   rangeeClasse.appendChild(chipClasse);
 
   conteneur.appendChild(rangee);
-  conteneurReel.appendChild(rangeeClasse);
-  conteneurReel.appendChild(repli);
+  // v26 — La puce « Pour ma classe » et le repli « Filtres » occupaient
+  // deux bandeaux à eux seuls, juste au-dessus de la recherche qui en
+  // occupait un troisième. Ils tiennent sur la même rangée : quatre
+  // lignes de contrôles deviennent deux, et l'article apparaît sans
+  // qu'on ait à défiler.
+  const outils = document.createElement('div');
+  outils.className = 'barre-outils barre-outils-filtres';
+  outils.appendChild(rangeeClasse);
+  outils.appendChild(repli);
+  conteneurReel.appendChild(outils);
 }
 
 function passeSousFiltres(objet, contexte) {

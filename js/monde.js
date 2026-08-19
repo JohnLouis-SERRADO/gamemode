@@ -40,6 +40,14 @@ function rendreCarte() {
   const zone = el('carte-zones');
   zone.innerHTML = '';
 
+  // v26 — Le Bourg ouvrait la grille, les deux tours la fermaient, et les
+  // quatre actes s'intercalaient entre les deux. Les trois destinations
+  // qui ne sont PAS des cartes du monde se tiennent maintenant ensemble,
+  // en tête : on les atteint sans traverser cent niveaux de terrain.
+  const raccourcis = document.createElement('div');
+  raccourcis.className = 'grille-zones raccourcis-carte';
+  zone.appendChild(raccourcis);
+
   const ville = document.createElement('div');
   ville.className = 'carte-zone ville';
   ville.innerHTML = `
@@ -48,7 +56,7 @@ function rendreCarte() {
     <div class="zone-plage">refuge</div>
     <div class="zone-desc">Boutique, atelier, auberge et taverne. Aucun danger — promis.</div>`;
   rendreCliquable(ville, () => naviguer('ville'));
-  zone.appendChild(ville);
+  raccourcis.appendChild(ville);
 
   // v19 : les cartes se regroupent par acte du fil conducteur. Tout était
   // empilé dans un seul défilement de dix écrans, verrouillé compris.
@@ -127,7 +135,7 @@ function rendreCarte() {
     : `Des étages infinis, aucun repos entre les combats, un butin qui grimpe à chaque palier. ⛑️ Point de sauvegarde tous les ${PALIER_SAUVEGARDE_TOUR} étages${
       palierAtteint(p, 'tour') > 0 ? ` — le vôtre : étage ${palierAtteint(p, 'tour')}` : ''}. Jusqu’où monterez-vous ?`}</div>`;
   if (!tourVerrouillee) rendreCliquable(tour, () => demarrerTour());
-  zone.appendChild(tour);
+  raccourcis.appendChild(tour);
 
   // La Tour des Boss : que des boss, avec paliers de difficulté.
   const tourBossVerrouillee = p.niveau < 10;
@@ -142,7 +150,7 @@ function rendreCarte() {
     ? '🔒 Atteignez le niveau 10 pour défier les seigneurs des Royaumes.'
     : `Un boss par étage, du premier loup au Dévoreur de Mondes. Normal, Héroïque puis Cauchemar : chaque difficulté a son record — et son point de sauvegarde tous les ${PALIER_SAUVEGARDE_TOUR} étages.`}</div>`;
   if (!tourBossVerrouillee) rendreCliquable(tourBoss, () => ouvrirTourBoss());
-  zone.appendChild(tourBoss);
+  raccourcis.appendChild(tourBoss);
 
   // Donjons d'histoire : aventures scénarisées à choix.
   rendreCartesDonjons(zone, p);

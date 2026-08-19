@@ -242,10 +242,19 @@ function montrerEcran(id) {
   const navbar = el('navbar-bas');
   const barresVisibles = ECRANS_AVEC_TOPBAR.includes(id) && persoActif();
   topbar.classList.toggle('cache', !barresVisibles);
+  // v26 — Le bas de l'écran est occupé, ou il ne l'est pas : les toasts
+  // s'y posaient par-dessus la navigation et masquaient deux onglets le
+  // temps du message. Ils ont besoin de le savoir.
+  document.body.classList.toggle('avec-navbar', !!barresVisibles);
   if (navbar) {
     navbar.classList.toggle('cache', !barresVisibles);
     navbar.querySelectorAll('button').forEach((b) => {
-      b.classList.toggle('actif', b.dataset.nav === NAV_POUR_ECRAN[id]);
+      const actif = b.dataset.nav === NAV_POUR_ECRAN[id];
+      b.classList.toggle('actif', actif);
+      // L'onglet courant se voyait à sa couleur, et seulement à sa
+      // couleur : rien ne l'annonçait à qui n'a pas l'écran sous les yeux.
+      if (actif) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
     });
   }
   if (barresVisibles) rendreTopbar();
@@ -2983,27 +2992,46 @@ function rendreSac() {
     { id: 'consommable', nom: '🧪 Consommables' },
     { id: 'materiau', nom: '⛏️ Matériaux' },
   ];
+  // v26 — Les onze puces (quatre types + sept raretés) s'étalaient sur
+  // trois rangées avant le premier lot. Les boutiques avaient déjà réglé
+  // ça en repliant les raretés : le sac fait pareil, pour que l'écran se
+  // lise de la même façon partout.
+  const outilsSac = document.createElement('div');
+  outilsSac.className = 'barre-outils barre-outils-filtres';
   const rangeeFiltres = document.createElement('div');
   rangeeFiltres.className = 'rangee-chips';
   filtres.forEach((f) => {
     const chip = document.createElement('button');
+    chip.type = 'button';
     chip.className = 'chip chip-filtre' + (sousFiltreSac === f.id ? ' active' : '');
     chip.textContent = f.nom;
     chip.addEventListener('click', () => { sousFiltreSac = f.id; rendreSac(); });
     rangeeFiltres.appendChild(chip);
   });
+  outilsSac.appendChild(rangeeFiltres);
+
   // v17 : filtre par rareté, comme dans les boutiques.
-  const sep = document.createElement('span');
-  sep.className = 'separateur-chips';
-  rangeeFiltres.appendChild(sep);
+  const repliRarete = document.createElement('details');
+  repliRarete.className = 'affiner';
+  if (sousFiltreSacRarete !== 'tous') repliRarete.open = true;
+  const resumeRarete = document.createElement('summary');
+  resumeRarete.textContent = sousFiltreSacRarete === 'tous'
+    ? '✨ Rareté'
+    : `✨ Rareté — ${RARETES[sousFiltreSacRarete].nom}`;
+  repliRarete.appendChild(resumeRarete);
+  const rangeeRaretes = document.createElement('div');
+  rangeeRaretes.className = 'rangee-chips rangee-sous-filtres';
   [['tous', '✨ Toutes raretés'], ...Object.keys(RARETES).map((r) => [r, RARETES[r].nom])].forEach(([id, nom]) => {
     const chip = document.createElement('button');
+    chip.type = 'button';
     chip.className = `chip chip-filtre chip-rar-${id}` + (sousFiltreSacRarete === id ? ' active' : '');
     chip.textContent = nom;
     chip.addEventListener('click', () => { sousFiltreSacRarete = id; rendreSac(); });
-    rangeeFiltres.appendChild(chip);
+    rangeeRaretes.appendChild(chip);
   });
-  blocInv.appendChild(rangeeFiltres);
+  repliRarete.appendChild(rangeeRaretes);
+  outilsSac.appendChild(repliRarete);
+  blocInv.appendChild(outilsSac);
 
   const entrees = p.inventaire.filter((entree) => {
     const objet = OBJETS[entree.id];

@@ -39,7 +39,7 @@ function normaliserTexte(texte) {
   return String(texte || '')
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 // Tous les mots de la requête doivent apparaître, dans n'importe quel
@@ -141,6 +141,13 @@ function rendreListeFiltrable(options) {
   bloc.innerHTML = '';
   const rafraichir = () => rendreListeFiltrable(options);
 
+  // v26 — Une seule rangée pour chercher, trier et compter. Les trois
+  // contrôles occupaient trois bandeaux empilés : sur mobile, le premier
+  // article commençait sous la ligne de flottaison.
+  const outils = document.createElement('div');
+  outils.className = 'barre-outils';
+  bloc.appendChild(outils);
+
   // --- La barre de recherche -----------------------------------------
   const barre = document.createElement('div');
   barre.className = 'barre-recherche';
@@ -180,7 +187,7 @@ function rendreListeFiltrable(options) {
     });
     barre.appendChild(effacer);
   }
-  bloc.appendChild(barre);
+  outils.appendChild(barre);
 
   // --- Les tris -------------------------------------------------------
   if (tris) {
@@ -204,7 +211,7 @@ function rendreListeFiltrable(options) {
       rangee.appendChild(chip);
     });
     repli.appendChild(rangee);
-    bloc.appendChild(repli);
+    outils.appendChild(repli);
   }
 
   // --- Filtrage et tri ------------------------------------------------
@@ -226,10 +233,13 @@ function rendreListeFiltrable(options) {
 
   const compteur = document.createElement('p');
   compteur.className = 'compteur-liste';
+  // Le nombre de résultats change à chaque frappe sans que rien ne bouge
+  // à l'écran pour qui ne voit pas la liste : on l'annonce.
+  compteur.setAttribute('aria-live', 'polite');
   compteur.textContent = total === 0
     ? `Aucun ${nomListe.replace(/s$/, '')}`
     : `${formatNombre(total)} ${nomListe}${total > parPage ? ` — ${formatNombre(debut + 1)} à ${formatNombre(debut + tranche.length)}` : ''}`;
-  bloc.appendChild(compteur);
+  outils.appendChild(compteur);
 
   // --- La liste -------------------------------------------------------
   if (total === 0) {
