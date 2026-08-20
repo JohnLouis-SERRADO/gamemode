@@ -1546,7 +1546,15 @@ function debutTour(c) {
       // (partExplosion) qui doit partir, pas celle du dernier coup direct.
       if (c.type === 'monstre' && poison.poseur && cb) {
         const poseur = cb.equipe.find((x) => x.bid === poison.poseur && !estMort(x));
-        if (poseur) c.dernierAgresseur = poseur;
+        if (poseur) {
+          c.dernierAgresseur = poseur;
+          // Contrainte divine du tir : la tique de poison est une mise à
+          // mort comme une autre — un seul ennemi abattu par manche.
+          if (reglagePassif(poseur, 'unKillParTour', false) && (poseur.killsDuTour || 0) >= 1) {
+            c.hp = 1;
+            journal(`🎯 Le vœu de ${poseur.nom} retient le poison : ${c.nom} reste à 1 PV.`);
+          }
+        }
       }
       // La Muraille Vivante ne lit pas que les coups : un allié ne tombe
       // pas davantage d'une tique de poison tant que le Templier tient.
@@ -1554,11 +1562,13 @@ function debutTour(c) {
         c.hp = 1;
         journal(`🧱 La Muraille Vivante tient : ${c.nom} reste debout à 1 PV.`);
       }
-      gererMort(c);
-      // Relevé sur-le-champ (Phénix, Voie des Ancêtres…) : sa relance est
-      // déjà poussée dans la file — jouer maintenant EN PLUS ferait deux
-      // actions dans la même manche.
-      if (!estMort(c)) return { skip: true };
+      if (c.hp <= 0) {
+        gererMort(c);
+        // Relevé sur-le-champ (Phénix, Voie des Ancêtres…) : sa relance est
+        // déjà poussée dans la file — jouer maintenant EN PLUS ferait deux
+        // actions dans la même manche.
+        if (!estMort(c)) return { skip: true };
+      }
     }
   }
   if (estMort(c)) return { skip: true };
@@ -2447,6 +2457,7 @@ function executerActionCoeur(j, action, cible) {
     journal(`🛡️ ${j.nom} se met en garde (+3 PM, dégâts subis réduits de moitié).`);
   } else if (action.genre === 'objet') {
     const objet = OBJETS[action.idObjet];
+    if (objet && potionRefusee(j, objet)) return 'rejouer';
     if (objet && retirerObjet(j, action.idObjet, 1)) {
       j.objetBu = true; // Éveil « Le Pèlerin Silencieux » : le silence est rompu
       const issueObjet = utiliserObjetEnCombat(j, objet);
@@ -2797,17 +2808,32 @@ function tourInvocation(c) {
   }
 }
 
-// Applique l'effet d'un consommable pendant un combat.
-function utiliserObjetEnCombat(j, objet) {
-  const cb = etat.combat;
-  const effet = objet.effet;
+// Refus AVANT toute consommation — le tour du joueur lui est rendu et la
+// fiole reste vraiment pleine (le retrait d'inventaire vient après).
+function potionRefusee(j, objet) {
+  const effet = objet.effet || {};
   // Contrainte divine de mêlée : il ne compte que sur lui-même — aucune
   // potion de soin ou de mana ne passe ses lèvres en combat.
   if (['pv', 'pm', 'soin-groupe', 'regen'].includes(effet.type)
     && reglagePassif(j, 'potionsInterdites', false)) {
     journal(`🚫 L'Éveil de ${j.nom} lui interdit les potions : la fiole reste pleine.`);
-    return;
+    return true;
   }
+  // « Plus aucun soin ne le touche » (contrainte mythique du mage) : une
+  // potion de PV ou de régénération est un soin comme les autres. La
+  // potion de groupe passe, elle : elle soigne l'équipe, le filtre par
+  // allié fera le tri.
+  if (['pv', 'regen'].includes(effet.type) && !soinAutorise(j, j)) {
+    journal(`🚫 Les vœux de ${j.nom} refusent tout soin : la fiole reste pleine.`);
+    return true;
+  }
+  return false;
+}
+
+// Applique l'effet d'un consommable pendant un combat.
+function utiliserObjetEnCombat(j, objet) {
+  const cb = etat.combat;
+  const effet = objet.effet;
   if (effet.type === 'pv') {
     const soin = Math.min(effet.valeur, j.maxHp - j.hp);
     j.hp += soin;
@@ -2825,6 +2851,12 @@ function utiliserObjetEnCombat(j, objet) {
   } else if (effet.type === 'soin-groupe') {
     journal(`${objet.emoji} ${j.nom} déploie ${objet.nom} !`);
     cb.equipe.filter((x) => !x.ko).forEach((allie) => {
+      // Les vœux d'un tank (« aucun allié ne peut le soigner ») valent
+      // aussi pour la brume d'une potion de groupe.
+      if (!soinAutorise(allie, j)) {
+        if (allie.hp < allie.maxHp) journal(`→ les vœux de ${allie.nom} refusent ce soin.`);
+        return;
+      }
       const soin = Math.min(effet.valeur, allie.maxHp - allie.hp);
       if (soin > 0) {
         allie.hp += soin;

@@ -4548,6 +4548,51 @@ suite('Refonte des classes (v26)', () => {
     const dues = SOUS_CLASSES.pyromancien.competences.filter((id) => !p.grimoire.includes(id));
     aucun(dues, 'compétences perdues à la migration');
   });
+
+  test('un héros d\'AVANT la refonte reçoit le contrat rétroactif — un reset des Ordres, non', () => {
+    // Spécialisé entre la v19 et la v25 : versionClasses vaut 19 en
+    // sauvegarde et la grille de l'époque promettait tout au niveau 15.
+    const brut = {
+      version: 2, type: 'joueur', id: 'test-retro', nom: 'Ancien', avatar: '🪓', classe: 'guerrier',
+      sousClasse: 'berserker', versionClasses: 19,
+      stats: { for: 24, int: 2, dex: 5, vit: 9, esp: 3, cha: 4 },
+      niveau: 12, xp: seuilXp(12), pointsEnAttente: 0, competences: [], po: 0,
+      inventaire: [], equipement: { arme: null, tete: null, torse: null, jambes: null, acc1: null, acc2: null },
+      explorations: {}, bossVaincus: [], cloud: null,
+      hp: 100, mp: 40, maxHp: 0, maxMp: 0, statuts: [], cooldowns: {}, defense: false, ko: false,
+    };
+    const p = normaliserPerso(JSON.parse(JSON.stringify(brut)));
+    egal(p.kitMigre, 'berserker', 'le contrat rétroactif désigne sa spécialité');
+    const dues = SOUS_CLASSES.berserker.competences.filter((id) => !p.grimoire.includes(id));
+    aucun(dues, 'compétences de l\'ancienne grille manquantes');
+    // Et le palier est mémorisé : un héros repassé par les Ordres
+    // (kitMigre effacé, versionClasses à jour) n'est JAMAIS re-marqué.
+    p.kitMigre = null;
+    normaliserPerso(p);
+    verifier(p.kitMigre == null, 'un reset des Ordres ne ressuscite pas le contrat');
+  });
+
+  test('la fiche de Provocation lit la même statistique que le moteur', () => {
+    ['provocation', 'gardien-appel-au-combat'].forEach((id) => {
+      const comp = COMPETENCES[id];
+      if (!comp || !comp.effet || comp.effet.type !== 'provocation') return;
+      const g = {
+        type: 'joueur', classe: 'gardien', sousClasse: null, voie: null, eveil: null,
+        nom: 'G', stats: { vit: 60, for: 5, dex: 3, int: 2, esp: 2, cha: 2 },
+        niveau: 40, hp: 300, maxHp: 300, mp: 50, maxMp: 50, statuts: [], cooldowns: {},
+        ligne: 'avant', competences: [], equipement: {}, inventaire: [], rangs: {},
+        race: 'humain', grimoire: [], compteurs: {},
+      };
+      etat.combat = { equipe: [g], monstres: [], file: [], manche: 1, genre: 'exploration', journalLignes: [], termine: false };
+      appliquerEffet(g, g, comp.effet, null, comp);
+      const bouclier = g.statuts.find((st) => st.type === 'bouclier');
+      const fiche = texteEffetCompetence(comp.effet, statsEffectives(g), comp);
+      const annonce = parseInt((fiche.match(/bouclier ≈(\d+)/) || [])[1], 10);
+      egal(annonce, bouclier ? bouclier.valeur : -1,
+        `${comp.nom} : la fiche et le moteur annoncent le même bouclier`);
+      etat.combat = null;
+    });
+  });
 });
 
 // =====================================================================

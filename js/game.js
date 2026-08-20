@@ -913,33 +913,47 @@ function migrerCaracteristiques(p) {
 // vers « Guerrier — Berserker » repasserait par la table à chaque
 // chargement et y perdrait sa sous-classe.
 // =====================================================================
-const VERSION_CLASSES = 19;
+const VERSION_CLASSES = 26;
 
 function migrerClasses(p) {
   if (p.sousClasse === undefined) p.sousClasse = null;
-  if (p.versionClasses >= VERSION_CLASSES) return;
-  const cible = MIGRATION_CLASSES[p.classe];
-  if (cible) {
-    if (cible.choixOffert) {
-      // L'Aventurier n'entre dans aucun rôle : on lui propose de choisir,
-      // sans rien lui retirer en attendant.
-      p.choixClasseOffert = true;
-    } else {
-      p.classe = cible.classe;
-      p.sousClasse = cible.sousClasse;
-      // Il PORTAIT ces huit compétences avant la refonte : la grille de
-      // déblocage étalée (10 → 40) vaut pour les nouveaux venus, pas pour
-      // lui — « sans rien perdre » est un contrat. Le drapeau désigne LA
-      // sous-classe migrée : un héros NEUF (la table couvre aussi les
-      // quatre classes de base) ou un changement de spécialité ultérieur
-      // repassent par la grille normale.
-      if (cible.sousClasse) p.kitMigre = cible.sousClasse;
+  // Les tout premiers héros marqués par la v26 portaient un booléen : on
+  // le rattache à leur sous-classe d'alors — AVANT tout retour anticipé,
+  // sinon un booléen sauvé avec un versionClasses à jour resterait inerte.
+  if (p.kitMigre === true) p.kitMigre = p.sousClasse || null;
+  const version = p.versionClasses || 0;
+  if (version >= VERSION_CLASSES) return;
+  if (version < 19) {
+    const cible = MIGRATION_CLASSES[p.classe];
+    if (cible) {
+      if (cible.choixOffert) {
+        // L'Aventurier n'entre dans aucun rôle : on lui propose de choisir,
+        // sans rien lui retirer en attendant.
+        p.choixClasseOffert = true;
+      } else {
+        p.classe = cible.classe;
+        p.sousClasse = cible.sousClasse;
+        // Il PORTAIT ces huit compétences avant la refonte : la grille de
+        // déblocage étalée (10 → 40) vaut pour les nouveaux venus, pas pour
+        // lui — « sans rien perdre » est un contrat. Le drapeau désigne LA
+        // sous-classe migrée : un héros NEUF (la table couvre aussi les
+        // quatre classes de base) ou un changement de spécialité ultérieur
+        // repassent par la grille normale.
+        if (cible.sousClasse) p.kitMigre = cible.sousClasse;
+      }
     }
   }
+  // v26 : les héros d'AVANT la refonte qui portent une des seize
+  // spécialités migrées progressaient sur l'ancienne grille (tout acquis
+  // au niveau 15) — le drapeau leur rend ce qui leur était déjà promis.
+  // Les douze spécialités nées étalées (10 → 40) ne sont pas concernées,
+  // et versionClasses mémorise le palier : un héros repassé par les
+  // Ordres (kitMigre remis à null) n'est jamais re-marqué au chargement.
+  if (p.kitMigre == null && p.sousClasse
+    && Object.values(MIGRATION_CLASSES).some((c) => c.sousClasse === p.sousClasse)) {
+    p.kitMigre = p.sousClasse;
+  }
   p.versionClasses = VERSION_CLASSES;
-  // Les tout premiers héros marqués par la v26 portaient un booléen : on
-  // le rattache à leur sous-classe d'alors, même contrat, borné pareil.
-  if (p.kitMigre === true) p.kitMigre = p.sousClasse || null;
 }
 
 // Complète les sauvegardes venues d'anciennes versions du jeu.
