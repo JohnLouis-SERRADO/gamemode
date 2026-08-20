@@ -867,7 +867,7 @@ function ouvrirCoffreBoss(p, zone, difficulte) {
     const rarete = tirerRarete(chanceButin(p));
     const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
       && (o.type === 'materiau' || o.type === 'consommable'
-        || (o.type === 'equipement' && o.niveau <= p.niveau + 3)));
+        || (o.type === 'equipement' && o.niveau <= p.niveau)));
     if (!pool.length) continue;
     const [id, o] = pool[alea(0, pool.length - 1)];
     objets[id] = (objets[id] || 0) + 1;
@@ -1063,7 +1063,7 @@ function apresVictoireTour(cb) {
         const rarete = tirerRarete(chanceButin(m) + etage);
         const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
           && (o.type === 'materiau' || o.type === 'consommable'
-            || (o.type === 'equipement' && o.niveau <= m.niveau + 3)));
+            || (o.type === 'equipement' && o.niveau <= m.niveau)));
         if (pool.length) {
           const [id, objet] = pool[alea(0, pool.length - 1)];
           ajouterObjet(m, id, 1);
@@ -1229,7 +1229,7 @@ function apresVictoireTourBoss(cb) {
       const rarete = tirerRarete(chanceButin(m) + etage * 2);
       const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
         && (o.type === 'materiau' || o.type === 'consommable'
-          || (o.type === 'equipement' && o.niveau <= m.niveau + 3)));
+          || (o.type === 'equipement' && o.niveau <= m.niveau)));
       if (pool.length) {
         const [id, objet] = pool[alea(0, pool.length - 1)];
         ajouterObjet(m, id, 1);
@@ -1337,7 +1337,7 @@ function apresVictoire(cb) {
       const rarete = tirerRarete(chanceButin(m) + 3);
       const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
         && (o.type === 'materiau' || o.type === 'consommable'
-          || (o.type === 'equipement' && o.niveau <= m.niveau + 3)));
+          || (o.type === 'equipement' && o.niveau <= m.niveau)));
       if (pool.length) {
         const [id, o] = pool[alea(0, pool.length - 1)];
         partsObjets[i][id] = (partsObjets[i][id] || 0) + 1;

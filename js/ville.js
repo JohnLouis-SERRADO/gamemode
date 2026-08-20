@@ -286,8 +286,10 @@ function rendreBoutique() {
 
   const onglet = ONGLETS_BOUTIQUE.find((o) => o.id === ongletBoutique);
   rendreChipsFiltres(contenu, ongletBoutique, () => rendreBoutique());
-  // Le stock s'étoffe avec le niveau : articles jusqu'à niveau+2, aperçus
-  // verrouillés jusqu'à niveau+8 pour donner envie de progresser.
+  // Le stock s'étoffe avec le niveau : en rayon dès qu'on peut le PORTER
+  // (jamais un niveau d'avance — une pièce inéquipable n'est pas un
+  // article, c'est une frustration), aperçus verrouillés jusqu'à
+  // niveau+8 pour donner envie de progresser, stats visibles.
   const visibles = Object.entries(OBJETS)
     .filter(([, o]) => o.prix != null && !o.vendeur && onglet.filtre(o))
     .filter(([, o]) => !o.niveau || o.niveau <= p.niveau + 8)
@@ -312,13 +314,13 @@ function rendreBoutique() {
 // Carte d'article (boutique et antiquaire) : rareté colorée, verrouillage
 // par niveau, bouton d'achat.
 function carteArticleBoutique(p, id, objet, apresAchat) {
-  const verrouille = objet.niveau && objet.niveau > p.niveau + 2;
+  const verrouille = objet.niveau && objet.niveau > p.niveau;
   const carte = document.createElement('div');
   carte.className = `carte-objet bord-rar-${rareteDe(objet)}` + (verrouille ? ' article-verrouille' : '');
   if (verrouille) {
     carte.innerHTML = `
       <div class="objet-entete">🔒 <strong>${objet.nom}</strong> ${etiquetteRarete(objet)}</div>
-      <div class="objet-desc">Le marchand vous le proposera au niveau ${objet.niveau - 2}.</div>
+      <div class="objet-desc">Le marchand vous le proposera au niveau ${objet.niveau}.</div>
       ${objet.bonus ? `<div class="objet-bonus">${texteBonus(objet.bonus)}</div>` : ''}`;
     return carte;
   }
@@ -948,7 +950,7 @@ function reclamerQuete(p, quete) {
     const rarete = tirerRarete(chanceButin(p) + 5 + (quete.recompense.bonusCoffre || 0));
     const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
       && (o.type === 'materiau' || o.type === 'consommable'
-        || (o.type === 'equipement' && o.niveau <= p.niveau + 3)));
+        || (o.type === 'equipement' && o.niveau <= p.niveau)));
     if (pool.length) {
       const [id, objet] = pool[alea(0, pool.length - 1)];
       ajouterObjet(p, id, 1);
