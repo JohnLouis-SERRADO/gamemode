@@ -17,8 +17,26 @@ const NOM_STATUT = {
   benediction: 'Bénédiction (+30 % dégâts)', provocation: 'Provocation',
   regen: 'Régénération', affaibli: 'Affaibli (−30 % dégâts)',
   fortune: 'Fortune (+30 % de butin)',
-  marque: 'Marqué (+12 % de dégâts subis)', berce: 'Bercé (−15 % de dégâts infligés)',
+  marque: 'Marqué', berce: 'Bercé',
 };
+
+// La marque du Traqueur vaut 12 % à la spécialité, 80 % au sommet des
+// Éveils : l'étiquette lit la valeur RÉELLE du statut, jamais un chiffre
+// figé — c'est le même contrat que les fiches de passifs.
+function libelleStatut(s) {
+  if (s.type === 'marque') return `Marqué (+${Math.round((s.valeur || 0.12) * 100)} % de dégâts subis)`;
+  if (s.type === 'berce') return `Bercé (−${Math.round((s.valeur || 0.15) * 100)} % de dégâts infligés)`;
+  if (s.type === 'bouclier') return `Bouclier (${s.valeur} points)`;
+  return NOM_STATUT[s.type] || s.type;
+}
+
+// La magie ignore les lignes de combat. Elle se lisait sur la seule
+// Intelligence : les 26 sorts offensifs portés par l'Esprit — tout
+// l'arsenal du Devin — étaient traités comme des coups PHYSIQUES et
+// perdaient 40 % depuis la ligne arrière, sa position par défaut.
+function estSortMagique(comp) {
+  return !!comp && (comp.stat === 'int' || comp.stat === 'esp');
+}
 
 function estMort(c) {
   return c.type === 'joueur' ? c.ko : c.mort;
@@ -173,15 +191,22 @@ function draineDeGravure(source, degats) {
 // passif de spécialité, en fige la totalité (plafonnée) — sans quoi sa
 // « Prescience » n'aurait rien apporté de plus que le tronc commun.
 const PART_SURPLUS_CLAIRVOYANCE = 0.5;
+// Le tronc commun est plafonné comme l'Oracle : sans borne, le Devin de
+// base figeait la MOITIÉ d'un surplus illimité pendant que la spécialité
+// dont c'est le métier restait bloquée à 20 % des PV de la cible — le
+// passif de l'Oracle devenait PIRE que le tronc commun sur un gros soin.
+const PLAFOND_SURPLUS_CLAIRVOYANCE = 0.2;
 
 function surplusDeSoin(source, cible, surplus) {
   if (surplus <= 0 || !aPassif(source, 'Clairvoyance')) return;
-  let valeur = Math.round(surplus * PART_SURPLUS_CLAIRVOYANCE);
+  let part = PART_SURPLUS_CLAIRVOYANCE;
+  let plafondPart = PLAFOND_SURPLUS_CLAIRVOYANCE;
   const partOracle = reglagePassif(source, 'partSurplus', 0);
   if (partOracle > 0) {
-    const plafond = Math.round(cible.maxHp * reglagePassif(source, 'plafondSurplus', 1));
-    valeur = Math.min(Math.round(surplus * partOracle), plafond);
+    part = partOracle;
+    plafondPart = reglagePassif(source, 'plafondSurplus', 1);
   }
+  const valeur = Math.min(Math.round(surplus * part), Math.round(cible.maxHp * plafondPart));
   if (valeur <= 0) return;
   const existant = cible.statuts.find((s) => s.type === 'bouclier');
   if (existant) existant.valeur += valeur;
@@ -202,7 +227,9 @@ function surplusDeSoin(source, cible, surplus) {
 // Compteurs remis à zéro à chaque combat : rien de tout ceci n'est une
 // rente qu'on traîne d'un combat à l'autre.
 function reinitialiserPassifsCombat(j) {
-  j.chargesCadence = 0;      // Moine
+  // Moine — l'Éveil « Disciple » promet des charges qui « ne se perdent
+  // jamais » : elles traversent les combats au lieu de repartir de zéro.
+  j.chargesCadence = reglagePassif(j, 'chargesPersistantes', false) ? (j.chargesCadence || 0) : 0;
   j.premierCoupFait = false; // Assassin
   j.pasDeDanse = false;      // Danselame
   j.cibleDuel = null;        // Duelliste
@@ -212,7 +239,8 @@ function reinitialiserPassifsCombat(j) {
   j.secoursUtilise = false;  // Paladin
   j.piegeTendu = false;      // Rôdeur
   j.actionRejouee = false;   // Voltigeur
-  j.manchesPropres = 0;      // Voies de la Rage et du Souffle
+  j.manchesPropres = 0;      // Voie du Souffle et Éveils « manche propre »
+  j.manchesEnSang = 0;       // Voie de la Rage : les manches où il a saigné
   j.cumulDanse = 0;          // Voie du Vent Tranchant
   j.coupsDeLOmbre = 0;       // Voie de l'Ombre
   j.relancesCritique = 0;    // Voies de la Lame Vive et de la Célérité
@@ -339,8 +367,11 @@ function multiplicateurPassifs(source, cible, options) {
     const vit = statDe(source, 'vit');
     mult *= 1 + Math.max(0, vit - (p.seuilVitalite || 0)) * p.partVitalite;
   }
-  // Berserker de la Rage, Moine du Souffle : la manche propre paie.
+  // Moine du Souffle, Traqueur « Celui Qui Attend » : la manche propre paie.
   if (p.parMancheSansDegats) mult *= 1 + (source.manchesPropres || 0) * p.parMancheSansDegats;
+  // Berserker de la Rage : chaque manche où il a SAIGNÉ nourrit sa rage —
+  // l'inverse exact, remis à zéro dès qu'une manche l'épargne.
+  if (p.parMancheEnSang) mult *= 1 + (source.manchesEnSang || 0) * p.parMancheEnSang;
   // Assassin, Traqueur : la proie déjà entamée.
   if (p.partProie && cible && cible.hp <= cible.maxHp * (p.seuilProie || 0)) mult *= 1 + p.partProie;
   if (p.doubleSousSeuil && cible && cible.hp <= cible.maxHp * p.doubleSousSeuil) mult *= 2;
@@ -538,8 +569,13 @@ function seveDuDruide(source) {
   const part = reglagePassif(source, 'partSoinEquipe', 0);
   const cb = etat.combat;
   if (!part || !cb) return;
+  // Une régénération de GROUPE posait la sève sur chaque allié : quatre
+  // cibles, quatre arrosages — 20 % des PV max de l'équipe au lieu des
+  // 5 % annoncés. Une seule sève par sort lancé.
+  if (source.seveCeCast) return;
+  source.seveCeCast = true;
   let total = 0;
-  cb.equipe.filter((x) => !estMort(x)).forEach((x) => {
+  cb.equipe.filter((x) => !estMort(x) && soinAutorise(x, source)).forEach((x) => {
     const soin = Math.max(1, Math.round(x.maxHp * part));
     const avant = x.hp;
     x.hp = Math.min(x.maxHp, x.hp + soin);
@@ -574,7 +610,7 @@ function seveDuDruide(source) {
 // Le drain d'un passif : il prend toujours sa part, et il le dit toujours
 // — qu'il reste de la place dans la barre de vie ou non.
 function drainPassif(source, degats, part, emoji, nom) {
-  if (!part || degats <= 0) return;
+  if (!part || degats <= 0 || !soinAutorise(source, source)) return;
   const pris = Math.max(1, Math.round(degats * part));
   const avant = source.hp;
   source.hp = Math.min(source.maxHp, source.hp + pris);
@@ -665,8 +701,10 @@ function rejouerParVoltige(j) {
 function propagerStatutsDuCorrupteur(c, expires) {
   const cb = etat.combat;
   if (!cb || c.type !== 'monstre' || !expires.length) return;
+  // La clé est DÉDIÉE : allonger la durée de ses états (dureeBonusStatut)
+  // n'a jamais promis de les propager — seul le Corrupteur l'annonce.
   const corrupteur = cb.equipe.find((x) => x.type === 'joueur' && !estMort(x)
-    && reglagePassif(x, 'dureeBonusStatut', 0) > 0);
+    && reglagePassif(x, 'propagationExpiration', false));
   if (!corrupteur) return;
   const voisins = cb.monstres.filter((m) => m !== c && !m.mort);
   if (!voisins.length) return;
@@ -787,7 +825,7 @@ function semerUnStatut(source, cible, duree) {
   if (!cible || estMort(cible)) return;
   const type = STATUTS_AU_HASARD[alea(0, STATUTS_AU_HASARD.length - 1)];
   const effet = { type, duree: duree || 2 };
-  if (type === 'poison') effet.stat = 'dex';
+  if (type === 'poison') effet.stat = (classeBaseDuCombattant(source) || {}).stat || 'dex';
   if (type === 'etourdi') effet.chance = 1;
   appliquerEffet(source, cible, effet, null, null);
 }
@@ -807,7 +845,7 @@ function apresDegatsVoies(source, cible, degats, options) {
   if (p.degatsEnSoinEquipe && cb) {
     const soin = Math.max(1, Math.round(degats * p.degatsEnSoinEquipe));
     let total = 0;
-    cb.equipe.filter((x) => !estMort(x)).forEach((x) => {
+    cb.equipe.filter((x) => !estMort(x) && soinAutorise(x, source)).forEach((x) => {
       const avant = x.hp;
       x.hp = Math.min(x.maxHp, x.hp + soin);
       total += x.hp - avant;
@@ -818,7 +856,7 @@ function apresDegatsVoies(source, cible, degats, options) {
   }
   // Métamorphe du Serpent, Rôdeur du Poison : le coup empoisonne.
   if (p.poisonParCoup && !estMort(cible)) {
-    appliquerEffet(source, cible, { type: 'poison', duree: p.poisonParCoup, stat: 'dex' }, null, null);
+    appliquerEffet(source, cible, { type: 'poison', duree: p.poisonParCoup, stat: (classeBaseDuCombattant(source) || {}).stat || 'dex' }, null, null);
   }
   // Voleur de la Ruse : un état au hasard, de temps en temps.
   if (p.statutAleatoireCoup && Math.random() < p.statutAleatoireCoup) semerUnStatut(source, cible, 2);
@@ -850,7 +888,7 @@ function encaisserSelonLesVoies(source, cible, degats, options) {
   if (p.soinParCoupEncaisse) {
     const soin = Math.max(1, Math.round(cible.maxHp * p.soinParCoupEncaisse));
     let total = 0;
-    cb.equipe.filter((x) => x !== cible && !estMort(x)).forEach((x) => {
+    cb.equipe.filter((x) => x !== cible && !estMort(x) && soinAutorise(x, cible)).forEach((x) => {
       const avant = x.hp;
       x.hp = Math.min(x.maxHp, x.hp + soin);
       total += x.hp - avant;
@@ -973,7 +1011,9 @@ function ouvertureDesEveils(j) {
   }
   // Givremage « Souverain d'Hiver » : ils traînent la patte tout le combat.
   if (p.celeriteEnnemis) {
-    cb.monstres.forEach((m) => { m.dex = Math.max(1, m.dex - Math.round(p.celeriteEnnemis / 5)); });
+    // La Célérité vaut « +1 % d'initiative par point » chez les héros : la
+    // retirer aux monstres suit la même unité, au lieu d'un troc de Dextérité.
+    cb.monstres.forEach((m) => { m.malusCelerite = (m.malusCelerite || 0) + p.celeriteEnnemis; });
     journal(`🌨️ Le froid de ${j.nom} ralentit tout ce qui bouge en face.`);
   }
 }
@@ -1006,7 +1046,7 @@ function eclabousserSelonLaVoie(source, cible, degats, comp) {
   if (!cb || !nb || degats <= 0 || comp.cible === 'ennemis') return;
   const part = reglagePassif(source, 'partCiblesSupp', 0.45);
   cb.monstres.filter((m) => m !== cible && !m.mort).slice(0, nb).forEach((m) => {
-    const r = infligerDegats(source, m, degats * part, { magique: comp.stat === 'int', eclaboussure: true });
+    const r = infligerDegats(source, m, degats * part, { magique: estSortMagique(comp), eclaboussure: true });
     journal(`🌸 L'onde atteint ${m.nom} : ${texteDegats(r)}`);
     gererMort(m);
   });
@@ -1144,7 +1184,10 @@ function ligneParDefaut(c) {
 // v19 : l'initiative se lit sur la Dextérité, à laquelle la Célérité
 // ajoute son bonus — c'est elle qui décide qui frappe en premier.
 function initiativeDe(c) {
-  if (c.type === 'monstre') return (c.dex || 0) * 2 + alea(1, 10);
+  if (c.type === 'monstre') {
+    return Math.round(((c.dex || 0) * 2 + alea(1, 10))
+      * (1 - Math.min(80, c.malusCelerite || 0) / 100));
+  }
   const base = statDe(c, 'dex') * 2 + alea(1, 10);
   if (c.type !== 'joueur') return base;
   // Métamorphe : sous la forme de corbeau, il part toujours devant.
@@ -1156,6 +1199,10 @@ function initiativeDe(c) {
   const celeriteVoie = (reglagePassif(c, 'celeriteBonus', 0)
     + reglagePassif(c, 'celeriteParManche', 0) * (c.manchesPropres || 0)) / 100;
   let init = base * (1 + sousCarac(statsEffectives(c), 'celerite') + celeriteVoie) * (1 + corbeau);
+  // Franc-tireur : « l'initiative lui revient souvent » — la seconde
+  // moitié de son passif de classe, restée sur la fiche sans une ligne
+  // de code depuis la v19.
+  if (aPassif(c, 'Ligne de tir')) init *= 1.15;
   // Colosse de la Montagne : immobile, donc toujours en dernier.
   if (reglagePassif(c, 'initiativeMoitie', false)) init *= 0.5;
   // Contrainte divine du soigneur : il n'ouvre jamais la manche.
@@ -1383,6 +1430,7 @@ async function boucleTour() {
         // touché après son tour redémarrait la manche suivante à 1.
         if (cb.manche > 1) {
           j.manchesPropres = j.toucheCetteManche ? 0 : (j.manchesPropres || 0) + 1;
+          j.manchesEnSang = j.toucheCetteManche ? (j.manchesEnSang || 0) + 1 : 0;
         }
         j.toucheCetteManche = false;
         if (cb.manche === 1) { ouvertureDesVoies(j); ouvertureDesEveils(j); annoncerInitiative(j); }
@@ -1485,6 +1533,12 @@ function debutTour(c) {
     c.hp -= poison.valeur;
     journal(`🧪 ${c.nom} souffre du poison : ${poison.valeur} dégâts.`);
     if (c.hp <= 0) {
+      // Le coup fatal revient au POSEUR du poison : c'est SON explosion
+      // (partExplosion) qui doit partir, pas celle du dernier coup direct.
+      if (c.type === 'monstre' && poison.poseur && cb) {
+        const poseur = cb.equipe.find((x) => x.bid === poison.poseur && !estMort(x));
+        if (poseur) c.dernierAgresseur = poseur;
+      }
       gererMort(c);
       // Relevé sur-le-champ (Phénix, Voie des Ancêtres…) : sa relance est
       // déjà poussée dans la file — jouer maintenant EN PLUS ferait deux
@@ -1495,7 +1549,7 @@ function debutTour(c) {
   if (estMort(c)) return { skip: true };
 
   const regen = c.statuts.find((s) => s.type === 'regen');
-  if (regen && c.hp < c.maxHp) {
+  if (regen && c.hp < c.maxHp && soinAutorise(c, c)) {
     const soin = Math.min(regen.valeur, c.maxHp - c.hp);
     c.hp += soin;
     journal(`💧 ${c.nom} régénère ${soin} PV.`);
@@ -1524,7 +1578,7 @@ function debutTour(c) {
   const partRegenEquipe = reglagePassif(c, 'regenEquipe', 0);
   if (partRegenEquipe && cb) {
     let total = 0;
-    cb.equipe.filter((x) => !estMort(x)).forEach((x) => {
+    cb.equipe.filter((x) => !estMort(x) && soinAutorise(x, c)).forEach((x) => {
       const avant = x.hp;
       x.hp = Math.min(x.maxHp, x.hp + Math.max(1, Math.round(x.maxHp * partRegenEquipe)));
       total += x.hp - avant;
@@ -1804,16 +1858,26 @@ function texteDegats(r) {
   return t;
 }
 
+// Les contraintes de soin valent pour TOUTES les guérisons — les sorts,
+// mais aussi les retours directs des passifs (sève, lumière, bastion…),
+// qui les contournaient tous.
+function soinAutorise(cible, source) {
+  if (reglagePassif(cible, 'soinsInterdits', false)) return false;
+  if (source && source !== cible && reglagePassif(cible, 'soinsAlliesInterdits', false)) return false;
+  return true;
+}
+
 function soigner(cible, brut, source) {
   // Éveils de soigneur : ses soins et ses boucliers pèsent plus lourd.
   let soin = Math.max(1, Math.round(varie(brut) * (1 + reglagePassif(source, 'soinsBonus', 0))));
   // Contraintes : plus aucun soin, ou plus aucun soin VENANT D'UN ALLIÉ.
-  if (reglagePassif(cible, 'soinsInterdits', false)) return 0;
-  if (source && source !== cible && reglagePassif(cible, 'soinsAlliesInterdits', false)) return 0;
+  if (!soinAutorise(cible, source)) return 0;
   // Voie du Sang : ce qu'il prend aux autres le nourrit, ce que les
-  // autres lui donnent le nourrit moitié moins.
+  // autres lui donnent le nourrit moins — et « réduits de 100 % » veut
+  // dire zéro, pas un point de courtoisie.
   const malus = reglagePassif(cible, 'malusSoinsRecus', 0);
-  if (malus && source && source !== cible) soin = Math.max(1, Math.round(soin * (1 - malus)));
+  if (malus && source && source !== cible) soin = Math.round(soin * (1 - Math.min(1, malus)));
+  if (soin <= 0) return 0;
   const avant = cible.hp;
   cible.hp = Math.min(cible.maxHp, cible.hp + soin);
   // « Clairvoyance » : ce qui dépasse les points de vie maximum ne tombe
@@ -1896,11 +1960,18 @@ function poserStatut(cible, statut) {
 // se calcule donc ici, une fois, plutôt qu'à chaque `case`.
 const STATUTS_BIENFAISANTS = ['benediction', 'bouclier', 'regen', 'provocation', 'fortune'];
 
+// La fiche du Barde parle de « bénédictions, boucliers et régénérations » :
+// la provocation et la Fortune n'en font pas partie.
+const BIENFAITS_PROLONGEABLES = ['benediction', 'bouclier', 'regen'];
+
 function dureeAjustee(source, effet) {
   let duree = effet.duree;
   if (duree == null) return duree;
-  if (STATUTS_BIENFAISANTS.includes(effet.type)) duree += reglagePassif(source, 'dureeBuffBonus', 0);
-  else duree += reglagePassif(source, 'dureeBonusStatut', 0);
+  if (STATUTS_BIENFAISANTS.includes(effet.type)) {
+    if (BIENFAITS_PROLONGEABLES.includes(effet.type)) duree += reglagePassif(source, 'dureeBuffBonus', 0);
+  } else {
+    duree += reglagePassif(source, 'dureeBonusStatut', 0);
+  }
   return duree;
 }
 
@@ -1924,9 +1995,14 @@ function appliquerEffet(source, cible, effet, resultatDegats, comp) {
   const duree = dureeAjustee(source, effet);
   switch (effet.type) {
     case 'poison': {
+      // v26 : le poison suit enfin son palier, comme les boucliers et les
+      // régénérations depuis la v20.1 — un venin de fin de parcours ronge
+      // comme un venin de fin de parcours. Les valeurs FIXES (bestiaire)
+      // ne bougent pas.
       const valeur = Math.round((effet.degats != null
         ? effet.degats
-        : 3 + statDe(source, effet.stat || 'dex') * (effet.stat === 'int' ? 0.5 : 0.6))
+        : (3 + statDe(source, effet.stat || 'dex') * (['int', 'esp'].includes(effet.stat) ? 0.5 : 0.6))
+          * ampleurEffet(comp, effet))
         * (1 + reglagePassif(source, 'brulureForce', 0)));
       // Pyromancien : ses brûlures se cumulent au lieu de se remplacer.
       const cumulMax = reglagePassif(source, 'brulureMax', 0);
@@ -1938,7 +2014,10 @@ function appliquerEffet(source, cible, effet, resultatDegats, comp) {
         journal(`🔥 ${cible.nom} brûle plus fort (${dejaLa.cumuls}/${cumulMax} — ${dejaLa.valeur} dégâts par tour).`);
         break;
       }
-      poserStatut(cible, { type: 'poison', duree, valeur, cumuls: 1 });
+      // Le poseur est mémorisé : si la brûlure achève la cible plus tard,
+      // c'est SON explosion (partExplosion) qui doit partir, pas celle du
+      // dernier allié à avoir donné un coup direct.
+      poserStatut(cible, { type: 'poison', duree, valeur, cumuls: 1, poseur: source.bid || null });
       journal(`🧪 ${cible.nom} est empoisonné (${valeur} dégâts par tour, ${duree} tours).`);
       // Druide des Ronces : la ronce ne se contente pas de piquer.
       const clou = reglagePassif(source, 'etourdiSurPoison', 0);
@@ -2001,7 +2080,11 @@ function appliquerEffet(source, cible, effet, resultatDegats, comp) {
     }
     case 'provocation': {
       poserStatut(cible, { type: 'provocation', duree });
-      const valeur = Math.round(4 + statDe(source, 'for'));
+      // Le bouclier suit la stat écrite sur l'effet, sinon celle de la
+      // classe — un Gardien provoque avec sa Vitalité, pas avec une Force
+      // qu'il ne monte jamais — et grandit avec le palier de la compétence.
+      const statProvoc = (effet && effet.stat) || (classeBaseDuCombattant(source) || {}).stat || 'for';
+      const valeur = Math.round((4 + statDe(source, statProvoc)) * ampleurEffet(comp, effet));
       poserStatut(cible, { type: 'bouclier', duree, valeur });
       journal(`😤 ${cible.nom} provoque les ennemis et se protège (${valeur} points de bouclier) !`);
       break;
@@ -2148,7 +2231,8 @@ function rendreActions(j) {
   const btnLigne = document.createElement('button');
   btnLigne.className = 'btn-action';
   const versArriere = j.ligne !== 'arriere';
-  btnLigne.innerHTML = `🔁 <strong>${versArriere ? 'Passer à l’arrière' : 'Passer à l’avant'}</strong><span class="action-detail">${versArriere ? 'Physique −40 % (donné ET subi)' : 'Pleine puissance, pleine exposition'} · consomme le tour</span>`;
+  const pasGratuit = reglagePassif(j, 'pasGratuit', false);
+  btnLigne.innerHTML = `🔁 <strong>${versArriere ? 'Passer à l’arrière' : 'Passer à l’avant'}</strong><span class="action-detail">${versArriere ? 'Physique −40 % (donné ET subi)' : 'Pleine puissance, pleine exposition'} · ${pasGratuit ? 'pas gratuit (Chorégraphie)' : 'consomme le tour'}</span>`;
   btnLigne.addEventListener('click', () => surActionChoisie(j, { genre: 'ligne' }));
   barre.appendChild(btnLigne);
 
@@ -2158,19 +2242,24 @@ function rendreActions(j) {
   j.competences.forEach((compId) => {
     const comp = COMPETENCES[compId];
     if (!comp) return;
-    if (sansCommunes && typeof estCompetenceCommune === 'function' && estCompetenceCommune(comp)) return;
+    // Les six sorts d'invocation sont « communs » faute de classe — mais un
+    // Invocateur divin privé d'invocations n'aurait plus de passif du tout.
+    if (sansCommunes && comp.type !== 'invocation' && typeof estCompetenceCommune === 'function' && estCompetenceCommune(comp)) return;
     const btn = document.createElement('button');
     btn.className = 'btn-action competence';
     const cd = j.cooldowns[compId] || 0;
-    const cout = coutMpDe(comp, statsJoueur, j.maxMp);
+    const surcoutAffiche = ((comp.cible === 'ennemis' || comp.cible === 'allies') ? reglagePassif(j, 'bonusZone', 0) : 0)
+      + reglagePassif(j, 'surcoutMana', 0);
+    const cout = Math.round(coutMpDe(comp, statsJoueur, j.maxMp) * (1 + surcoutAffiche));
     // Contraintes d'Éveil : le bouton se grise et DIT pourquoi, au lieu de
     // laisser cliquer une compétence que le moteur refusera.
     const interditZone = comp.cible === 'ennemis'
+      && !(comp.eveil && j.eveil && comp.eveil === j.eveil.id)
       && reglagePassif(j, 'zonesInterdites', false);
     const interditDirect = comp.type === 'degats'
       && reglagePassif(j, 'degatsDirectsInterdits', false);
     // Détails chiffrés : dégâts/soins estimés, effets, coût, recharge.
-    let detail = detailsCompetence(comp, statsJoueur, rangDe(j, compId), j.maxMp).join(' · ');
+    let detail = detailsCompetence(comp, statsJoueur, rangDe(j, compId), j.maxMp, { multCout: 1 + surcoutAffiche }).join(' · ');
     const enSang = j.mp < cout && reglagePassif(j, 'sangParMana', 0) > 0;
     if (interditZone) detail = '🚫 Éveil : une seule cible à la fois';
     else if (interditDirect) detail = '🚫 Éveil : plus aucun dégât direct';
@@ -2398,11 +2487,13 @@ function executerAction(j, action, cible) {
 function lancerCompetence(j, compId, cible, relance) {
   const cb = etat.combat;
   const comp = COMPETENCES[compId];
+  j.seveCeCast = false;
   if (comp.type === 'invocation') return lancerInvocation(j, compId);
   const s = statsEffectives(j);
   const zone = comp.cible === 'ennemis' || comp.cible === 'allies';
   // Contraintes d'Éveil : certaines options disparaissent purement.
-  if (zone && comp.cible === 'ennemis' && reglagePassif(j, 'zonesInterdites', false)) {
+  const donDeSonEveil = !!comp.eveil && !!j.eveil && comp.eveil === j.eveil.id;
+  if (zone && comp.cible === 'ennemis' && !donDeSonEveil && reglagePassif(j, 'zonesInterdites', false)) {
     journal(`🚫 L'Éveil de ${j.nom} lui interdit de frapper plus d'un ennemi à la fois.`);
     return 'refus';
   }
@@ -2458,7 +2549,7 @@ function lancerCompetence(j, compId, cible, relance) {
         const part = coup < coups ? 1 : partSupp;
         const brut = (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang * part;
         const r = infligerDegats(j, c, brut, {
-          critBonus: comp.critBonus || 0, magique: comp.stat === 'int', compId, zone, coupIndex: coup,
+          critBonus: comp.critBonus || 0, magique: estSortMagique(comp), compId, zone, coupIndex: coup,
         });
         journal(`→ ${c.nom} subit ${texteDegats(r)}`);
         moissonDuFaucheur(j, r.degats);   // Faucheur : tous ses sorts le nourrissent
@@ -2466,8 +2557,9 @@ function lancerCompetence(j, compId, cible, relance) {
         gererMort(c);
         executerSiMoribonde(j, c);        // Faucheur : et il achève les moribonds
         // Le drain soigne le lanceur même si le coup achève la cible ;
-        // les autres effets (poison, étourdissement…) ne s'appliquent qu'aux vivants.
-        if (comp.effet && (comp.effet.type === 'drain' || !estMort(c))) {
+        // les autres effets (poison, étourdissement…) ne s'appliquent
+        // qu'aux vivants — et une seule fois par lancer, pas par coup.
+        if (comp.effet && (comp.effet.type === 'drain' || (coup === 0 && !estMort(c)))) {
           appliquerEffet(j, c, comp.effet, r, comp);
         }
       }
@@ -2591,7 +2683,9 @@ function lancerInvocation(j, compId) {
   inv.ligne = ligneParDefaut(inv); // v16 : la créature rejoint sa ligne naturelle
   cb.equipe.push(inv);
   cb.file.push(inv); // elle agit dès cette manche, en fin de file
-  journal(`${comp.emoji} ${j.nom} invoque ${modele.emoji} ${modele.nom} ! (stats bridées aux siennes, 50 % de son mana — elle combattra seule jusqu'à sa mort ou la fin du combat)`);
+  const nuance = multMeute > 1 ? `renforcées ×${String(multMeute).replace('.', ',')} par son passif`
+    : (multMeute < 1 ? `à ${Math.round(multMeute * 100)} % — la meute se partage la puissance` : 'bridées aux siennes');
+  journal(`${comp.emoji} ${j.nom} invoque ${modele.emoji} ${modele.nom} ! (stats ${nuance}, 50 % de son mana — elle combattra seule jusqu'à sa mort ou la fin du combat)`);
 }
 
 // Le tour d'une invocation : elle choisit toute seule, au hasard, parmi
@@ -2641,10 +2735,10 @@ function tourInvocation(c) {
       for (let coup = 0; coup < (comp.coups || 1); coup++) {
         if (estMort(m)) break;
         const brut = comp.puissance + statDeCompetence(comp, s) * comp.ratio;
-        const r = infligerDegats(c, m, brut, { critBonus: comp.critBonus || 0, magique: comp.stat === 'int' });
+        const r = infligerDegats(c, m, brut, { critBonus: comp.critBonus || 0, magique: estSortMagique(comp) });
         journal(`→ ${m.nom} subit ${texteDegats(r)}`);
         gererMort(m);
-        if (comp.effet && (comp.effet.type === 'drain' || !estMort(m))) appliquerEffet(c, m, comp.effet, r, comp);
+        if (comp.effet && (comp.effet.type === 'drain' || (coup === 0 && !estMort(m)))) appliquerEffet(c, m, comp.effet, r, comp);
       }
     });
   } else if (comp.type === 'soin') {
@@ -2742,6 +2836,9 @@ function choisirCibleJoueur(joueursVivants) {
 function terroriser(m) {
   const cb = etat.combat;
   if (!cb) return false;
+  // La fiche dit « un ennemi TERRORISÉ » : la terreur ne prend que sur une
+  // cible déjà entravée — rongée par au moins un état — jamais sur un monstre sain.
+  if (!estEntravee(m)) return false;
   const semeur = cb.equipe.find((x) => !estMort(x) && reglagePassif(x, 'terreur', 0) > 0);
   if (!semeur || Math.random() >= reglagePassif(semeur, 'terreur', 0)) return false;
   const voisins = cb.monstres.filter((x) => x !== m && !x.mort);
@@ -2889,7 +2986,7 @@ function carteCombattant(c) {
 
   const pctHp = Math.max(0, Math.round((c.hp / c.maxHp) * 100));
   const statuts = c.statuts
-    .map((s) => `<span title="${NOM_STATUT[s.type]}">${EMOJI_STATUT[s.type]}</span>`)
+    .map((s) => `<span title="${libelleStatut(s)}">${EMOJI_STATUT[s.type]}</span>`)
     .join('');
   const defense = c.defense ? '<span title="En garde">🛡️</span>' : '';
 

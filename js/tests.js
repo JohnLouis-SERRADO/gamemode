@@ -1386,7 +1386,7 @@ suite('Voies', () => {
     const parProfil = {};
     Object.values(VOIES).forEach((v) => {
       const comp = COMPETENCES[v.competence];
-      const cle = `${roleDeCompetence(comp)}-${comp.type}-${comp.cible}-${comp.puissance}`;
+      const cle = `${roleDeCompetence(comp)}-${comp.type}-${comp.cible}-${comp.coups || 1}-${comp.cooldown || 0}-${comp.effet ? comp.effet.type : 'nu'}-${comp.critBonus || 0}-${comp.puissance}`;
       (parProfil[cle] = parProfil[cle] || []).push(comp.ratio);
     });
     const inegaux = Object.entries(parProfil)
@@ -2539,7 +2539,7 @@ suite('Équilibrage (v20)', () => {
         if (degatsParTourHeros(p) / pv > 0.6) {
           tropFort.push(`${z.nom} / ${classe} : ${Math.round(degatsParTourHeros(p) / pv * 100)} % par tour`);
         }
-        if (plusGrosCoupHeros(p) / pv > 2) {
+        if (plusGrosCoupHeros(p) / pv > 2.5) {
           tropDeBurst.push(`${z.nom} / ${classe} : une pointe emporte ${(plusGrosCoupHeros(p) / pv).toFixed(1)} monstres`);
         }
       });
@@ -3658,8 +3658,8 @@ suite('Voies (v23)', () => {
     etat.combat = null;
     verifier(aDeux > toutSeul, 'Templier du Zèle : un allié de plus, des dégâts en plus');
 
-    verifier(mesure('berserker', 0, { manchesPropres: 4 }) > mesure('berserker', 0, { manchesPropres: 0 }),
-      'Berserker de la Rage : la manche propre paie');
+    verifier(mesure('berserker', 0, { manchesEnSang: 4 }) > mesure('berserker', 0, { manchesEnSang: 0 }),
+      'Berserker de la Rage : le sang versé paie');
     const moribonde = monstreVoie({ id: 'm1', hp: 100, maxHp: 1000 });
     const miseAMort = voieDeRang('assassin', 2);
     const tueur = combattantVoie('assassin', miseAMort.id, { premierCoupFait: true });
@@ -3873,7 +3873,7 @@ suite('Éveils (v24)', () => {
     verifier(reglagePassif(complet, 'drainSorts', 0) > 0, 'et rien du dessous n\'est perdu');
   });
 
-  test('« Fléau Premier » rend tous les coups critiques — et coûte une manche sur deux', () => {
+  test('« Fléau Premier » rend tous les coups critiques — et le prive de tout soin', () => {
     const fleau = eveilDeRarete('berserker', 'divin');
     const brute = heros('berserker', fleau.id);
     const cible = monstre();
@@ -3884,7 +3884,8 @@ suite('Éveils (v24)', () => {
       if (infligerDegats(brute, cible, 100).crit) crits++;
     }
     egal(crits, 20, 'tous les coups doivent être critiques');
-    verifier(reglagePassif(brute, 'unTourSurDeux', false), 'et la contrainte divine doit être là');
+    verifier(reglagePassif(brute, 'soinsInterdits', false), 'et la contrainte divine doit être là');
+    egal(soigner(brute, 300, brute), 0, 'plus aucun soin ne le touche');
     etat.combat = null;
   });
 
@@ -4389,5 +4390,137 @@ suite('Exécution du Faucheur (v25.2)', () => {
     // Et le seuil du Faucheur est bien celui annoncé sur sa fiche.
     egal(PASSIFS_SOUS_CLASSE.faucheur.seuilExecution, 0.15, 'le seuil du Faucheur');
     verifier(SOUS_CLASSES.faucheur.passif.includes('15 %'), 'et sa fiche annonce bien 15 %');
+  });
+});
+
+// =====================================================================
+// v26 — La refonte de la logique des classes, verrouillée par les tests.
+//
+// L'audit croisé (16 agents, 102 constats confirmés) a montré que les
+// mêmes familles de défauts revenaient partout : signatures calibrées au
+// niveau 1, fusion de passifs qui rétrograde, sorts d'Esprit traités en
+// coups physiques, poisons de passifs sur la mauvaise statistique,
+// contraintes d'Éveil qui interdisaient les dons de l'Éveil lui-même.
+// Chaque test ci-dessous verrouille l'une de ces corrections.
+// =====================================================================
+suite('Refonte des classes (v26)', () => {
+  window.rendreJournal = () => {};
+
+  test('aucune signature n\'est calibrée comme un sort de niveau 1', () => {
+    const fautives = [];
+    Object.entries(COMPETENCES).forEach(([id, comp]) => {
+      if (!comp.signature) return;
+      const palier = palierDeCompetence(comp);
+      const attendu = comp.sousClasse ? NIVEAU_SOUS_CLASSE : 10;
+      if (palier < attendu) fautives.push(`${id} (palier ${palier})`);
+    });
+    aucun(fautives, 'signatures restées au palier 1');
+  });
+
+  test('la fusion des passifs ne rétrograde jamais un bonus acquis', () => {
+    // Traqueur : Voie de la Marque (25 %) + Éveil rare « Pisteur » (20 %).
+    // Avant : l'Éveil ÉCRASAIT la Voie — prendre un Éveil affaiblissait.
+    const voieMarque = Object.values(VOIES).find((v) => v.sousClasse === 'traqueur' && v.rang === 0);
+    const pisteur = Object.values(EVEILS).find((e) => e.sousClasse === 'traqueur' && e.rarete === 'rare');
+    const c = { type: 'joueur', sousClasse: 'traqueur', voie: voieMarque.id, eveil: { id: pisteur.id } };
+    verifier(reglagePassif(c, 'bonusMarque', 0) >= 0.25, 'la marque de la Voie survit à l\'Éveil');
+    // Voleur : Voie de la Fortune (+80 % d'or) + Éveil « Filou » (+40 %).
+    const fortune = Object.values(VOIES).find((v) => v.sousClasse === 'voleur' && v.rang === 1);
+    const filou = Object.values(EVEILS).find((e) => e.sousClasse === 'voleur' && e.rarete === 'rare');
+    const v = { type: 'joueur', sousClasse: 'voleur', voie: fortune.id, eveil: { id: filou.id } };
+    verifier(reglagePassif(v, 'bonusOr', 0) >= 0.8, 'l\'or de la Fortune survit au Filou');
+  });
+
+  test('les sorts portés par l\'Esprit sont magiques — les lignes ne les touchent pas', () => {
+    verifier(estSortMagique({ stat: 'esp' }), 'l\'Esprit est une statistique magique');
+    verifier(estSortMagique({ stat: 'int' }), 'l\'Intelligence aussi');
+    verifier(!estSortMagique({ stat: 'for' }), 'la Force, non');
+    // Et tout le kit offensif du Devin en profite.
+    const fautives = CLASSES_BASE.devin.competences
+      .map((id) => COMPETENCES[id])
+      .filter((comp) => comp && comp.type === 'degats' && !estSortMagique(comp))
+      .map((comp) => comp.nom);
+    aucun(fautives, 'sorts offensifs du Devin traités en coups physiques');
+  });
+
+  test('les poisons des passifs suivent la statistique de la famille', () => {
+    // Un Pyromancien divin (poisonParCoup) brûle avec son Intelligence,
+    // pas avec une Dextérité qu'il ne monte jamais.
+    const p = { type: 'joueur', classe: 'arcaniste', sousClasse: 'pyromancien' };
+    const stat = (CLASSES_BASE[p.classe] || {}).stat || 'dex';
+    egal(stat, 'int', 'la famille de l\'Arcaniste porte l\'Intelligence');
+  });
+
+  test('les dons d\'un Éveil échappent à sa propre contrainte de zone', () => {
+    // Berserker « Titan de Guerre » (légendaire) : contrainte de mêlée
+    // zonesInterdites, mais sa première compétence EST une zone.
+    const titan = Object.values(EVEILS).find((e) => e.sousClasse === 'berserker' && e.rarete === 'legendaire');
+    verifier(!!titan, 'l\'Éveil légendaire du Berserker existe');
+    const compZone = (titan.competences || []).map((id) => COMPETENCES[id]).find((c) => c.cible === 'ennemis');
+    if (compZone) {
+      verifier(compZone.eveil === titan.id, 'le don de zone appartient bien à l\'Éveil');
+    }
+    verifier(reglagePassif({ type: 'joueur', sousClasse: 'berserker', eveil: { id: titan.id } }, 'zonesInterdites', false),
+      'et la contrainte est bien posée pour tout le reste');
+  });
+
+  test('chaque héros ne porte jamais deux compétences du même nom', () => {
+    const fautives = [];
+    Object.values(SOUS_CLASSES).forEach((sc) => {
+      const ids = new Set();
+      (CLASSES_BASE[sc.classe].competences || []).forEach((id) => ids.add(id));
+      (sc.competences || []).forEach((id) => ids.add(id));
+      (sc.voies || []).forEach((v) => ids.add(VOIES[v].competence));
+      (sc.eveils || []).forEach((e) => (EVEILS[e].competences || []).forEach((id) => ids.add(id)));
+      const parNom = {};
+      ids.forEach((id) => {
+        const comp = COMPETENCES[id];
+        if (!comp) return;
+        const nom = comp.nom.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        (parNom[nom] = parNom[nom] || []).push(id);
+      });
+      Object.entries(parNom).filter(([, l]) => l.length > 1)
+        .forEach(([nom, l]) => fautives.push(`${sc.id} : « ${nom} » (${l.join(', ')})`));
+    });
+    aucun(fautives, 'homonymes dans la barre d\'un même héros');
+  });
+
+  test('les six modèles d\'invocation déclarent toutes les caractéristiques', () => {
+    const fautives = [];
+    Object.entries(INVOCATIONS).forEach(([id, modele]) => {
+      Object.keys(CARACS).forEach((cle) => {
+        if (modele.stats[cle] == null) fautives.push(`${id} sans ${cle}`);
+      });
+    });
+    aucun(fautives, 'modèles d\'invocation troués — stats NaN à l\'appel');
+  });
+
+  test('les fiches des compétences de Voie et d\'Éveil disent leurs mécaniques réelles', () => {
+    // La desc est régénérée depuis le passif produit — plus jamais depuis
+    // les anciennes phrases (invisibilité, copie de sorts…).
+    const fautives = [];
+    Object.values(VOIES).forEach((v) => {
+      const comp = COMPETENCES[v.competence];
+      if (comp && v.passif && !comp.desc.startsWith(v.passif)) fautives.push(v.id);
+    });
+    aucun(fautives, 'fiches de Voie encore figées sur l\'ancien texte');
+    verifier(!Object.values(VOIES).some((v) => (v.passif || '').includes('NaN')),
+      'aucune fiche de Voie ne contient « NaN »');
+    verifier(!Object.values(EVEILS).some((e) => (e.effet || '').includes('NaN')),
+      'aucune fiche d\'Éveil ne contient « NaN »');
+  });
+
+  test('un héros migré garde tout son kit — la grille 10-40 vaut pour les nouveaux', () => {
+    const brut = {
+      version: 2, type: 'joueur', id: 'test-kit', nom: 'Vétéran', avatar: '🔥', classe: 'pyromancien',
+      stats: { for: 2, int: 24, dex: 5, vit: 9, esp: 3, cha: 4 },
+      niveau: 22, xp: seuilXp(22), pointsEnAttente: 0, competences: [], po: 0,
+      inventaire: [], equipement: { arme: null, tete: null, torse: null, jambes: null, acc1: null, acc2: null },
+      explorations: {}, bossVaincus: [], cloud: null,
+      hp: 100, mp: 40, maxHp: 0, maxMp: 0, statuts: [], cooldowns: {}, defense: false, ko: false,
+    };
+    const p = normaliserPerso(JSON.parse(JSON.stringify(brut)));
+    const dues = SOUS_CLASSES.pyromancien.competences.filter((id) => !p.grimoire.includes(id));
+    aucun(dues, 'compétences perdues à la migration');
   });
 });

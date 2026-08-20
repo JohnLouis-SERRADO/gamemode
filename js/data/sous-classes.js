@@ -26,7 +26,7 @@
 const COMPETENCES_CLASSES_V19 = {
   // ----- 🛡️ Gardien : il encaisse, il attire, il tient -----
   'gardien-frappe-du-rempart': { classe: 'gardien', niveauRequis: 1, nom: 'Frappe du rempart', emoji: '🛡️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'vit', puissance: 5, ratio: 1.1, coutMp: 4, cooldown: 2, desc: 'Le bouclier d’abord, la lame ensuite. Les dégâts montent avec la Vitalité.' },
-  'gardien-appel-au-combat': { classe: 'gardien', niveauRequis: 1, nom: 'Appel au combat', emoji: '📣', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'provocation', duree: 3 }, coutMp: 4, cooldown: 4, desc: 'Tous les regards sur lui — c’est exactement ce qu’il veut.' },
+  'gardien-appel-au-combat': { classe: 'gardien', niveauRequis: 1, nom: 'Appel au combat', emoji: '📣', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'provocation', duree: 3, stat: 'vit' }, coutMp: 4, cooldown: 4, desc: 'Tous les regards sur lui — c’est exactement ce qu’il veut.' },
   'gardien-position-ancree': { classe: 'gardien', niveauRequis: 1, nom: 'Position ancrée', emoji: '⚓', categorie: 'signature', type: 'utilitaire', cible: 'soi', stat: 'vit', effet: { type: 'bouclier', duree: 3, stat: 'vit' }, coutMp: 5, cooldown: 4, desc: 'Les deux pieds dans le sol. On ne passe pas.' },
   'gardien-souffle-du-veteran': { classe: 'gardien', niveauRequis: 1, nom: 'Souffle du vétéran', emoji: '🫁', categorie: 'signature', type: 'soin', cible: 'soi', stat: 'vit', puissance: 7, ratio: 1.3, coutMp: 4, cooldown: 4, desc: 'Il a encaissé pire. Il le sait, et son corps aussi.' },
   'gardien-contre-attaque': { classe: 'gardien', niveauRequis: 5, nom: 'Contre-attaque', emoji: '↩️', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'vit', puissance: 7, ratio: 1.2, effet: { type: 'affaibli', duree: 2 }, coutMp: 6, cooldown: 3, desc: 'Encaisser, puis rendre — avec les intérêts. L’ennemi en ressort diminué.' },
@@ -86,7 +86,7 @@ const COMPETENCES_SOUS_CLASSES = {
   // ----- 🏹 Franc-tireur / Traqueur : marquer, puis exécuter -----
   'traqueur-marque-du-chasseur': { sousClasse: 'traqueur', niveauRequis: 10, nom: 'Marque du chasseur', emoji: '🔖', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'dex', puissance: 5, ratio: 1.0, effet: { type: 'affaibli', duree: 3 }, coutMp: 5, cooldown: 3, desc: 'Une entaille précise, à un endroit précis. Désormais, elle boite.' },
   'traqueur-tir-de-rupture': { sousClasse: 'traqueur', niveauRequis: 12, nom: 'Tir de rupture', emoji: '💢', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'dex', puissance: 8, ratio: 1.35, coutMp: 6, cooldown: 3, desc: 'La flèche ne cherche pas la chair : elle cherche la sangle qui tient l’armure.' },
-  'traqueur-oeil-du-predateur': { sousClasse: 'traqueur', niveauRequis: 14, nom: 'Œil du prédateur', emoji: '👁️', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'benediction', duree: 3 }, coutMp: 6, cooldown: 5, desc: 'Le monde se réduit à une proie et à la distance qui l’en sépare.' },
+  'traqueur-oeil-du-predateur': { sousClasse: 'traqueur', niveauRequis: 14, nom: 'Regard de l’affût', emoji: '👁️', categorie: 'signature', type: 'utilitaire', cible: 'soi', effet: { type: 'benediction', duree: 3 }, coutMp: 6, cooldown: 5, desc: 'Le monde se réduit à une proie et à la distance qui l’en sépare.' },
   'traqueur-fleche-perce-armure': { sousClasse: 'traqueur', niveauRequis: 18, nom: 'Flèche perce-armure', emoji: '🏹', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'dex', puissance: 10, ratio: 1.5, critBonus: 0.2, coutMp: 8, cooldown: 4, desc: 'Une pointe en acier céleste, taillée pour ce qui se croit protégé.' },
   'traqueur-volee-marquee': { sousClasse: 'traqueur', niveauRequis: 24, nom: 'Volée marquée', emoji: '🎯', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'dex', puissance: 7, ratio: 1.1, effet: { type: 'affaibli', duree: 2 }, coutMp: 11, cooldown: 4, desc: 'Une flèche pour chacun, et un souvenir durable pour tous.' },
   'traqueur-piste-de-sang': { sousClasse: 'traqueur', niveauRequis: 30, nom: 'Piste de sang', emoji: '🩸', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'dex', puissance: 9, ratio: 1.4, effet: { type: 'poison', duree: 3, stat: 'dex' }, coutMp: 9, cooldown: 4, desc: 'Il ne tue pas tout de suite. Il ouvre une piste, et il la suit.' },
@@ -109,7 +109,7 @@ const COMPETENCES_SOUS_CLASSES = {
   'oracle-halo': { sousClasse: 'oracle', niveauRequis: 14, nom: 'Halo', emoji: '💫', categorie: 'signature', type: 'utilitaire', cible: 'allies', stat: 'esp', effet: { type: 'bouclier', duree: 3, stat: 'esp' }, coutMp: 11, cooldown: 5, desc: 'Un cercle de clarté qui suit l’équipe partout où elle va.' },
   'oracle-prophetie': { sousClasse: 'oracle', niveauRequis: 18, nom: 'Prophétie', emoji: '🔮', categorie: 'signature', type: 'utilitaire', cible: 'allies', effet: { type: 'benediction', duree: 3 }, coutMp: 10, cooldown: 5, desc: 'Elle annonce la victoire. L’équipe se met à y croire, et ça change tout.' },
   'oracle-mot-d-espoir': { sousClasse: 'oracle', niveauRequis: 24, nom: 'Mot d’espoir', emoji: '💞', categorie: 'signature', type: 'soin', cible: 'allies', stat: 'esp', puissance: 9, ratio: 1.25, coutMp: 12, cooldown: 4, desc: 'Elle dit le mot juste, et toute l’équipe respire mieux.' },
-  'oracle-purge-sacree': { sousClasse: 'oracle', niveauRequis: 30, nom: 'Purge sacrée', emoji: '✨', categorie: 'signature', type: 'soin', cible: 'allie', stat: 'esp', puissance: 20, ratio: 2.3, coutMp: 11, cooldown: 5, desc: 'Ce qui rongeait l’allié n’a plus d’endroit où se tenir.' },
+  'oracle-purge-sacree': { sousClasse: 'oracle', niveauRequis: 30, nom: 'Purge sacrée', emoji: '✨', categorie: 'signature', type: 'soin', cible: 'allie', stat: 'esp', puissance: 20, ratio: 2.3, coutMp: 11, cooldown: 5, desc: 'Un soin si ample que la chair repart de zéro — le mal, lui, reste dehors.' },
   'oracle-dernier-jour': { sousClasse: 'oracle', niveauRequis: 40, nom: 'Dernier Jour', emoji: '🌇', categorie: 'signature', type: 'soin', cible: 'allies', stat: 'esp', puissance: 18, ratio: 2.0, coutMp: 16, cooldown: 6, desc: 'Elle a vu la fin. Ce n’est pas aujourd’hui — et elle le prouve.' },
   'signature-vision': { sousClasse: 'oracle', signature: true, nom: 'Vision', emoji: '👁️‍🗨️', categorie: 'signature', type: 'utilitaire', cible: 'allies', stat: 'esp', effet: { type: 'bouclier', duree: 4, stat: 'esp' }, coutMp: 13, cooldown: 6, desc: 'La signature de l’Oracle : elle sait où le coup va tomber, et met la main devant.' },
 
@@ -130,7 +130,7 @@ const COMPETENCES_SOUS_CLASSES = {
   'corrupteur-terreur-rampante': { sousClasse: 'corrupteur', niveauRequis: 18, nom: 'Terreur rampante', emoji: '😱', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 4, ratio: 0.75, effet: { type: 'etourdi', duree: 1, chance: 0.4 }, coutMp: 11, cooldown: 4, desc: 'Une peur qui ne vient de nulle part, et qui vient donc de partout.' },
   'corrupteur-epidemie': { sousClasse: 'corrupteur', niveauRequis: 24, nom: 'Épidémie', emoji: '☣️', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 7, ratio: 1.15, effet: { type: 'poison', duree: 3, stat: 'int' }, coutMp: 13, cooldown: 5, desc: 'Ce qui touchait un ennemi les touche désormais tous. Par contact.' },
   'corrupteur-chair-morte': { sousClasse: 'corrupteur', niveauRequis: 30, nom: 'Chair morte', emoji: '🧟', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 15, ratio: 1.85, effet: { type: 'affaibli', duree: 3 }, coutMp: 11, cooldown: 5, desc: 'Le corps cesse d’obéir avant d’avoir cessé de vivre.' },
-  'corrupteur-fin-de-toute-chair': { sousClasse: 'corrupteur', niveauRequis: 40, nom: 'Fin de toute chair', emoji: '💀', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 10, ratio: 1.35, effet: { type: 'poison', duree: 3, stat: 'int' }, coutMp: 16, cooldown: 6, desc: 'Il ne reste rien à corrompre. Il corrompt quand même.' },
+  'corrupteur-fin-de-toute-chair': { sousClasse: 'corrupteur', niveauRequis: 40, nom: 'Fonte des chairs', emoji: '💀', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 10, ratio: 1.35, effet: { type: 'poison', duree: 3, stat: 'int' }, coutMp: 16, cooldown: 6, desc: 'Il ne reste rien à corrompre. Il corrompt quand même.' },
   'signature-contagion': { sousClasse: 'corrupteur', signature: true, nom: 'Contagion', emoji: '🦠', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 9, ratio: 1.3, effet: { type: 'poison', duree: 3, stat: 'int' }, coutMp: 14, cooldown: 6, desc: 'La signature du Corrupteur : ce qu’il pose se transmet tout seul.' },
 
   // ----- 🌑 Runelame / Métamorphe : trois bêtes en un -----
@@ -141,7 +141,7 @@ const COMPETENCES_SOUS_CLASSES = {
   'metamorphe-rugissement': { sousClasse: 'metamorphe', niveauRequis: 24, nom: 'Rugissement', emoji: '🦁', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 6, ratio: 1.0, effet: { type: 'affaibli', duree: 2 }, coutMp: 11, cooldown: 4, desc: 'Un son que le corps humain ne devrait pas pouvoir produire.' },
   'metamorphe-mue': { sousClasse: 'metamorphe', niveauRequis: 30, nom: 'Mue', emoji: '🦎', categorie: 'signature', type: 'soin', cible: 'soi', stat: 'int', puissance: 17, ratio: 2.1, coutMp: 10, cooldown: 5, desc: 'Il abandonne le corps blessé et en reprend un neuf, en dessous.' },
   'metamorphe-forme-primordiale': { sousClasse: 'metamorphe', niveauRequis: 40, nom: 'Forme primordiale', emoji: '🐲', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 20, ratio: 2.25, coutMp: 13, cooldown: 6, desc: 'La bête d’avant les bêtes, celle dont les autres sont des brouillons.' },
-  'signature-bete-premiere': { sousClasse: 'metamorphe', signature: true, nom: 'Bête première', emoji: '🐾', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 10, ratio: 1.4, effet: { type: 'poison', duree: 2, stat: 'int' }, coutMp: 13, cooldown: 6, desc: 'La signature du Métamorphe : les trois formes à la fois, une seconde durant.' },
+  'signature-bete-premiere': { sousClasse: 'metamorphe', signature: true, nom: 'Instinct premier', emoji: '🐾', categorie: 'signature', type: 'degats', cible: 'ennemis', stat: 'int', puissance: 10, ratio: 1.4, effet: { type: 'poison', duree: 2, stat: 'int' }, coutMp: 13, cooldown: 6, desc: 'La signature du Métamorphe : les trois formes à la fois, une seconde durant.' },
 
   // ----- 🌑 Runelame / Runemaître : la rune comme discipline -----
   'runemaitre-rune-de-feu': { sousClasse: 'runemaitre', niveauRequis: 10, nom: 'Rune de feu', emoji: '🔥', categorie: 'signature', type: 'degats', cible: 'ennemi', stat: 'int', puissance: 8, ratio: 1.3, coutMp: 5, cooldown: 2, desc: 'Gravée d’un trait, elle brûle jusqu’à ce qu’il n’y ait plus de trait.' },
@@ -210,7 +210,7 @@ const CLASSES_BASE = {
     nom: 'Arcaniste', emoji: '🔮', role: 'DPS distance magique', stat: 'int', ligne: 'arriere', armure: 'tissu',
     armes: ['bâton', 'grimoire', 'focus'],
     resume: 'Fragile de près, catastrophique de loin.',
-    passif: 'Flux — la magie ignore les lignes de combat, et le mana revient plus vite.',
+    passif: 'Flux — ses sorts partent à pleine puissance de n’importe quelle ligne, et son mana revient plus vite que celui de tous les autres (5 par tour de base, au lieu de 2).',
     competences: ['mage-trait-arcanique', 'mage-explosion-runique', 'mage-barriere',
       'mage-siphon-de-mana', 'mage-flux-arcanique', 'mage-orbe-fracassant',
       'mage-tempete-de-mana', 'signature-comete-arcanique'],
@@ -219,7 +219,7 @@ const CLASSES_BASE = {
     nom: 'Devin', emoji: '✨', role: 'Soigneur', stat: 'esp', ligne: 'arriere', armure: 'tissu',
     armes: ['canne', 'calice', 'sceptre'],
     resume: 'Il décide qui survit. Personne ne s’en rend compte avant que ça manque.',
-    passif: 'Clairvoyance — les soins et les boucliers montent avec l’Esprit, et la moitié du surplus de soin se fige en bouclier (l’Oracle en fige la totalité).',
+    passif: 'Clairvoyance — les soins et les boucliers montent avec l’Esprit, et la moitié du surplus de soin se fige en bouclier, jusqu’à 20 % des PV max de la cible (l’Oracle en fige la totalité).',
     competences: ['clerc-mot-de-soin', 'clerc-eclat-sacre', 'clerc-priere-protection',
       'clerc-souffle-vital', 'clerc-priere-fervente', 'clerc-chatiment-lumineux',
       'clerc-sanctuaire', 'signature-lumiere-salvatrice'],
@@ -228,7 +228,7 @@ const CLASSES_BASE = {
     nom: 'Runelame', emoji: '🌑', role: 'DPS mêlée magique', stat: 'int', ligne: 'avant', armure: 'maille',
     armes: ['lame runique', 'faux', 'gantelet gravé'],
     resume: 'La magie ne se lance pas de loin : elle se plante dans le ventre.',
-    passif: 'Gravure — ses sorts frappent au contact et lui rendent une part de ce qu’ils prennent.',
+    passif: 'Gravure — ses coups et ses sorts frappent au contact et lui rendent une part de ce qu’ils prennent.',
     competences: ['runelame-lame-gravee', 'runelame-decharge-runique', 'runelame-morsure-d-ether',
       'runelame-armure-de-runes', 'runelame-fente-arcanique', 'runelame-cercle-de-lames',
       'runelame-verdict-runique', 'signature-lame-des-arcanes'],
@@ -280,7 +280,7 @@ const SOUS_CLASSES = {
   // ----- 🌑 Runelame -----
   faucheur:   { classe: 'runelame', nom: 'Faucheur', emoji: '⚰️', bonusStats: { int: 5, vit: 2 }, passif: 'Ses sorts lui rendent 25 % en PV ; il exécute les cibles sous 15 % de vie.', resume: 'Il prend, et il garde.' },
   corrupteur: { classe: 'runelame', nom: 'Corrupteur', emoji: '🦠', bonusStats: { int: 6, vit: 1 }, passif: 'Ses statuts durent un tour de plus et se propagent en expirant.', resume: 'Il ne tue pas : il laisse faire.' },
-  metamorphe: { classe: 'runelame', nom: 'Métamorphe', emoji: '🐾', bonusStats: { int: 4, vit: 3 }, passif: 'Il bascule librement entre ours (+30 % PV) et corbeau (+25 % initiative).', resume: 'Trois bêtes dans un seul corps.' },
+  metamorphe: { classe: 'runelame', nom: 'Métamorphe', emoji: '🐾', bonusStats: { int: 4, vit: 3 }, passif: 'Il bascule librement entre ours (+30 % PV) et corbeau (+25 % initiative).', resume: 'L’ours et le corbeau dans un seul corps.' },
   runemaitre: { classe: 'runelame', nom: 'Runemaître', emoji: '💠', bonusStats: { int: 6, esp: 1 }, passif: 'Chaque rune différente lancée dans le tour ajoute 8 % au sort suivant.', resume: 'La discipline avant la puissance.' },
   vibrelame:  { classe: 'runelame', nom: 'Vibrelame', emoji: '〰️', bonusStats: { int: 5, dex: 2 }, passif: 'Ses attaques à coups multiples gagnent un coup supplémentaire à 50 %.', resume: 'La vitesse, jusqu’à ce que l’acier chante.' },
 };
@@ -332,6 +332,13 @@ const MIGRATION_CLASSES = {
 // =====================================================================
 const STATS_RECALABLES = ['for', 'dex', 'int', 'esp'];
 
+// v26 — Les paliers migrés s'ÉTALENT au lieu de s'écraser. Le Math.max
+// plat posait 7 compétences sur 8 au niveau 10 (puis plus rien de 16 à
+// 49), quand les sous-classes neuves s'échelonnent de 10 à 40 : à rôle
+// égal, un Templier plafonnait 26 % sous un Colosse. Les anciens paliers
+// 1/5/10/15 se déplient sur la même courbe que les kits neufs.
+const REMAP_PALIERS_MIGRATION = { 1: 10, 5: 14, 10: 24, 15: 40 };
+
 Object.entries(MIGRATION_CLASSES).forEach(([ancienne, cible]) => {
   if (!cible.classe) return;
   const statFamille = CLASSES_BASE[cible.classe].stat;
@@ -340,14 +347,34 @@ Object.entries(MIGRATION_CLASSES).forEach(([ancienne, cible]) => {
     if (cible.sousClasse) {
       comp.sousClasse = cible.sousClasse;
       comp.classe = null;
-      // Une compétence de sous-classe s'apprend au choix de la spécialité.
-      comp.niveauRequis = Math.max(comp.niveauRequis || 1, NIVEAU_SOUS_CLASSE);
+      // Une compétence de sous-classe s'apprend au choix de la spécialité,
+      // puis le kit se déplie jusqu'au niveau 40, comme les kits neufs.
+      comp.niveauRequis = REMAP_PALIERS_MIGRATION[comp.niveauRequis || 1]
+        || Math.max(comp.niveauRequis || 1, NIVEAU_SOUS_CLASSE);
     } else {
       comp.classe = cible.classe;
     }
     if (STATS_RECALABLES.includes(comp.stat)) comp.stat = statFamille;
     if (comp.effet && STATS_RECALABLES.includes(comp.effet.stat)) comp.effet.stat = statFamille;
+    // Un bouclier, une régénération ou un poison SANS stat retombait sur
+    // max(int, esp) : dans la même sous-classe, deux boucliers frères
+    // différaient d'un facteur quatre. L'effet suit sa famille, comme
+    // voies.js le fait déjà pour les Voies.
+    if (comp.effet && ['bouclier', 'regen', 'poison'].includes(comp.effet.type) && !comp.effet.stat) {
+      comp.effet.stat = statFamille;
+    }
   });
+});
+
+// Les signatures n'ont pas de niveauRequis (elles s'obtiennent avec leur
+// identité) : sans palier de calibration, elles étaient budgétées comme
+// des sorts de NIVEAU 1 — la signature sortait plus faible que le premier
+// sort du kit. Celles des sous-classes se calent sur le palier de la
+// spécialité, celles des classes de base sur le sommet de leur arbre (15).
+Object.values(COMPETENCES).forEach((comp) => {
+  if (comp.signature && !comp.niveauRequis && !comp.palier) {
+    comp.palier = comp.sousClasse ? NIVEAU_SOUS_CLASSE : 15;
+  }
 });
 
 // Chaque sous-classe reçoit la liste de ses compétences et sa signature.
@@ -420,7 +447,7 @@ const COMMUNES_DEPART = {
   'franc-tireur': ['tir-precis', 'pluie-de-fleches', 'lame-empoisonnee', 'concentration'],
   arcaniste:      ['boule-de-feu', 'eclair', 'nova-de-givre', 'concentration'],
   devin:          ['soin', 'cercle-de-soin', 'benediction', 'regeneration'],
-  runelame:       ['drain-de-vie', 'eclair', 'lame-empoisonnee', 'bouclier-magique'],
+  runelame:       ['drain-de-vie', 'eclair', 'boule-de-feu', 'bouclier-magique'],
 };
 
 // On vide les anciennes entrées sans casser les références : MODELES et

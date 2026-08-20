@@ -1012,7 +1012,7 @@ async function ouvrirFichePublique(idJoueur) {
     .map((id) => {
       const comp = COMPETENCES[id];
       return `<div class="ligne-classement">${comp.emoji} <strong>${comp.nom}</strong>${comp.signature ? ' 🏅' : ''}${rangDe(pp, id) ? ` (rang ${rangDe(pp, id)})` : ''}
-        <span class="joueur-detail">${detailsCompetence(comp, s, rangDe(pp, id)).join(' · ')}</span></div>`;
+        <span class="joueur-detail">${detailsCompetence(comp, s, rangDe(pp, id), pp.maxMp || 0).join(' · ')}</span></div>`;
     }).join('');
 
   modale.innerHTML = `

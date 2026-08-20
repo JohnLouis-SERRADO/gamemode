@@ -38,6 +38,7 @@ const PHRASES_VOIE = {
   parAllieVivant: (v) => `+${pct(v)} de dégâts par allié encore debout`,
   partVitalite: (v, m) => `+${pct(v)} de dégâts par point de Vitalité au-delà de ${m.seuilVitalite}`,
   parMancheSansDegats: (v) => `+${pct(v)} de dégâts par manche traversée sans encaisser un coup, remis à zéro dès qu'il en encaisse un`,
+  parMancheEnSang: (v) => `+${pct(v)} de dégâts par manche où il a encaissé au moins un coup, remis à zéro dès qu'une manche l'épargne`,
   parMort: (v, m) => `+${pct(v)} de dégâts par corps tombé sur le terrain, jusqu'à +${pct(m.plafondCharnier)}`,
   partProie: (v, m) => `+${pct(v)} de dégâts contre les cibles sous ${pct(m.seuilProie)} de leurs PV`,
   doubleSousSeuil: (v) => `dégâts DOUBLÉS contre les cibles sous ${pct(v)} de leurs PV`,
@@ -52,7 +53,7 @@ const PHRASES_VOIE = {
   bonusElite: (v) => `+${pct(v)} de dégâts contre les élites et les boss`,
   bonusSynergie: (v) => `alterner : un sort différent du précédent frappe +${pct(v)}`,
   parRune: (v, m) => `+${pct(v)} de dégâts par compétence différente déjà lancée dans le combat, jusqu'à +${pct(m.plafondRunes)}`,
-  degatsParCharge: (v, m) => `${m.chargesPourCritique} charges au lieu de cinq, et +${pct(v)} de dégâts par charge accumulée`,
+  degatsParCharge: (v, m) => `${m.chargesPourCritique && m.chargesPourCritique !== 5 ? `${m.chargesPourCritique} charges au lieu de cinq, et ` : ''}+${pct(v)} de dégâts par charge accumulée`,
   degatsParCentPv: (v, m) => `+${pct(v)} de dégâts par tranche de 100 PV maximum, jusqu'à +${pct(m.plafondMasse)}`,
   rageMax: (v) => `jusqu'à +${pct(v)} de dégâts à mesure que ses PV descendent`,
   malusDegatsVoie: (v) => `ses dégâts baissent de ${pct(v)}`,
@@ -63,9 +64,9 @@ const PHRASES_VOIE = {
 
   // --- Vol de vie, de mana, d'or ---
   volDeVie: (v) => `ses coups lui rendent ${pct(v)} des dégâts infligés en PV`,
+  drainSorts: (v) => `TOUS ses sorts lui rendent ${pct(v)} des dégâts infligés en PV`,
   volDeMana: (v) => `et ${pct(v)} en mana`,
   malusSoinsRecus: (v) => `mais les soins qu'il reçoit des autres sont réduits de ${pct(v)}`,
-  drainSorts: (v) => `TOUS ses sorts lui rendent ${pct(v)} des dégâts infligés en PV`,
   degatsEnSoinEquipe: (v) => `${pct(v)} des dégâts qu'il inflige sont rendus en PV à toute l'équipe`,
   soinParCoupEncaisse: (v) => `chaque coup qu'il encaisse soigne l'équipe de ${pct(v)} de ses PV max`,
   bonusOr: (v) => `+${pct(v)} d'or ramassé`,
@@ -77,7 +78,7 @@ const PHRASES_VOIE = {
   pvMaxVoie: (v) => `+${pct(v)} de PV maximum`,
   celeriteBonus: (v) => `+${v} de Célérité`,
   celeriteParManche: (v) => `+${v} de Célérité par manche traversée sans encaisser un coup`,
-  initiativeMoitie: () => 'mais il agit toujours en dernier',
+  initiativeMoitie: () => 'mais son initiative est réduite de moitié',
   immuniteEtourdi: () => 'rien ne l\'étourdit ni ne le déplace',
   regenParTour: (v) => `il récupère ${pct(v)} de ses PV et de son mana à chaque tour`,
   reductionLigneAvant: (v) => `les alliés de la ligne avant subissent ${pct(v)} de moins`,
@@ -89,7 +90,9 @@ const PHRASES_VOIE = {
   // --- Coups, actions, ripostes ---
   coupsSupp: (v, m) => `chaque attaque porte ${v} coup${v > 1 ? 's' : ''} de plus, à ${pct(m.partCoupsSupp)} des dégâts`,
   ciblesSupp: (v, m) => `chaque coup éclabousse ${v} cible${v > 1 ? 's' : ''} de plus, à ${pct(m.partCiblesSupp)} des dégâts`,
-  chanceCoupSupp: (v) => `ses attaques à coups multiples portent un coup de plus une fois sur ${Math.round(1 / v)}`,
+  chanceCoupSupp: (v) => (v >= 1
+    ? 'ses attaques à coups multiples portent systématiquement un coup de plus'
+    : `ses attaques à coups multiples portent un coup de plus une fois sur ${Math.round(1 / v)}`),
   relanceGratuite: (v) => `${pct(v)} de chances qu'une compétence se relance gratuitement`,
   actionSurCritique: (v) => `un critique lui rend la main, ${v} fois par combat`,
   riposte: (v) => `chaque coup encaissé déclenche une riposte à ${pct(v)} de sa frappe`,
@@ -115,7 +118,7 @@ const PHRASES_VOIE = {
   etourdiSurZone: (v) => `ses compétences de zone étourdissent ${pct(v)} de ce qu'elles touchent`,
   bonusBrisGlace: (v) => `ses coups sur une cible étourdie valent +${pct(v)} et consument le gel`,
   brisureEclabousse: (v) => `et la brisure éclabousse les autres ennemis à ${pct(v)}`,
-  terreur: (v) => `${pct(v)} de chances qu'un ennemi terrorisé frappe l'un des siens à son tour`,
+  terreur: (v) => `${pct(v)} de chances qu'un ennemi entravé — rongé par au moins un état — perde la tête et frappe l'un des siens`,
   partExplosion: (v) => `une cible qui meurt en brûlant explose sur tout ce qui l'entoure`,
   explosionPvMax: (v) => `un ennemi qu'il abat explose pour ${pct(v)} de ses PV maximum`,
   reductionBerce: (v, m) => `ce qu'il touche inflige ${pct(v)} de moins pendant ${m.dureeBerce} tours`,
@@ -132,7 +135,7 @@ const PHRASES_VOIE = {
   seuilSecours: (v, m) => `le premier allié à tomber sous ${pct(v)} de ses PV reçoit un bouclier gratuit de ${pct(m.partBouclierSecours)} de ses PV max`,
 
   // --- Compagnons ---
-  limiteInvocations: (v, m) => `${v} invocations à la fois, à ${pct(m.multInvocation)} de leurs statistiques normales`,
+  limiteInvocations: (v, m) => `${v} invocations à la fois${m.multInvocation ? `, à ${pct(m.multInvocation)} de leurs statistiques normales` : ''}`,
   invocationsCopient: () => 'et ses créatures se battent avec SES compétences',
   invocationsRessuscitent: (v) => `une créature tombée revient au tour suivant à ${pct(v)} de ses PV, une fois chacune`,
   meuteDepart: (v, m) => `${v} compagnons entrent avec lui dans chaque combat, à ${pct(m.partMeute)} de ses statistiques`,
@@ -141,6 +144,7 @@ const PHRASES_VOIE = {
   piegeParDex: () => 'un piège tendu au premier tour de chaque combat',
   soinParMise: (v) => `chaque ennemi abattu lui rend ${pct(v)} de ses PV max`,
   chargesPourCritique: (v) => `à ${v} charges accumulées, le coup suivant est critique garanti`,
+  chargesPersistantes: () => 'et ses charges ne se perdent jamais — elles traversent même les combats',
   pvOurs: (v) => `l'ours lui donne +${pct(v)} de PV max`,
   initiativeCorbeau: (v) => `le corbeau +${pct(v)} d'initiative`,
   critParManche: (v, m) => `+${pct(v)} de critique par manche passée sur la MÊME cible, jusqu'à +${pct(m.critMaxDuel)}`,
@@ -163,6 +167,9 @@ const CLES_MUETTES = new Set([
 function texteMecaniquesVoie(mecaniques) {
   const morceaux = ORDRE_PHRASES
     .filter((cle) => mecaniques[cle] !== undefined && !CLES_MUETTES.has(cle))
+    // cumulPas raconte déjà le pas gratuit et son bonus : répéter les deux
+    // phrases sœurs ferait dire deux fois la même chose à la fiche.
+    .filter((cle) => !(mecaniques.cumulPas !== undefined && (cle === 'pasGratuit' || cle === 'bonusApresPas')))
     .map((cle) => PHRASES_VOIE[cle](mecaniques[cle], mecaniques));
   if (!morceaux.length) return '';
   const phrase = morceaux.join(' ; ').replace(/ ; et /g, ', et ').replace(/ ; mais /g, ', mais ');
@@ -204,7 +211,7 @@ const MECANIQUES_VOIE = {
 
   // ---------------- ⚔️ Guerrier ----------------
   berserker: [
-    { parMancheSansDegats: 0.03, rageMax: 0.40, soinParMise: 0.08 },
+    { parMancheEnSang: 0.03, rageMax: 0.40, soinParMise: 0.08 },
     { volDeVie: 0.20, malusSoinsRecus: 0.50, rageMax: 0.40 },
     { parMort: 0.10, plafondCharnier: 1.20, rageMax: 0.40, soinParMise: 0.08 },
   ],
@@ -279,7 +286,7 @@ const MECANIQUES_VOIE = {
   invocateur: [
     { invocationsCopient: true, limiteInvocations: 2, multInvocation: 1.4 },
     { invocationsRessuscitent: 0.50, limiteInvocations: 2, multInvocation: 1.4 },
-    { limiteInvocations: 4, multInvocation: 1.6 },
+    { limiteInvocations: 4, multInvocation: 0.7 },
   ],
 
   // ---------------- ✨ Devin ----------------
@@ -289,7 +296,7 @@ const MECANIQUES_VOIE = {
     { relanceGratuite: 0.30, dureeBuffBonus: 2, reductionBerce: 0.15, dureeBerce: 3 },
   ],
   chaman: [
-    { limiteInvocations: 3, multInvocation: 1.5, dureeEsprit: 3 },
+    { limiteInvocations: 3, multInvocation: 0.95, dureeEsprit: 3 },
     { resurrection: 0.30, dureeEsprit: 3, limiteInvocations: 2 },
     { ciblesSupp: 1, partCiblesSupp: 0.50, dureeEsprit: 3, limiteInvocations: 2 },
   ],

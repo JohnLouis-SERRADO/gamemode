@@ -755,7 +755,7 @@ function rendreArcanium() {
     nomListe: 'grimoires',
     vide: '📚 Plus rien à apprendre dans cette école : Dame Sibylle s’incline bien bas.',
     rendre: ([id, comp]) => {
-    const carte = carteCompetence(id, comp, { stats });
+    const carte = carteCompetence(id, comp, { stats, maxMp: p.maxMp || 0 });
     const prix = prixGrimoire(comp);
     const acheter = document.createElement('button');
     acheter.className = 'btn-choix btn-compact btn-achat';

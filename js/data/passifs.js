@@ -23,14 +23,6 @@
 // Ils gardent leur intention, formulée avec ce qui existe vraiment.
 // =====================================================================
 
-// Un passif se lit toujours par le même chemin : le combattant, sa
-// sous-classe, la clé du réglage. Un héros distant reconstruit par le
-// réseau n'a parfois pas de sous-classe : on renvoie alors null.
-function passifSousClasse(c) {
-  if (!c || c.type !== 'joueur') return null;
-  return PASSIFS_SOUS_CLASSE[c.sousClasse] || null;
-}
-
 // =====================================================================
 // v23 — LA FUSION SPÉCIALITÉ + VOIE.
 //
@@ -52,6 +44,56 @@ function passifSousClasse(c) {
 // =====================================================================
 const MEMO_REGLAGES = {};
 
+// v26 — LA FUSION NE RÉTROGRADE PLUS.
+//
+// L'écrasement brut ({...spec, ...voie, ...eveil}) faisait qu'un Éveil
+// RARE dégradait le passif de Voie déjà acquis : un Traqueur de la Marque
+// (25 %) qui décrochait « Pisteur » (20 %) perdait cinq points — à
+// rebours de la règle §5.1 (« la rareté n'abaisse jamais la puissance »)
+// et du contrat des Voies (« choisir n'enlève jamais rien »).
+//
+// Trois familles de clés, trois règles :
+//   • les BONUS numériques prennent la meilleure valeur (Math.max) ;
+//   • les CONTRAINTES et arbitrages assumés écrasent (dernier posé gagne) —
+//     c'est le prix d'identité, pas un bonus ;
+//   • la paire d'invocations (limite × mult) se compare EN BLOC, sinon
+//     marier « 6 créatures » d'un côté et « ×1,4 » de l'autre fabriquerait
+//     une armée qu'aucun palier n'a jamais accordée.
+const CLES_PASSIF_ECRASEMENT = new Set([
+  'soinsAlliesInterdits', 'soinsInterdits', 'zonesInterdites', 'surcoutMana',
+  'degatsDirectsInterdits', 'saignementParTour', 'fragilite', 'plafondPvMax',
+  'unTourSurDeux', 'unKillParTour', 'communesInterdites', 'jamaisEnPremier',
+  'fuiteInterdite', 'groupeInterdit', 'bonusPerdusSiLigneChangee',
+  'aucunBonusRarete', 'degatsReduits', 'malusDegatsVoie', 'malusSoinsRecus',
+  'initiativeMoitie', 'interditAvant', 'chargesPourCritique', 'seuilSecours',
+]);
+
+// Les clés où PLUS PETIT est meilleur : le maximum serait un malus.
+const CLES_PASSIF_MINIMUM = new Set(['invulnerabilitePeriodique', 'plafondDegatsParCoup', 'sangParMana']);
+
+function fusionnerReglages(couches) {
+  const resultat = {};
+  let scoreInvocation = -1;
+  couches.filter(Boolean).forEach((couche) => {
+    Object.entries(couche).forEach(([cle, valeur]) => {
+      if (cle === 'limiteInvocations' || cle === 'multInvocation') return; // paire atomique, plus bas
+      if (typeof valeur !== 'number' || CLES_PASSIF_ECRASEMENT.has(cle)) { resultat[cle] = valeur; return; }
+      if (resultat[cle] === undefined) { resultat[cle] = valeur; return; }
+      resultat[cle] = CLES_PASSIF_MINIMUM.has(cle) ? Math.min(resultat[cle], valeur) : Math.max(resultat[cle], valeur);
+    });
+    if (couche.limiteInvocations !== undefined || couche.multInvocation !== undefined) {
+      const score = (couche.limiteInvocations || 1) * (couche.multInvocation || 1);
+      if (score >= scoreInvocation) {
+        scoreInvocation = score;
+        if (couche.limiteInvocations !== undefined) resultat.limiteInvocations = couche.limiteInvocations;
+        if (couche.multInvocation !== undefined) resultat.multInvocation = couche.multInvocation;
+        else delete resultat.multInvocation;
+      }
+    }
+  });
+  return resultat;
+}
+
 function reglagesDuCombattant(c) {
   if (!c || c.type !== 'joueur') return null;
   const idEveil = (c.eveil && c.eveil.id) || '-';
@@ -62,7 +104,7 @@ function reglagesDuCombattant(c) {
   // v24 : l'Éveil se pose par-dessus les deux, contrainte comprise.
   const eveil = (typeof PASSIFS_EVEIL !== 'undefined' && PASSIFS_EVEIL[idEveil]) || null;
   if (!specialite && !voie && !eveil) return null;
-  MEMO_REGLAGES[cleMemo] = { ...(specialite || {}), ...(voie || {}), ...(eveil || {}) };
+  MEMO_REGLAGES[cleMemo] = fusionnerReglages([specialite, voie, eveil]);
   return MEMO_REGLAGES[cleMemo];
 }
 
@@ -216,7 +258,7 @@ const PASSIFS_SOUS_CLASSE = {
     nom: 'Ancêtres',
     limiteInvocations: 2,
     dureeEsprit: 3,
-    texte: (p) => `${p.limiteInvocations} totems simultanés ; quand un allié tombe, son esprit combat ${p.dureeEsprit} tours à sa place.`,
+    texte: (p) => `${p.limiteInvocations} invocations simultanées — totems et créatures s’apprennent à l’Arcanium — ; quand un allié tombe, son esprit combat ${p.dureeEsprit} tours à sa place.`,
   },
   druide: {
     nom: 'Sève',
@@ -240,10 +282,11 @@ const PASSIFS_SOUS_CLASSE = {
   corrupteur: {
     nom: 'Contagion',
     dureeBonusStatut: 1,
+    propagationExpiration: true,
     texte: (p) => `les états qu’il inflige durent ${p.dureeBonusStatut} tour de plus, et se propagent à un autre ennemi en expirant.`,
   },
   metamorphe: {
-    nom: 'Trois bêtes',
+    nom: 'Mue',
     pvOurs: 0.30,
     initiativeCorbeau: 0.25,
     texte: (p) => `il bascule librement, hors combat, entre l’ours (+${pct(p.pvOurs)} de PV max) et le corbeau (+${pct(p.initiativeCorbeau)} d’initiative).`,

@@ -58,16 +58,16 @@ const PHRASES_EVEIL = {
   ennemisEntravesDepart: () => 'tous les ennemis entrent en combat déjà entravés',
   tousStatutsATous: () => 'un état qu\'il pose se pose sur TOUS les ennemis à la fois',
   formesCumulees: (v) => `il garde ${pct(v)} des bonus de la forme qu'il ne porte pas`,
-  frappeDesDegatsRecus: (v) => `${pct(v)} de tout ce qu'il a encaissé depuis le début du combat s'ajoute à chacun de ses coups`,
-  transfertDegatsEquipe: (v) => `${pct(v)} des dégâts destinés à un allié passent par lui — et le nourrissent`,
+  frappeDesDegatsRecus: (v) => `+${pct(v)} de dégâts par tranche de 100 PV encaissés depuis le début du combat`,
+  transfertDegatsEquipe: (v) => `${pct(v)} des dégâts destinés à un allié passent par lui — il n'en encaisse que la moitié, et ils le nourrissent`,
   marqueTerrain: () => 'il marque TOUS les ennemis dès le premier tour',
   attaqueTousLesEnnemis: () => 'ses attaques simples frappent tous les ennemis à la fois',
-  parCadavreDevore: (v, m) => `+${pct(v)} de statistiques par cadavre dévoré, jusqu'à ${m.maxCadavres} fois`,
+  parCadavreDevore: (v, m) => `+${pct(v)} de dégâts par cadavre dévoré, jusqu'à ${m.maxCadavres} fois`,
 
   // --- Les contraintes. Elles retirent une option, jamais de la puissance. ---
   soinsAlliesInterdits: () => 'en échange, aucun allié ne peut le soigner : il ne compte que sur lui-même',
   soinsInterdits: () => 'en échange, plus aucun soin ne le touche : il ne tient que par les boucliers',
-  zonesInterdites: () => 'en échange, il ne peut plus viser qu\'un ennemi à la fois',
+  zonesInterdites: () => 'en échange, il ne peut plus viser qu\'un ennemi à la fois — les dons de son propre Éveil exceptés',
   surcoutMana: (v) => `en échange, ses sorts coûtent ${pct(v)} de mana en plus`,
   degatsDirectsInterdits: () => 'en échange, il n\'inflige plus aucun dégât direct',
   saignementParTour: (v) => `en échange, il perd ${pct(v)} de ses PV maximum à chaque tour`,
@@ -75,7 +75,7 @@ const PHRASES_EVEIL = {
   plafondPvMax: (v) => `en échange, ses PV sont plafonnés à ${pct(v)} de son maximum`,
   unTourSurDeux: () => 'en échange, il n\'agit qu\'une manche sur deux',
   unKillParTour: () => 'en échange, il ne peut abattre qu\'un seul ennemi par manche',
-  communesInterdites: () => 'en échange, il perd l\'accès aux compétences communes',
+  communesInterdites: () => 'en échange, il perd l\'accès aux compétences communes (les invocations restent siennes)',
   jamaisEnPremier: () => 'en échange, il agit toujours en dernier',
   fuiteInterdite: () => 'en échange, il ne peut plus fuir un combat',
   groupeInterdit: () => 'en échange, il ne peut plus rejoindre une expédition de groupe',
@@ -151,7 +151,7 @@ const MECANIQUES_EVEIL = {
     { renaissance: 0.35, parMort: 0.06, plafondCharnier: 1.00 },
   ],
   moine: [
-    { chargesPourCritique: 7 },
+    { chargesPourCritique: 7, chargesPersistantes: true },
     { degatsParCharge: 0.03, chargesPourCritique: 5 },
     { immuniteStatuts: true, immuniteEtourdi: true },
     { actionSiPropre: true },
@@ -235,8 +235,8 @@ const MECANIQUES_EVEIL = {
     { celeriteEnnemis: 30, dureeEtourdiBonus: 1 },
   ],
   elementaliste: [
-    { bonusSynergie: 0.50 },
-    { bonusSynergie: 0.85 },
+    { bonusSynergie: 0.60 },
+    { bonusSynergie: 0.60, parRune: 0.06, plafondRunes: 0.30 },
     { parRune: 0.10, plafondRunes: 0.60 },
     { bonusSynergie: 0.60, bonusZone: 0.30 },
     { perceArmure: 0.03, bonusSynergie: 0.40 },
@@ -251,12 +251,12 @@ const MECANIQUES_EVEIL = {
     { parMort: 0.06, plafondCharnier: 1.20, dureeBonusStatut: 1 },
   ],
   invocateur: [
-    { limiteInvocations: 3, multInvocation: 1.4 },
+    { limiteInvocations: 3, multInvocation: 0.95 },
     { invocationsCopient: true, limiteInvocations: 2, multInvocation: 1.4 },
-    { invocationsRessuscitent: 0.50, limiteInvocations: 3, multInvocation: 1.4 },
-    { limiteInvocations: 6, multInvocation: 1.5 },
-    { limiteInvocations: 4, multInvocation: 1.6, invocationsCopient: true },
-    { limiteInvocations: 4, multInvocation: 1.8, invocationsRessuscitent: 0.5 },
+    { invocationsRessuscitent: 0.50, limiteInvocations: 3, multInvocation: 0.95 },
+    { limiteInvocations: 6, multInvocation: 0.5 },
+    { limiteInvocations: 4, multInvocation: 0.7, invocationsCopient: true },
+    { limiteInvocations: 4, multInvocation: 0.7, invocationsRessuscitent: 0.5 },
   ],
 
   // ---------------- ✨ Devin ----------------
@@ -269,12 +269,12 @@ const MECANIQUES_EVEIL = {
     { etourdiSurZone: 0.60, alliesDegats: 0.15 },
   ],
   chaman: [
-    { limiteInvocations: 3, multInvocation: 1.5 },
+    { limiteInvocations: 3, multInvocation: 0.95 },
     { dureeEsprit: 3, limiteInvocations: 2 },
     { resurrection: 0.35, dureeEsprit: 3 },
-    { limiteInvocations: 4, multInvocation: 1.5, invocationsRessuscitent: 0.5 },
+    { limiteInvocations: 4, multInvocation: 0.7, invocationsRessuscitent: 0.5 },
     { dureeEsprit: 9, resurrection: 0.30 },
-    { limiteInvocations: 3, multInvocation: 1.6, dureeEsprit: 5 },
+    { limiteInvocations: 3, multInvocation: 0.95, dureeEsprit: 5 },
   ],
   druide: [
     { soinsBonus: 0.25, partSoinEquipe: 0.05 },
@@ -362,7 +362,11 @@ const MECANIQUES_CONTRAINTE = {
   },
   divin: {
     tank: { plafondPvMax: 0.50 },
-    melee: { unTourSurDeux: true },
+    // « Un tour sur deux » annulait EXACTEMENT le passif du Duelliste divin
+    // (2 actions × ½ manche = le rythme de tout le monde) et rendait le
+    // Berserker divin net négatif. La contrainte redevient une option
+    // retirée : plus aucun soin ne le touche.
+    melee: { soinsInterdits: true },
     distance: { unKillParTour: true },
     magie: { communesInterdites: true },
     soin: { jamaisEnPremier: true },
@@ -396,5 +400,25 @@ Object.entries(MECANIQUES_EVEIL).forEach(([idSousClasse, liste]) => {
     eveil.mecaniques = PASSIFS_EVEIL[eveil.id];
     eveil.effet = textePassifComplet(mecaniques);
     eveil.contrainte = contrainte ? textePassifComplet(contrainte) : null;
+  });
+});
+
+// ---------------------------------------------------------------------
+// 5. Les fiches des COMPÉTENCES de Voie et d'Éveil suivent le même
+// contrat que les passifs : produites depuis les mécaniques réelles.
+// Elles recopiaient les phrases d'ORIGINE de TABLE_VOIES/TABLE_EVEILS —
+// invisibilité, copie de sorts, gel permanent — que les v23/v24 ont
+// précisément réécrites.
+// ---------------------------------------------------------------------
+Object.values(VOIES).forEach((voie) => {
+  const comp = COMPETENCES[voie.competence];
+  if (comp && voie.passif) comp.desc = `${voie.passif} La compétence de la ${voie.nom}.`;
+});
+
+Object.values(EVEILS).forEach((eveil) => {
+  (eveil.competences || []).forEach((idComp) => {
+    const comp = COMPETENCES[idComp];
+    if (!comp) return;
+    comp.desc = `${eveil.effet || ''}${eveil.contrainte ? ` ${eveil.contrainte}` : ''} Compétence d'Éveil de ${eveil.nom}.`.trim();
   });
 });

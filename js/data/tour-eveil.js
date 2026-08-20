@@ -17,11 +17,15 @@ const ETAGES_TOUR_EVEIL = 100;
 
 // Ce que rapporte un étage, par tranche. Les Sceaux sont la monnaie de la
 // Tour : ils ne servent qu'ici, et ils ne s'achètent pas.
+// (v26 : les « bonus » d'étage — cartes de faille, reliques — étaient des
+// promesses déclarées ici sans une ligne de code ni d'affichage. Ils
+// disparaissent plutôt que de mentir ; le jour où ils existeront, ils
+// reviendront avec leur mécanique.)
 const SCEAUX_PAR_ETAGE = [
-  { jusqua: 20, sceaux: 1, bonus: null },
-  { jusqua: 50, sceaux: 2, bonus: 'Une carte de faille tous les dix étages' },
-  { jusqua: 80, sceaux: 3, bonus: 'Une relique mineure aux étages 60 et 80' },
-  { jusqua: 100, sceaux: 5, bonus: 'Une relique majeure à l’étage 100' },
+  { jusqua: 20, sceaux: 1 },
+  { jusqua: 50, sceaux: 2 },
+  { jusqua: 80, sceaux: 3 },
+  { jusqua: 100, sceaux: 5 },
 ];
 
 function sceauxDeLEtage(etage) {

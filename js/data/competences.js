@@ -65,7 +65,12 @@ function valeurOffensiveDe(cle, s) {
 
 function statDeCompetence(comp, s) {
   const valeur = (s && s[comp.stat]) || 0;
-  if (comp.stat === 'int' && estCompetenceDeSoutien(comp)) return Math.max(valeur, (s && s.esp) || 0);
+  // Le repli est SYMÉTRIQUE : un soin recâblé sur l'Esprit (v19) doit
+  // encore lire l'Intelligence d'un héros d'avant la refonte — la
+  // promesse « personne ne perd ses soins » vaut dans les deux sens.
+  if (estCompetenceDeSoutien(comp) && (comp.stat === 'int' || comp.stat === 'esp')) {
+    return Math.max(valeur, (s && s[comp.stat === 'int' ? 'esp' : 'int']) || 0);
+  }
   // Les soins portés par la Vitalité gardent leur pleine valeur : c'est
   // seulement l'attaque qui est bridée.
   if (comp.stat === 'vit' && comp.type === 'degats') return valeur * RENDEMENT_OFFENSIF_VITALITE;
@@ -136,10 +141,18 @@ function degatsAttaqueDeBase(combattant, s) {
 // palier de déblocage. Le sort de fin de parcours protège comme un sort de
 // fin de parcours.
 // =====================================================================
+// Le palier auquel une compétence est CALIBRÉE : son niveau de déblocage,
+// ou — pour les signatures, qui n'en ont pas — le palier déclaré à part.
+// Sans lui, dix-sept signatures étaient calées au budget d'un sort de
+// NIVEAU 1 : la « signature » sortait plus faible que le premier sort du kit.
+function palierDeCompetence(comp) {
+  return (comp && (comp.palier || comp.niveauRequis)) || 1;
+}
+
 function ampleurEffet(comp, effet) {
   if (effet && effet.ampleur) return effet.ampleur;
   if (!comp) return 1;
-  return multiplicateurPalier(comp.niveauRequis);
+  return multiplicateurPalier(palierDeCompetence(comp));
 }
 
 function valeurBouclier(s, effet, comp) {
@@ -153,7 +166,10 @@ function valeurRegen(s, effet, comp) {
 function statSoutien(s, cle) {
   const choisie = cle || 'int';
   const valeur = (s && s[choisie]) || 0;
-  return choisie === 'int' ? Math.max(valeur, (s && s.esp) || 0) : valeur;
+  if (choisie === 'int' || choisie === 'esp') {
+    return Math.max(valeur, (s && s[choisie === 'int' ? 'esp' : 'int']) || 0);
+  }
+  return valeur;
 }
 
 const TEXTE_CIBLE = {
@@ -177,12 +193,18 @@ function valeurRetourMana(effet, s, maxMp) {
   return Math.max(base, Math.round(reserve * (effet.part || base / 60)));
 }
 
-function texteEffetCompetence(effet, s, comp) {
+// La stat du poison affiché : la même lecture que le moteur (statDe).
+function statSoutienPoison(s, cle) {
+  return (s && s[cle || 'dex']) || 0;
+}
+
+function texteEffetCompetence(effet, s, comp, maxMp = 0) {
   switch (effet.type) {
     case 'poison': {
       const valeur = effet.degats != null
         ? effet.degats
-        : Math.round(3 + (s[effet.stat || 'dex'] || 0) * (effet.stat === 'int' ? 0.5 : 0.6));
+        : Math.round((3 + statSoutienPoison(s, effet.stat) * (['int', 'esp'].includes(effet.stat) ? 0.5 : 0.6))
+          * ampleurEffet(comp, effet));
       return `🧪 poison ≈${valeur}/tour (${effet.duree} t.)`;
     }
     case 'etourdi':
@@ -190,9 +212,9 @@ function texteEffetCompetence(effet, s, comp) {
     case 'affaibli': return `⬇️ −30 % dégâts (${effet.duree} t.)`;
     case 'bouclier': return `🛡️ bouclier ≈${valeurBouclier(s, effet, comp)} (${effet.duree} t.)`;
     case 'benediction': return `🙏 +30 % dégâts (${effet.duree} t.)`;
-    case 'provocation': return `😤 attire les coups + bouclier ≈${Math.round(4 + (s.for || 0))}`;
+    case 'provocation': return `😤 attire les coups + bouclier ≈${Math.round((4 + (s[(effet && effet.stat) || 'for'] || 0)) * ampleurEffet(comp, effet))}`;
     case 'regen': return `💚 régén. ≈${valeurRegen(s, effet, comp)}/tour (${effet.duree} t.)`;
-    case 'mana': return `🧘 +${valeurRetourMana(effet, s)} PM`;
+    case 'mana': return `🧘 +${valeurRetourMana(effet, s, maxMp)} PM`;
     case 'drain': return `🧛 rend ${Math.round(effet.part * 100)} % des dégâts en PV`;
     case 'pacte': return `🩸 −${Math.round(effet.partPv * 100)} % PV max → +${effet.mana} PM`;
     case 'vol-or': return `💰 vole ≈${Math.round(4 + (s.dex || 0) * 1.2)} po`;
@@ -227,7 +249,7 @@ function ligneCaracPorteuse(comp, s) {
   return `📊 ${porteuse.emoji} ${porteuse.nom}${part}`;
 }
 
-function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
+function detailsCompetence(comp, s, rang = 0, maxMp = 0, options = {}) {
   const parts = [];
   const multRang = 1 + 0.15 * rang;
   if (comp.type === 'degats') {
@@ -240,19 +262,22 @@ function detailsCompetence(comp, s, rang = 0, maxMp = 0) {
   } else if (comp.type === 'invocation') {
     const modele = INVOCATIONS[comp.invocation];
     parts.push(`🐾 invoque ${modele.emoji} ${modele.nom} (jusqu'à sa mort ou la fin du combat)`);
-    parts.push('🤖 agit seul · stats ≤ les vôtres · 50 % de votre mana');
-    parts.push('☝️ 1 invocation à la fois — 2 pour l’Invocateur 🐉');
+    parts.push('🤖 agit seule · stats calées sur les vôtres · 50 % de votre mana');
+    parts.push('☝️ 1 invocation à la fois — les passifs de l’Invocateur et du Chaman en tiennent plus');
   }
   if (rang > 0) parts.push(`🏅 rang ${rang} (+${Math.round(rang * 15)} %)`);
   if (comp.critBonus) parts.push(`💥 +${Math.round(comp.critBonus * 100)} % crit.`);
   if (comp.effet) {
-    const texte = texteEffetCompetence(comp.effet, s, comp);
+    const texte = texteEffetCompetence(comp.effet, s, comp, maxMp);
     if (texte) parts.push(texte);
   }
   parts.push(`🎯 ${TEXTE_CIBLE[comp.cible]}`);
-  const cout = coutMpDe(comp, s, maxMp);
-  parts.push(cout > 0 ? `💧 ${cout} PM${cout > (comp.coutMp || 0) ? ` (${comp.coutMp} +${cout - comp.coutMp} lié aux stats)` : ''}` : '💧 gratuit');
-  if (comp.cooldown) parts.push(`⏳ ${comp.cooldown} t.`);
+  const cout = Math.round(coutMpDe(comp, s, maxMp) * (options.multCout || 1));
+  parts.push(cout > 0 ? `💧 ${cout} PM${cout > (comp.coutMp || 0) ? ` (${comp.coutMp} +${cout - comp.coutMp} lié aux stats${options.multCout > 1 ? ' et aux passifs' : ''})` : ''}` : '💧 gratuit');
+  // Le 99 est une sentinelle « un seul appel par combat », pas une vraie
+  // recharge : affiché tel quel, il promettait 99 tours d'attente.
+  if (comp.cooldown >= 99) parts.push('🔄 1 appel par combat');
+  else if (comp.cooldown) parts.push(`⏳ ${comp.cooldown} t.`);
   return parts.filter(Boolean);
 }
 
@@ -367,7 +392,7 @@ const COMPETENCES = {
     nom: 'Concentration', emoji: '🧘', categorie: 'soutien', type: 'utilitaire', cible: 'soi',
     stat: 'int', coutMp: 0, cooldown: 4,
     effet: { type: 'mana', valeur: 10 },
-    desc: 'Vous méditez et récupérez 10 points de mana.',
+    desc: 'Vous méditez et récupérez une part de votre mana (au moins 10 PM).',
   },
   'second-souffle': {
     nom: 'Second souffle', emoji: '🍃', categorie: 'soutien', type: 'soin', cible: 'soi',
@@ -441,7 +466,7 @@ const COMPETENCES = {
     nom: 'Méditation profonde', emoji: '☯️', categorie: 'soutien', type: 'soin', cible: 'soi',
     stat: 'vit', puissance: 5, ratio: 0.8, coutMp: 0, cooldown: 4,
     effet: { type: 'mana', valeur: 8 },
-    desc: 'Un instant de calme : récupère des PV (Vitalité) et 8 PM.',
+    desc: 'Un instant de calme : récupère des PV (Vitalité) et une part de votre mana.',
   },
   'poing-dragon': {
     nom: 'Poing du dragon', emoji: '🐲', categorie: 'physique', type: 'degats', cible: 'ennemi',
@@ -593,7 +618,8 @@ const COMPETENCES = {
   'deflagration': {
     nom: 'Déflagration', emoji: '💥', categorie: 'magie', type: 'degats', cible: 'ennemi',
     stat: 'int', puissance: 12, ratio: 1.8, coutMp: 9, cooldown: 4,
-    desc: 'Une explosion concentrée d’une chaleur insoutenable.',
+    effet: { type: 'poison', duree: 3, stat: 'int' },
+    desc: 'Une explosion concentrée d’une chaleur insoutenable — et qui continue de brûler.',
   },
   'mur-de-flammes': {
     nom: 'Mur de flammes', emoji: '🔥', categorie: 'magie', type: 'degats', cible: 'ennemis',
@@ -687,7 +713,7 @@ const COMPETENCES = {
     nom: 'Danse du vent', emoji: '🍃', categorie: 'soutien', type: 'soin', cible: 'soi',
     stat: 'dex', puissance: 4, ratio: 0.7, coutMp: 0, cooldown: 4,
     effet: { type: 'mana', valeur: 5 },
-    desc: 'Un pas de côté pour souffler : récupère des PV et 5 PM.',
+    desc: 'Un pas de côté pour souffler : récupère des PV et un peu de mana.',
   },
 };
 
@@ -732,9 +758,24 @@ function ciblesDe(comp) {
 // La caractéristique de référence à laquelle tous les budgets sont exprimés.
 const STAT_CALIBRATION = 100;
 
+// Un effet embarqué n'est plus GRATUIT : un sort qui empoisonne ou
+// étourdit rend un peu de dégâts bruts en échange — sinon, à palier égal,
+// la compétence à effet dominait strictement la compétence nue.
+const POIDS_EFFETS_CALIBRATION = {
+  poison: 0.15, etourdi: 0.12, affaibli: 0.10, drain: 0.08, 'vol-or': 0.02,
+};
+
+function poidsBonusCompetence(comp) {
+  if (comp.type !== 'degats') return 1;
+  const effet = comp.effet ? (POIDS_EFFETS_CALIBRATION[comp.effet.type] || 0) : 0;
+  // Un critique vaut ×1,5 : chaque point de chance en plus vaut donc
+  // la moitié de sa valeur en dégâts attendus.
+  return (1 + 0.5 * (comp.critBonus || 0)) * (1 + effet);
+}
+
 function valeurEffectiveCompetence(comp, stat = STAT_CALIBRATION) {
   const brut = (comp.puissance + stat * (comp.ratio || 0)) * (comp.coups || 1) * ciblesDe(comp);
-  return brut / (1 + (comp.cooldown || 0));
+  return brut * poidsBonusCompetence(comp) / (1 + (comp.cooldown || 0));
 }
 
 // Budget par tour de chaque rôle, à caractéristique 100. L'écart entre les
@@ -808,7 +849,7 @@ function calibrerCompetences() {
     const role = roleDeCompetence(comp);
     if (!role) return;
     const budget = comp.type === 'soin' ? BUDGET_SOIN_ROLE[role] : BUDGET_DEGATS_ROLE[role];
-    const cible = budget * multiplicateurPalier(comp.niveauRequis);
+    const cible = budget * multiplicateurPalier(palierDeCompetence(comp));
     const actuel = valeurEffectiveCompetence(comp);
     if (!(actuel > 0)) return;
     const facteur = cible / actuel;
@@ -822,7 +863,8 @@ function calibrerCompetences() {
     // l'échelle, deux valeurs d'origine voisines (1,60 et 1,61) donnaient
     // 2,17 et 2,18 — un écart invisible mais bien réel entre deux Voies
     // censées être équivalentes.
-    const brutVoulu = cible * (1 + (comp.cooldown || 0)) / ((comp.coups || 1) * ciblesDe(comp));
+    const brutVoulu = cible * (1 + (comp.cooldown || 0))
+      / ((comp.coups || 1) * ciblesDe(comp) * poidsBonusCompetence(comp));
     comp.ratio = Math.max(0.05, Math.round(((brutVoulu - comp.puissance) / STAT_CALIBRATION) * 100) / 100);
   });
 }

@@ -338,15 +338,28 @@ function facteurResistanceDe(p) {
 // avec la meilleure compétence qu'il peut se payer, et retombe sur
 // l'attaque de base quand elle recharge. Les hasards (critique, coup
 // direct) entrent par leur espérance, pas par un tirage.
+// Le malus de ligne SORTANT, par compétence : un coup non magique parti de
+// la ligne arrière perd 40 % (infligerDegats) — le banc l'oubliait, et
+// surestimait donc d'un bon tiers tout héros d'arrière-ligne non couvert.
+function facteurLigneSortante(p, comp) {
+  const ligne = typeof ligneParDefaut === 'function' ? ligneParDefaut(p) : 'avant';
+  if (ligne !== 'arriere') return 1;
+  if (comp && typeof estSortMagique === 'function' && estSortMagique(comp)) return 1;
+  const fantoche = { classe: p.classe, type: 'joueur', statuts: [], sousClasse: p.sousClasse, voie: p.voie, eveil: p.eveil };
+  if (typeof ignoreMalusDeLigne === 'function' && ignoreMalusDeLigne(fantoche)) return 1;
+  return 0.6;
+}
+
 function degatsParTourHeros(p) {
   const s = statsEffectives(p);
-  const base = degatsAttaqueDeBase(p, s);
+  const base = degatsAttaqueDeBase(p, s) * facteurLigneSortante(p, null);
 
   let meilleure = base;
   (p.competences || []).forEach((id) => {
     const comp = COMPETENCES[id];
     if (!comp || comp.type !== 'degats') return;
-    const brut = (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * (comp.coups || 1);
+    const brut = (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * (comp.coups || 1)
+      * facteurLigneSortante(p, comp);
     // Une compétence qui recharge n'est disponible qu'un tour sur (1+n).
     const parts = 1 / (1 + (comp.cooldown || 0));
     const moyenne = brut * parts + base * (1 - parts);
@@ -364,11 +377,12 @@ function degatsParTourHeros(p) {
 // si un monstre tombe d'une pichenette.
 function plusGrosCoupHeros(p) {
   const s = statsEffectives(p);
-  let brut = degatsAttaqueDeBase(p, s);
+  let brut = degatsAttaqueDeBase(p, s) * facteurLigneSortante(p, null);
   (p.competences || []).forEach((id) => {
     const comp = COMPETENCES[id];
     if (!comp || comp.type !== 'degats') return;
-    const v = (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * (comp.coups || 1);
+    const v = (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * (comp.coups || 1)
+      * facteurLigneSortante(p, comp);
     if (v > brut) brut = v;
   });
   return brut * (1 + sousCarac(s, 'deter')) * 1.5; // critique
@@ -431,8 +445,27 @@ function plusGrosCoupMonstre(m) {
 function personaArme(classe, niveau) {
   const p = personaReference(classe, niveau);
   const base = CLASSES_BASE[classe];
-  p.competences = (base && base.competences ? base.competences : [])
-    .filter((id) => COMPETENCES[id] && (COMPETENCES[id].niveauRequis || 1) <= niveau)
+  // v26 : le persona possédait sa spécialité, sa Voie et son Éveil (voir
+  // personaReference) mais ne lançait QUE les compétences de classe de
+  // base — calibrées ×1,25 quand celles de son palier montent à ×2,4. On
+  // mesurait un héros de niveau 80 avec ses sorts de niveau 15.
+  const kit = new Set(base && base.competences ? base.competences : []);
+  if (p.sousClasse && SOUS_CLASSES[p.sousClasse]) {
+    (SOUS_CLASSES[p.sousClasse].competences || []).forEach((id) => kit.add(id));
+  }
+  if (p.voie && VOIES[p.voie]) kit.add(VOIES[p.voie].competence);
+  if (p.eveil && EVEILS[p.eveil.id]) (EVEILS[p.eveil.id].competences || []).forEach((id) => kit.add(id));
+  const s = statsEffectives(p);
+  const valeurAuBanc = (id) => {
+    const comp = COMPETENCES[id];
+    if (!comp || (comp.niveauRequis || 1) > niveau) return -1;
+    if (comp.type !== 'degats' && comp.type !== 'soin') return 0;
+    const brut = (comp.puissance + statDeCompetence(comp, s) * (comp.ratio || 0)) * (comp.coups || 1);
+    return brut / (1 + (comp.cooldown || 0)) * (comp.type === 'soin' ? 0.8 : 1);
+  };
+  p.competences = [...kit]
+    .filter((id) => valeurAuBanc(id) >= 0)
+    .sort((a, b) => valeurAuBanc(b) - valeurAuBanc(a))
     .slice(0, MAX_COMPETENCES_ACTIVES);
   return p;
 }

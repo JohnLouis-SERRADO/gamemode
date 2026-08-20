@@ -318,7 +318,7 @@ function verifierEveil() {
       elle rend plus <strong>exigeant</strong>.</p>
     <div id="eveil-choix"></div>
     <p class="aide">Pas convaincu ? À la Tour de l’Éveil, des Sceaux permettent de relancer le
-      tirage, d’en verrouiller une proposition ou d’y garantir un Légendaire.</p>`;
+      tirage, d’en verrouiller une proposition ou d’y garantir un Mythique au moins.</p>`;
 
   const zone = modale.querySelector('#eveil-choix');
   propositions.forEach((eveil) => {
@@ -521,7 +521,7 @@ function verifierChoixSousClasse() {
     <h2>${base.emoji} Niveau ${NIVEAU_SOUS_CLASSE} : choisissez votre spécialité de ${base.nom}</h2>
     <p>${echapper(p.nom)} maîtrise les bases. Il est temps de choisir la voie qui fera
       sa réputation : chacune apporte un <strong>bonus de caractéristiques permanent</strong>,
-      un <strong>passif propre</strong> et <strong>huit compétences exclusives</strong>.</p>
+      un <strong>passif propre</strong> et <strong>huit compétences exclusives</strong>, débloquées au fil des niveaux, jusqu’au 40.</p>
     <div id="sous-classe-choix"></div>
     <p class="aide">Vous garderez tout ce que vous avez déjà appris. Le choix se change plus tard,
       contre une contrepartie.</p>`;
@@ -551,7 +551,7 @@ function verifierChoixSousClasse() {
       annoncerDeblocage({
         emoji: sc.emoji,
         titre: `${base.nom} — ${sc.nom}`,
-        texte: `${sc.passif} Ses huit compétences rejoignent votre grimoire.`,
+        texte: `${sc.passif} Ses huit compétences rejoindront votre grimoire au fil des niveaux, d’ici le 40.`,
       });
       if (el('ecran-heros').classList.contains('actif')) rendreHeros();
       rendreTopbar();
@@ -927,6 +927,10 @@ function migrerClasses(p) {
     } else {
       p.classe = cible.classe;
       p.sousClasse = cible.sousClasse;
+      // Il PORTAIT ces huit compétences avant la refonte : la grille de
+      // déblocage étalée (10 → 40) vaut pour les nouveaux venus, pas pour
+      // lui — « sans rien perdre » est un contrat.
+      p.kitMigre = true;
     }
   }
   p.versionClasses = VERSION_CLASSES;
@@ -1397,7 +1401,8 @@ function debloquerCompetencesClasse(p, annoncer) {
     const deMaVoie = comp.voie && comp.voie === p.voie;
     const deMonEveil = comp.eveil && p.eveil && comp.eveil === p.eveil.id;
     if ((!deMaClasse && !deMaSousClasse && !deMaVoie && !deMonEveil) || p.grimoire.includes(id)) return;
-    if ((comp.niveauRequis || 1) > p.niveau) return;
+    const kitHerite = p.kitMigre && deMaSousClasse;
+    if (!kitHerite && (comp.niveauRequis || 1) > p.niveau) return;
     // Les compétences du niveau 1 (signature et bases) s'imposent dans la
     // barre ; celles des paliers suivants respectent l'agencement choisi
     // par le joueur et attendent sagement au grimoire si tout est plein.
@@ -1811,7 +1816,7 @@ function carteCompetence(id, comp, options = {}) {
     + (options.selectionnee ? ' selectionnee' : '')
     + (options.cliquable ? ' cliquable' : '');
   // Détails chiffrés calculés avec les stats fournies (héros ou brouillon).
-  const infos = detailsCompetence(comp, options.stats || {}, options.rang || 0);
+  const infos = detailsCompetence(comp, options.stats || {}, options.rang || 0, options.maxMp || 0);
   let badge = '';
   if (comp.signature) {
     badge = ` <span class="badge-signature">🏅 Signature${options.rang ? ` · rang ${options.rang}/${RANG_SIGNATURE_MAX}` : ''}</span>`;
@@ -2658,7 +2663,7 @@ function rendreBlocCompetences(zone, p, s) {
   p.competences.forEach((id) => {
     const comp = COMPETENCES[id];
     if (!comp) return;
-    const carte = carteCompetence(id, comp, { stats: s, rang: rangDe(p, id) });
+    const carte = carteCompetence(id, comp, { stats: s, rang: rangDe(p, id), maxMp: p.maxMp || 0 });
     ajouterBlocSignature(p, id, comp, carte);
     const retirer = document.createElement('button');
     retirer.className = 'btn-choix btn-compact';
@@ -2689,7 +2694,7 @@ function rendreBlocCompetences(zone, p, s) {
     grilleGrimoire.className = 'grille-competences';
     enReserve.forEach((id) => {
       const comp = COMPETENCES[id];
-      const carte = carteCompetence(id, comp, { stats: s, rang: rangDe(p, id) });
+      const carte = carteCompetence(id, comp, { stats: s, rang: rangDe(p, id), maxMp: p.maxMp || 0 });
       ajouterBlocSignature(p, id, comp, carte);
       const equiperBtn = document.createElement('button');
       equiperBtn.className = 'btn-choix btn-compact';
@@ -2721,7 +2726,7 @@ function rendreBlocCompetences(zone, p, s) {
     const grilleArbre = document.createElement('div');
     grilleArbre.className = 'grille-competences';
     aVenir.forEach(([id, comp]) => {
-      const carte = carteCompetence(id, comp, { stats: s });
+      const carte = carteCompetence(id, comp, { stats: s, maxMp: p.maxMp || 0 });
       carte.classList.add('carte-verrouillee');
       const verrou = document.createElement('div');
       verrou.className = 'comp-verrou';

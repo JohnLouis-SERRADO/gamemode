@@ -90,7 +90,7 @@ const TABLE_VOIES = {
     ['Voie de la Mise à Mort', 'Dégâts doublés sous 25 % de PV ; exécution automatique sous 10 %.', 'Fin de contrat', '☠️', 'execution'],
   ],
   danselame: [
-    ['Voie du Vent Tranchant', 'Change de ligne à chaque action, et le bonus se cumule jusqu’à +100 %.', 'Danse sans fin', '🌪️', 'rafale'],
+    ['Voie du Vent Tranchant', 'Change de ligne à chaque action, et le bonus se cumule jusqu’à +100 %.', 'Pas perpétuel', '🌪️', 'rafale'],
     ['Voie du Miroir', 'Mémorise deux compétences ennemies et peut les relancer.', 'Galerie des glaces', '🪞', 'brise'],
     ['Voie des Pétales', 'Chaque coup touche une cible de plus, à 45 % des dégâts.', 'Tourbillon éternel', '🌸', 'salve'],
   ],
@@ -107,19 +107,19 @@ const TABLE_VOIES = {
     ['Voie du Poison', 'Ses flèches appliquent un poison cumulable cinq fois.', 'Carquois empoisonné', '🧪', 'fleau'],
   ],
   voleur: [
-    ['Voie du Détrousseur', '35 % de vol d’objet par coup, et les objets du palier supérieur deviennent possibles.', 'Casse du siècle', '💎', 'execution'],
+    ['Voie du Détrousseur', '35 % de vol d’objet par coup, et les objets du palier supérieur deviennent possibles.', 'Monte-en-l’air', '💎', 'execution'],
     ['Voie de la Fortune', '+80 % d’or, et +2 % de dégâts par tranche de 1 000 po gagnée dans le combat.', 'Pluie d’or', '🪙', 'salve'],
     ['Voie de la Ruse', 'Applique un statut aléatoire à chaque coup porté.', 'Sac de tours', '🎩', 'brise'],
   ],
   traqueur: [
     ['Voie de la Marque', 'Les marques font subir +25 % de dégâts d’équipe et se propagent à la mort de la cible.', 'Sentence du chasseur', '🔖', 'brise'],
-    ['Voie de l’Exécution', '+50 % de dégâts sous 40 % de PV, exécution automatique sous 12 %.', 'Tir du crépuscule', '🌆', 'execution'],
-    ['Voie de la Piste', '+30 % contre une famille de monstres choisie chaque jour.', 'Piste de sang', '🩸', 'frappe'],
+    ['Voie de l’Exécution', '+50 % de dégâts sous 40 % de PV, exécution automatique sous 12 %.', 'Dernier affût', '🌆', 'execution'],
+    ['Voie de la Piste', '+30 % contre une famille de monstres choisie chaque jour.', 'Sang frais', '🩸', 'frappe'],
   ],
   voltigeur: [
-    ['Voie du Vent', 'Trois tirs par action, à 60 % des dégâts chacun.', 'Grêle de traits', '🌬️', 'rafale'],
-    ['Voie de la Célérité', '+25 % de Célérité, et chaque esquive rend une action.', 'Danse de l’arc', '💨', 'souffle'],
-    ['Voie de la Distance', '+50 % de dégâts en ligne arrière, interdiction de passer en ligne avant.', 'Tir de siège', '🏰', 'frappe'],
+    ['Voie du Vent', 'Trois tirs par action, à 60 % des dégâts chacun.', 'Bourrasque', '🌬️', 'rafale'],
+    ['Voie de la Célérité', '+25 % de Célérité, et chaque esquive rend une action.', 'Corde vive', '💨', 'souffle'],
+    ['Voie de la Distance', '+50 % de dégâts en ligne arrière, interdiction de passer en ligne avant.', 'Portée de siège', '🏰', 'frappe'],
   ],
 
   // ---------------- 🔮 Arcaniste ----------------
@@ -129,7 +129,7 @@ const TABLE_VOIES = {
     ['Voie du Soleil', 'Ses sorts de feu ignorent toutes les résistances élémentaires.', 'Colonne solaire', '☀️', 'frappe'],
   ],
   givremage: [
-    ['Voie du Grand Froid', 'Gel de deux tours sur les non-boss ; les gelés ne peuvent plus être soignés.', 'Zéro absolu', '🧊', 'fracas'],
+    ['Voie du Grand Froid', 'Gel de deux tours sur les non-boss ; les gelés ne peuvent plus être soignés.', 'Grand Gel', '🧊', 'fracas'],
     ['Voie du Fracas', 'La brisure éclabousse à 60 % ; chaque brisure rend un tour, deux fois par combat.', 'Brise-glace', '❄️', 'salve'],
     ['Voie du Linceul', 'Les ralentis perdent 20 de Célérité de plus et subissent +25 % de dégâts.', 'Hiver', '🌨️', 'brise'],
   ],
@@ -146,12 +146,12 @@ const TABLE_VOIES = {
   invocateur: [
     ['Voie du Lien', 'Ses invocations copient les compétences qu’il a équipées.', 'Lien parfait', '🔗', 'frappe'],
     ['Voie de l’Éther', 'Les invocations tombées reviennent au tour suivant à 50 % de leurs PV.', 'Éther sans fin', '🫧', 'soin'],
-    ['Voie de la Horde', 'Quatre invocations simultanées, à 60 % de ses statistiques.', 'Légion', '🐉', 'salve'],
+    ['Voie de la Horde', 'Quatre invocations simultanées, à 60 % de ses statistiques.', 'Ban de la Horde', '🐉', 'salve'],
   ],
 
   // ---------------- ✨ Devin ----------------
   barde: [
-    ['Voie du Maestro', 'Deux buffs cumulables par allié, et ils deviennent indissipables.', 'Crescendo', '🎼', 'ferveur'],
+    ['Voie du Maestro', 'Deux buffs cumulables par allié, et ils deviennent indissipables.', 'Tutti', '🎼', 'ferveur'],
     ['Voie du Satiriste', 'Les silencés subissent +25 % ; une action ratée coûte 10 % des PV maximum.', 'Farce finale', '🎭', 'brise'],
     ['Voie de l’Écho', '30 % de chances que ses sorts se relancent gratuitement.', 'Reprise', '🔁', 'soin'],
   ],
@@ -167,35 +167,35 @@ const TABLE_VOIES = {
   ],
   oracle: [
     ['Voie du Bouclier', 'Ses boucliers durent jusqu’à rupture et se cumulent entre eux.', 'Aegis', '🛡️', 'egide'],
-    ['Voie de la Vision', 'L’équipe évite automatiquement la prochaine attaque annoncée.', 'Prophétie', '🔮', 'ferveur'],
-    ['Voie du Verbe', 'Ses soins mono-cible touchent toute l’équipe à 60 %.', 'Dernier Jour', '🌇', 'soin'],
+    ['Voie de la Vision', 'L’équipe évite automatiquement la prochaine attaque annoncée.', 'Augure', '🔮', 'ferveur'],
+    ['Voie du Verbe', 'Ses soins mono-cible touchent toute l’équipe à 60 %.', 'Verbe premier', '🌇', 'soin'],
   ],
 
   // ---------------- 🌑 Runelame ----------------
   faucheur: [
     ['Voie du Drain', 'Vole 40 % des dégâts infligés en PV et en mana.', 'Siphon d’âmes', '🫀', 'drain'],
-    ['Voie de la Moisson', '+5 % de dégâts par âme récoltée, sans plafond dans le combat.', 'Moisson', '🌾', 'salve'],
-    ['Voie du Néant', 'Ses dégâts ignorent défense et boucliers, et lui coûtent 5 % de ses PV.', 'Souffle du néant', '🕳️', 'execution'],
+    ['Voie de la Moisson', '+5 % de dégâts par âme récoltée, sans plafond dans le combat.', 'Grande Moisson', '🌾', 'salve'],
+    ['Voie du Néant', 'Ses dégâts ignorent défense et boucliers, et lui coûtent 5 % de ses PV.', 'Appel du vide', '🕳️', 'execution'],
   ],
   corrupteur: [
-    ['Voie de la Peste', 'Ses statuts durent deux tours de plus et se propagent à toute la ligne.', 'Épidémie', '☣️', 'fleau'],
-    ['Voie de la Décomposition', 'Convertit tous les statuts d’une cible en dégâts immédiats.', 'Décomposition', '🍂', 'execution'],
-    ['Voie de la Terreur', 'Les ennemis terrorisés se frappent entre eux.', 'Miasme', '😱', 'fracas'],
+    ['Voie de la Peste', 'Ses statuts durent deux tours de plus et se propagent à toute la ligne.', 'Pandémie', '☣️', 'fleau'],
+    ['Voie de la Décomposition', 'Convertit tous les statuts d’une cible en dégâts immédiats.', 'Pourrissement', '🍂', 'execution'],
+    ['Voie de la Terreur', 'Les ennemis terrorisés se frappent entre eux.', 'Effroi', '😱', 'fracas'],
   ],
   metamorphe: [
-    ['Voie de l’Ours', '+40 % de PV maximum, et ses coups appliquent un saignement.', 'Rugissement', '🐻', 'fracas'],
-    ['Voie du Corbeau', '+40 % de Célérité et d’esquive ; il agit deux fois au premier tour.', 'Vol du corbeau', '🐦‍⬛', 'rafale'],
-    ['Voie du Serpent', 'Poison à chaque coup, cumulable cinq fois.', 'Morsure du serpent', '🐍', 'fleau'],
+    ['Voie de l’Ours', '+40 % de PV maximum, et ses coups appliquent un saignement.', 'Grondement', '🐻', 'fracas'],
+    ['Voie du Corbeau', '+40 % de Célérité et d’esquive ; il agit deux fois au premier tour.', 'Nuée noire', '🐦‍⬛', 'rafale'],
+    ['Voie du Serpent', 'Poison à chaque coup, cumulable cinq fois.', 'Crochets jumeaux', '🐍', 'fleau'],
   ],
   runemaitre: [
     ['Voie de la Convergence', 'Deux runes par tour, et les runes frappent 60 % plus fort.', 'Grand Œuvre runique', '💠', 'salve'],
     ['Voie du Sceau', 'Ses glyphes au sol persistent tout le combat et se cumulent.', 'Sceau permanent', '🔯', 'fleau'],
-    ['Voie de l’Alphabet', '+8 % de dégâts au sort suivant par rune différente déjà tracée.', 'Alphabet complet', '📜', 'frappe'],
+    ['Voie de l’Alphabet', '+8 % de dégâts au sort suivant par rune différente déjà tracée.', 'Dernière lettre', '📜', 'frappe'],
   ],
   vibrelame: [
     ['Voie de la Résonance', 'Chaque coup d’une série renforce le suivant de 15 %.', 'Résonance parfaite', '🔔', 'rafale'],
-    ['Voie du Silence', 'Ses zones silencent les ennemis touchés pendant un tour.', 'Silence blanc', '🤍', 'fracas'],
-    ['Voie de l’Écho', '30 % de chances que ses attaques à coups multiples se relancent.', 'Mille échos', '🎼', 'rafale'],
+    ['Voie du Silence', 'Ses zones silencent les ennemis touchés pendant un tour.', 'Chape de silence', '🤍', 'fracas'],
+    ['Voie de l’Écho', '30 % de chances que ses attaques à coups multiples se relancent.', 'Échos sans fin', '🎼', 'rafale'],
   ],
 };
 
