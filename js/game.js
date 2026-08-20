@@ -165,7 +165,7 @@ function annoncerDeblocagesNiveau(p, avant, apres) {
     }
     const seuilCauchemar = z.niveauMin + 6;
     if (seuilCauchemar > avant && seuilCauchemar <= apres && p.bossVaincus.includes(z.id)) {
-      annoncerDeblocage({ emoji: '💀', titre: `Cauchemar débloqué : ${z.nom}`, texte: 'Monstres déchaînés, récompenses ×2,5 — pour les héros qui n’ont peur de rien.' });
+      annoncerDeblocage({ emoji: '💀', titre: `Cauchemar débloqué : ${z.nom}`, texte: `Monstres ×${DIFFICULTES.cauchemar.hp}, récompenses ×${DIFFICULTES.cauchemar.xp} — pour les héros qui n’ont peur de rien.` });
     }
   });
   if (avant < 3 && apres >= 3) {
@@ -314,8 +314,9 @@ function verifierEveil() {
   modale.innerHTML = `
     <h2>✨ Niveau ${NIVEAU_EVEIL} : l’Éveil de ${echapper(p.nom)}</h2>
     <p>Vous ne changez pas de style : vous changez de <strong>nature</strong>. Trois natures
-      se présentent, vous en garderez une. La rareté ne rend pas plus puissant —
-      elle rend plus <strong>exigeant</strong>.</p>
+      se présentent, vous en garderez une. Un Éveil est un <strong>passif</strong> : son effet
+      coule en permanence dans vos veines — rien à lancer, rien à équiper. La rareté ne rend
+      pas plus puissant — elle rend plus <strong>exigeant</strong>.</p>
     <div id="eveil-choix"></div>
     <p class="aide">Pas convaincu ? À la Tour de l’Éveil, des Sceaux permettent de relancer le
       tirage, d’en verrouiller une proposition ou d’y garantir un Mythique au moins.</p>`;
@@ -329,15 +330,15 @@ function verifierEveil() {
       <div class="objet-entete">${eveil.emoji} <strong>${eveil.nom}</strong>
         <span class="rarete rar-${eveil.rarete === 'cache' ? 'divin' : eveil.rarete}">${rarete.nom}</span></div>
       <div class="objet-desc">${eveil.effet}</div>
-      <div class="objet-bonus">${eveil.competences.map((c) => `${COMPETENCES[c].emoji} ${COMPETENCES[c].nom}`).join(' · ')}</div>
+      <div class="objet-bonus">✨ Passif permanent — actif dès le premier combat</div>
       ${eveil.contrainte ? `<div class="objet-niveau niveau-insuffisant">⚠️ ${eveil.contrainte}</div>` : '<div class="objet-desc">Aucune contrainte.</div>'}`;
     const choisir = document.createElement('button');
     choisir.className = 'btn-principal btn-compact';
     choisir.textContent = `${eveil.emoji} Devenir ${eveil.nom}`;
     choisir.addEventListener('click', () => {
       // Le choix scelle tout : propositions, garantie et verrou s'effacent.
+      // v29 : l'Éveil est un passif pur — aucune compétence à apprendre.
       p.eveil = { id: eveil.id, rarete: eveil.rarete, relances: (p.eveil && p.eveil.relances) || 0 };
-      eveil.competences.forEach((c) => apprendreCompetence(p, c, true));
       bornerVie(p);
       sauvegarder(p);
       voile.remove();
@@ -393,8 +394,8 @@ function verifierChoixVoie() {
   modale.innerHTML = `
     <h2>${sousClasse.emoji} Niveau ${NIVEAU_VOIE} : choisissez votre Voie de ${sousClasse.nom}</h2>
     <p>${echapper(p.nom)} a poussé sa spécialité aussi loin qu'elle allait. La Voie décide
-      de ce qu'elle devient : un <strong>passif majeur</strong>, une <strong>compétence
-      propre</strong>, et un <strong>titre</strong> qui vous suivra partout.</p>
+      de ce qu'elle devient : un <strong>passif majeur</strong> + une <strong>capacité
+      propre</strong> (sa compétence de Voie), et un <strong>titre</strong> qui vous suivra partout.</p>
     <div id="voie-choix"></div>
     <p class="aide">Le choix se change plus tard, contre une contrepartie.</p>`;
 
@@ -407,7 +408,7 @@ function verifierChoixVoie() {
     carte.innerHTML = `
       <div class="objet-entete">${voie.emoji} <strong>${voie.nom}</strong></div>
       <div class="objet-desc">${voie.passif}</div>
-      <div class="objet-bonus">${comp.emoji} ${comp.nom} — nouvelle compétence</div>
+      <div class="objet-bonus">${comp.emoji} ${comp.nom} — sa capacité, à lancer en combat</div>
       <div class="objet-desc">Titre porté : <strong>${voie.titre}</strong></div>`;
     const choisir = document.createElement('button');
     choisir.className = 'btn-principal btn-compact';
@@ -977,11 +978,20 @@ function normaliserPerso(p) {
   }
   if (!p.paliersTour.tourBoss) p.paliersTour.tourBoss = { normal: 0, heroique: 0, cauchemar: 0 };
   if (!p.paliersTour.ascension) p.paliersTour.ascension = {};
-  if (!p.donjons || typeof p.donjons !== 'object') p.donjons = {};
+  normaliserDonjons(p);
   // v7 : le grimoire recense toutes les compétences connues ; seules
   // MAX_COMPETENCES_ACTIVES d'entre elles sont équipées en même temps.
   if (!Array.isArray(p.grimoire)) p.grimoire = [];
   p.competences.forEach((id) => { if (!p.grimoire.includes(id)) p.grimoire.push(id); });
+  // v29 : les compétences disparues du catalogue — au premier rang les
+  // anciennes compétences d'Éveil, devenues des passifs — sortent des
+  // sauvegardes. Les rangs de maîtrise investis dedans disparaissent
+  // avec : le recalcul de la maîtrise, plus bas, rend ces points.
+  p.grimoire = p.grimoire.filter((id) => COMPETENCES[id]);
+  p.competences = p.competences.filter((id) => COMPETENCES[id]);
+  if (p.rangs && typeof p.rangs === 'object') {
+    Object.keys(p.rangs).forEach((id) => { if (!COMPETENCES[id]) delete p.rangs[id]; });
+  }
   // v18 : plus aucune compétence gratuite à la montée de niveau — les
   // crédits en attente des anciennes sauvegardes sont soldés.
   p.competencesEnAttente = 0;
@@ -1291,6 +1301,83 @@ function annoncerReequilibrage() {
   document.body.appendChild(voile);
 }
 
+// =====================================================================
+// v29 — L'annonce des trois difficultés, une fois et une seule.
+// Même règle que l'annonce v20 : un joueur qui revient doit comprendre
+// ce qui a changé sans fouiller — et savoir qu'il n'a rien perdu.
+// =====================================================================
+const CLE_ANNONCE_DIFFICULTES = 'gamemode2.annonce.v29-difficultes';
+
+function annoncerNouvellesDifficultes() {
+  let deja = null;
+  try { deja = localStorage.getItem(CLE_ANNONCE_DIFFICULTES); } catch (e) { deja = 'vu'; }
+  if (deja) return;
+  // Un héros tout neuf découvrira tout ça en jouant : inutile de l'arrêter.
+  if (!etat.profils.some((p) => (p.niveau || 1) > 1)) return;
+  try { localStorage.setItem(CLE_ANNONCE_DIFFICULTES, 'vu'); } catch (e) { /* tant pis */ }
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-renaissance';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-equilibrage';
+  modale.innerHTML = `
+    <div class="crane-mort">🔥</div>
+    <h2>La règle du double</h2>
+    <p><strong>Les difficultés ont désormais une seule et même logique, partout :
+    chaque palier DOUBLE le précédent.</strong> Héroïque : monstres ×2 (points de vie et
+    attaque), récompenses ×2. Cauchemar : monstres ×4, récompenses ×4. Sur les cartes du
+    monde, à la Tour des Boss — et maintenant dans les histoires.</p>
+    <p><strong>Les donjons d'histoire — Chroniques des terres et Épopées de Valciel —
+    se vivent désormais en trois difficultés.</strong> Terminer une histoire en Normal ouvre
+    son Héroïque ; l'Héroïque ouvre son Cauchemar. La première complétion de chaque palier
+    paie plein tarif, multiplicateur compris ; revivre un palier déjà vécu rapporte 35 %.
+    La relique unique de l'histoire, elle, ne tombe toujours qu'une fois.</p>
+    <p><strong>Vos histoires déjà terminées comptent.</strong> Elles sont créditées au palier
+    Normal : leurs Héroïques vous attendent, déjà ouverts. Le butin suit le danger — davantage
+    de tirages dans les coffres de boss en Héroïque et en Cauchemar, et l'assaut de donjon en
+    groupe se lance maintenant à la difficulté ouverte par le chef.</p>
+    <p><strong>Et la difficulté se lit en puissance de combat.</strong> Chaque palier affiche la
+    puissance qu'il conseille — ×1,5 en Héroïque, ×2 en Cauchemar — en face de la vôtre, partout :
+    cartes, Tour des Boss, donjons d'histoire. Le Cauchemar d'une carte s'ouvre désormais au niveau
+    <em>ou</em> à la puissance. Même le plafond d'XP anti-rush suit le palier : relevé de moitié en
+    Héroïque, doublé en Cauchemar — l'or, lui, suit ×2 et ×4 sans plafond.</p>
+    <p class="aide">Rien ne vous a été retiré : mêmes reliques, mêmes records, mêmes
+    sauvegardes. Le monde a seulement appris à mordre deux fois plus fort — quand on le
+    lui demande.</p>`;
+  const bouton = document.createElement('button');
+  bouton.className = 'btn-principal';
+  bouton.textContent = '⚔️ Reprendre l’aventure';
+  bouton.addEventListener('click', () => voile.remove());
+  modale.appendChild(bouton);
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
+// v29 : les donjons d'histoire se vivent en trois difficultés. Les
+// complétions d'avant la v29 sont créditées au palier Normal — c'est là
+// qu'elles ont toutes été vécues. Appelée par normaliserPerso ET après
+// l'import cloud (qui pose p.donjons APRÈS la normalisation générale) ;
+// une entrée corrompue (nombre, chaîne…) est refaite à neuf.
+function normaliserDonjons(p) {
+  if (!p.donjons || typeof p.donjons !== 'object') p.donjons = {};
+  Object.entries(p.donjons).forEach(([id, prog]) => {
+    if (!prog || typeof prog !== 'object') {
+      p.donjons[id] = {
+        checkpoint: null, drapeaux: {}, fini: 0, epilogue: null,
+        finis: { normal: 0, heroique: 0, cauchemar: 0 }, difficulte: null,
+      };
+      return;
+    }
+    if (!prog.finis || typeof prog.finis !== 'object') {
+      prog.finis = { normal: prog.fini || 0, heroique: 0, cauchemar: 0 };
+    }
+    ['normal', 'heroique', 'cauchemar'].forEach((cle) => {
+      if (typeof prog.finis[cle] !== 'number') prog.finis[cle] = 0;
+    });
+    if (prog.difficulte === undefined) prog.difficulte = null;
+  });
+}
+
 function sauvegarderLocal() {
   try {
     localStorage.setItem(CLE_STOCKAGE_PROFILS, JSON.stringify(etat.profils));
@@ -1419,8 +1506,8 @@ function debloquerCompetencesClasse(p, annoncer) {
     const deMaClasse = comp.classe && comp.classe === p.classe;
     const deMaSousClasse = comp.sousClasse && comp.sousClasse === p.sousClasse;
     const deMaVoie = comp.voie && comp.voie === p.voie;
-    const deMonEveil = comp.eveil && p.eveil && comp.eveil === p.eveil.id;
-    if ((!deMaClasse && !deMaSousClasse && !deMaVoie && !deMonEveil) || p.grimoire.includes(id)) return;
+    // (v29 : l'Éveil est un passif pur — il n'apporte plus de compétence.)
+    if ((!deMaClasse && !deMaSousClasse && !deMaVoie) || p.grimoire.includes(id)) return;
     const kitHerite = deMaSousClasse && p.kitMigre === comp.sousClasse;
     if (!kitHerite && (comp.niveauRequis || 1) > p.niveau) return;
     // Les compétences du niveau 1 (signature et bases) s'imposent dans la
@@ -1504,7 +1591,14 @@ function etirementProgression(niveau) {
 // =====================================================================
 const COMBATS_MINIMUM_PAR_NIVEAU = 10;
 
-function plafondXpParGain(p) {
+// v29 : le plafond suit la DIFFICULTÉ. Sans lui, l'Héroïque et le
+// Cauchemar promettaient « récompenses ×2/×4 » et rendaient la même XP
+// écrêtée que le Normal — l'or suivait, l'XP mentait. Le plafond monte
+// donc du même facteur que la puissance conseillée du palier (×1, ×1,5,
+// ×2 — DIFFICULTES[].puissance) : la garantie « dix combats par niveau »
+// reste entière en Normal, et le Cauchemar, payé quadruple en or, ne
+// descend jamais sous cinq combats par niveau.
+function plafondXpParGain(p, multPlafond) {
   // Sans niveau connu, on ne peut pas savoir ce que « un dixième de niveau »
   // représente : on laisse alors passer plutôt que d'écraser le gain sur la
   // base du niveau 1, ce qui diviserait l'XP d'un héros de niveau 90 par
@@ -1512,10 +1606,10 @@ function plafondXpParGain(p) {
   if (!p || typeof p.niveau !== 'number') return Infinity;
   const niveau = Math.min(NIVEAU_MAX - 1, Math.max(1, p.niveau));
   const besoin = seuilXp(niveau + 1) - seuilXp(niveau);
-  return Math.max(1, Math.floor(besoin / COMBATS_MINIMUM_PAR_NIVEAU));
+  return Math.max(1, Math.floor((besoin / COMBATS_MINIMUM_PAR_NIVEAU) * (multPlafond || 1)));
 }
 
-function xpReelle(p, xp) {
+function xpReelle(p, xp, multPlafond) {
   const etirement = typeof p.niveau === 'number' ? etirementProgression(p.niveau) : 1;
   xp = Math.max(1, Math.round(xp * FACTEUR_XP_HISTORIQUE * REDUCTION_XP_V20 / etirement));
   if (p.race === 'humain') xp = Math.round(xp * 1.1); // Ambition
@@ -1531,13 +1625,20 @@ function xpReelle(p, xp) {
   });
   // Le plancher s'applique EN DERNIER, après tous les bonus : c'est ce qui
   // le rend infranchissable.
-  return Math.min(xp, plafondXpParGain(p));
+  return Math.min(xp, plafondXpParGain(p, multPlafond));
+}
+
+// Le facteur de plafond d'XP d'une difficulté — partagé par tous les
+// écrans de récompense (zones, tours, donjons, groupe).
+function multPlafondXp(difficulte) {
+  const d = DIFFICULTES[difficulte];
+  return (d && d.puissance) || 1;
 }
 
 // Texte honnête d'un gain partagé : une valeur unique si toute l'équipe
 // touche pareil, une fourchette sinon (les bonus varient par héros).
-function texteGainXp(membres, xpBase) {
-  const gains = membres.map((m) => xpReelle(m, xpBase));
+function texteGainXp(membres, xpBase, multPlafond) {
+  const gains = membres.map((m) => xpReelle(m, xpBase, multPlafond));
   const min = Math.min(...gains);
   const max = Math.max(...gains);
   return min === max ? `+${formatNombre(min)} XP` : `+${formatNombre(min)} à ${formatNombre(max)} XP`;
@@ -1550,9 +1651,9 @@ function texteGainPo(membres, poBase) {
   return min === max ? `+${formatNombre(min)} po` : `+${formatNombre(min)} à ${formatNombre(max)} po`;
 }
 
-function gagnerXp(p, xp) {
+function gagnerXp(p, xp, multPlafond) {
   const avant = p.niveau;
-  p.xp += xpReelle(p, xp);
+  p.xp += xpReelle(p, xp, multPlafond);
   const apres = niveauPour(p.xp);
   if (apres > avant) {
     p.pointsEnAttente += pointsCumules(apres) - pointsCumules(avant);
@@ -2267,11 +2368,32 @@ function rendreConsoleAdmin(zone, p) {
         p.histoiresVues[idZone] = liste.map((_, i) => i);
       });
     }],
-    ['📖 Tous les donjons terminés', () => {
+    ['📖 Tous les donjons terminés (Normal)', () => {
       DONJONS.forEach((d) => {
-        p.donjons[d.id] = p.donjons[d.id] || { fini: 0, checkpoint: null, drapeaux: {} };
-        p.donjons[d.id].fini = Math.max(1, p.donjons[d.id].fini || 0);
-        p.donjons[d.id].checkpoint = null;
+        const prog = progresDonjon(p, d.id); // garantit finis/difficulte (v29)
+        prog.fini = Math.max(1, prog.fini || 0);
+        prog.finis.normal = Math.max(1, prog.finis.normal || 0);
+        prog.checkpoint = null;
+      });
+    }],
+    ['🔥 Toutes les histoires en Héroïque', () => {
+      DONJONS.forEach((d) => {
+        const prog = progresDonjon(p, d.id);
+        prog.finis.normal = Math.max(1, prog.finis.normal || 0);
+        prog.finis.heroique = Math.max(1, prog.finis.heroique || 0);
+        prog.fini = Math.max(prog.fini || 0, prog.finis.normal + prog.finis.heroique);
+        prog.checkpoint = null;
+      });
+    }],
+    ['💀 Toutes les histoires en Cauchemar', () => {
+      DONJONS.forEach((d) => {
+        const prog = progresDonjon(p, d.id);
+        prog.finis.normal = Math.max(1, prog.finis.normal || 0);
+        prog.finis.heroique = Math.max(1, prog.finis.heroique || 0);
+        prog.finis.cauchemar = Math.max(1, prog.finis.cauchemar || 0);
+        prog.fini = Math.max(prog.fini || 0,
+          prog.finis.normal + prog.finis.heroique + prog.finis.cauchemar);
+        prog.checkpoint = null;
       });
     }],
     ['🗼 Records de tours au max', () => {
@@ -3343,7 +3465,7 @@ function chargerHerosImporte(donnees, id, token) {
   if (d.titre !== undefined) p.titre = d.titre;
   if (d.tourMax != null) p.tourMax = d.tourMax;
   if (d.tourBoss && typeof d.tourBoss === 'object') p.tourBoss = { normal: 0, heroique: 0, cauchemar: 0, ...d.tourBoss };
-  if (d.donjons && typeof d.donjons === 'object') p.donjons = d.donjons;
+  if (d.donjons && typeof d.donjons === 'object') { p.donjons = d.donjons; normaliserDonjons(p); }
   if (d.metiers && typeof d.metiers === 'object') p.metiers = d.metiers;
   if (d.metierPrincipal !== undefined) p.metierPrincipal = d.metierPrincipal;
   if (d.ascensions && typeof d.ascensions === 'object') p.ascensions = d.ascensions;
@@ -3396,6 +3518,9 @@ function initialiser() {
   rendreTitre();
   montrerEcran('ecran-titre');
   annoncerReequilibrage();
+  // v29 : l'annonce v20 garde la priorité — celle-ci ne s'affiche qu'aux
+  // joueurs qui l'ont déjà lue (les deux voiles se superposeraient sinon).
+  if (!document.getElementById('voile-renaissance')) annoncerNouvellesDifficultes();
   if (typeof demarrerReseau === 'function') {
     const reseau = demarrerReseau();
     // v20 : recharger la page ne coûte plus le groupe — dès que le monde

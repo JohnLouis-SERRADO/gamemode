@@ -1218,7 +1218,7 @@ suite('Monde vivant', () => {
 // =====================================================================
 suite('Actes III et IV', () => {
   test('vingt-neuf cartes couvrent la route du niveau 1 au niveau 100', () => {
-    // v27 : le Dernier Point a fondu dans le Trône — la liste du joueur
+    // v29 : le Dernier Point a fondu dans le Trône — la liste du joueur
     // compte vingt-neuf cartes, et le jeu aussi.
     egal(ZONES.length, 29, 'cartes du monde');
     const plafond = Math.max(...ZONES.map((z) => z.niveauMin));
@@ -1250,7 +1250,7 @@ suite('Actes III et IV', () => {
     neuves.forEach((id) => {
       const z = ZONES.find((x) => x.id === id);
       if (!z) { fautives.push(`${id} absente`); return; }
-      // v27 : le bestiaire suit la liste du joueur — de deux espèces (la
+      // v29 : le bestiaire suit la liste du joueur — de deux espèces (la
       // Mer de Verre) à sept (le Trône, qui a hérité du Dernier Point).
       if (z.monstres.length < 2 || z.monstres.length > 7) fautives.push(`${id} : ${z.monstres.length} monstres`);
       if (!MONSTRES[z.boss]) fautives.push(`${id} : boss introuvable`);
@@ -1456,43 +1456,42 @@ suite('Éveil', () => {
     aucun(fautives, 'raretés manquantes ou en double');
   });
 
-  test('324 compétences d\'Éveil, deux par Éveil', () => {
+  test('v29 : les Éveils sont des passifs purs — aucune compétence', () => {
+    // La règle a changé : un Éveil ne donne PLUS de compétence active.
+    // Son effet (et sa contrainte) coulent en permanence — le grimoire
+    // appartient aux classes, aux spécialités et aux Voies.
     const fautifs = Object.entries(EVEILS)
-      .filter(([, e]) => e.competences.length !== 2 || e.competences.some((c) => !COMPETENCES[c]))
+      .filter(([, e]) => (e.competences || []).length !== 0)
       .map(([id]) => id);
-    aucun(fautifs, 'Éveils aux compétences manquantes');
-    const total = Object.values(COMPETENCES).filter((c) => c.eveil).length;
-    egal(total, 324, 'compétences d\'Éveil');
+    aucun(fautifs, 'Éveils qui portent encore des compétences');
+    const restantes = Object.values(COMPETENCES).filter((c) => c.eveil).length;
+    egal(restantes, 0, 'aucune compétence marquée « eveil » ne doit rester au catalogue');
   });
 
-  test('LA RÈGLE : la rareté ne change jamais la puissance', () => {
-    // C'est la règle non négociable du document de conception. Sans elle,
-    // tout le monde relance jusqu'au Divin et le système devient une
-    // machine à frustration. On compare la puissance moyenne des
-    // compétences de chaque rareté : l'écart doit rester sous 10 %.
-    const parRarete = {};
-    Object.values(EVEILS).forEach((e) => {
-      const puissance = e.competences.reduce((somme, id) =>
-        somme + valeurProfilEveil(COMPETENCES[id]), 0);
-      (parRarete[e.rarete] = parRarete[e.rarete] || []).push(puissance);
-    });
-    const moyennes = Object.entries(parRarete).map(([r, l]) =>
-      [r, l.reduce((a, b) => a + b, 0) / l.length]);
-    const min = Math.min(...moyennes.map(([, m]) => m));
-    const max = Math.max(...moyennes.map(([, m]) => m));
-    const ecart = (max - min) / min;
-    verifier(ecart <= 0.1,
-      `écart de ${Math.round(ecart * 100)} % entre raretés — le maximum toléré est 10 %`);
+  test('LA RÈGLE : la rareté ne change jamais la puissance — elle est passée aux passifs', () => {
+    // C'est la règle non négociable du document de conception. Depuis la
+    // v29, la puissance d'un Éveil vit UNIQUEMENT dans son passif : la
+    // règle est donc gardée par la suite « Éveils (v24) » (multiplicateur
+    // borné sur les 162). Ici, on vérifie sa moitié structurelle : chaque
+    // rareté a bien ses réglages branchés, aucun Éveil n'est une coquille.
+    const sansReglages = Object.values(EVEILS)
+      .filter((e) => !PASSIFS_EVEIL[e.id] || !Object.keys(PASSIFS_EVEIL[e.id]).length)
+      .map((e) => `${e.nom} (${e.rarete})`);
+    aucun(sansReglages, 'Éveils sans passif branché');
   });
 
-  test('chaque profil dépense exactement le même budget', () => {
-    // La règle tient parce que les profils sont budgétés, pas choisis à
-    // la main. Si quelqu'un en ajoute un de travers, c'est ici que ça se voit.
-    const ecarts = Object.entries(PROFILS_EVEIL)
-      .map(([nom, modele]) => [nom, valeurProfilEveil(modele)])
-      .filter(([, valeur]) => Math.abs(valeur - BUDGET_EVEIL) / BUDGET_EVEIL > 0.02)
-      .map(([nom, valeur]) => `${nom} = ${Math.round(valeur)} au lieu de ${BUDGET_EVEIL}`);
-    aucun(ecarts, 'profils hors budget');
+  test('v29 : une vieille sauvegarde perd ses compétences d\'Éveil sans casse', () => {
+    // Les héros d'avant la v29 portaient jusqu'à deux compétences
+    // « eveil-* » au grimoire, parfois avec des rangs de maîtrise investis.
+    // La normalisation les retire et rend les points.
+    const p = herosTest({ niveau: 85 });
+    p.grimoire.push('eveil-fantome-1', 'eveil-fantome-2');
+    p.competences.push('eveil-fantome-1');
+    p.rangs = { ...(p.rangs || {}), 'eveil-fantome-1': 3 };
+    normaliserPerso(p);
+    verifier(!p.grimoire.includes('eveil-fantome-1'), 'le grimoire est nettoyé');
+    verifier(!p.competences.includes('eveil-fantome-1'), 'la barre active est nettoyée');
+    verifier(!(p.rangs && p.rangs['eveil-fantome-1']), 'les rangs investis sont rendus');
   });
 
   test('la rareté change bien la CONTRAINTE', () => {
@@ -4598,7 +4597,7 @@ suite('Refonte des classes (v26)', () => {
 // =====================================================================
 // v27 — Les Ordres de Valciel : recommencer, en le sachant.
 // =====================================================================
-suite('Les Ordres de Valciel (v27)', () => {
+suite('Les Ordres de Valciel (v29)', () => {
   window.rendreJournal = () => {};
 
   const heroDesOrdres = (niveau) => {
@@ -4663,5 +4662,346 @@ suite('Les Ordres de Valciel (v27)', () => {
     Object.keys(CARACS).forEach((cle) => egal(p.stats[cle], STAT_BASE, `stat ${cle} à la base`));
     egal(p.pointsEnAttente, POINTS_CREATION + pointsCumules(avant), 'tous les points rendus');
     verifier(p.hp <= p.maxHp && p.maxHp > 0, 'les PV suivent la nouvelle répartition');
+  });
+});
+
+// =====================================================================
+// v29 — LA RÈGLE DU DOUBLE ET LES TROIS DIFFICULTÉS DES HISTOIRES.
+//
+// Deux promesses à tenir, et à ne plus jamais casser sans le savoir :
+//   1. chaque palier de difficulté DOUBLE le précédent (monstres et
+//      récompenses), partout où une difficulté se choisit ;
+//   2. les donjons d'histoire se vivent en trois difficultés, ouvertes
+//      dans l'ordre, comptées par palier, sans rien perdre des vieilles
+//      sauvegardes — et sans fabriquer de mort instantanée.
+// =====================================================================
+suite('Difficultés v29 — la règle du double', () => {
+  // La page de tests ne charge pas reseau.js : multiplicateur d'événement
+  // mondial neutre, comme hors ligne.
+  if (typeof multiplicateursEvenement === 'undefined') {
+    window.multiplicateursEvenement = () => ({ xp: 1, po: 1, drop: 1 });
+  }
+
+  test('chaque palier double le précédent — PV, attaque, XP et or', () => {
+    egal(ORDRE_DIFFICULTES.length, 3, 'trois paliers, ni plus ni moins');
+    egal(ORDRE_DIFFICULTES[0], 'normal', 'Normal ouvre la marche');
+    egal(ORDRE_DIFFICULTES[2], 'cauchemar', 'Cauchemar la ferme');
+    ['hp', 'atk', 'xp', 'po'].forEach((champ) => {
+      egal(DIFFICULTES.normal[champ], 1, `Normal reste l'étalon (${champ} ×1)`);
+      egal(DIFFICULTES.heroique[champ], DIFFICULTES.normal[champ] * 2, `Héroïque double Normal (${champ})`);
+      egal(DIFFICULTES.cauchemar[champ], DIFFICULTES.heroique[champ] * 2, `Cauchemar double Héroïque (${champ})`);
+    });
+    // Le butin, lui, monte de moitié par palier : doubler des probabilités
+    // les écraserait au plafond de 100 % et tuerait la rareté.
+    verifier(DIFFICULTES.heroique.drop > DIFFICULTES.normal.drop, 'le butin monte en Héroïque');
+    verifier(DIFFICULTES.cauchemar.drop > DIFFICULTES.heroique.drop, 'et encore en Cauchemar');
+    verifier(DIFFICULTES.cauchemar.drop < DIFFICULTES.cauchemar.hp, 'sans suivre le ×4 des monstres');
+  });
+
+  test('le butin d’un combat suit le barème, au point près', () => {
+    // On fige le monde vivant (aucun effet d'heure ni de météo) pour lire
+    // les multiplicateurs purs.
+    const ancienMonde = window.mondeMaintenant;
+    window.mondeMaintenant = () => ({ effets: {} });
+    try {
+      const heros = herosTest({ niveau: 10 });
+      const butinEn = (difficulte) => tirerButinCombat({
+        genre: 'donjon', difficulte, equipe: [heros],
+        monstres: [{ nom: 'Éprouvette', xp: 40, po: [10, 10], drops: [] }],
+      });
+      egal(butinEn('normal').xp, 40, 'XP de référence en Normal');
+      egal(butinEn('heroique').xp, 80, 'XP doublée en Héroïque');
+      egal(butinEn('cauchemar').xp, 160, 'XP quadruplée en Cauchemar');
+      egal(butinEn('normal').po, 10, 'or de référence en Normal');
+      egal(butinEn('heroique').po, 20, 'or doublé en Héroïque');
+      egal(butinEn('cauchemar').po, 40, 'or quadruplé en Cauchemar');
+    } finally {
+      window.mondeMaintenant = ancienMonde;
+    }
+  });
+
+  test('les histoires comptent leurs fins par palier — les vieilles sauvegardes aussi', () => {
+    const p = herosTest();
+    const prog = progresDonjon(p, 'crypte');
+    egal(prog.fini, 0, 'aucune fin au départ');
+    egal(prog.finis.normal + prog.finis.heroique + prog.finis.cauchemar, 0, 'aucun palier vécu au départ');
+    egal(prog.difficulte, null, 'aucun chapitre en cours');
+    // Une sauvegarde d'avant la v29 : un seul compteur, trois fins vécues.
+    const ancien = herosTest();
+    ancien.donjons = { laboratoire: { fini: 3, checkpoint: null, drapeaux: {}, epilogue: 'defaut' } };
+    const migre = progresDonjon(ancien, 'laboratoire');
+    egal(migre.finis.normal, 3, 'les fins passées sont créditées au palier Normal');
+    egal(migre.finis.heroique, 0, 'Héroïque reste à vivre');
+    egal(migre.fini, 3, 'le compte total ne bouge pas (hauts faits, verrous)');
+    // Et normaliserPerso fait le même travail pour les sauvegardes
+    // chargées ou importées d'un bloc.
+    const importe = herosTest();
+    importe.donjons = { crypte: { fini: 2, checkpoint: null, drapeaux: {} } };
+    normaliserPerso(importe);
+    egal(importe.donjons.crypte.finis.normal, 2, 'normaliserPerso crédite le palier Normal');
+    egal(importe.donjons.crypte.difficulte, null, 'et pose le champ de reprise');
+    normaliserPerso(importe);
+    egal(importe.donjons.crypte.finis.normal, 2, 'normaliserPerso est idempotente');
+  });
+
+  test('Héroïque se mérite en Normal, Cauchemar en Héroïque', () => {
+    const p = herosTest();
+    const prog = progresDonjon(p, 'crypte');
+    verifier(difficulteHistoireDebloquee(prog, 'normal'), 'Normal s’ouvre toujours');
+    verifier(!difficulteHistoireDebloquee(prog, 'heroique'), 'Héroïque attend une fin en Normal');
+    verifier(!difficulteHistoireDebloquee(prog, 'cauchemar'), 'Cauchemar attend une fin en Héroïque');
+    prog.fini = 1;
+    prog.finis.normal = 1;
+    verifier(difficulteHistoireDebloquee(prog, 'heroique'), 'une fin en Normal ouvre Héroïque');
+    verifier(!difficulteHistoireDebloquee(prog, 'cauchemar'), 'mais pas Cauchemar');
+    prog.fini = 2;
+    prog.finis.heroique = 1;
+    verifier(difficulteHistoireDebloquee(prog, 'cauchemar'), 'une fin en Héroïque ouvre Cauchemar');
+    egal(meilleureDifficulteFinie(prog), 'heroique', 'l’insigne dit le plus haut palier vaincu');
+    prog.finis.cauchemar = 1;
+    egal(meilleureDifficulteFinie(prog), 'cauchemar', 'et suit jusqu’au bout');
+  });
+
+  test('la feuille de paie d’une fin : plein tarif ×palier, 35 % en relecture', () => {
+    const donjon = DONJONS_PAR_ID.crypte;
+    const p = herosTest();
+    const prog = progresDonjon(p, 'crypte');
+    const premiere = recompensesFinHistoire(donjon, prog, 'normal');
+    verifier(premiere.premiereAbsolue && premiere.premiereDifficulte, 'toute première fin');
+    egal(premiere.xp, donjon.recompenses.xp, 'plein tarif en Normal');
+    egal(premiere.po, donjon.recompenses.po, 'or plein tarif en Normal');
+    prog.fini = 1;
+    prog.finis.normal = 1;
+    const heroique = recompensesFinHistoire(donjon, prog, 'heroique');
+    verifier(!heroique.premiereAbsolue && heroique.premiereDifficulte, 'premier Héroïque, pas première fin');
+    egal(heroique.xp, donjon.recompenses.xp * 2, 'premier Héroïque : plein tarif ×2');
+    egal(heroique.po, donjon.recompenses.po * 2, 'et l’or suit');
+    prog.fini = 2;
+    prog.finis.heroique = 1;
+    egal(recompensesFinHistoire(donjon, prog, 'cauchemar').xp, donjon.recompenses.xp * 4, 'premier Cauchemar : ×4');
+    const relecture = recompensesFinHistoire(donjon, prog, 'heroique');
+    verifier(!relecture.premiereDifficulte, 'Héroïque déjà vécu');
+    egal(relecture.xp, Math.round(donjon.recompenses.xp * 0.35 * 2), 'relecture : 35 % du tarif du palier');
+    egal(recompensesFinHistoire(donjon, prog, 'inconnue').cle, 'normal', 'un palier inconnu retombe sur Normal');
+  });
+
+  test('les hauts faits des paliers regardent le bon compteur', () => {
+    const p = herosTest();
+    const heroique = HAUTS_FAITS.find((h) => h.id === 'histoire-heroique');
+    const cauchemar = HAUTS_FAITS.find((h) => h.id === 'histoire-cauchemar');
+    verifier(heroique && cauchemar, 'les deux hauts faits existent');
+    verifier(!heroique.cond(p) && !cauchemar.cond(p), 'rien au départ');
+    progresDonjon(p, 'crypte').finis.heroique = 1;
+    verifier(heroique.cond(p), 'une fin en Héroïque suffit');
+    verifier(!cauchemar.cond(p), 'le Cauchemar reste à faire');
+    progresDonjon(p, 'chronique-plaines').finis.cauchemar = 1;
+    verifier(cauchemar.cond(p), 'une Chronique en Cauchemar compte aussi');
+    verifier(donjonFiniEn(p, 'crypte', 'heroique'), 'donjonFiniEn lit par palier');
+    verifier(!donjonFiniEn(p, 'crypte', 'cauchemar'), 'sans confondre les paliers');
+  });
+
+  test('en groupe, le chef n’ouvre que les paliers qu’il a mérités', () => {
+    const p = herosTest();
+    egal(difficultesHistoireDuChef(p, 'crypte').join(','), 'normal', 'Normal seul au départ');
+    progresDonjon(p, 'crypte').finis.normal = 1;
+    egal(difficultesHistoireDuChef(p, 'crypte').join(','), 'normal,heroique', 'Héroïque après une fin en Normal');
+    progresDonjon(p, 'crypte').finis.heroique = 1;
+    egal(difficultesHistoireDuChef(p, 'crypte').join(','), 'normal,heroique,cauchemar', 'puis Cauchemar');
+    egal(difficultesHistoireDuChef(p, 'laboratoire').join(','), 'normal', 'chaque histoire garde ses propres portes');
+  });
+
+  test('Cauchemar ne tue jamais d’un coup le héros qui y a droit', () => {
+    // La règle du double ne doit pas fabriquer de mort instantanée. Au
+    // niveau exigé pour ouvrir le Cauchemar d'une carte (niveauMin + 6),
+    // la pire attaque ×4 doit laisser le héros debout — avec de la marge :
+    // jamais plus de la moitié de ses PV en un coup. Mesuré au banc, le
+    // pire cas réel est à 31 % (Trône du Premier Roi contre Runelame).
+    const fautives = [];
+    ZONES.forEach((z) => {
+      const monstres = (z.monstres || []).map((cle) => MONSTRES[cle]).filter(Boolean);
+      if (!monstres.length) return;
+      const niveau = Math.min(NIVEAU_MAX, z.niveauMin + 6);
+      classesEtalon().forEach((classe) => {
+        const p = personaEquipeNormalement(classe, niveau);
+        const facteur = facteurLigneDe(p) * facteurResistanceDe(p);
+        monstres.forEach((m) => {
+          const part = plusGrosCoupMonstre(m) * DIFFICULTES.cauchemar.atk * facteur / p.maxHp;
+          if (part > 0.5) fautives.push(`${z.nom} / ${classe} : ${m.nom} enlève ${Math.round(part * 100)} % des PV`);
+        });
+      });
+    });
+    aucun(fautives, 'combinaisons où un coup de Cauchemar enlève plus de la moitié des PV');
+  });
+
+  test('les boss d’histoire en Cauchemar frappent fort, jamais mortellement', () => {
+    // Même promesse pour la fin de chaque récit : la pire attaque du boss
+    // final ×4 reste sous la moitié des PV du héros au palier + 6 — et même
+    // son enrage ne doit jamais emporter un héros plein d'un seul coup.
+    const fautives = [];
+    DONJONS.forEach((d) => {
+      const boss = Object.values(d.etapes).filter((e) => e.type === 'boss').pop();
+      if (!boss) return;
+      const m = MONSTRES_DONJONS[boss.monstre] || MONSTRES[boss.monstre];
+      if (!m) return;
+      const niveau = Math.min(NIVEAU_MAX, (d.defi || d.niveauMin) + 6);
+      const enrage = (m.mecaniques && m.mecaniques.enrage && m.mecaniques.enrage.atkMult) || 1;
+      classesEtalon().forEach((classe) => {
+        const p = personaEquipeNormalement(classe, niveau);
+        const facteur = facteurLigneDe(p) * facteurResistanceDe(p);
+        const part = plusGrosCoupMonstre(m) * DIFFICULTES.cauchemar.atk * facteur / p.maxHp;
+        if (part > 0.5) fautives.push(`${d.nom} / ${classe} : ${m.nom} enlève ${Math.round(part * 100)} % des PV`);
+        if (part * enrage >= 1) fautives.push(`${d.nom} / ${classe} : l'enrage de ${m.nom} tue d'un coup (${Math.round(part * enrage * 100)} %)`);
+      });
+    });
+    aucun(fautives, 'boss d’histoire trop meurtriers en Cauchemar');
+  });
+});
+
+// =====================================================================
+// v29 (suite) — LA DIFFICULTÉ SE LIT EN PUISSANCE DE COMBAT.
+// Le joueur finit son chemin autour de 15 000 de puissance ; chaque
+// palier de difficulté conseille la sienne (×1, ×1,5, ×2), et le
+// Cauchemar d'une carte s'ouvre au niveau OU à la puissance.
+// =====================================================================
+suite('Difficultés v29 — la puissance de combat', () => {
+  test('la recommandation suit le palier : ×1, ×1,5, ×2', () => {
+    [1, 25, 50, 80, 100].forEach((n) => {
+      egal(puissanceConseilleePour(n, 'normal'), puissanceRecommandee(n), `Normal = conseillée nue (niv ${n})`);
+      egal(puissanceConseilleePour(n, 'heroique'), Math.round(puissanceRecommandee(n) * 1.5), `Héroïque ×1,5 (niv ${n})`);
+      egal(puissanceConseilleePour(n, 'cauchemar'), Math.round(puissanceRecommandee(n) * 2), `Cauchemar ×2 (niv ${n})`);
+    });
+    egal(puissanceConseilleePour(50, 'inconnue'), puissanceRecommandee(50), 'un palier inconnu retombe sur Normal');
+    verifier(/⚡/.test(texteRecommandationDifficulte(herosTest(), 10, 'heroique')), 'l’étiquette compacte parle puissance');
+  });
+
+  test('la fin du jeu, c’est ~15 000 de puissance — et le barème le sait', () => {
+    entre(puissanceEtalon(NIVEAU_MAX), 14000, 16000,
+      'l’étalon du niveau 100 — le « +15 000 » qu’un joueur touche au bout du chemin');
+    // Le Cauchemar du dernier palier conseille plus que l'étalon : c'est
+    // le défi « au-delà », voulu tel quel — et documenté ici.
+    verifier(puissanceConseilleePour(NIVEAU_MAX, 'cauchemar') > puissanceEtalon(NIVEAU_MAX),
+      'le Cauchemar du niveau 100 dépasse l’étalon : dernier défi du jeu');
+    // Mais le Cauchemar du MILIEU du jeu reste couvert par un héros de
+    // fin de parcours correctement équipé (0,72 × l'étalon).
+    verifier(puissanceConseilleePour(50, 'cauchemar') < Math.round(puissanceEtalon(NIVEAU_MAX) * 0.72),
+      'le Cauchemar du niveau 50 reste accessible à un héros de fin de jeu bien équipé');
+  });
+
+  test('le Cauchemar d’une carte s’ouvre au niveau OU à la puissance', () => {
+    const z = ZONES.find((x) => x.id === 'foret');
+    // Un héros modeste, boss vaincu : Héroïque oui, Cauchemar non.
+    const p = herosTest({ niveau: z.niveauMin + 1 });
+    p.bossVaincus.push(z.id);
+    verifier(difficulteDebloquee(p, z, 'heroique'), 'Héroïque : le boss vaincu suffit');
+    verifier(puissanceDe(p) < puissanceConseilleePour(z.niveauMin, 'cauchemar'),
+      'le héros du test est bien SOUS la puissance conseillée du Cauchemar');
+    verifier(!difficulteDebloquee(p, z, 'cauchemar'), 'Cauchemar fermé : ni le niveau, ni la puissance');
+    // Le chemin du niveau : +6 au-dessus de l'entrée de la carte.
+    const parNiveau = herosTest({ niveau: z.niveauMin + 6 });
+    parNiveau.bossVaincus.push(z.id);
+    verifier(difficulteDebloquee(parNiveau, z, 'cauchemar'), 'Cauchemar ouvert par le niveau (+6)');
+    // Le chemin de la puissance : un héros suréquipé n'attend pas.
+    const parPuissance = herosTest({ niveau: z.niveauMin + 1 });
+    parPuissance.bossVaincus.push(z.id);
+    parPuissance.stats.for = 2000; // caricature : la puissance explose
+    verifier(puissanceDe(parPuissance) >= puissanceConseilleePour(z.niveauMin, 'cauchemar'),
+      'le héros caricatural dépasse la puissance conseillée');
+    verifier(difficulteDebloquee(parPuissance, z, 'cauchemar'), 'Cauchemar ouvert par la puissance seule');
+    // Et sans le boss, rien ne s'ouvre — la puissance ne dispense pas du trophée.
+    const sansBoss = herosTest({ niveau: z.niveauMin + 1 });
+    sansBoss.stats.for = 2000;
+    verifier(!difficulteDebloquee(sansBoss, z, 'cauchemar'), 'le boss de la carte reste obligatoire');
+  });
+});
+
+// =====================================================================
+// v29 (suite) — LE PLAFOND D'XP SUIT LA DIFFICULTÉ.
+// Sans lui, Héroïque et Cauchemar promettaient « récompenses ×2/×4 » et
+// rendaient la même XP écrêtée que le Normal. Le plafond monte du même
+// facteur que la puissance conseillée (×1, ×1,5, ×2) : dix combats par
+// niveau en Normal, jamais moins de cinq en Cauchemar.
+// =====================================================================
+suite('Difficultés v29 — le plafond d’XP', () => {
+  test('le plafond anti-rush monte avec le palier — ×1, ×1,5, ×2', () => {
+    const p = herosTest({ niveau: 30 });
+    const base = plafondXpParGain(p);
+    verifier(base > 0 && isFinite(base), 'le plafond de base existe');
+    egal(plafondXpParGain(p, multPlafondXp('normal')), base, 'Normal : plafond inchangé');
+    egal(plafondXpParGain(p, multPlafondXp('heroique')), Math.floor((seuilXp(31) - seuilXp(30)) / COMBATS_MINIMUM_PAR_NIVEAU * 1.5), 'Héroïque : plafond ×1,5');
+    egal(plafondXpParGain(p, multPlafondXp('cauchemar')), Math.floor((seuilXp(31) - seuilXp(30)) / COMBATS_MINIMUM_PAR_NIVEAU * 2), 'Cauchemar : plafond ×2');
+    egal(multPlafondXp('inconnue'), 1, 'un palier inconnu retombe sur ×1');
+  });
+
+  test('un gros gain écrêté en Normal passe mieux en Cauchemar — sans jamais dépasser ×2', () => {
+    const p = herosTest({ niveau: 30 });
+    // Les réductions d'XP (facteur historique, v20, étirement) s'appliquent
+    // AVANT le plafond : il faut une entrée massive pour le toucher à coup sûr.
+    const enorme = 1000 * plafondXpParGain(p);
+    const normal = xpReelle(p, enorme);
+    const heroique = xpReelle(p, enorme, multPlafondXp('heroique'));
+    const cauchemar = xpReelle(p, enorme, multPlafondXp('cauchemar'));
+    egal(normal, plafondXpParGain(p), 'en Normal, l’écrêtage tient');
+    entre(heroique / normal, 1.45, 1.55, 'en Héroïque, moitié de plus');
+    entre(cauchemar / normal, 1.95, 2.05, 'en Cauchemar, le double — pas davantage');
+    // La garantie de fond reste vraie : même en Cauchemar, jamais moins de
+    // cinq combats pour un niveau.
+    verifier(cauchemar <= (seuilXp(31) - seuilXp(30)) / 5, 'cinq combats par niveau au minimum, même en Cauchemar');
+  });
+
+  test('la migration v29 répare aussi ce qu’un import cloud apporte', () => {
+    // L'import cloud pose p.donjons APRÈS normaliserPerso : c'est
+    // normaliserDonjons, appelée au point d'import, qui doit tout réparer.
+    const p = herosTest();
+    p.donjons = {
+      crypte: { fini: 2, checkpoint: null, drapeaux: {} }, // pré-v29
+      laboratoire: 1,                                      // entrée corrompue
+    };
+    normaliserDonjons(p);
+    egal(p.donjons.crypte.finis.normal, 2, 'le pré-v29 est crédité au palier Normal');
+    verifier(typeof p.donjons.laboratoire === 'object' && p.donjons.laboratoire.finis, 'l’entrée corrompue est refaite à neuf');
+    egal(p.donjons.laboratoire.fini, 0, 'refaite à zéro, sans inventer de progrès');
+    // Et progresDonjon tient bon face au même déchet, en direct.
+    const q = herosTest();
+    q.donjons = { crypte: 'déchet' };
+    const prog = progresDonjon(q, 'crypte');
+    verifier(prog && prog.finis && prog.finis.normal === 0, 'progresDonjon refait une entrée corrompue');
+  });
+});
+
+// =====================================================================
+// v29 — LE CONTRAT DES PALIERS D'IDENTITÉ.
+// Niveau 50, la Voie : UN passif branché + UNE capacité active.
+// Niveau 80, l'Éveil : UN passif pur (et sa contrainte selon la rareté),
+// AUCUNE compétence. Ce test fige le contrat — quiconque le change devra
+// le faire les yeux ouverts.
+// =====================================================================
+suite('Le contrat des paliers (v29)', () => {
+  test('chaque Voie confère un passif branché ET une capacité', () => {
+    const sansPassif = Object.values(VOIES)
+      .filter((v) => !PASSIFS_VOIE[v.id] || !Object.keys(PASSIFS_VOIE[v.id]).length)
+      .map((v) => v.id);
+    aucun(sansPassif, 'Voies sans passif branché');
+    const sansCapacite = Object.values(VOIES)
+      .filter((v) => !v.competence || !COMPETENCES[v.competence])
+      .map((v) => v.id);
+    aucun(sansCapacite, 'Voies sans capacité active');
+  });
+
+  test('chaque Éveil confère un passif pur — jamais de compétence', () => {
+    const fautifs = Object.values(EVEILS)
+      .filter((e) => !PASSIFS_EVEIL[e.id] || (e.competences || []).length > 0)
+      .map((e) => e.id);
+    aucun(fautifs, 'Éveils qui dérogent au contrat du passif pur');
+  });
+
+  test('choisir un Éveil ne touche pas au grimoire', () => {
+    const p = herosTest({ niveau: 80 });
+    // D'abord solder les compétences de classe dues au niveau 80 — pour
+    // isoler ce que l'Éveil apporte : rien.
+    debloquerCompetencesClasse(p);
+    const avant = p.grimoire.slice();
+    p.eveil = { id: Object.keys(EVEILS)[0], rarete: EVEILS[Object.keys(EVEILS)[0]].rarete, relances: 0 };
+    debloquerCompetencesClasse(p);
+    egal(p.grimoire.length, avant.length, 'aucune compétence n’arrive avec l’Éveil');
   });
 });

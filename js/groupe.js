@@ -209,6 +209,15 @@ function epopeesFiniesDuChef(p) {
   return DONJONS.filter((d) => !d.chronique && progresDonjon(p, d.id).fini > 0).map((d) => d.id);
 }
 
+// v29 : les difficultés d'un donjon d'histoire ouvertes par le CHEF —
+// la même échelle qu'en solo (chaque palier se mérite en terminant le
+// précédent), lue sur sa propre progression.
+function difficultesHistoireDuChef(p, idDonjon) {
+  if (!idDonjon || typeof progresDonjon !== 'function') return ['normal'];
+  const prog = progresDonjon(p, idDonjon);
+  return ORDRE_DIFFICULTES.filter((cle) => difficulteHistoireDebloquee(prog, cle));
+}
+
 // =====================================================================
 // Créer / rejoindre / quitter
 // =====================================================================
@@ -481,7 +490,7 @@ function rendreLobbyGroupe(ligne) {
         selectDonjon.appendChild(option);
       });
     }
-    selectDonjon.addEventListener('change', () => { groupe.donjonChoisi = selectDonjon.value; });
+    selectDonjon.addEventListener('change', () => { groupe.donjonChoisi = selectDonjon.value; majVisibilite(); });
 
     // v16.2 : les épopées dont le CHEF a écrit la fin — l'Ascension
     // éternelle s'ouvre à elles, à l'étage de SON record.
@@ -511,7 +520,7 @@ function rendreLobbyGroupe(ligne) {
     const majVisibilite = () => {
       const genre = groupe.genreChoisi;
       selectZone.classList.toggle('cache', genre !== 'exploration' && genre !== 'boss');
-      selectDifficulte.classList.toggle('cache', genre !== 'exploration' && genre !== 'boss' && genre !== 'tourBoss');
+      selectDifficulte.classList.toggle('cache', genre !== 'exploration' && genre !== 'boss' && genre !== 'tourBoss' && genre !== 'assautDonjon');
       selectDonjon.classList.toggle('cache', genre !== 'assautDonjon');
       selectEpopee.classList.toggle('cache', genre !== 'ascension');
       if (genre === 'tour') {
@@ -519,8 +528,10 @@ function rendreLobbyGroupe(ligne) {
       } else if (genre === 'tourBoss') {
         aideGenre.textContent = `🏯 Étage ${((p.tourBoss || {})[groupe.difficulteChoisie] || 0) + 1} — difficultés ouvertes par le chef : ${difficultesBoss.map((d) => DIFFICULTES[d].nom).join(', ')}.`;
       } else if (genre === 'assautDonjon') {
+        const idChoisi = communs.includes(groupe.donjonChoisi) ? groupe.donjonChoisi : communs[0];
+        const dispoHistoire = difficultesHistoireDuChef(p, idChoisi);
         aideGenre.textContent = communs.length
-          ? '🏰 Affrontez ensemble le boss final d’un donjon débloqué par le chef (l’histoire, elle, se vit en solo).'
+          ? `🏰 Affrontez ensemble le boss final d’un donjon débloqué par le chef (l’histoire, elle, se vit en solo). Difficultés ouvertes ici par le chef : ${dispoHistoire.map((c) => `${DIFFICULTES[c].emoji} ${DIFFICULTES[c].nom}`).join(', ')}.`
           : '🏰 Le chef n’a encore débloqué aucun donjon — à lui de progresser dans ses histoires !';
       } else if (genre === 'ascension') {
         aideGenre.textContent = epopeesCommunes.length
@@ -647,16 +658,26 @@ async function lancerExpeditionGroupe(ligne) {
     }
     const boss = bossDeDonjon(donjon);
     if (!boss) { afficherToast('🏰 Ce donjon n’a pas de boss à assaillir.'); return; }
+    // v29 : l'assaut se joue à la difficulté choisie — dans la limite de
+    // ce que le chef a ouvert en solo (Héroïque après Normal, etc.).
+    // Le repli ne se fait jamais en silence : l'équipe sait à quoi elle part.
+    const dispoHistoire = difficultesHistoireDuChef(p, donjon.id);
+    if (!dispoHistoire.includes(difficulte)) {
+      const retenue = dispoHistoire[dispoHistoire.length - 1] || 'normal';
+      const demandee = DIFFICULTES[difficulte];
+      afficherToast(`${DIFFICULTES[retenue].emoji} ${demandee ? `${demandee.nom} n'est pas ouvert pour cette histoire — ` : ''}l'assaut part en ${DIFFICULTES[retenue].nom}.`);
+      difficulte = retenue;
+    }
+    const diffHistoire = DIFFICULTES[difficulte] || DIFFICULTES.normal;
     const base = defMonstreDonjon(boss.monstre);
     defs = [{
       ...base, cle: boss.monstre,
-      hp: Math.round(base.hp * multEquipe),
-      atk: Math.round(base.atk * multAtkEquipe),
+      hp: Math.round(base.hp * multEquipe * diffHistoire.hp),
+      atk: Math.round(base.atk * multAtkEquipe * diffHistoire.atk),
     }];
     genreCombat = 'donjon'; // comme en solo : le boss d'un donjon garde son butin
     zoneCombat = null;
-    difficulte = 'normal';
-    titre = `🏰 ${donjon.emoji} ${donjon.nom} — l'assaut du boss`;
+    titre = `🏰 ${donjon.emoji} ${donjon.nom} — l'assaut du boss${difficulte !== 'normal' ? ` (${diffHistoire.emoji} ${diffHistoire.nom})` : ''}`;
     intro = boss.intro || 'Le maître du donjon vous attend de pied ferme.';
     groupeExtra = { assautDonjon: donjon.id };
   } else if (genre === 'ascension') {
@@ -989,7 +1010,7 @@ function apresCombatGroupeHote(cb, type) {
     const bonusPoAscension = extra.ascension ? extra.ascension.etage * 12 : 0;
     const xpParHeros = Math.max(1, Math.round((butin.xp * multEtage / partage) * bonusGroupe));
     const poParHeros = Math.max(0, Math.round((butin.po * multEtage + bonusPoAscension) / partage));
-    lignes.push(`⭐ ${texteGainXp(cb.equipe, xpParHeros)} par héros`);
+    lignes.push(`⭐ ${texteGainXp(cb.equipe, xpParHeros, multPlafondXp(cb.difficulte))} par héros`);
     lignes.push(`💰 +${formatNombre(poParHeros)} pièces d'or par héros`);
     const parts = {};
     cb.equipe.forEach((j) => { parts[j.bid] = {}; });
@@ -1004,6 +1025,8 @@ function apresCombatGroupeHote(cb, type) {
       recompenses[j.bid] = {
         xp: xpParHeros, po: poParHeros, objets: parts[j.bid],
         nbMonstres: cb.monstres.length,
+        // v29 : chaque écran crédite l'XP avec le plafond du palier joué.
+        multPlafond: multPlafondXp(cb.difficulte),
         potionsConsommees: (cb.consosDistantes && cb.consosDistantes[j.bid]) || {},
         hpFinal: Math.max(1, j.hp), mpFinal: j.mp,
       };
@@ -1025,7 +1048,8 @@ function apresCombatGroupeHote(cb, type) {
     if (extra.tourEtage) lignes.push(`🗼 Étage ${extra.tourEtage} gravé ensemble : le record de chacun progresse !`);
     if (extra.tourBoss) lignes.push(`🏯 Étage ${extra.tourBoss.etage} (${DIFFICULTES[extra.tourBoss.difficulte].nom}) vaincu ensemble : record pour chacun !`);
     if (extra.assautDonjon && DONJONS_PAR_ID[extra.assautDonjon]) {
-      lignes.push(`🏰 Le boss de « ${DONJONS_PAR_ID[extra.assautDonjon].nom} » est tombé sous l'assaut du groupe !`);
+      const diffAssaut = DIFFICULTES[cb.difficulte];
+      lignes.push(`🏰 Le boss de « ${DONJONS_PAR_ID[extra.assautDonjon].nom} » est tombé sous l'assaut du groupe${diffAssaut && cb.difficulte !== 'normal' ? ` — ${diffAssaut.emoji} ${diffAssaut.nom}` : ''} !`);
     }
     if (extra.ascension) lignes.push(`⛰️ Étage ${extra.ascension.etage} conquis ensemble — le donjon reconstruit déjà le suivant, un peu plus haut, un peu plus dur.`);
   } else if (type === 'defaite') {
@@ -1137,7 +1161,7 @@ function appliquerRecompenseGroupe(p, recompense) {
   p.po += recompense.po || 0;
   Object.entries(recompense.objets || {}).forEach(([id, qte]) => ajouterObjet(p, id, qte));
   Object.entries(recompense.potionsConsommees || {}).forEach(([id, qte]) => retirerObjet(p, id, qte));
-  const niveaux = gagnerXp(p, recompense.xp || 0);
+  const niveaux = gagnerXp(p, recompense.xp || 0, recompense.multPlafond || 1);
   nettoyerApresCombat(p);
   if (niveaux > 0) {
     afficherToast(`🎉 ${p.avatar} ${p.nom} passe niveau ${p.niveau} !`);

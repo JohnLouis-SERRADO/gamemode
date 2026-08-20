@@ -77,10 +77,21 @@ const HAUTS_FAITS = [
   { id: 'tour-boss-8',        nom: 'Fléau des seigneurs', emoji: '🏯', titre: 'Tueur de Rois', desc: 'Atteindre l’étage 8 de la Tour des Boss', cond: (p) => p.tourBoss && Math.max(p.tourBoss.normal, p.tourBoss.heroique, p.tourBoss.cauchemar) >= 8 },
   { id: 'niveau-35',          nom: 'Au-delà des Royaumes', emoji: '🌅', titre: 'des Terres lointaines', desc: 'Atteindre le niveau 35', cond: (p) => p.niveau >= 35 },
   { id: 'niveau-50',          nom: 'Sommet du possible', emoji: '🌟', titre: 'l’Éternel', desc: 'Atteindre le niveau 50', cond: (p) => p.niveau >= 50 },
+  // v29 : les donjons d'histoire ont trois difficultés — les revivre en
+  // plus féroce mérite ses propres lauriers.
+  { id: 'histoire-heroique',  nom: 'Relire en lettres de feu', emoji: '🔥', titre: 'l’Héroïque', desc: 'Terminer un donjon d’histoire en Héroïque', cond: (p) => DONJONS.some((d) => donjonFiniEn(p, d.id, 'heroique')) },
+  { id: 'histoire-cauchemar', nom: 'Relire dans le noir', emoji: '💀', titre: 'Dompteur de Cauchemars', desc: 'Terminer un donjon d’histoire en Cauchemar', cond: (p) => DONJONS.some((d) => donjonFiniEn(p, d.id, 'cauchemar')) },
 ];
 
 function donjonFini(p, idDonjon) {
   return !!(p.donjons && p.donjons[idDonjon] && p.donjons[idDonjon].fini > 0);
+}
+
+// Le même regard, mais par difficulté : l'histoire a-t-elle été terminée
+// à CE palier ? (v29 — prog.finis compte les complétions par difficulté.)
+function donjonFiniEn(p, idDonjon, difficulte) {
+  const prog = p.donjons && p.donjons[idDonjon];
+  return !!(prog && prog.finis && prog.finis[difficulte] > 0);
 }
 
 // =====================================================================
@@ -175,18 +186,45 @@ function genererQuetesDuJour(p) {
 }
 
 // =====================================================================
-// Niveaux de difficulté des zones
+// Niveaux de difficulté — LE barème du jeu entier.
+//
+// v29 : la règle du DOUBLE. Chaque palier de difficulté DOUBLE le
+// précédent : monstres deux fois plus coriaces ET deux fois plus
+// mordants, récompenses doublées en face. Normal ×1, Héroïque ×2,
+// Cauchemar ×4 — partout où une difficulté se choisit : cartes du monde,
+// Tour des Boss, et désormais les donjons d'histoire (Chroniques des
+// terres et Épopées de Valciel).
+//
+// Le butin (drop) ne double pas, lui : doubler des probabilités les
+// écrase au plafond de 100 % et tue la rareté. Il monte de moitié par
+// palier (×1 → ×1,5 → ×2,25) — plus d'objets, sans que le légendaire
+// devienne un dû.
 // =====================================================================
+// `puissance` : le facteur appliqué à la puissance conseillée du contenu.
+// Mesuré au banc (voir la suite « Difficultés v29 ») : retrouver la
+// tension d'un combat Normal demande ~×1,6 de puissance en Héroïque et
+// ~×2 en Cauchemar. La recommandation retient ×1,5 et ×2 — un plancher
+// honnête. L'étalon absolu du jeu est ~15 000 (PUISSANCE_ETALON[100]) :
+// une recommandation peut le frôler ou le dépasser sur le tout dernier
+// contenu — c'est le défi « au-delà », et c'est voulu.
 const DIFFICULTES = {
-  normal:    { nom: 'Normal',    emoji: '⚔️', hp: 1,   atk: 1,    xp: 1,    po: 1,    drop: 1 },
-  heroique:  { nom: 'Héroïque',  emoji: '🔥', hp: 1.5, atk: 1.35, xp: 1.75, po: 1.75, drop: 1.35 },
-  cauchemar: { nom: 'Cauchemar', emoji: '💀', hp: 2.2, atk: 1.7,  xp: 2.5,  po: 2.5,  drop: 1.8 },
+  normal:    { nom: 'Normal',    emoji: '⚔️', hp: 1, atk: 1, xp: 1, po: 1, drop: 1,    puissance: 1 },
+  heroique:  { nom: 'Héroïque',  emoji: '🔥', hp: 2, atk: 2, xp: 2, po: 2, drop: 1.5,  puissance: 1.5 },
+  cauchemar: { nom: 'Cauchemar', emoji: '💀', hp: 4, atk: 4, xp: 4, po: 4, drop: 2.25, puissance: 2 },
 };
 
-// Héroïque : boss de la zone vaincu. Cauchemar : en plus, 6 niveaux au-dessus
-// du niveau d'entrée de la zone.
+// L'ordre canonique des paliers : du plus doux au plus cruel.
+const ORDRE_DIFFICULTES = ['normal', 'heroique', 'cauchemar'];
+
+// Héroïque : boss de la zone vaincu. Cauchemar : en plus, 6 niveaux
+// au-dessus de l'entrée de la carte OU la puissance conseillée du palier
+// déjà atteinte — v29 : la difficulté se lit en puissance de combat, et
+// un héros suréquipé n'a pas à attendre des niveaux qu'il n'a plus
+// besoin de prendre.
 function difficulteDebloquee(p, zone, cle) {
   if (cle === 'normal') return true;
   if (cle === 'heroique') return p.bossVaincus.includes(zone.id);
-  return p.bossVaincus.includes(zone.id) && p.niveau >= zone.niveauMin + 6;
+  const parPuissance = typeof puissanceConseilleePour === 'function'
+    && puissanceDe(p) >= puissanceConseilleePour(zone.niveauMin, 'cauchemar');
+  return p.bossVaincus.includes(zone.id) && (p.niveau >= zone.niveauMin + 6 || parPuissance);
 }

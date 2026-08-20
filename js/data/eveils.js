@@ -9,18 +9,16 @@
 // Roi Berserker et Dévoreur de Mondes.
 //
 // Six raretés par sous-classe, vingt-sept sous-classes : 162 Éveils.
-// Chacun apporte UN PASSIF MAJEUR et DEUX COMPÉTENCES — 324 en tout.
+// Chacun est UN PASSIF MAJEUR — permanent, sans rien à lancer (v29 ; ils
+// apportaient autrefois deux compétences actives, voir plus bas).
 //
 // RÈGLE D'ÉQUILIBRAGE NON NÉGOCIABLE (§5.1 du document de conception) :
 // la rareté augmente la COMPLEXITÉ et la CONTRAINTE, jamais le plafond
 // de puissance. Un Éveil rare et un Éveil divin doivent tenir dans une
 // fourchette de ±10 % sur un même build. Sinon tout le monde relance
 // jusqu'au Divin et le système devient une machine à frustration.
-//
-// C'est pour cela que les chiffres sont CALCULÉS et non écrits : la
-// puissance dépend du profil de la compétence, jamais de la rareté. Ce
-// que la rareté change, c'est la contrainte attachée. Un test du harnais
-// le vérifie sur les 162.
+// Ce que la rareté change, c'est la contrainte attachée. Un test du
+// harnais le vérifie sur les 162.
 // =====================================================================
 
 const NIVEAU_EVEIL = 80;
@@ -76,55 +74,26 @@ const ROLE_CONTRAINTE = {
   arcaniste: 'magie', devin: 'soin', runelame: 'melee',
 };
 
-// Les profils de compétence d'Éveil : mêmes familles que les Voies, mais
-// un cran au-dessus — c'est le niveau 80.
 // =====================================================================
-// LE BUDGET DE PUISSANCE.
+// v29 — L'ÉVEIL EST UN PASSIF, PAS UN SORT.
 //
-// Chaque profil vaut exactement le même budget. C'est ce qui garantit
-// mécaniquement la règle : deux Éveils ont toujours la même puissance,
-// quelle que soit leur rareté, parce qu'ils dépensent le même budget.
+// Jusqu'ici, chaque Éveil apportait DEUX compétences actives en plus de
+// son passif : au niveau 80, changer de nature signifiait surtout…
+// recevoir deux boutons de plus. C'est fini. Un Éveil est désormais un
+// PASSIF DE JOUEUR pur : son effet majeur (et sa contrainte, selon la
+// rareté) sont en permanence dans les veines du héros — aucun sort à
+// lancer, rien à équiper, rien à gérer. Le grimoire appartient aux
+// classes, aux spécialités et aux Voies ; l'Éveil, lui, change ce que
+// le héros EST.
 //
-// Un premier jet laissait 19 % d'écart entre raretés — le harnais l'a
-// signalé avant que quiconque ne joue. Les chiffres ci-dessous sont donc
-// dérivés du budget, et non choisis à la main :
-//
-//   valeur = (puissance + stat × ratio) × coups × (2 si c'est une zone)
-//
-// avec une statistique de référence de 60, celle d'un héros de niveau 80.
+// Les anciennes compétences « eveil-* » n'existent plus : les
+// sauvegardes qui en portaient sont nettoyées à la normalisation
+// (normaliserPerso), et les points de maîtrise investis dedans sont
+// automatiquement rendus par le recalcul de la maîtrise.
 // =====================================================================
-const BUDGET_EVEIL = 200;
-const STAT_REFERENCE_EVEIL = 60;
-
-const PROFILS_EVEIL = {
-  frappe:    { type: 'degats', cible: 'ennemi',  puissance: 24, ratio: 2.93, coutMp: 15, cooldown: 4 },
-  salve:     { type: 'degats', cible: 'ennemis', puissance: 15, ratio: 1.417, coutMp: 18, cooldown: 5 },
-  rafale:    { type: 'degats', cible: 'ennemi',  puissance: 10, ratio: 0.945, coups: 3, coutMp: 16, cooldown: 4 },
-  execution: { type: 'degats', cible: 'ennemi',  puissance: 28, ratio: 2.867, critBonus: 0.3, coutMp: 17, cooldown: 5 },
-  drain:     { type: 'degats', cible: 'ennemi',  puissance: 21, ratio: 2.983, coutMp: 15, cooldown: 4, effet: { type: 'drain', part: 0.55 } },
-  fleau:     { type: 'degats', cible: 'ennemis', puissance: 13, ratio: 1.45, coutMp: 18, cooldown: 5, effet: { type: 'poison', duree: 3 } },
-  brise:     { type: 'degats', cible: 'ennemi',  puissance: 18, ratio: 3.033, coutMp: 15, cooldown: 4, effet: { type: 'affaibli', duree: 3 } },
-  fracas:    { type: 'degats', cible: 'ennemis', puissance: 14, ratio: 1.433, coutMp: 19, cooldown: 5, effet: { type: 'etourdi', duree: 1, chance: 0.5 } },
-  soin:      { type: 'soin',   cible: 'allies',  puissance: 26, ratio: 1.233, coutMp: 18, cooldown: 4 },
-  grandSoin: { type: 'soin',   cible: 'allie',   puissance: 42, ratio: 2.633, coutMp: 17, cooldown: 4 },
-  // Les profils utilitaires dépensent le même budget autrement : en
-  // boucliers, en buffs et en régénération. Leur valeur est déclarée,
-  // faute de pouvoir se mesurer en dégâts.
-  egide:     { type: 'utilitaire', cible: 'allies', coutMp: 17, cooldown: 5, effet: { type: 'bouclier', duree: 4 } },
-  ferveur:   { type: 'utilitaire', cible: 'allies', coutMp: 15, cooldown: 5, effet: { type: 'benediction', duree: 3 } },
-  souffle:   { type: 'utilitaire', cible: 'soi',    coutMp: 12, cooldown: 4, effet: { type: 'regen', duree: 4 } },
-};
-
-// La valeur d'un profil, dans l'unité du budget. Utilisée par le harnais.
-function valeurProfilEveil(comp, statReference) {
-  if (comp.type === 'utilitaire') return BUDGET_EVEIL;
-  const s = statReference == null ? STAT_REFERENCE_EVEIL : statReference;
-  const brut = (comp.puissance + s * comp.ratio) * (comp.coups || 1);
-  return comp.cible === 'ennemis' || comp.cible === 'allies' ? brut * 2 : brut;
-}
-
 // Chaque sous-classe : six Éveils, dans l'ordre des raretés.
-// [ nom, effet signature, profil de la 1re compétence, profil de la 2e ]
+// [ nom, effet signature ] — les deux derniers éléments des lignes
+// historiques (profils de compétence) sont ignorés depuis la v29.
 const TABLE_EVEILS = {
   // ---------------- 🛡️ Gardien ----------------
   templier: [
@@ -356,7 +325,7 @@ const TABLE_EVEILS = {
 };
 
 // ---------------------------------------------------------------------
-// Construction des 162 Éveils et de leurs 324 compétences.
+// Construction des 162 Éveils — des passifs purs (v29).
 // ---------------------------------------------------------------------
 const EVEILS = {};
 
@@ -368,30 +337,12 @@ function identifiantEveil(nom) {
 Object.entries(TABLE_EVEILS).forEach(([idSousClasse, liste]) => {
   const sousClasse = SOUS_CLASSES[idSousClasse];
   if (!sousClasse) return;
-  const stat = CLASSES_BASE[sousClasse.classe].stat;
   const role = ROLE_CONTRAINTE[sousClasse.classe];
 
   liste.forEach((entree, index) => {
-    const [nom, effet, profilA, profilB] = entree;
+    const [nom, effet] = entree;
     const rarete = ORDRE_EVEIL[index];
     const idEveil = `${idSousClasse}-${identifiantEveil(nom)}`;
-
-    const competences = [profilA, profilB].map((profil, i) => {
-      const idComp = `eveil-${idEveil}-${i + 1}`;
-      const modele = PROFILS_EVEIL[profil];
-      COMPETENCES[idComp] = {
-        ...modele,
-        effet: modele.effet ? { ...modele.effet, stat } : undefined,
-        nom: i === 0 ? nom : `${nom} — Apogée`,
-        emoji: RARETES_EVEIL[rarete].emoji,
-        categorie: 'signature',
-        eveil: idEveil,
-        niveauRequis: NIVEAU_EVEIL,
-        stat: modele.type === 'utilitaire' ? undefined : stat,
-        desc: `${effet} Compétence d’Éveil de ${nom}.`,
-      };
-      return idComp;
-    });
 
     EVEILS[idEveil] = {
       id: idEveil,
@@ -404,7 +355,9 @@ Object.entries(TABLE_EVEILS).forEach(([idSousClasse, liste]) => {
       // La contrainte ne retire jamais de la puissance : elle retire une
       // option. C'est ce qui permet de tenir la fourchette de ±10 %.
       contrainte: RARETES_EVEIL[rarete].contrainte ? CONTRAINTES[rarete][role] : null,
-      competences,
+      // v29 : plus aucune compétence — l'Éveil est un passif de joueur.
+      // Le tableau vide reste pour que tout `forEach` historique se taise.
+      competences: [],
       titre: nom,
     };
   });

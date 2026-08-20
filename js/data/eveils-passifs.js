@@ -25,8 +25,9 @@
 // CE QUI A DÛ ÊTRE RÉÉCRIT. Une quinzaine d'Éveils promettaient des
 // mécaniques hors du moteur : persistance de 24 h dans une zone, lecture
 // des tirages de butin, copie du style d'un ennemi, invocation d'un boss
-// vaincu, éléments et résistances. Ils gardent leur nom, leurs deux
-// compétences et leur intention, dits avec ce qui existe.
+// vaincu, éléments et résistances. Ils gardent leur nom et leur
+// intention, dits avec ce qui existe. (v29 : l'Éveil est depuis devenu
+// un passif pur — il n'apporte plus de compétence du tout.)
 // =====================================================================
 
 // ---------------------------------------------------------------------
@@ -407,21 +408,14 @@ Object.entries(MECANIQUES_EVEIL).forEach(([idSousClasse, liste]) => {
 });
 
 // ---------------------------------------------------------------------
-// 5. Les fiches des COMPÉTENCES de Voie et d'Éveil suivent le même
-// contrat que les passifs : produites depuis les mécaniques réelles.
-// Elles recopiaient les phrases d'ORIGINE de TABLE_VOIES/TABLE_EVEILS —
-// invisibilité, copie de sorts, gel permanent — que les v23/v24 ont
-// précisément réécrites.
+// 5. Les fiches des COMPÉTENCES de Voie suivent le même contrat que les
+// passifs : produites depuis les mécaniques réelles. Elles recopiaient
+// les phrases d'ORIGINE de TABLE_VOIES — invisibilité, copie de sorts,
+// gel permanent — que la v23 a précisément réécrites.
+// (v29 : les Éveils n'ont plus de compétences — la Voie reste le seul
+// palier à porter à la fois un passif ET une capacité.)
 // ---------------------------------------------------------------------
 Object.values(VOIES).forEach((voie) => {
   const comp = COMPETENCES[voie.competence];
   if (comp && voie.passif) comp.desc = `${voie.passif} La compétence de la ${voie.nom}.`;
-});
-
-Object.values(EVEILS).forEach((eveil) => {
-  (eveil.competences || []).forEach((idComp) => {
-    const comp = COMPETENCES[idComp];
-    if (!comp) return;
-    comp.desc = `${eveil.effet || ''}${eveil.contrainte ? ` ${eveil.contrainte}` : ''} Compétence d'Éveil de ${eveil.nom}.`.trim();
-  });
 });

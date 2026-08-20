@@ -334,3 +334,22 @@ function texteRecommandation(p, niveau) {
   const ok = puissanceDe(p) >= requis;
   return `<span class="reco-puissance ${ok ? 'reco-ok' : 'reco-risque'}" title="Votre puissance : ${puissanceDe(p)}">⚡ ${requis} conseillé${ok ? ' ✓' : ' ⚠️'}</span>`;
 }
+
+// =====================================================================
+// v29 — La difficulté se lit en PUISSANCE DE COMBAT. Un palier double
+// les monstres (PV et attaque) ; la puissance conseillée du contenu suit
+// le facteur `puissance` du palier (Héroïque ×1,5, Cauchemar ×2 — voir
+// DIFFICULTES dans js/data/meta.js pour la mesure qui a fixé ces
+// chiffres). C'est le même score que l'écran du héros : caractéristiques
+// effectives, PV/PM, sous-caractéristiques et équipement.
+// =====================================================================
+function puissanceConseilleePour(niveau, difficulte) {
+  const d = (typeof DIFFICULTES !== 'undefined' && DIFFICULTES[difficulte]) || null;
+  return Math.round(puissanceRecommandee(niveau) * ((d && d.puissance) || 1));
+}
+
+// Étiquette compacte « ⚡ N ✓/⚠️ » pour un palier donné.
+function texteRecommandationDifficulte(p, niveau, difficulte) {
+  const requis = puissanceConseilleePour(niveau, difficulte);
+  return `⚡ ${requis}${puissanceDe(p) >= requis ? ' ✓' : ' ⚠️'}`;
+}

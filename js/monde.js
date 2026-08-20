@@ -263,15 +263,28 @@ function rendreZone(z) {
     chip.disabled = !debloquee;
     chip.textContent = `${d.emoji} ${d.nom}`;
     chip.title = debloquee
-      ? (cle === 'normal' ? 'Difficulté de base' : `Monstres renforcés, récompenses ×${d.xp}`)
+      ? (cle === 'normal'
+        ? `Difficulté de base · ⚡ ${puissanceConseilleePour(z.niveauMin, cle)} conseillé`
+        : `Monstres ×${d.hp} (PV et attaque), récompenses ×${d.xp} · ⚡ ${puissanceConseilleePour(z.niveauMin, cle)} conseillé`)
       : (cle === 'heroique' ? 'Vainquez le boss de la zone pour débloquer'
-        : `Boss vaincu + niveau ${z.niveauMin + 6} requis`);
+        : `Boss vaincu + niveau ${z.niveauMin + 6} (ou ⚡ ${puissanceConseilleePour(z.niveauMin, 'cauchemar')} de puissance) requis`);
     chip.addEventListener('click', () => {
       etat.difficulte = cle;
       rendreZone(z);
     });
     zoneDiff.appendChild(chip);
   });
+  // v29 : la difficulté se lit en puissance de combat — la vôtre, en face
+  // de celle que le palier choisi conseille.
+  {
+    const dChoisie = DIFFICULTES[etat.difficulte] || DIFFICULTES.normal;
+    const requis = puissanceConseilleePour(z.niveauMin, etat.difficulte);
+    const pret = puissanceDe(p) >= requis;
+    const infoPuissance = document.createElement('span');
+    infoPuissance.className = 'aide';
+    infoPuissance.innerHTML = `⚡ Votre puissance : <strong>${formatNombre(puissanceDe(p))}</strong> · conseillée en ${dChoisie.emoji} ${dChoisie.nom} : <strong>${formatNombre(requis)}</strong> ${pret ? '✓' : '⚠️'}`;
+    zoneDiff.appendChild(infoPuissance);
+  }
 
   const actions = el('zone-actions-liste');
   actions.innerHTML = '';
@@ -572,13 +585,13 @@ function evenementHistoire(z) {
   const equipe = membresEquipe();
   equipe.forEach((m) => {
     if (r.po) { const gain = Math.round(r.po * multiplicateurOr(m)); m.po += gain; m.compteurs.orTotal += gain; }
-    if (r.xp) gagnerXp(m, r.xp);
+    if (r.xp) gagnerXp(m, r.xp, multPlafondXp(etat.difficulte));
     if (r.soinPct) m.hp = Math.min(m.maxHp, m.hp + Math.round(m.maxHp * r.soinPct));
     if (r.materiau && OBJETS[r.materiau]) ajouterObjet(m, r.materiau, 1);
     sauvegarder(m);
   });
   if (r.po) lignes.push(`💰 ${texteGainPo(equipe, r.po)} pour chaque héros`);
-  if (r.xp) lignes.push(`⭐ ${texteGainXp(equipe, r.xp)} pour chaque héros`);
+  if (r.xp) lignes.push(`⭐ ${texteGainXp(equipe, r.xp, multPlafondXp(etat.difficulte))} pour chaque héros`);
   if (r.soinPct) lignes.push(`❤️ +${Math.round(r.soinPct * 100)} % de PV pour chaque héros`);
   if (r.materiau && OBJETS[r.materiau]) lignes.push(`${OBJETS[r.materiau].emoji} ${OBJETS[r.materiau].nom} ×1 pour chaque héros`);
   lignes.push(`📜 Histoire ${vues.length}/${histoires.length} ${deLaCarte(z.nom)} — chacune ne se vit qu'une fois.`);
@@ -860,9 +873,11 @@ function ouvrirCoffreBoss(p, zone, difficulte) {
     familier = idFamilier;
     lignes.push(`🐾 ${FAMILIERS[idFamilier].emoji} ${FAMILIERS[idFamilier].nom} sort du coffre et vous adopte !`);
   }
+  // v29 : le palier double le danger — le coffre suit franchement :
+  // +1 tirage garanti en Héroïque, +2 en Cauchemar.
   let tirages = 2 + (Math.random() < 0.5 ? 1 : 0);
-  if (difficulte === 'heroique' && Math.random() < 0.5) tirages++;
-  if (difficulte === 'cauchemar') tirages++;
+  if (difficulte === 'heroique') tirages += 1;
+  if (difficulte === 'cauchemar') tirages += 2;
   for (let i = 0; i < tirages; i++) {
     const rarete = tirerRarete(chanceButin(p));
     const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
@@ -1135,8 +1150,9 @@ function ouvrirTourBoss() {
   };
   const lignes = [
     `⚔️ Normal — record : étage ${records.normal}${palier('normal')}`,
-    `🔥 Héroïque — record : étage ${records.heroique}${palier('heroique')}${records.normal >= 3 ? '' : ' · 🔒 atteignez l’étage 3 en Normal'}`,
-    `💀 Cauchemar — record : étage ${records.cauchemar}${palier('cauchemar')}${records.heroique >= 3 ? '' : ' · 🔒 atteignez l’étage 3 en Héroïque'}`,
+    `🔥 Héroïque — boss ×${DIFFICULTES.heroique.hp} · record : étage ${records.heroique}${palier('heroique')}${records.normal >= 3 ? '' : ' · 🔒 atteignez l’étage 3 en Normal'}`,
+    `💀 Cauchemar — boss ×${DIFFICULTES.cauchemar.hp} · record : étage ${records.cauchemar}${palier('cauchemar')}${records.heroique >= 3 ? '' : ' · 🔒 atteignez l’étage 3 en Héroïque'}`,
+    `⚡ Votre puissance de combat : ${formatNombre(puissanceDe(p))} — chaque palier de difficulté double les boss, et les coffres suivent.`,
     `⛑️ Un point de sauvegarde se grave tous les ${PALIER_SAUVEGARDE_TOUR} étages, par difficulté.`,
   ];
   const boutons = [{ texte: '⚔️ Grimper en Normal', classe: 'btn-principal', action: () => demarrerTourBoss('normal') }];
@@ -1203,7 +1219,8 @@ function apresVictoireTourBoss(cb) {
   const multEtage = 1 + etage * 0.15;
   const xpParHeros = Math.max(1, Math.round((butin.xp * multEtage) / partage));
   const poParHeros = Math.max(0, Math.round((butin.po * multEtage) / partage));
-  const lignes = [`⭐ ${texteGainXp(membres, xpParHeros)} et 💰 ${texteGainPo(membres, poParHeros)} par héros (prime d'étage +${Math.round(etage * 15)} %)`];
+  const multPlafond = multPlafondXp(difficulte); // v29 : le plafond suit le palier
+  const lignes = [`⭐ ${texteGainXp(membres, xpParHeros, multPlafond)} et 💰 ${texteGainPo(membres, poParHeros)} par héros (prime d'étage +${Math.round(etage * 15)} %)`];
   const partsObjets = membres.map(() => ({}));
   Object.entries(butin.objets).forEach(([id, qte]) => {
     lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}${partage > 1 ? ' (réparti dans les sacs)' : ''}`);
@@ -1222,9 +1239,10 @@ function apresVictoireTourBoss(cb) {
     progresserQuete(m, 'monstres', cb.monstres.length);
     progresserQuete(m, 'tourBoss', 1);
     Object.entries(partsObjets[membres.indexOf(m)]).forEach(([id, qte]) => ajouterObjet(m, id, qte));
-    // Coffre de l'étage : deux tirages dopés par l'étage et la difficulté.
+    // Coffre de l'étage : des tirages dopés par l'étage et la difficulté —
+    // v29 : un tirage de plus par palier (le risque double, le coffre suit).
     const s = statsEffectives(m);
-    const tirages = difficulte === 'cauchemar' ? 3 : 2;
+    const tirages = difficulte === 'cauchemar' ? 4 : difficulte === 'heroique' ? 3 : 2;
     for (let i = 0; i < tirages; i++) {
       const rarete = tirerRarete(chanceButin(m) + etage * 2);
       const pool = Object.entries(OBJETS).filter(([, o]) => rareteDe(o) === rarete
@@ -1238,7 +1256,7 @@ function apresVictoireTourBoss(cb) {
     }
     if (m.tourBoss[difficulte] < etage) m.tourBoss[difficulte] = etage;
     recolterSceaux(m, etage, lignes);
-    const niveaux = gagnerXp(m, xpParHeros);
+    const niveaux = gagnerXp(m, xpParHeros, multPlafond);
     verifierHautsFaits(m);
     nettoyerApresCombat(m); // pas de soin entre les étages…
     const repos = franchirPalierDeSauvegarde(m, `tourBoss:${difficulte}`, etage);
@@ -1302,7 +1320,9 @@ function apresVictoire(cb) {
   if (cb.genre === 'boss') {
     lignes.push(`👑 ${MONSTRES[cb.zone.boss].nom} est vaincu ! Les environs respirent… pour l'instant.`);
   }
-  lignes.push(`⭐ ${texteGainXp(membres, xpParHeros)} par héros`);
+  // v29 : le plafond anti-rush suit la difficulté du combat.
+  const multPlafond = multPlafondXp(cb.difficulte);
+  lignes.push(`⭐ ${texteGainXp(membres, xpParHeros, multPlafond)} par héros`);
   lignes.push(`💰 ${texteGainPo(membres, poParHeros)} par héros`);
 
   // Les objets sont répartis aléatoirement entre les membres.
@@ -1363,7 +1383,7 @@ function apresVictoire(cb) {
       }
     }
     if (cb.genre === 'boss' && !m.bossVaincus.includes(cb.zone.id)) m.bossVaincus.push(cb.zone.id);
-    const niveaux = gagnerXp(m, xpParHeros);
+    const niveaux = gagnerXp(m, xpParHeros, multPlafond);
     // Progression des compteurs et contrats de guilde
     m.compteurs.monstres += cb.monstres.length;
     m.compteurs.orTotal += poGagne;
@@ -1385,7 +1405,7 @@ function apresVictoire(cb) {
     annoncerDeblocage({
       emoji: '🔥',
       titre: 'Difficulté Héroïque débloquée !',
-      texte: `${cb.zone.nom} s'ouvre en Héroïque : monstres renforcés, récompenses accrues.`,
+      texte: `${cb.zone.nom} s'ouvre en Héroïque : monstres ×${DIFFICULTES.heroique.hp}, récompenses ×${DIFFICULTES.heroique.xp}.`,
     });
   }
 

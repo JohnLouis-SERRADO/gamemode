@@ -12,10 +12,72 @@ DONJONS.forEach((d) => { DONJONS_PAR_ID[d.id] = d; });
 // =====================================================================
 function progresDonjon(p, idDonjon) {
   if (!p.donjons) p.donjons = {};
-  if (!p.donjons[idDonjon]) {
-    p.donjons[idDonjon] = { checkpoint: null, drapeaux: {}, fini: 0, epilogue: null };
+  // Une entrée corrompue (nombre, chaîne…) est refaite à neuf plutôt que
+  // de faire trébucher la normalisation qui suit.
+  if (!p.donjons[idDonjon] || typeof p.donjons[idDonjon] !== 'object') {
+    p.donjons[idDonjon] = {
+      checkpoint: null, drapeaux: {}, fini: 0, epilogue: null,
+      finis: { normal: 0, heroique: 0, cauchemar: 0 }, difficulte: null,
+    };
   }
-  return p.donjons[idDonjon];
+  // v29 : les histoires se vivent en trois difficultés. `fini` reste le
+  // compte TOTAL (hauts faits, verrous, contrats n'ont pas bougé) ;
+  // `finis` compte par palier. Les sauvegardes d'avant la v29 créditent
+  // leurs complétions passées au palier Normal — c'est là qu'elles ont
+  // toutes été vécues.
+  const prog = p.donjons[idDonjon];
+  if (!prog.finis || typeof prog.finis !== 'object') {
+    prog.finis = { normal: prog.fini || 0, heroique: 0, cauchemar: 0 };
+  }
+  ORDRE_DIFFICULTES.forEach((cle) => {
+    if (typeof prog.finis[cle] !== 'number') prog.finis[cle] = 0;
+  });
+  if (prog.difficulte === undefined) prog.difficulte = null;
+  return prog;
+}
+
+// =====================================================================
+// v29 — LES TROIS DIFFICULTÉS DES HISTOIRES.
+//
+// La logique est celle du reste du jeu, appliquée aux récits : on ne
+// choisit pas Cauchemar avant d'avoir prouvé Héroïque, et on ne choisit
+// pas Héroïque avant d'avoir VÉCU l'histoire. Chaque palier double les
+// monstres (PV et attaque) et double les récompenses de fin — c'est le
+// barème unique DIFFICULTES, le même que les cartes du monde et la Tour
+// des Boss. La relique unique, elle, reste unique : une histoire n'a
+// qu'un seul trésor, quelle que soit la façon dont on la relit.
+// =====================================================================
+function difficulteHistoireDebloquee(prog, cle) {
+  if (cle === 'normal') return true;
+  if (cle === 'heroique') return (prog.finis.normal || 0) > 0;
+  return (prog.finis.heroique || 0) > 0;
+}
+
+// Le plus haut palier déjà terminé — pour les insignes des cartes.
+function meilleureDifficulteFinie(prog) {
+  if ((prog.finis.cauchemar || 0) > 0) return 'cauchemar';
+  if ((prog.finis.heroique || 0) > 0) return 'heroique';
+  if ((prog.fini || 0) > 0) return 'normal';
+  return null;
+}
+
+// La feuille de paie d'une fin d'histoire — pure, donc testable.
+// Règles : la PREMIÈRE complétion d'un palier paie plein tarif × le
+// multiplicateur du palier ; revivre un palier déjà vécu paie 35 % ;
+// l'objet unique et le familier ne tombent qu'à la toute première fin.
+function recompensesFinHistoire(donjon, prog, difficulte) {
+  const cle = DIFFICULTES[difficulte] ? difficulte : 'normal';
+  const d = DIFFICULTES[cle];
+  const premiereAbsolue = (prog.fini || 0) === 0;
+  const premiereDifficulte = ((prog.finis && prog.finis[cle]) || 0) === 0;
+  const multReprise = premiereDifficulte ? 1 : 0.35;
+  return {
+    cle,
+    premiereAbsolue,
+    premiereDifficulte,
+    xp: Math.round(donjon.recompenses.xp * multReprise * d.xp),
+    po: Math.round(donjon.recompenses.po * multReprise * d.po),
+  };
 }
 
 // =====================================================================
@@ -217,16 +279,22 @@ function rendreCartesDonjons(conteneur, p) {
       const enCours = !!prog.checkpoint;
       const carte = document.createElement('div');
       carte.className = 'carte-zone donjon-histoire' + (verrouille ? ' verrouillee' : '');
+      // v29 : l'insigne dit le plus haut palier déjà vaincu.
+      const sommet = meilleureDifficulteFinie(prog);
       let statut = '';
-      if (prog.fini > 0) statut = ' ✅';
+      if (sommet === 'cauchemar') statut = ' ✅💀';
+      else if (sommet === 'heroique') statut = ' ✅🔥';
+      else if (sommet === 'normal') statut = ' ✅';
       else if (enCours) statut = ' 📖';
       let action = 'Commencer l’histoire';
       if (verrousAcces.length) action = `🔒 Il manque : ${verrousAcces.join(' · ')}.`;
-      else if (enCours) action = '▶ Reprendre l’aventure en cours';
-      else if (prog.fini > 0) {
+      else if (enCours) {
+        const dRep = DIFFICULTES[prog.difficulte] || DIFFICULTES.normal;
+        action = `▶ Reprendre l’aventure en cours (${dRep.emoji} ${dRep.nom})`;
+      } else if (prog.fini > 0) {
         action = donjon.chronique
-          ? 'Revivre l’histoire (récompenses réduites)'
-          : '⛰️ Revivre l’histoire ou tenter l’Ascension éternelle';
+          ? 'Revivre l’histoire — trois difficultés au choix'
+          : '⛰️ Revivre l’histoire (trois difficultés) ou tenter l’Ascension éternelle';
       }
       let etiquette;
       if (donjon.chronique) etiquette = `📜 chronique · niv. ${donjon.niveauMin}+`;
@@ -257,49 +325,125 @@ function ouvrirDonjon(donjon) {
   }
   const prog = progresDonjon(p, donjon.id);
   const reprise = prog.checkpoint && donjon.etapes[prog.checkpoint];
-  // Épopée déjà terminée (et pas de chapitre en cours) : histoire ou Ascension ?
-  if (!donjon.chronique && prog.fini > 0 && !reprise) {
-    const record = recordAscension(p, donjon.id);
+  // Un chapitre en cours se reprend à SA difficulté — on ne change pas
+  // les règles au milieu d'un livre. Mais on peut refermer celui-ci et
+  // le rouvrir à un autre palier : sans cette porte, un héros coincé en
+  // Cauchemar au milieu d'une histoire y resterait pour toujours.
+  if (reprise) {
+    const dRep = DIFFICULTES[prog.difficulte] || DIFFICULTES.normal;
     afficherButin({
       titre: `${donjon.emoji} ${donjon.nom}`,
-      texte: 'L’histoire est écrite — mais le donjon, lui, vit toujours. Revivez le récit, ou entamez l’Ascension éternelle : des étages sans fin, de plus en plus durs, sans soin entre les salles, jusqu’à la mort ou l’abandon.',
-      lignes: [
-        record > 0 ? `⛰️ Votre record d’Ascension ici : étage ${record}.` : '⛰️ Aucune Ascension tentée ici pour l’instant.',
-        (() => {
-          const palier = palierAtteint(p, `ascension:${donjon.id}`);
-          return palier > 0
-            ? `⛑️ Point de sauvegarde gravé : étage ${palier} — l’ascension peut y reprendre.`
-            : `⛑️ Un point de sauvegarde se grave tous les ${PALIER_SAUVEGARDE_TOUR} étages.`;
-        })(),
-      ],
+      texte: `Un chapitre est en cours en ${dRep.emoji} ${dRep.nom}. Reprenez-le où vous l'aviez laissé — ou recommencez du début pour changer de difficulté.`,
+      lignes: [],
       retour: 'carte',
       boutons: [
         {
-          texte: '⛰️ Entamer l’Ascension éternelle',
+          texte: `▶ Reprendre l’aventure (${dRep.emoji} ${dRep.nom})`,
           classe: 'btn-principal',
-          action: () => ouvrirAscension(donjon),
-        },
-        {
-          texte: '📖 Revivre l’histoire (récompenses réduites)',
           action: () => demarrerHistoireDonjon(donjon),
         },
+        {
+          texte: '🔄 Recommencer du début — l’avancée du chapitre est perdue',
+          action: () => {
+            prog.checkpoint = null;
+            prog.difficulte = null;
+            prog.drapeaux = {};
+            sauvegarder(p);
+            ouvrirChoixDifficulteDonjon(donjon);
+          },
+        },
+        { texte: '🗺️ Revenir à la carte', action: () => naviguer('carte') },
       ],
     });
     return;
   }
-  demarrerHistoireDonjon(donjon);
+  ouvrirChoixDifficulteDonjon(donjon);
 }
 
-function demarrerHistoireDonjon(donjon) {
+// v29 : le seuil du donjon est un choix de difficulté. Normal s'ouvre
+// toujours ; Héroïque exige d'avoir terminé l'histoire en Normal ;
+// Cauchemar exige Héroïque. Pour une épopée déjà vécue, l'Ascension
+// éternelle se propose au même endroit.
+function ouvrirChoixDifficulteDonjon(donjon) {
+  const p = persoActif();
+  const prog = progresDonjon(p, donjon.id);
+  const lignes = [];
+  const boutons = [];
+  // Le palier conseillé : le plus doux qui reste à vivre. Quand tout est
+  // vécu, le bouton doré revient à l'Ascension (épopées) ou au Cauchemar
+  // (chroniques) — un écran sans porte principale désoriente.
+  const conseille = ORDRE_DIFFICULTES.find(
+    (cle) => difficulteHistoireDebloquee(prog, cle) && !(prog.finis[cle] > 0),
+  ) || null;
+  const ascensionEnAvant = !donjon.chronique && prog.fini > 0 && !conseille;
+  const misEnAvant = conseille || (ascensionEnAvant ? null : 'cauchemar');
+  // v29 : la difficulté se lit en puissance de combat — chaque palier
+  // affiche la sienne, et le héros voit la sienne en face.
+  const niveauReference = donjon.defi || donjon.niveauMin;
+  lignes.push(`⚡ Votre puissance de combat : ${formatNombre(puissanceDe(p))}.`);
+  ORDRE_DIFFICULTES.forEach((cle) => {
+    const d = DIFFICULTES[cle];
+    const faits = prog.finis[cle] || 0;
+    if (difficulteHistoireDebloquee(prog, cle)) {
+      boutons.push({
+        texte: `${d.emoji} ${d.nom} — monstres ×${d.hp} · ${texteRecommandationDifficulte(p, niveauReference, cle)}`
+          + (faits > 0 ? ` · ✅ ×${faits}` : ''),
+        classe: cle === misEnAvant ? 'btn-principal' : undefined,
+        action: () => demarrerHistoireDonjon(donjon, cle),
+      });
+    } else {
+      const requise = DIFFICULTES[cle === 'heroique' ? 'normal' : 'heroique'];
+      lignes.push(`🔒 ${d.emoji} ${d.nom} (monstres ×${d.hp}, récompenses ×${d.xp}, ⚡ ${formatNombre(puissanceConseilleePour(niveauReference, cle))} conseillé) — terminez d’abord l’histoire en ${requise.emoji} ${requise.nom}.`);
+    }
+  });
+  if (prog.fini > 0) {
+    lignes.push('📖 Revivre un palier déjà vécu rapporte 35 % de ses récompenses de fin — la relique de l’histoire, elle, ne tombe qu’une fois.');
+  }
+  // Épopée déjà terminée : l'Ascension éternelle se propose ici aussi —
+  // et se présente : un primo-grimpeur part à l'étage 1 sans autre écran.
+  if (!donjon.chronique && prog.fini > 0) {
+    const record = recordAscension(p, donjon.id);
+    lignes.push('⛰️ L’Ascension éternelle : des étages sans fin, de plus en plus durs, SANS soin entre les salles — jusqu’à la mort ou l’abandon.');
+    lignes.push(record > 0 ? `⛰️ Votre record d’Ascension ici : étage ${record}.` : '⛰️ Aucune Ascension tentée ici pour l’instant.');
+    const palier = palierAtteint(p, `ascension:${donjon.id}`);
+    lignes.push(palier > 0
+      ? `⛑️ Point de sauvegarde gravé : étage ${palier} — l’ascension peut y reprendre.`
+      : `⛑️ Un point de sauvegarde se grave tous les ${PALIER_SAUVEGARDE_TOUR} étages.`);
+    boutons.push({
+      texte: '⛰️ Entamer l’Ascension éternelle',
+      classe: ascensionEnAvant ? 'btn-principal' : undefined,
+      action: () => ouvrirAscension(donjon),
+    });
+  }
+  // Le seuil doit toujours laisser repartir — même motif que la Tour des Boss.
+  boutons.push({ texte: '🗺️ Revenir à la carte', action: () => naviguer('carte') });
+  afficherButin({
+    titre: `${donjon.emoji} ${donjon.nom}`,
+    texte: prog.fini > 0
+      ? 'L’histoire est écrite — mais elle peut se revivre plus féroce. Chaque palier de difficulté DOUBLE les monstres… et les récompenses (le plafond d’XP anti-rush s’élève avec le palier).'
+      : 'Choisissez la difficulté. Chaque palier double les monstres — et les récompenses (le plafond d’XP anti-rush s’élève avec le palier). Les paliers supérieurs s’ouvrent en terminant le précédent.',
+    lignes,
+    retour: 'carte',
+    boutons,
+  });
+}
+
+function demarrerHistoireDonjon(donjon, difficulte) {
   const p = persoActif();
   const prog = progresDonjon(p, donjon.id);
   const reprise = prog.checkpoint && donjon.etapes[prog.checkpoint];
-  etat.donjon = { donjon, drapeaux: reprise ? { ...prog.drapeaux } : {} };
+  // À la reprise, l'histoire continue à la difficulté où elle a commencé ;
+  // sinon, celle qu'on vient de choisir (Normal à défaut).
+  const cle = DIFFICULTES[reprise ? prog.difficulte : difficulte] ? (reprise ? prog.difficulte : difficulte) : 'normal';
+  const d = DIFFICULTES[cle];
+  etat.donjon = { donjon, difficulte: cle, drapeaux: reprise ? { ...prog.drapeaux } : {} };
   if (!reprise) {
     prog.drapeaux = {};
-    if (prog.fini > 0) afficherToast('📖 Vous rouvrez le livre : l’histoire recommence.');
+    prog.difficulte = cle;
+    if (prog.fini > 0) afficherToast(`📖 Vous rouvrez le livre en ${d.emoji} ${d.nom} : l’histoire recommence.`);
+    else if (cle !== 'normal') afficherToast(`${d.emoji} L’histoire s’ouvre en ${d.nom} — monstres ×${d.hp}, récompenses ×${d.xp}.`);
   } else {
-    afficherToast('📖 Vous reprenez l’aventure où vous l’aviez laissée.');
+    afficherToast(`📖 Vous reprenez l’aventure où vous l’aviez laissée${cle !== 'normal' ? ` (${d.emoji} ${d.nom})` : ''}.`);
   }
   demarrerEtapeDonjon(reprise ? prog.checkpoint : donjon.depart);
 }
@@ -312,6 +456,7 @@ function sauvegarderProgresDonjon(checkpoint) {
   const p = persoActif();
   const prog = progresDonjon(p, contexte.donjon.id);
   prog.checkpoint = checkpoint;
+  prog.difficulte = contexte.difficulte || 'normal'; // la reprise gardera le même palier
   prog.drapeaux = { ...contexte.drapeaux };
   sauvegarder(p);
 }
@@ -347,10 +492,11 @@ function demarrerEtapeDonjon(idEtape) {
 
 function rendreEnteteDonjon() {
   const { donjon } = etat.donjon;
+  const d = DIFFICULTES[etat.donjon.difficulte] || DIFFICULTES.normal;
   const entete = el('donjon-entete');
   entete.innerHTML = `
     <div class="entete-lieu">
-      <h2>${donjon.emoji} ${donjon.nom}</h2>
+      <h2>${donjon.emoji} ${donjon.nom} <span class="badge">${d.emoji} ${d.nom}</span></h2>
       <button class="btn-choix btn-compact" id="donjon-quitter">🚪 Reprendre plus tard</button>
     </div>`;
   el('donjon-quitter').addEventListener('click', () => {
@@ -447,8 +593,10 @@ function appliquerEffetDonjon(effet) {
     lignes.push(`💰 +${effet.po} po pour chaque héros`);
   }
   if (effet.xp) {
-    membres.forEach((m) => gagnerXp(m, effet.xp));
-    lignes.push(`⭐ ${texteGainXp(membres, effet.xp)} pour chaque héros`);
+    // v29 : les gains du récit suivent le palier joué, plafond compris.
+    const multPlafond = multPlafondXp(etat.donjon && etat.donjon.difficulte);
+    membres.forEach((m) => gagnerXp(m, effet.xp, multPlafond));
+    lignes.push(`⭐ ${texteGainXp(membres, effet.xp, multPlafond)} pour chaque héros`);
   }
   if (effet.objets) {
     Object.entries(effet.objets).forEach(([id, qte]) => {
@@ -668,13 +816,16 @@ function lancerCombatDonjon(etape) {
   // les monstres si l'équipe locale est plus nombreuse.
   const multEquipe = 1 + 0.35 * (membres.length - 1);
   const multAtkEquipe = 1 + 0.1 * (membres.length - 1);
+  // v29 : la difficulté choisie à l'entrée s'applique à CHAQUE salle —
+  // le même barème que partout ailleurs (Héroïque ×2, Cauchemar ×4).
+  const multDiff = DIFFICULTES[contexte.difficulte] || DIFFICULTES.normal;
 
   const cles = etape.type === 'boss' ? [etape.monstre] : etape.monstres;
   const annonces = [];
   const defs = cles.map((cle) => {
     const base = defMonstreDonjon(cle);
-    let hp = base.hp * multEquipe;
-    let atk = base.atk * multAtkEquipe;
+    let hp = base.hp * multEquipe * multDiff.hp;
+    let atk = base.atk * multAtkEquipe * multDiff.atk;
     if (etape.type === 'boss') {
       (etape.modificateurs || []).forEach((mod) => {
         if (!contexte.drapeaux[mod.drapeau]) return;
@@ -689,6 +840,9 @@ function lancerCombatDonjon(etape) {
   demarrerCombat({
     genre: 'donjon',
     zone: null,
+    // Le butin de chaque salle suit la difficulté (tirerButinCombat lit
+    // cb.difficulte : XP, or et chances de drop multipliés d'office).
+    difficulte: contexte.difficulte || 'normal',
     titre: `${donjon.emoji} ${donjon.nom}`,
     intro: etape.intro,
     monstresDef: defs,
@@ -707,7 +861,8 @@ function apresVictoireDonjon(cb) {
   const butin = tirerButinCombat(cb);
   const xpParHeros = Math.max(1, Math.round(butin.xp / partage));
   const poParHeros = Math.max(0, Math.round(butin.po / partage));
-  const lignes = [`⭐ ${texteGainXp(membres, xpParHeros)} et 💰 ${texteGainPo(membres, poParHeros)} par héros`];
+  const multPlafond = multPlafondXp(cb.difficulte); // v29 : le plafond suit le palier
+  const lignes = [`⭐ ${texteGainXp(membres, xpParHeros, multPlafond)} et 💰 ${texteGainPo(membres, poParHeros)} par héros`];
   Object.entries(butin.objets).forEach(([id, qte]) => {
     lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom}${texteRarete(OBJETS[id])} ×${qte}`);
   });
@@ -720,7 +875,7 @@ function apresVictoireDonjon(cb) {
     m.compteurs.monstres += cb.monstres.length;
     progresserQuete(m, 'monstres', cb.monstres.length);
     Object.entries(butin.objets).forEach(([id, qte]) => ajouterObjet(m, id, qte));
-    const niveaux = gagnerXp(m, xpParHeros);
+    const niveaux = gagnerXp(m, xpParHeros, multPlafond);
     verifierHautsFaits(m);
     nettoyerApresCombat(m); // pas de soin gratuit : l'histoire ménage ses repos
     if (niveaux > 0) lignes.push(`🎉 ${m.avatar} ${m.nom} passe niveau ${m.niveau} ! PV et PM restaurés.`);
@@ -1051,19 +1206,28 @@ function terminerDonjon(etape) {
   const variante = (etape.variantes || []).find((v) => drapeaux[v.drapeau]);
   const texteFin = variante ? variante.texte : etape.texte;
 
+  // v29 : la paie se calcule AVANT d'incrémenter les compteurs — la
+  // première complétion d'un palier paie plein tarif × son multiplicateur.
+  const paie = recompensesFinHistoire(donjon, prog, contexte.difficulte);
+  const diff = DIFFICULTES[paie.cle];
   prog.fini = (prog.fini || 0) + 1;
+  prog.finis[paie.cle] = (prog.finis[paie.cle] || 0) + 1;
   prog.epilogue = variante ? variante.cle : 'defaut';
   prog.checkpoint = null;
+  prog.difficulte = null;
   prog.drapeaux = {};
-  const premiere = prog.fini === 1;
-  const mult = premiere ? 1 : 0.35;
+  const premiere = paie.premiereAbsolue;
 
   const lignes = [];
-  const xpParHeros = Math.round(donjon.recompenses.xp * mult);
-  const poParHeros = Math.round(donjon.recompenses.po * mult);
-  lignes.push(`⭐ ${texteGainXp(membres, xpParHeros)} et 💰 +${formatNombre(poParHeros)} po par héros${premiere ? '' : ' (histoire déjà vécue)'}`);
+  const xpParHeros = paie.xp;
+  const poParHeros = paie.po;
+  const multPlafond = multPlafondXp(paie.cle); // v29 : le plafond suit le palier
+  lignes.push(`⭐ ${texteGainXp(membres, xpParHeros, multPlafond)} et 💰 +${formatNombre(poParHeros)} po par héros`
+    + (paie.cle !== 'normal' ? ` — ${diff.emoji} récompenses ×${diff.xp}` : '')
+    + (paie.premiereDifficulte ? '' : ' (palier déjà vécu : 35 %)'));
 
-  // L'objet unique de l'histoire (variante selon la fin), première fois seulement.
+  // L'objet unique de l'histoire (variante selon la fin) et le familier ne
+  // tombent qu'à la TOUTE première fin : une histoire n'a qu'un trésor.
   if (premiere) {
     let idObjet = donjon.recompenses.objet;
     Object.entries(donjon.recompenses.objetParDrapeau || {}).forEach(([drapeau, id]) => {
@@ -1074,22 +1238,31 @@ function terminerDonjon(etape) {
       const objet = OBJETS[idObjet];
       lignes.push(`✨ ${objet.emoji} ${objet.nom}${texteRarete(objet)} — récompense unique de l'histoire !`);
     }
-    Object.entries(donjon.recompenses.objets || {}).forEach(([id, qte]) => {
-      ajouterObjet(p, id, qte);
-      lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}`);
-    });
     if (donjon.familier && !p.familiers.includes(donjon.familier)) {
       p.familiers.push(donjon.familier);
       const compagnon = FAMILIERS[donjon.familier];
       lignes.push(`🐾 ${compagnon.emoji} ${compagnon.nom} vous adopte à la fin de l'histoire !`);
     }
   }
+  // Le paquet d'appoint (consommables, matériaux), lui, revient à la
+  // première complétion de CHAQUE palier : un vrai motif de relecture.
+  if (paie.premiereDifficulte) {
+    Object.entries(donjon.recompenses.objets || {}).forEach(([id, qte]) => {
+      ajouterObjet(p, id, qte);
+      lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}`);
+    });
+  }
+  // Le palier suivant vient de s'ouvrir ? Qu'on le sache tout de suite.
+  if (paie.premiereDifficulte && paie.cle !== 'cauchemar') {
+    const suivante = DIFFICULTES[paie.cle === 'normal' ? 'heroique' : 'cauchemar'];
+    lignes.push(`${suivante.emoji} Difficulté ${suivante.nom} débloquée pour cette histoire — monstres ×${suivante.hp}, récompenses ×${suivante.xp} !`);
+  }
 
   membres.forEach((m) => {
     m.po += poParHeros;
     m.compteurs.orTotal += poParHeros;
     progresserQuete(m, 'donjon', 1);
-    const niveaux = gagnerXp(m, xpParHeros);
+    const niveaux = gagnerXp(m, xpParHeros, multPlafond);
     if (niveaux > 0) lignes.push(`🎉 ${m.avatar} ${m.nom} passe niveau ${m.niveau} !`);
     verifierHautsFaits(m);
     sauvegarder(m);
@@ -1104,7 +1277,7 @@ function terminerDonjon(etape) {
   epilogue.innerHTML = `
     <span class="scene-portrait">${donjon.emoji}</span>
     <div class="scene-corps">
-      <div class="scene-nom">Épilogue${premiere ? '' : ' (histoire revécue)'}</div>
+      <div class="scene-nom">Épilogue${paie.cle !== 'normal' ? ` — ${diff.emoji} ${diff.nom}` : ''}${premiere ? '' : ' (histoire revécue)'}</div>
       <div class="scene-texte">${echapper(texteFin)}</div>
     </div>`;
   scene.appendChild(epilogue);
