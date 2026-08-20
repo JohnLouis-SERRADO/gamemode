@@ -2345,3 +2345,17 @@ button:focus-visible,
   color: var(--or, #d9a441);
   opacity: 0.9;
 }
+
+/* =====================================================================
+   v27 — Les Ordres de Valciel : changer de classe ou de spécialité.
+   ===================================================================== */
+.carte-ordre { gap: 8px; }
+.carte-ordre.ordre-actuel { border-color: var(--accent); box-shadow: 0 0 18px rgba(217, 164, 65, 0.18); }
+.carte-ordre .objet-note { color: var(--texte-doux); font-style: italic; font-size: 0.82rem; }
+.avertissement-ordre {
+  background: rgba(200, 60, 60, 0.12);
+  border: 1px solid rgba(200, 60, 60, 0.45);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+}

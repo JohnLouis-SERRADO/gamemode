@@ -105,6 +105,16 @@ function rendreVille() {
           emoji: '🍻', nom: 'Taverne', detail: 'Chat, classement et boss du monde — avec tous les joueurs',
           action: () => naviguer('taverne'),
         },
+        {
+          emoji: '🎓', nom: 'Les Ordres de Valciel',
+          detail: 'Changer de classe (retour au niveau 1) ou de spécialité (retour au niveau 10) — chaque ordre a sa maison',
+          action: () => ouvrirOrdres(),
+        },
+        {
+          emoji: '🪞', nom: 'Le Puits de Mémoire',
+          detail: 'Redistribuer tous ses points de caractéristiques, contre quelques pièces',
+          action: () => ouvrirPuitsMemoire(),
+        },
         // La Tour de l'Éveil n'apparaît qu'une fois le niveau atteint :
         // avant, ses services n'auraient rien à corriger.
         ...(p.niveau >= NIVEAU_TOUR_EVEIL ? [{
@@ -1194,4 +1204,275 @@ function rendreAtelier() {
     note.textContent = `🔒 ${cachees} recette${cachees > 1 ? 's' : ''} de plus haut niveau attendent que vous progressiez…`;
     zone.appendChild(note);
   }
+}
+
+// =====================================================================
+// v27 — LES ORDRES DE VALCIEL, ET LE PUITS DE MÉMOIRE.
+//
+// La Tour de l'Éveil (niveau 60+, en Sceaux) défait les choix SANS rien
+// perdre. Les Ordres font l'inverse, et l'assument : chaque maison
+// enseigne un métier des armes depuis le début — rejoindre un autre ordre
+// remet au NIVEAU 1, changer de spécialité dans sa propre maison remet au
+// NIVEAU 10. L'avertissement est affiché en toutes lettres avant de
+// payer : personne ne doit découvrir le prix après l'avoir payé.
+//
+// Ce qui est conservé, toujours : l'or, le sac, l'équipement (déposé au
+// sac s'il dépasse le nouveau niveau), les métiers de récolte, les hauts
+// faits, le grimoire des compétences COMMUNES et toute la progression du
+// monde (zones, boss, chroniques).
+// =====================================================================
+const MAISONS_ORDRES = {
+  gardien: { nom: 'Le Bastion des Boucliers', emoji: '🏰', devise: 'On apprend d’abord à rester debout.' },
+  guerrier: { nom: 'Le Terrain d’Entraînement des Guerriers', emoji: '⚔️', devise: 'Mille coups par jour, et le mille-et-unième est le bon.' },
+  'franc-tireur': { nom: 'Le Pas de Tir des Francs-tireurs', emoji: '🎯', devise: 'La bonne distance s’apprend en comptant ses flèches.' },
+  arcaniste: { nom: 'La Tour des Mages', emoji: '🗼', devise: 'Le mana ne pardonne pas les approximations.' },
+  devin: { nom: 'L’Oratoire des Devins', emoji: '⛲', devise: 'Soigner s’apprend en regardant tomber.' },
+  runelame: { nom: 'La Crypte des Runelames', emoji: '🌑', devise: 'La magie se grave mieux quand la main tremble un peu.' },
+};
+
+const PRIX_CHANGEMENT_CLASSE = 300;
+const PRIX_CHANGEMENT_SPECIALITE = 600;
+
+function prixPuitsMemoire(p) {
+  return 100 + p.niveau * 20;
+}
+
+// L'équipement qui dépasse le nouveau niveau part au sac — un héros de
+// niveau 1 en armure mythique n'est pas un recommencement, c'est un
+// déguisement.
+function deposerEquipementTropHaut(p) {
+  let deposes = 0;
+  Object.entries(p.equipement).forEach(([slot, id]) => {
+    const objet = id && OBJETS[id];
+    if (objet && (objet.niveau || 1) > p.niveau) {
+      ajouterObjet(p, id, 1);
+      p.equipement[slot] = null;
+      deposes += 1;
+    }
+  });
+  return deposes;
+}
+
+// Retire du héros tout ce qui appartient à une identité de classe :
+// compétences de classe/spécialité/Voie/Éveil et rangs de maîtrise.
+// Les compétences COMMUNES (achetées à l'Arcanium, choisies à la
+// création) restent siennes pour toujours.
+function retirerCompetencesDIdentite(p) {
+  const estLiee = (id) => {
+    const comp = COMPETENCES[id];
+    return !!comp && !!(comp.classe || comp.sousClasse || comp.voie || comp.eveil);
+  };
+  p.grimoire = (p.grimoire || []).filter((id) => !estLiee(id));
+  p.competences = (p.competences || []).filter((id) => !estLiee(id));
+  p.rangs = {};
+}
+
+function changerDeClasse(p, idClasse) {
+  p.classe = idClasse;
+  p.sousClasse = null;
+  p.voie = null;
+  p.eveil = null;
+  p.kitMigre = false;
+  retirerCompetencesDIdentite(p);
+  p.niveau = 1;
+  p.xp = 0;
+  // Toutes les caractéristiques repartent de la base : les points de
+  // création sont rendus, à replacer depuis la fiche du héros.
+  Object.keys(CARACS).forEach((cle) => { p.stats[cle] = STAT_BASE; });
+  p.pointsEnAttente = POINTS_CREATION;
+  p.maitrise = 0;
+  debloquerCompetencesClasse(p, false);
+  p.maxHp = maxHpDe(p);
+  p.maxMp = maxMpDe(p);
+  p.hp = p.maxHp;
+  p.mp = p.maxMp;
+  const deposes = deposerEquipementTropHaut(p);
+  sauvegarder(p);
+  return deposes;
+}
+
+function changerDeSpecialite(p, idSousClasse) {
+  p.sousClasse = idSousClasse;
+  p.voie = null;
+  p.eveil = null;
+  p.kitMigre = false;
+  retirerCompetencesDIdentite(p);
+  p.niveau = NIVEAU_SOUS_CLASSE;
+  p.xp = seuilXp(NIVEAU_SOUS_CLASSE);
+  Object.keys(CARACS).forEach((cle) => { p.stats[cle] = STAT_BASE; });
+  p.pointsEnAttente = POINTS_CREATION + pointsCumules(NIVEAU_SOUS_CLASSE);
+  p.maitrise = pointsMaitrisePourNiveau(NIVEAU_SOUS_CLASSE);
+  debloquerCompetencesClasse(p, false);
+  p.maxHp = maxHpDe(p);
+  p.maxMp = maxMpDe(p);
+  p.hp = p.maxHp;
+  p.mp = p.maxMp;
+  const deposes = deposerEquipementTropHaut(p);
+  sauvegarder(p);
+  return deposes;
+}
+
+function reinitialiserCaracteristiques(p) {
+  Object.keys(CARACS).forEach((cle) => { p.stats[cle] = STAT_BASE; });
+  p.pointsEnAttente = POINTS_CREATION + pointsCumules(p.niveau);
+  p.maxHp = maxHpDe(p);
+  p.maxMp = maxMpDe(p);
+  bornerVie(p);
+  sauvegarder(p);
+}
+
+// La modale d'avertissement des Ordres : le prix en toutes lettres, ce
+// qui est perdu, ce qui est gardé — et deux boutons, pas plus.
+function confirmerAupresDeLOrdre({ titre, avertissement, gardes, bouton, surConfirme }) {
+  const voile = document.createElement('div');
+  voile.className = 'voile-deblocage';
+  const modale = document.createElement('div');
+  modale.className = 'modale-deblocage';
+  modale.innerHTML = `
+    <h2>${titre}</h2>
+    <p class="objet-desc avertissement-ordre">⚠️ ${avertissement}</p>
+    <p class="aide">${gardes}</p>`;
+  const rangee = document.createElement('div');
+  rangee.className = 'rangee-boutons centre';
+  const annuler = document.createElement('button');
+  annuler.className = 'btn-choix';
+  annuler.textContent = 'Annuler';
+  annuler.addEventListener('click', () => voile.remove());
+  const confirmer = document.createElement('button');
+  confirmer.className = 'btn-principal';
+  confirmer.textContent = bouton;
+  confirmer.addEventListener('click', () => { voile.remove(); surConfirme(); });
+  rangee.appendChild(annuler);
+  rangee.appendChild(confirmer);
+  modale.appendChild(rangee);
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
+const TEXTE_GARDES_ORDRE = 'Conservés : votre or, votre sac, votre équipement (déposé au sac s’il dépasse '
+  + 'le nouveau niveau), vos métiers de récolte, vos hauts faits, vos compétences communes et toute votre '
+  + 'progression du monde (cartes, boss, Chroniques).';
+
+function ouvrirOrdres() {
+  rendreOrdres();
+  montrerEcran('ecran-ordres');
+}
+
+function rendreOrdres() {
+  const p = persoActif();
+  const zone = el('ordres-contenu');
+  zone.innerHTML = '';
+
+  const grille = document.createElement('div');
+  grille.className = 'grille-recettes';
+
+  Object.entries(CLASSES_BASE).forEach(([id, base]) => {
+    const maison = MAISONS_ORDRES[id];
+    const estLaMienne = p.classe === id;
+    const carte = document.createElement('div');
+    carte.className = 'carte-recette carte-ordre' + (estLaMienne ? ' ordre-actuel' : '');
+    carte.innerHTML = `
+      <div class="objet-entete">${maison.emoji} <strong>${maison.nom}</strong>
+        ${estLaMienne ? '<span class="badge-signature">🎓 Votre ordre</span>' : ''}</div>
+      <div class="objet-desc">${base.emoji} <strong>${base.nom}</strong> — ${base.role} · ${base.resume}</div>
+      <div class="objet-note">« ${maison.devise} »</div>
+      <div class="objet-bonus">Passif : ${base.passif}</div>`;
+
+    if (estLaMienne) {
+      // Sa propre maison : on n'y recommence pas sa classe, on y change de
+      // spécialité — au prix d'un retour au niveau 10.
+      if (!p.sousClasse) {
+        carte.insertAdjacentHTML('beforeend',
+          `<div class="objet-niveau">Votre spécialité se choisit au niveau ${NIVEAU_SOUS_CLASSE} — rien à changer d’ici là.</div>`);
+      } else {
+        const note = document.createElement('div');
+        note.className = 'objet-niveau';
+        note.textContent = `Spécialité actuelle : ${sousClasseDe(p).emoji} ${sousClasseDe(p).nom}. `
+          + `En changer ici remet au niveau ${NIVEAU_SOUS_CLASSE}.`;
+        carte.appendChild(note);
+        (base.sousClasses || []).filter((sc) => sc !== p.sousClasse).forEach((idSc) => {
+          const sc = SOUS_CLASSES[idSc];
+          const bouton = document.createElement('button');
+          bouton.className = 'btn-choix btn-compact';
+          bouton.textContent = `${sc.emoji} Devenir ${sc.nom} — ${formatNombre(PRIX_CHANGEMENT_SPECIALITE)} po`;
+          bouton.disabled = p.po < PRIX_CHANGEMENT_SPECIALITE;
+          bouton.addEventListener('click', () => {
+            confirmerAupresDeLOrdre({
+              titre: `${sc.emoji} Devenir ${base.nom} — ${sc.nom} ?`,
+              avertissement: `Changer de spécialité vous remet au NIVEAU ${NIVEAU_SOUS_CLASSE}. `
+                + 'Votre expérience au-delà, vos compétences de spécialité, votre Voie et votre Éveil sont perdus. '
+                + 'Vos points de caractéristiques sont rendus, à replacer.',
+              gardes: TEXTE_GARDES_ORDRE,
+              bouton: `⚠️ Revenir au niveau ${NIVEAU_SOUS_CLASSE} et devenir ${sc.nom}`,
+              surConfirme: () => {
+                if (p.po < PRIX_CHANGEMENT_SPECIALITE) return;
+                p.po -= PRIX_CHANGEMENT_SPECIALITE;
+                const deposes = changerDeSpecialite(p, idSc);
+                afficherToast(`${sc.emoji} Vous voilà ${sc.nom}, niveau ${NIVEAU_SOUS_CLASSE}.`
+                  + `${deposes ? ` ${deposes} pièce${deposes > 1 ? 's' : ''} trop haute${deposes > 1 ? 's' : ''} déposée${deposes > 1 ? 's' : ''} au sac.` : ''}`);
+                rendreOrdres();
+                rendreTopbar();
+              },
+            });
+          });
+          carte.appendChild(bouton);
+        });
+      }
+    } else {
+      const bouton = document.createElement('button');
+      bouton.className = 'btn-principal btn-compact';
+      bouton.textContent = `${base.emoji} Rejoindre l’ordre — ${formatNombre(PRIX_CHANGEMENT_CLASSE)} po`;
+      bouton.disabled = p.po < PRIX_CHANGEMENT_CLASSE;
+      bouton.addEventListener('click', () => {
+        confirmerAupresDeLOrdre({
+          titre: `${maison.emoji} Rejoindre ${maison.nom} ?`,
+          avertissement: 'Changer de classe vous remet au NIVEAU 1. '
+            + 'Tout votre niveau, votre expérience, vos compétences de classe, votre spécialité, '
+            + 'votre Voie et votre Éveil sont perdus. Vos points de caractéristiques sont rendus, à replacer.',
+          gardes: TEXTE_GARDES_ORDRE,
+          bouton: `⚠️ Revenir au niveau 1 et devenir ${base.nom}`,
+          surConfirme: () => {
+            if (p.po < PRIX_CHANGEMENT_CLASSE) return;
+            p.po -= PRIX_CHANGEMENT_CLASSE;
+            const deposes = changerDeClasse(p, id);
+            afficherToast(`${base.emoji} L’ordre vous accueille : vous voilà ${base.nom}, niveau 1.`
+              + `${deposes ? ` ${deposes} pièce${deposes > 1 ? 's' : ''} trop haute${deposes > 1 ? 's' : ''} déposée${deposes > 1 ? 's' : ''} au sac.` : ''}`);
+            rendreOrdres();
+            rendreTopbar();
+          },
+        });
+      });
+      carte.appendChild(bouton);
+    }
+    grille.appendChild(carte);
+  });
+
+  zone.appendChild(grille);
+
+  zone.insertAdjacentHTML('beforeend',
+    `<p class="aide">🗝️ À partir du niveau ${NIVEAU_TOUR_EVEIL}, la Tour de l’Éveil propose les mêmes
+      changements <strong>sans perdre son niveau</strong> — contre des Sceaux, gagnés dans les tours.</p>`);
+}
+
+// Le Puits de Mémoire : on y redistribue tous ses points de
+// caractéristiques, contre quelques pièces. Rien d'autre ne bouge.
+function ouvrirPuitsMemoire() {
+  const p = persoActif();
+  const prix = prixPuitsMemoire(p);
+  confirmerAupresDeLOrdre({
+    titre: '🪞 Le Puits de Mémoire',
+    avertissement: `Toutes vos caractéristiques reviennent à ${STAT_BASE} et vos `
+      + `${formatNombre(POINTS_CREATION + pointsCumules(p.niveau))} points sont rendus, à replacer depuis `
+      + 'la fiche du héros (Profil → Aperçu). Vos PV et PM maximum suivront votre nouvelle répartition.',
+    gardes: `Prix : ${formatNombre(prix)} po. Rien d’autre ne change — niveau, compétences, équipement et progression restent intacts.`,
+    bouton: p.po >= prix ? `🪞 Replonger — ${formatNombre(prix)} po` : `Il vous faut ${formatNombre(prix)} po`,
+    surConfirme: () => {
+      if (p.po < prix) { afficherToast('💰 Pas assez de pièces pour le Puits.'); return; }
+      p.po -= prix;
+      reinitialiserCaracteristiques(p);
+      afficherToast('🪞 Le Puits rend la mémoire de vos points : à vous de les replacer (Profil → Aperçu).');
+      rendreTopbar();
+      naviguer('heros');
+    },
+  });
 }

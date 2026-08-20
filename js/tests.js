@@ -4528,3 +4528,74 @@ suite('Refonte des classes (v26)', () => {
     aucun(dues, 'compétences perdues à la migration');
   });
 });
+
+// =====================================================================
+// v27 — Les Ordres de Valciel : recommencer, en le sachant.
+// =====================================================================
+suite('Les Ordres de Valciel (v27)', () => {
+  window.rendreJournal = () => {};
+
+  const heroDesOrdres = (niveau) => {
+    const p = nouveauPersonnage({
+      nom: 'Recrue', avatar: '🧙', race: 'humain', classe: 'guerrier',
+      stats: { for: 10, dex: 6, int: 4, esp: 4, vit: 10, cha: 4 },
+      competences: ['frappe-heroique', 'coup-etourdissant'],
+    });
+    sansAnnonces(() => adminFixerNiveau(p, niveau));
+    p.sousClasse = 'berserker';
+    p.po = 10000;
+    debloquerCompetencesClasse(p, false);
+    return p;
+  };
+
+  test('changer de classe remet au niveau 1 et rend les points', () => {
+    const p = heroDesOrdres(50);
+    p.equipement.arme = 'baton-tempetes';   // pièce de niveau bien au-delà de 1
+    const communesAvant = p.grimoire.filter((id) => estCompetenceCommune(COMPETENCES[id]));
+    changerDeClasse(p, 'arcaniste');
+    egal(p.classe, 'arcaniste', 'nouvelle classe');
+    egal(p.niveau, 1, 'retour au niveau 1');
+    egal(p.xp, 0, 'expérience remise à zéro');
+    egal(p.sousClasse, null, 'spécialité effacée');
+    egal(p.pointsEnAttente, POINTS_CREATION, 'les points de création sont rendus');
+    Object.keys(CARACS).forEach((cle) => egal(p.stats[cle], STAT_BASE, `stat ${cle} à la base`));
+    const liees = p.grimoire.filter((id) => {
+      const c = COMPETENCES[id];
+      return c && (c.sousClasse || c.voie || c.eveil || (c.classe && c.classe !== 'arcaniste'));
+    });
+    aucun(liees, 'compétences de l\'ancienne identité restées au grimoire');
+    const perdues = communesAvant.filter((id) => !p.grimoire.includes(id));
+    aucun(perdues, 'compétences communes perdues');
+    egal(p.equipement.arme, null, 'l\'arme trop haute est déséquipée');
+    verifier(compterObjet(p, 'baton-tempetes') >= 1, 'et déposée au sac');
+    verifier(p.grimoire.some((id) => (COMPETENCES[id] || {}).classe === 'arcaniste'),
+      'le kit de la nouvelle classe arrive');
+  });
+
+  test('changer de spécialité remet au niveau 10, points et maîtrise rendus', () => {
+    const p = heroDesOrdres(60);
+    p.voie = Object.keys(VOIES).find((id) => VOIES[id].sousClasse === 'berserker');
+    changerDeSpecialite(p, 'duelliste');
+    egal(p.niveau, NIVEAU_SOUS_CLASSE, 'retour au niveau 10');
+    egal(p.sousClasse, 'duelliste', 'nouvelle spécialité');
+    egal(p.voie, null, 'Voie effacée');
+    egal(p.eveil, null, 'Éveil effacé');
+    egal(p.xp, seuilXp(NIVEAU_SOUS_CLASSE), 'expérience calée sur le niveau 10');
+    egal(p.pointsEnAttente, POINTS_CREATION + pointsCumules(NIVEAU_SOUS_CLASSE), 'points rendus');
+    egal(p.maitrise, pointsMaitrisePourNiveau(NIVEAU_SOUS_CLASSE), 'maîtrise du niveau 10');
+    verifier(p.grimoire.some((id) => (COMPETENCES[id] || {}).sousClasse === 'duelliste'),
+      'le kit du Duelliste (palier 10) arrive');
+    verifier(!p.grimoire.some((id) => (COMPETENCES[id] || {}).sousClasse === 'berserker'),
+      'le kit du Berserker est rendu');
+  });
+
+  test('le Puits de Mémoire rend tous les points, sans toucher au niveau', () => {
+    const p = heroDesOrdres(40);
+    const avant = p.niveau;
+    reinitialiserCaracteristiques(p);
+    egal(p.niveau, avant, 'le niveau ne bouge pas');
+    Object.keys(CARACS).forEach((cle) => egal(p.stats[cle], STAT_BASE, `stat ${cle} à la base`));
+    egal(p.pointsEnAttente, POINTS_CREATION + pointsCumules(avant), 'tous les points rendus');
+    verifier(p.hp <= p.maxHp && p.maxHp > 0, 'les PV suivent la nouvelle répartition');
+  });
+});
