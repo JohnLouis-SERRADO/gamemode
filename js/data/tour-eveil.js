@@ -64,7 +64,8 @@ const SERVICES_TOUR = {
     appliquer: (p) => {
       p.sousClasse = null;
       p.voie = null;    // la Voie dépend de la spécialité
-      p.eveil = null;   // l'Éveil aussi : chaque Éveil appartient à SA spécialité
+      p.eveil = null;
+      p.kitMigre = null; // le contrat de migration valait pour l'ANCIENNE spécialité   // l'Éveil aussi : chaque Éveil appartient à SA spécialité
       return 'Votre spécialité, votre Voie et votre Éveil sont à rechoisir. Votre grimoire est intact.';
     },
   },
@@ -77,6 +78,7 @@ const SERVICES_TOUR = {
       p.sousClasse = null;
       p.voie = null;
       p.eveil = null;
+      p.kitMigre = null;
       p.choixClasseOffert = true;
       return 'Votre rôle est à rechoisir. Vous gardez votre niveau, votre or et tout votre grimoire.';
     },

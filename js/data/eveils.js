@@ -56,7 +56,7 @@ const CONTRAINTES = {
   },
   divin: {
     tank:     'PV plafonnés à la moitié de son maximum.',
-    melee:    'Ne peut plus recevoir aucun soin — seuls les boucliers le tiennent.',
+    melee:    'Ni soin allié, ni potion : il ne tient que par ce qu’il prend lui-même.',
     distance: 'Un seul ennemi peut être tué par tour.',
     magie:    'Perd l’accès à toutes les compétences communes.',
     soin:     'Ne peut jamais agir en premier.',

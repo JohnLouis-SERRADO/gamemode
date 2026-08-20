@@ -80,6 +80,7 @@ function creerJoueurDistant(m) {
     nom: m.nom, avatar: m.avatar, race: m.race || 'humain', niveau: m.niveau,
     classe: m.classe || 'aventurier',
     sousClasse: m.sousClasse || null, voie: m.voie || null, eveil: m.eveil || null,
+    forme: m.forme || null,
     stats: {
       for: m.statsEff.for, int: m.statsEff.int, dex: m.statsEff.dex,
       esp: m.statsEff.esp || 0, vit: m.statsEff.vit, cha: m.statsEff.cha || 0,

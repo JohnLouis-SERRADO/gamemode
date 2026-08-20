@@ -344,7 +344,7 @@ function verifierEveil() {
       annoncerDeblocage({
         emoji: eveil.emoji,
         titre: eveil.nom,
-        texte: `${eveil.effet}${eveil.contrainte ? ` — en échange : ${eveil.contrainte}` : ''}`,
+        texte: `${eveil.effet}${eveil.contrainte ? ` ${eveil.contrainte}` : ''}`,
       });
       if (el('ecran-heros').classList.contains('actif')) rendreHeros();
       rendreTopbar();
@@ -929,11 +929,17 @@ function migrerClasses(p) {
       p.sousClasse = cible.sousClasse;
       // Il PORTAIT ces huit compétences avant la refonte : la grille de
       // déblocage étalée (10 → 40) vaut pour les nouveaux venus, pas pour
-      // lui — « sans rien perdre » est un contrat.
-      p.kitMigre = true;
+      // lui — « sans rien perdre » est un contrat. Le drapeau désigne LA
+      // sous-classe migrée : un héros NEUF (la table couvre aussi les
+      // quatre classes de base) ou un changement de spécialité ultérieur
+      // repassent par la grille normale.
+      if (cible.sousClasse) p.kitMigre = cible.sousClasse;
     }
   }
   p.versionClasses = VERSION_CLASSES;
+  // Les tout premiers héros marqués par la v26 portaient un booléen : on
+  // le rattache à leur sous-classe d'alors, même contrat, borné pareil.
+  if (p.kitMigre === true) p.kitMigre = p.sousClasse || null;
 }
 
 // Complète les sauvegardes venues d'anciennes versions du jeu.
@@ -1296,7 +1302,7 @@ function donneesCloud(p) {
     // v19 : la spécialité voyage avec le héros — code de sauvegarde, taverne,
     // fiches publiques et expéditions doivent tous la connaître.
     sousClasse: p.sousClasse, voie: p.voie, eveil: p.eveil, sceaux: p.sceaux,
-    versionClasses: p.versionClasses,
+    versionClasses: p.versionClasses, kitMigre: p.kitMigre || null,
     tourBoss: p.tourBoss, metiers: p.metiers, metierPrincipal: p.metierPrincipal,
     ascensions: p.ascensions, histoiresVues: p.histoiresVues,
     forme: p.forme, paliersTour: p.paliersTour,
@@ -1401,7 +1407,7 @@ function debloquerCompetencesClasse(p, annoncer) {
     const deMaVoie = comp.voie && comp.voie === p.voie;
     const deMonEveil = comp.eveil && p.eveil && comp.eveil === p.eveil.id;
     if ((!deMaClasse && !deMaSousClasse && !deMaVoie && !deMonEveil) || p.grimoire.includes(id)) return;
-    const kitHerite = p.kitMigre && deMaSousClasse;
+    const kitHerite = deMaSousClasse && p.kitMigre === comp.sousClasse;
     if (!kitHerite && (comp.niveauRequis || 1) > p.niveau) return;
     // Les compétences du niveau 1 (signature et bases) s'imposent dans la
     // barre ; celles des paliers suivants respectent l'agencement choisi
@@ -2716,7 +2722,8 @@ function rendreBlocCompetences(zone, p, s) {
   // --- L'arbre de classe : les compétences pas encore débloquées
   // restent visibles, verrouillées, avec tous leurs chiffres. ---
   const aVenir = Object.entries(COMPETENCES)
-    .filter(([id, comp]) => comp.classe === p.classe && !p.grimoire.includes(id))
+    .filter(([id, comp]) => (comp.classe === p.classe
+      || (p.sousClasse && comp.sousClasse === p.sousClasse)) && !p.grimoire.includes(id))
     .sort((a, c) => (a[1].niveauRequis || 1) - (c[1].niveauRequis || 1));
   if (aVenir.length > 0) {
     const titreArbre = document.createElement('h3');
@@ -3301,6 +3308,7 @@ function chargerHerosImporte(donnees, id, token) {
   if (d.eveil !== undefined) p.eveil = d.eveil;
   if (d.sceaux) p.sceaux = d.sceaux;
   if (d.versionClasses != null) p.versionClasses = d.versionClasses;
+  if (d.kitMigre !== undefined) p.kitMigre = d.kitMigre;
   if (d.rangs && typeof d.rangs === 'object') p.rangs = d.rangs;
   if (d.maitrise != null) p.maitrise = d.maitrise;
   normaliserPerso(p); // signature de classe, maîtrise et grimoire cohérents

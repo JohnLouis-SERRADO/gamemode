@@ -212,7 +212,14 @@ function texteEffetCompetence(effet, s, comp, maxMp = 0) {
     case 'affaibli': return `⬇️ −30 % dégâts (${effet.duree} t.)`;
     case 'bouclier': return `🛡️ bouclier ≈${valeurBouclier(s, effet, comp)} (${effet.duree} t.)`;
     case 'benediction': return `🙏 +30 % dégâts (${effet.duree} t.)`;
-    case 'provocation': return `😤 attire les coups + bouclier ≈${Math.round((4 + (s[(effet && effet.stat) || 'for'] || 0)) * ampleurEffet(comp, effet))}`;
+    case 'provocation': {
+      // La même lecture que le moteur : la stat de l'effet, sinon celle de
+      // la compétence, sinon celle de la classe qui la porte.
+      const statProvoc = (effet && effet.stat) || (comp && comp.stat)
+        || (comp && comp.classe && typeof CLASSES_BASE !== 'undefined' && CLASSES_BASE[comp.classe] && CLASSES_BASE[comp.classe].stat)
+        || 'for';
+      return `😤 attire les coups + bouclier ≈${Math.round((4 + (s[statProvoc] || 0)) * ampleurEffet(comp, effet))}`;
+    }
     case 'regen': return `💚 régén. ≈${valeurRegen(s, effet, comp)}/tour (${effet.duree} t.)`;
     case 'mana': return `🧘 +${valeurRetourMana(effet, s, maxMp)} PM`;
     case 'drain': return `🧛 rend ${Math.round(effet.part * 100)} % des dégâts en PV`;
@@ -238,7 +245,10 @@ function caracPorteuse(comp, s) {
   // Les soins d'Intelligence acceptent l'Esprit s'il est meilleur (héros
   // d'avant la refonte) : on affiche celle qui compte VRAIMENT pour lui.
   let cle = comp.stat;
-  if (comp.stat === 'int' && estCompetenceDeSoutien(comp) && s && (s.esp || 0) > (s.int || 0)) cle = 'esp';
+  if (estCompetenceDeSoutien(comp) && s) {
+    if (comp.stat === 'int' && (s.esp || 0) > (s.int || 0)) cle = 'esp';
+    if (comp.stat === 'esp' && (s.int || 0) > (s.esp || 0)) cle = 'int';
+  }
   return CARACS[cle] ? { cle, nom: CARACS[cle].nom, emoji: CARACS[cle].emoji || '' } : null;
 }
 

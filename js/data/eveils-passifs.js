@@ -66,6 +66,7 @@ const PHRASES_EVEIL = {
 
   // --- Les contraintes. Elles retirent une option, jamais de la puissance. ---
   soinsAlliesInterdits: () => 'en échange, aucun allié ne peut le soigner : il ne compte que sur lui-même',
+  potionsInterdites: () => 'en échange, aucune potion de soin ou de mana ne passe ses lèvres en combat',
   soinsInterdits: () => 'en échange, plus aucun soin ne le touche : il ne tient que par les boucliers',
   zonesInterdites: () => 'en échange, il ne peut plus viser qu\'un ennemi à la fois — les dons de son propre Éveil exceptés',
   surcoutMana: (v) => `en échange, ses sorts coûtent ${pct(v)} de mana en plus`,
@@ -272,7 +273,7 @@ const MECANIQUES_EVEIL = {
     { limiteInvocations: 3, multInvocation: 0.95 },
     { dureeEsprit: 3, limiteInvocations: 2 },
     { resurrection: 0.35, dureeEsprit: 3 },
-    { limiteInvocations: 4, multInvocation: 0.7, invocationsRessuscitent: 0.5 },
+    { limiteInvocations: 4, multInvocation: 0.75, invocationsRessuscitent: 0.5 },
     { dureeEsprit: 9, resurrection: 0.30 },
     { limiteInvocations: 3, multInvocation: 0.95, dureeEsprit: 5 },
   ],
@@ -363,10 +364,12 @@ const MECANIQUES_CONTRAINTE = {
   divin: {
     tank: { plafondPvMax: 0.50 },
     // « Un tour sur deux » annulait EXACTEMENT le passif du Duelliste divin
-    // (2 actions × ½ manche = le rythme de tout le monde) et rendait le
-    // Berserker divin net négatif. La contrainte redevient une option
-    // retirée : plus aucun soin ne le touche.
-    melee: { soinsInterdits: true },
+    // (2 actions × ½ manche = le rythme de tout le monde) ; « plus aucun
+    // soin » aurait éteint les identités de DRAIN du Faucheur et du
+    // Chevalier Noir. La contrainte retire deux vraies options sans
+    // toucher à ce qui les définit : ni soin allié, ni potion — il ne
+    // tient que par ce qu'il prend lui-même.
+    melee: { soinsAlliesInterdits: true, potionsInterdites: true },
     distance: { unKillParTour: true },
     magie: { communesInterdites: true },
     soin: { jamaisEnPremier: true },

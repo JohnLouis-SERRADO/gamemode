@@ -1272,7 +1272,7 @@ function changerDeClasse(p, idClasse) {
   p.sousClasse = null;
   p.voie = null;
   p.eveil = null;
-  p.kitMigre = false;
+  p.kitMigre = null;
   retirerCompetencesDIdentite(p);
   p.niveau = 1;
   p.xp = 0;
@@ -1295,7 +1295,7 @@ function changerDeSpecialite(p, idSousClasse) {
   p.sousClasse = idSousClasse;
   p.voie = null;
   p.eveil = null;
-  p.kitMigre = false;
+  p.kitMigre = null;
   retirerCompetencesDIdentite(p);
   p.niveau = NIVEAU_SOUS_CLASSE;
   p.xp = seuilXp(NIVEAU_SOUS_CLASSE);

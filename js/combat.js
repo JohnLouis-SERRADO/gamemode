@@ -282,7 +282,7 @@ function auraDesAllies(source) {
 // Une cible « entravée » : tout ce qui la ralentit, l'abîme ou la désigne.
 function estEntravee(cible) {
   return !!cible && (cible.statuts || [])
-    .some((s) => ['poison', 'affaibli', 'etourdi', 'marque'].includes(s.type));
+    .some((s) => ['poison', 'affaibli', 'etourdi', 'marque', 'berce'].includes(s.type));
 }
 
 // Tout ce qui multiplie les dégâts D'UN passif de sous-classe ou de Voie,
@@ -382,7 +382,10 @@ function multiplicateurPassifs(source, cible, options) {
   // Voleur de la Fortune : l'or amassé arme sa main.
   if (p.parMilleOr && cb) mult *= 1 + Math.floor((cb.orVole || 0) / 1000) * p.parMilleOr;
   // Corrupteur de la Décomposition : tout ce qui ronge déjà la cible.
-  if (p.parStatutCible && cible) mult *= 1 + (cible.statuts || []).length * p.parStatutCible;
+  if (p.parStatutCible && cible) {
+    const etats = (cible.statuts || []).filter((st) => ['poison', 'etourdi', 'affaibli', 'marque', 'berce'].includes(st.type)).length;
+    mult *= 1 + etats * p.parStatutCible;
+  }
   // Colosse du Séisme, Élémentaliste Sismique : les zones frappent fort.
   if (p.bonusZone && options.zone) mult *= 1 + p.bonusZone;
   // Vibrelame de la Résonance : la série se renforce elle-même.
@@ -414,8 +417,9 @@ function multiplicateurPassifs(source, cible, options) {
   }
   // Moine « Le Pèlerin Silencieux » : tant qu'il n'a rien bu.
   if (p.bonusSansObjet && !source.objetBu) mult *= 1 + p.bonusSansObjet;
-  // Paladin « Jugement Incarné » : tout ce qu'il a encaissé revient.
-  if (p.frappeDesDegatsRecus) mult *= 1 + (source.degatsEncaisses || 0) * p.frappeDesDegatsRecus / 100;
+  // Paladin « Jugement Incarné » : tout ce qu'il a encaissé revient —
+  // par tranche PLEINE de 100 PV, comme le Colosse et comme la fiche le dit.
+  if (p.frappeDesDegatsRecus) mult *= 1 + Math.floor((source.degatsEncaisses || 0) / 100) * p.frappeDesDegatsRecus;
   // Berserker « Dévoreur de Mondes », Métamorphe « L'Innommé ».
   if (p.parCadavreDevore) mult *= 1 + (source.cadavresDevores || 0) * p.parCadavreDevore;
   // Contrainte : la moitié de ses dégâts, pour un soigneur qui frappe.
@@ -955,8 +959,10 @@ function repartirLeCoup(source, cible, degats) {
     const detourne = Math.round(degats * part);
     if (detourne > 0) {
       puits.hp = Math.max(1, puits.hp - Math.round(detourne * 0.5));
-      const rendu = Math.max(1, Math.round(detourne * reglagePassif(puits, 'volDeVie', 0.2)));
-      puits.hp = Math.min(puits.maxHp, puits.hp + rendu);
+      if (soinAutorise(puits, puits)) {
+        const rendu = Math.max(1, Math.round(detourne * reglagePassif(puits, 'volDeVie', 0.2)));
+        puits.hp = Math.min(puits.maxHp, puits.hp + rendu);
+      }
       journal(`🕳️ Le Puits absorbe ${detourne} des dégâts destinés à ${cible.nom}.`);
       return degats - detourne;
     }
@@ -1078,6 +1084,9 @@ function executerSiMoribonde(source, cible) {
   const seuil = reglagePassif(source, 'seuilExecution', 0);
   if (!seuil || !cible || estMort(cible) || cible.type !== 'monstre') return;
   if (cible.hp <= 0 || cible.hp > cible.maxHp * seuil) return;
+  // Contrainte divine du tir : l'exécution passive compte comme une mise
+  // à mort — elle ne contourne pas « un seul ennemi abattu par manche ».
+  if (reglagePassif(source, 'unKillParTour', false) && (source.killsDuTour || 0) >= 1) return;
   journal(`⚰️ ${source.nom} exécute ${cible.nom} : sous ${Math.round(seuil * 100)} % de vie, on ne se relève pas.`);
   cible.hp = 0;
   gererMort(cible);
@@ -1088,7 +1097,7 @@ function passifsSurMortEnnemi(source, cible) {
   const p = reglagesDuCombattant(source);
   if (!p) return;
   // Berserker : tuer le soigne.
-  if (p.soinParMise) {
+  if (p.soinParMise && soinAutorise(source, source)) {
     const pris = Math.max(1, Math.round(source.maxHp * p.soinParMise));
     const avant = source.hp;
     source.hp = Math.min(source.maxHp, source.hp + pris);
@@ -1539,6 +1548,12 @@ function debutTour(c) {
         const poseur = cb.equipe.find((x) => x.bid === poison.poseur && !estMort(x));
         if (poseur) c.dernierAgresseur = poseur;
       }
+      // La Muraille Vivante ne lit pas que les coups : un allié ne tombe
+      // pas davantage d'une tique de poison tant que le Templier tient.
+      if (c.type === 'joueur' && c.hp <= 0 && sanctuaireActif(c)) {
+        c.hp = 1;
+        journal(`🧱 La Muraille Vivante tient : ${c.nom} reste debout à 1 PV.`);
+      }
       gererMort(c);
       // Relevé sur-le-champ (Phénix, Voie des Ancêtres…) : sa relance est
       // déjà poussée dans la file — jouer maintenant EN PLUS ferait deux
@@ -1707,6 +1722,7 @@ function infligerDegats(source, cible, brut, options = {}) {
   //
   // Les deux hasards s'excluent volontairement : c'est ce qui empêche les
   // pointes de dégâts absurdes et garde les combats lisibles.
+  let executionRasoir = false;
   let chanceCrit = 0.05 + (options.critBonus || 0);
   let chanceDirect = 0;
   if (source.type === 'joueur') {
@@ -1721,10 +1737,13 @@ function infligerDegats(source, cible, brut, options = {}) {
     || Math.random() < chanceCrit;
   if (crit) {
     rendreLaMainSurCritique(source);
-    // Duelliste « Fil du Rasoir » : un critique sur un moribond le tue net.
+    // Duelliste « Fil du Rasoir » : un critique sur un moribond le tue
+    // net — la sentence est posée ici, exécutée après TOUTES les
+    // réductions (lignes, garde, bouclier), sinon un plancher rogné de
+    // 40 % laissait la cible debout malgré l'annonce.
     const seuilRasoir = reglagePassif(source, 'executionSurCritique', 0);
     if (seuilRasoir && cible.type === 'monstre' && cible.hp <= cible.maxHp * seuilRasoir) {
-      d = Math.max(d, cible.hp + 1);
+      executionRasoir = true;
       journal(`🗡️ Le fil du rasoir trouve la faille : ${cible.nom} tombe net.`);
     }
   }
@@ -1809,6 +1828,7 @@ function infligerDegats(source, cible, brut, options = {}) {
     && (source.killsDuTour || 0) >= 1 && d >= cible.hp) {
     d = Math.max(1, cible.hp - 1);
   }
+  if (executionRasoir) d = Math.max(d, cible.hp + 1);
   cible.hp -= d;
   if (cible.type === 'joueur') cible.degatsEncaisses = (cible.degatsEncaisses || 0) + d;
   cible.dernierAgresseur = source;   // qui porte le coup fatal : les passifs le demandent
@@ -1821,7 +1841,6 @@ function infligerDegats(source, cible, brut, options = {}) {
   apresDegatsPassifs(source, cible, d);
   apresDegatsVoies(source, cible, d, options);
   encaisserSelonLesVoies(source, cible, d, options);
-  secourirAllieEnPeril(cible);
   // Templier « Muraille Vivante » : tant qu'il tient, personne ne tombe.
   if (cible.type === 'joueur' && cible.hp <= 0 && sanctuaireActif(cible)) {
     cible.hp = 1;
@@ -1833,6 +1852,10 @@ function infligerDegats(source, cible, brut, options = {}) {
     cible.hp = 1;
     journal(`🐱 ${cible.nom} retombe sur ses pattes : Neuf vies le laisse à 1 PV !`);
   }
+  // Main secourable APRÈS les planchers de survie : un allié qui tombe
+  // pour de bon ne consomme pas la charge unique du Paladin (gererMort
+  // effacerait le bouclier aussitôt posé) ; un survivant à 1 PV, si.
+  if (cible.hp > 0) secourirAllieEnPeril(cible);
   return { degats: d, crit, direct, absorbe, multPassifs, multDefense };
 }
 
@@ -2083,13 +2106,18 @@ function appliquerEffet(source, cible, effet, resultatDegats, comp) {
       // Le bouclier suit la stat écrite sur l'effet, sinon celle de la
       // classe — un Gardien provoque avec sa Vitalité, pas avec une Force
       // qu'il ne monte jamais — et grandit avec le palier de la compétence.
-      const statProvoc = (effet && effet.stat) || (classeBaseDuCombattant(source) || {}).stat || 'for';
+      const statProvoc = (effet && effet.stat) || (comp && comp.stat)
+        || (classeBaseDuCombattant(source) || {}).stat || 'for';
       const valeur = Math.round((4 + statDe(source, statProvoc)) * ampleurEffet(comp, effet));
       poserStatut(cible, { type: 'bouclier', duree, valeur });
       journal(`😤 ${cible.nom} provoque les ennemis et se protège (${valeur} points de bouclier) !`);
       break;
     }
     case 'regen': {
+      if (!soinAutorise(cible, source)) {
+        journal(`🚫 Aucun soin ne prend sur ${cible.nom} : la régénération glisse.`);
+        break;
+      }
       const valeur = valeurRegen(statsEffectives(source), effet, comp);
       poserStatut(cible, { type: 'regen', duree, valeur });
       journal(`💚 ${cible.nom} régénérera ${valeur} PV par tour pendant ${duree} tours.`);
@@ -2493,6 +2521,14 @@ function lancerCompetence(j, compId, cible, relance) {
   const zone = comp.cible === 'ennemis' || comp.cible === 'allies';
   // Contraintes d'Éveil : certaines options disparaissent purement.
   const donDeSonEveil = !!comp.eveil && !!j.eveil && comp.eveil === j.eveil.id;
+  // La contrainte divine du mage n'était appliquée que par l'interface :
+  // une action distante (ou un client modifié) lançait quand même les
+  // compétences communes. Le moteur est la seule vraie porte.
+  if (reglagePassif(j, 'communesInterdites', false) && comp.type !== 'invocation'
+    && typeof estCompetenceCommune === 'function' && estCompetenceCommune(comp)) {
+    journal(`🚫 L'Éveil de ${j.nom} lui a fait oublier les compétences communes.`);
+    return 'refus';
+  }
   if (zone && comp.cible === 'ennemis' && !donDeSonEveil && reglagePassif(j, 'zonesInterdites', false)) {
     journal(`🚫 L'Éveil de ${j.nom} lui interdit de frapper plus d'un ennemi à la fois.`);
     return 'refus';
@@ -2765,6 +2801,13 @@ function tourInvocation(c) {
 function utiliserObjetEnCombat(j, objet) {
   const cb = etat.combat;
   const effet = objet.effet;
+  // Contrainte divine de mêlée : il ne compte que sur lui-même — aucune
+  // potion de soin ou de mana ne passe ses lèvres en combat.
+  if (['pv', 'pm', 'soin-groupe', 'regen'].includes(effet.type)
+    && reglagePassif(j, 'potionsInterdites', false)) {
+    journal(`🚫 L'Éveil de ${j.nom} lui interdit les potions : la fiole reste pleine.`);
+    return;
+  }
   if (effet.type === 'pv') {
     const soin = Math.min(effet.valeur, j.maxHp - j.hp);
     j.hp += soin;

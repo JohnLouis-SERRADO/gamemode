@@ -3877,7 +3877,7 @@ suite('Éveils (v24)', () => {
     verifier(reglagePassif(complet, 'drainSorts', 0) > 0, 'et rien du dessous n\'est perdu');
   });
 
-  test('« Fléau Premier » rend tous les coups critiques — et le prive de tout soin', () => {
+  test('« Fléau Premier » rend tous les coups critiques — ni soin allié, ni potion', () => {
     const fleau = eveilDeRarete('berserker', 'divin');
     const brute = heros('berserker', fleau.id);
     const cible = monstre();
@@ -3888,8 +3888,11 @@ suite('Éveils (v24)', () => {
       if (infligerDegats(brute, cible, 100).crit) crits++;
     }
     egal(crits, 20, 'tous les coups doivent être critiques');
-    verifier(reglagePassif(brute, 'soinsInterdits', false), 'et la contrainte divine doit être là');
-    egal(soigner(brute, 300, brute), 0, 'plus aucun soin ne le touche');
+    verifier(reglagePassif(brute, 'soinsAlliesInterdits', false), 'et la contrainte divine doit être là');
+    verifier(reglagePassif(brute, 'potionsInterdites', false), 'les potions aussi sont interdites');
+    const allie = heros('duelliste', null);
+    egal(soigner(brute, 300, allie), 0, 'aucun soin allié ne le touche');
+    verifier(soigner(brute, 300, brute) >= 0 && brute.hp <= brute.maxHp, 'mais se soigner lui-même reste possible');
     etat.combat = null;
   });
 
@@ -4512,6 +4515,24 @@ suite('Refonte des classes (v26)', () => {
       'aucune fiche de Voie ne contient « NaN »');
     verifier(!Object.values(EVEILS).some((e) => (e.effet || '').includes('NaN')),
       'aucune fiche d\'Éveil ne contient « NaN »');
+  });
+
+  test('un héros NEUF suit la grille 10-40 — kitMigre ne le concerne pas', () => {
+    const neuf = nouveauPersonnage({
+      nom: 'Bleu', avatar: '🧙', race: 'humain', classe: 'guerrier',
+      stats: { for: 10, dex: 6, int: 4, esp: 4, vit: 10, cha: 4 },
+      competences: ['frappe-heroique'],
+    });
+    sansAnnonces(() => adminFixerNiveau(neuf, 12));
+    neuf.sousClasse = 'berserker';
+    debloquerCompetencesClasse(neuf, false);
+    verifier(neuf.kitMigre == null || neuf.kitMigre === false,
+      `un héros neuf ne porte pas le contrat de migration (${neuf.kitMigre})`);
+    const horsGrille = neuf.grimoire.filter((id) => {
+      const c = COMPETENCES[id];
+      return c && c.sousClasse === 'berserker' && (c.niveauRequis || 1) > neuf.niveau;
+    });
+    aucun(horsGrille, 'compétences de spécialité débloquées avant leur palier');
   });
 
   test('un héros migré garde tout son kit — la grille 10-40 vaut pour les nouveaux', () => {

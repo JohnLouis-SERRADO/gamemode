@@ -43,7 +43,7 @@ const PHRASES_VOIE = {
   partProie: (v, m) => `+${pct(v)} de dégâts contre les cibles sous ${pct(m.seuilProie)} de leurs PV`,
   doubleSousSeuil: (v) => `dégâts DOUBLÉS contre les cibles sous ${pct(v)} de leurs PV`,
   bonusLigneArriere: (v) => `+${pct(v)} de dégâts depuis la ligne arrière`,
-  interditAvant: () => 'et il ne quitte plus jamais cette ligne',
+  interditAvant: () => 'il ne peut plus quitter la ligne arrière',
   contreEntravee: (v) => `+${pct(v)} de dégâts contre une cible entravée — empoisonnée, affaiblie, étourdie ou marquée`,
   parMilleOr: (v) => `+${pct(v)} de dégâts par millier de pièces amassé dans le combat`,
   parStatutCible: (v) => `+${pct(v)} de dégâts par état que la cible subit déjà`,
@@ -161,7 +161,7 @@ const CLES_MUETTES = new Set([
   'seuilVitalite', 'seuilProie', 'plafondCharnier', 'plafondMasse', 'plafondRunes',
   'dureeApresAbattu', 'partCoupsSupp', 'partCiblesSupp', 'dureeMarque', 'dureeBerce',
   'plafondSurplus', 'partBouclierSecours', 'multInvocation', 'partMeute', 'critMaxDuel',
-  'coutPercee', 'poisonDureeCoup',
+  'coutPercee', 'poisonDureeCoup', 'propagationExpiration',
 ]);
 
 function texteMecaniquesVoie(mecaniques) {
@@ -279,7 +279,7 @@ const MECANIQUES_VOIE = {
     { parRune: 0.08, plafondRunes: 0.50, bonusSynergie: 0.25 },
   ],
   necromancien: [
-    { dureeBonusStatut: 2, propagationTotale: true, parMort: 0.03, plafondCharnier: 0.45 },
+    { dureeBonusStatut: 2, propagationTotale: true, propagationExpiration: true, parMort: 0.03, plafondCharnier: 0.45 },
     { parMort: 0.05, plafondCharnier: 1.00 },
     { terreur: 0.35, parMort: 0.03, plafondCharnier: 0.45 },
   ],
@@ -318,7 +318,7 @@ const MECANIQUES_VOIE = {
     { perceArmure: 0.05, drainSorts: 0.25, seuilExecution: 0.15 },
   ],
   corrupteur: [
-    { dureeBonusStatut: 2, propagationTotale: true },
+    { dureeBonusStatut: 2, propagationTotale: true, propagationExpiration: true },
     { parStatutCible: 0.25, dureeBonusStatut: 1 },
     { terreur: 0.35, dureeBonusStatut: 1 },
   ],
