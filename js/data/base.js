@@ -43,7 +43,10 @@ const SOUS_CARACS = {
   crit:     { nom: 'Critique',      emoji: '💥', pourcent: true,  desc: 'Fréquence des coups critiques (×1,5 de dégâts)' },
   direct:   { nom: 'Coup direct',   emoji: '🎲', pourcent: true,  desc: 'Chance d’un coup net à +25 %, sans se cumuler au critique' },
   deter:    { nom: 'Détermination', emoji: '⚖️', pourcent: true,  desc: 'Augmente TOUS les dégâts et TOUS les soins, sans hasard' },
-  celerite: { nom: 'Célérité',      emoji: '💨', pourcent: true,  desc: 'Augmente l’initiative et raccourcit les recharges' },
+  // v30 : les deux promesses sont enfin tenues par le moteur, et le
+  // chiffre les dit — 1 point de Célérité vaut 1,6 point d'initiative,
+  // et la moitié en réduction de recharge.
+  celerite: { nom: 'Célérité',      emoji: '💨', pourcent: true,  desc: 'Décide QUI commence le combat (×1,6 en initiative) et raccourcit les recharges (jusqu’à −25 %)' },
   piete:    { nom: 'Piété',         emoji: '💧', pourcent: true,  desc: 'Augmente le mana maximum et sa régénération' },
 };
 

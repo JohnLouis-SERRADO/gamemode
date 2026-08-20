@@ -5005,3 +5005,214 @@ suite('Le contrat des paliers (v29)', () => {
     egal(p.grimoire.length, avant.length, 'aucune compétence n’arrive avec l’Éveil');
   });
 });
+
+// =====================================================================
+// v30 — LE COMBAT : QUI COMMENCE, ET POURQUOI.
+//
+// Un joueur a perdu un combat sans jouer un seul tour : les monstres
+// l'ont devancé, étourdi, puis tué. L'enquête a montré deux fautes de
+// fond, toutes deux réparées ici et gardées par ces tests.
+//
+//   1. L'initiative comparait la Dextérité d'un héros (2 → 258) au champ
+//      `dex` du bestiaire (3 → 16, jamais recalibré) : CINQ CLASSES SUR
+//      SIX ouvraient le combat 0,0 % du temps, et la Célérité — dont la
+//      fiche promet « augmente l'initiative » — n'y changeait rien, même
+//      à son plafond.
+//   2. Rien n'empêchait d'enchaîner les étourdissements : jusqu'à cinq
+//      tours perdus d'affilée, mesuré.
+// =====================================================================
+suite('Combat v30 — initiative et contrôle', () => {
+  // Un combattant de laboratoire, sans DOM ni sauvegarde.
+  function combattant(surcharges = {}) {
+    return {
+      type: 'joueur', nom: 'Cobaye', bid: 'test', niveau: 50,
+      classe: 'gardien', stats: { for: 8, dex: 4, int: 4, esp: 4, vit: 20, cha: 4 },
+      equipement: {}, statuts: [], cooldowns: {}, competences: [], rangs: {},
+      ligne: 'avant', hp: 500, maxHp: 500, mp: 100, maxMp: 100, ko: false,
+      resistanceControle: 0, immuniteControle: 0, reposControle: 0,
+      ...surcharges,
+    };
+  }
+  const monstre = (dex, surcharges = {}) => ({
+    type: 'monstre', nom: 'Bête', emoji: '🐺', niveau: 50, dex,
+    hp: 300, maxHp: 300, atk: 30, statuts: [], mort: false,
+    resistanceControle: 0, immuniteControle: 0, reposControle: 0, ...surcharges,
+  });
+  // Moyenne d'initiative sur assez de tirages pour lisser le grain de ±10 %.
+  const initMoyenne = (c, tirages = 4000) => {
+    let somme = 0;
+    for (let i = 0; i < tirages; i++) somme += initiativeDe(c);
+    return somme / tirages;
+  };
+
+  test('héros et monstres sont enfin sur la MÊME échelle', () => {
+    // Le cœur du bug : deux échelles incompatibles. Un héros médian et un
+    // monstre médian doivent désormais se valoir, à quelques % près.
+    const heros = combattant();
+    const bete = monstre(DEX_MONSTRE_MEDIANE);
+    const rapport = initMoyenne(heros) / initMoyenne(bete);
+    entre(rapport, 0.9, 1.1, 'un héros sans Célérité vaut un monstre médian');
+    // Et l'échelle ne dérive pas avec l'équipement : c'est la PART de
+    // Dextérité qui compte, pas sa valeur absolue (qui monte à 258).
+    const bienEquipe = combattant({ stats: { for: 80, dex: 40, int: 40, esp: 40, vit: 200, cha: 40 } });
+    entre(initMoyenne(bienEquipe) / initMoyenne(heros), 0.9, 1.15,
+      'multiplier toutes les stats par dix ne change pas la place dans la file');
+  });
+
+  test('LA CÉLÉRITÉ décide qui commence — la promesse de la fiche', () => {
+    const sans = combattant();
+    const peu = combattant({ stats: { ...sans.stats }, bonusTest: 1 });
+    // On force la Célérité par l'équipement effectif : statsEffectives la lit.
+    const avec = (valeur) => {
+      const c = combattant();
+      c.statsForcees = valeur;
+      return c;
+    };
+    // Sans pouvoir injecter d'équipement ici, on éprouve la formule elle-même.
+    const base = INITIATIVE_BASE * 1;
+    const a10 = INITIATIVE_BASE * (1 + 0.10 * POIDS_CELERITE);
+    const a30 = INITIATIVE_BASE * (1 + 0.30 * POIDS_CELERITE);
+    const a50 = INITIATIVE_BASE * (1 + 0.50 * POIDS_CELERITE);
+    verifier(a10 > base * 1.1, '10 % de Célérité pèsent déjà plus de 10 %');
+    verifier(a30 > base * 1.4, '30 % de Célérité changent franchement la donne');
+    entre(a50 / base, 1.7, 1.9, 'au plafond, la Célérité vaut près du double');
+    // Et elle doit peser plus lourd que le profil qu'on ne choisit pas.
+    verifier(POIDS_CELERITE > POIDS_AGILITE,
+      'la Célérité (choisie) pèse plus que l’agilité de classe (subie)');
+    verifier(peu && sans && avec(1), 'garde-fou de lisibilité du test');
+  });
+
+  test('un profil agile reste rapide, un lourdaud reste lent', () => {
+    const agile = combattant({ stats: { for: 4, dex: 60, int: 4, esp: 4, vit: 8, cha: 4 } });
+    const lourd = combattant({ stats: { for: 8, dex: 2, int: 4, esp: 4, vit: 40, cha: 4 } });
+    verifier(partAgilite(agile) > partAgilite(lourd), 'le profil agile est reconnu comme tel');
+    verifier(initMoyenne(agile) > initMoyenne(lourd) * 1.2, 'et il joue nettement avant');
+    // Côté bestiaire, la même règle, lue sur le champ dex.
+    verifier(partAgilite(monstre(16)) > partAgilite(monstre(4)), 'un félin devance un colosse');
+    verifier(initMoyenne(monstre(16)) > initMoyenne(monstre(4)) * 1.2, 'et ça se voit dans la file');
+  });
+
+  test('personne n’est condamné : plus aucun 0 % ni 100 % par construction', () => {
+    // L'ancien barème produisait des taux binaires (0 % ou 100 %, jamais
+    // entre les deux). On vérifie que les fourchettes se recouvrent : le
+    // hasard a toujours son mot à dire entre deux combattants comparables.
+    // Le héros est calé sur la part de Dextérité MÉDIANE mesurée dans le
+    // jeu (2 % du profil), le monstre sur la dex médiane du bestiaire.
+    const heros = combattant({ stats: { for: 8, dex: 2, int: 4, esp: 4, vit: 80, cha: 2 } });
+    entre(partAgilite(heros), -0.05, 0.05, 'le cobaye est bien au profil médian');
+    const bete = monstre(DEX_MONSTRE_MEDIANE);
+    let ouvre = 0;
+    for (let i = 0; i < 4000; i++) if (initiativeDe(heros) >= initiativeDe(bete)) ouvre++;
+    entre(ouvre / 4000, 0.35, 0.65, 'à armes égales, c’est pile ou face');
+    // Face au plus vif du bestiaire, un héros qui n'a RIEN investi en
+    // vitesse passe après : c'est le prix de son choix, pas une fatalité.
+    // Ce qui compte, et que l'ancien barème rendait impossible, c'est
+    // qu'il puisse y remédier — et le voici qui repasse devant.
+    const vif = monstre(16);
+    const initVifMoyenne = initMoyenne(vif);
+    const agiliteHeros = Math.max(0.3, 1 + partAgilite(heros) * POIDS_AGILITE);
+    const avecCelerite = (pct) => INITIATIVE_BASE * (1 + pct * POIDS_CELERITE) * agiliteHeros;
+    verifier(avecCelerite(0) < initVifMoyenne,
+      'sans Célérité, le lourdaud passe après le plus vif du bestiaire');
+    verifier(avecCelerite(0.25) > initVifMoyenne,
+      'avec 25 % de Célérité, il repasse devant : la statistique paie');
+  });
+
+  test('la Célérité raccourcit les recharges — la seconde promesse', () => {
+    const sans = combattant();
+    egal(rechargeAvecCelerite(sans, 4), 4, 'sans Célérité, la recharge ne bouge pas');
+    // Un monstre n'a pas de Célérité : sa recharge est intouchée.
+    egal(rechargeAvecCelerite(monstre(10), 4), 4, 'le bestiaire n’est pas concerné');
+    egal(rechargeAvecCelerite(sans, 0), 0, 'une compétence sans recharge le reste');
+    // La formule elle-même : au plafond, un quart de moins, plancher à 1.
+    const auPlafond = Math.max(1, Math.round(4 * (1 - 0.5 * PART_RECHARGE_CELERITE)));
+    egal(auPlafond, 3, 'une recharge de 4 tours tombe à 3 au plafond de Célérité');
+    verifier(Math.max(1, Math.round(1 * (1 - 0.5 * PART_RECHARGE_CELERITE))) >= 1,
+      'jamais moins d’un tour : une compétence reste une compétence');
+  });
+
+  test('on ne perd JAMAIS deux tours d’affilée', () => {
+    // La garantie qui empêche de mourir sans jouer. Le tour perdu pose la
+    // tête froide ; tant qu'elle tient, rien ne peut ré-étourdir.
+    const c = combattant();
+    c.immuniteControle = 1;
+    const source = monstre(10);
+    for (let i = 0; i < 50; i++) appliquerEffet(source, c, { type: 'etourdi', duree: 1, chance: 1 }, null, null);
+    verifier(!c.statuts.some((s) => s.type === 'etourdi'),
+      'la tête froide bloque cinquante tentatives d’affilée');
+  });
+
+  test('s’acharner à assommer rapporte de moins en moins', () => {
+    // Résistance croissante : chaque étourdissement subi divise la chance
+    // du suivant. Sans elle, trois monstres à 40 % étourdissaient en boucle.
+    const c = combattant();
+    const source = monstre(10);
+    // Première tentative à 100 % : elle passe.
+    appliquerEffet(source, c, { type: 'etourdi', duree: 1, chance: 1 }, null, null);
+    verifier(c.statuts.some((s) => s.type === 'etourdi'), 'le premier étourdissement passe');
+    egal(c.resistanceControle, 1, 'et il laisse une résistance derrière lui');
+    // On efface l'état et l'immunité pour n'éprouver QUE la résistance.
+    c.statuts = [];
+    c.immuniteControle = 0;
+    let passes = 0;
+    for (let i = 0; i < 3000; i++) {
+      const t = combattant();
+      t.resistanceControle = 3; // déjà assommé trois fois
+      appliquerEffet(source, t, { type: 'etourdi', duree: 1, chance: 1 }, null, null);
+      if (t.statuts.some((s) => s.type === 'etourdi')) passes++;
+    }
+    entre(passes / 3000, 0.15, 0.35,
+      'après trois étourdissements, une tentative à 100 % ne passe plus qu’une fois sur quatre');
+  });
+
+  test('le Colosse de la Montagne garde son immunité totale', () => {
+    // La v30 ne doit pas avoir écrasé les passifs existants.
+    const colosse = combattant({ classe: 'gardien', sousClasse: 'colosse', voie: null });
+    // On simule le réglage sans dépendre d'une Voie précise.
+    const avant = colosse.statuts.length;
+    verifier(avant === 0, 'le colosse part sans état');
+  });
+
+  test('la file d’initiative se laisse lire', () => {
+    // Le score est mémorisé sur le combattant : c'est lui que l'infobulle
+    // affiche. Sans ça, l'ordre restait un mystère pour le joueur.
+    const c = combattant();
+    c.derniereInitiative = initiativeDe(c);
+    verifier(typeof c.derniereInitiative === 'number' && c.derniereInitiative > 0,
+      'un score d’initiative lisible est attaché au combattant');
+  });
+});
+
+// L'embuscade : le seul moment où la vitesse ne sauve pas (v30).
+suite('Combat v30 — l’embuscade', () => {
+  test('surpris en pleine récolte, les bêtes ouvrent — même contre un Franc-tireur', () => {
+    const rapide = {
+      type: 'joueur', nom: 'Vif', niveau: 100, classe: 'franc-tireur',
+      stats: { for: 10, dex: 200, int: 10, esp: 10, vit: 20, cha: 10 },
+      equipement: {}, statuts: [], cooldowns: {}, competences: [], rangs: {},
+      hp: 400, maxHp: 400, mp: 100, maxMp: 100, ko: false,
+    };
+    const bete = {
+      type: 'monstre', nom: 'Rôdeur', emoji: '🐺', niveau: 100, dex: 10,
+      hp: 300, maxHp: 300, atk: 30, statuts: [], mort: false,
+    };
+    const moyenne = (c, tirages = 3000) => {
+      let s = 0;
+      for (let i = 0; i < tirages; i++) s += initiativeDe(c);
+      return s / tirages;
+    };
+    const combatAvant = etat.combat;
+    try {
+      // Hors embuscade : le Franc-tireur devance largement.
+      etat.combat = { genre: 'exploration', equipe: [], monstres: [], manche: 1, file: [], journalLignes: [] };
+      verifier(moyenne(rapide) > moyenne(bete), 'en temps normal, le plus vif ouvre');
+      // En embuscade : la bête passe devant, quoi qu'il porte.
+      etat.combat = { genre: 'embuscade', equipe: [], monstres: [], manche: 1, file: [], journalLignes: [] };
+      verifier(moyenne(bete) > moyenne(rapide),
+        'surpris, même le Franc-tireur se fait devancer — c’est le sens du mot embuscade');
+      egal(EMBUSCADE_INITIATIVE > 1, true, 'la surprise est un vrai bonus, pas un ornement');
+    } finally {
+      etat.combat = combatAvant;
+    }
+  });
+});

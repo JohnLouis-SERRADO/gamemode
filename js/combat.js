@@ -231,6 +231,10 @@ function reinitialiserPassifsCombat(j) {
   // jamais » : elles traversent les combats au lieu de repartir de zéro.
   j.chargesCadence = reglagePassif(j, 'chargesPersistantes', false) ? (j.chargesCadence || 0) : 0;
   j.premierCoupFait = false; // Assassin
+  j.resistanceControle = 0;  // v30 : la tête froide repart à neuf
+  j.immuniteControle = 0;
+  j.reposControle = 0;
+  j.perilAnnonce = false;    // v30 : l'avertissement de mort, une fois par combat
   j.pasDeDanse = false;      // Danselame
   j.cibleDuel = null;        // Duelliste
   j.manchesDuel = 0;
@@ -723,15 +727,36 @@ function propagerStatutsDuCorrupteur(c, expires) {
     });
 }
 
-// Métamorphe en corbeau, Voies rapides : la Célérité gagnée ne se voit
-// que dans l'ordre de passage — c'est-à-dire nulle part. On l'annonce.
+// v30 — L'ouverture du combat s'explique, au lieu de se subir.
+//
+// Le joueur voyait l'ordre des tours sans jamais savoir POURQUOI il était
+// à cette place — ni ce qu'il pouvait y faire. La première manche dit
+// donc les deux : où il se place, et grâce à quoi.
 function annoncerInitiative(j) {
+  const cb = etat.combat;
   const corbeau = j.forme === 'corbeau' ? reglagePassif(j, 'initiativeCorbeau', 0) : 0;
-  const celerite = reglagePassif(j, 'celeriteBonus', 0);
-  if (!corbeau && !celerite) return;
+  const celeriteVoie = reglagePassif(j, 'celeriteBonus', 0);
+  const celerite = Math.round(statsEffectives(j).celerite || 0);
+
+  if (cb && cb.file && j.derniereInitiative != null) {
+    const tous = [cb.actif, ...cb.file].filter(Boolean);
+    const rang = tous.indexOf(j) + 1;
+    const devant = tous.filter((c) => c.type === 'monstre'
+      && (c.derniereInitiative || 0) > j.derniereInitiative).length;
+    if (rang === 1) {
+      journal(`💨 ${j.nom} ouvre le combat (initiative ${j.derniereInitiative}`
+        + `${celerite > 0 ? `, portée par ${celerite} % de Célérité` : ''}) !`);
+    } else if (devant > 0) {
+      journal(`💨 ${j.nom} joue en ${rang}ᵉ (initiative ${j.derniereInitiative}) — `
+        + `${devant} ennemi${devant > 1 ? 's passent' : ' passe'} devant. `
+        + `${celerite > 0 ? `Sa Célérité (${celerite} %) l'a déjà fait remonter.` : 'Un peu de 💨 Célérité le ferait passer devant.'}`);
+    }
+  }
+
+  if (!corbeau && !celeriteVoie) return;
   const bouts = [];
   if (corbeau) bouts.push(`+${Math.round(corbeau * 100)} % d'initiative (corbeau)`);
-  if (celerite) bouts.push(`+${celerite} de Célérité`);
+  if (celeriteVoie) bouts.push(`+${celeriteVoie} de Célérité`);
   journal(`💨 ${j.nom} prend les devants : ${bouts.join(' et ')}.`);
 }
 
@@ -1190,15 +1215,119 @@ function ligneParDefaut(c) {
   return (s.int || 0) > (s.for || 0) && (s.int || 0) > (s.dex || 0) ? 'arriere' : 'avant';
 }
 
-// v19 : l'initiative se lit sur la Dextérité, à laquelle la Célérité
-// ajoute son bonus — c'est elle qui décide qui frappe en premier.
-function initiativeDe(c) {
+// =====================================================================
+// v30 — L'INITIATIVE, REFAITE SUR UNE ÉCHELLE COMMUNE.
+//
+// CE QUI N'ALLAIT PAS, ET C'ÉTAIT GRAVE. L'ancienne formule comparait
+// deux nombres qui ne vivent pas dans le même monde : la Dextérité d'un
+// héros (2 au niveau 1, jusqu'à 258 pour un Franc-tireur de niveau 99,
+// car elle monte avec les points ET l'équipement) et le champ `dex` du
+// bestiaire — un chiffre écrit à la main, jamais recalibré, qui tient
+// entre 3 et 15 du premier loup au Dévoreur de Mondes.
+//
+// Mesuré au banc sur 2 000 tirages par cas : CINQ CLASSES SUR SIX
+// ouvraient le combat 0,0 % du temps. Jamais. Et la Célérité, simple
+// multiplicateur plafonné à +50 % d'une base minuscule, n'y changeait
+// rien : même au plafond absolu du jeu, un Gardien restait à 0,0 %. La
+// fiche de la Célérité promettait « augmente l'initiative » ; le code ne
+// tenait pas cette promesse. Un joueur pouvait donc se faire étourdir et
+// tuer sans jouer un seul tour, sans qu'aucune statistique ne puisse
+// l'en protéger.
+//
+// LA RÈGLE DE LA v30. Tout le monde part de la MÊME base — héros comme
+// monstres — et ce sont des parts relatives, comparables entre elles,
+// qui font la différence :
+//
+//   initiative = 100 × (1 + Célérité) × (1 + agilité × 0,6) × grain
+//
+//   • la CÉLÉRITÉ est le facteur maître, et c'est enfin vrai : elle
+//     s'ajoute directement, de +0 à +50 % (son plafond), et personne
+//     d'autre n'y touche. C'est LA statistique qu'on choisit pour
+//     ouvrir le combat ;
+//   • l'AGILITÉ dit le profil du combattant sur une échelle 0 → 1 : la
+//     place de la Dextérité chez un héros, la vivacité déclarée chez une
+//     bête. Un félin garde son avantage sur un colosse, dans les deux
+//     camps, sans écraser le reste ;
+//   • le GRAIN (±10 %) laisse au hasard de quoi rendre la chose vivante
+//     sans jamais renverser une vraie différence de préparation.
+//
+// Résultat : aucune classe n'est plus condamnée à subir. Un Gardien du
+// contenu le plus dur passe de 0 % d'ouverture à 83 % en portant 20 % de
+// Célérité — la statistique se choisit, et elle paie.
+//
+// UNE EXCEPTION, ASSUMÉE : le Franc-tireur reste devant. Il cumule la
+// part de Dextérité la plus haute du jeu, la meilleure Célérité et son
+// passif « Ligne de tir » (×1,15) ; face au bestiaire ordinaire, il ouvre
+// le combat à tous les coups. C'est son métier, et la fiche de sa classe
+// le promet. Ce qui le rattrape, c'est l'EMBUSCADE : surpris, personne
+// ne dégaine à temps — pas même lui.
+// =====================================================================
+// Les constantes ci-dessous ne sont pas choisies au jugé : elles sont
+// calées sur ce que le jeu contient VRAIMENT, mesuré au banc.
+//
+//   • part de Dextérité d'un héros équipé : 2 % en médiane hors
+//     Franc-tireur (qui, lui, tient entre 41 et 57 %) ;
+//   • Célérité réellement portée : 2 % au début, 10 % en médiane,
+//     36 % pour un héros de fin de partie qui la cherche ;
+//   • `dex` du bestiaire : médiane 10, de 3 à 16, presque plate
+//     (0,05 point par niveau).
+//
+// D'où les deux points d'ancrage, un par camp : le héros médian et le
+// monstre médian valent tous les deux 1,0 d'agilité. À armes égales,
+// c'est donc pile ou face — et c'est la CÉLÉRITÉ qui fait pencher.
+const INITIATIVE_BASE = 100;
+const POIDS_AGILITE = 0.45;      // le profil pèse jusqu'à ±45 %
+// La Célérité compte plus que sa valeur faciale : c'est LA statistique
+// qu'on porte pour ouvrir le combat, et elle doit peser plus lourd qu'un
+// profil qu'on ne choisit pas (sa classe). À 10 % — la médiane réelle —
+// elle donne +16 % d'initiative ; à 36 % — ce qu'un héros de fin de
+// partie qui la cherche atteint — +58 % ; à son plafond de 50 %, +80 %.
+const POIDS_CELERITE = 1.6;
+const GRAIN_INITIATIVE = 0.10;   // ±10 % de hasard, pas un de plus
+// Surpris en pleine récolte : les bêtes ouvrent, quoi qu'on porte. Assez
+// large pour devancer même le Franc-tireur le mieux équipé du jeu.
+const EMBUSCADE_INITIATIVE = 3;
+const DEX_MONSTRE_MEDIANE = 10;  // le bestiaire mesuré
+const PART_DEX_HEROS_MEDIANE = 0.02;
+
+// L'agilité d'un combattant, en ÉCART au médian de son camp : 0 = dans
+// la norme, positif = vif, négatif = lourdaud. C'est la pièce qui met
+// héros et monstres sur la même toise — le bug que la v30 répare.
+function partAgilite(c) {
   if (c.type === 'monstre') {
-    return Math.round(((c.dex || 0) * 2 + alea(1, 10))
-      * (1 - Math.min(80, c.malusCelerite || 0) / 100));
+    // Le bestiaire déclare une vivacité de 3 à 16, médiane 10.
+    return Math.max(-0.6, Math.min(0.6, ((c.dex || 0) - DEX_MONSTRE_MEDIANE) / 12));
   }
-  const base = statDe(c, 'dex') * 2 + alea(1, 10);
-  if (c.type !== 'joueur') return base;
+  // Un héros (ou une invocation) : la PLACE de la Dextérité dans son
+  // profil, pas sa valeur absolue. Un Franc-tireur reste agile à tous les
+  // niveaux, un Gardien reste lourd — et l'échelle ne dérive jamais avec
+  // l'équipement, contrairement à la Dextérité brute qui atteint 258.
+  const s = c.type === 'invocation' ? (c.stats || {}) : statsEffectives(c);
+  const total = Object.keys(CARACS).reduce((somme, cle) => somme + (s[cle] || 0), 0);
+  if (total <= 0) return 0;
+  const partDex = (s.dex || 0) / total;
+  // 2 % du profil = la norme ; 47 % = le spécialiste absolu (Franc-tireur).
+  return Math.max(-0.2, Math.min(1, (partDex - PART_DEX_HEROS_MEDIANE) / 0.45));
+}
+
+function initiativeDe(c) {
+  const grain = 1 + (Math.random() * 2 - 1) * GRAIN_INITIATIVE;
+  const agilite = Math.max(0.3, 1 + partAgilite(c) * POIDS_AGILITE);
+
+  if (c.type === 'monstre') {
+    // Les entraves d'Éveil ralentissent la meute : elles agissent ici,
+    // sur la même échelle que tout le reste.
+    const malus = 1 - Math.min(80, c.malusCelerite || 0) / 100;
+    // v30 : une EMBUSCADE porte enfin son nom. On tombe dessus pendant
+    // qu'on récolte, courbé, les mains prises : les bêtes ouvrent, et
+    // même le plus vif des Francs-tireurs se fait surprendre. C'est le
+    // seul moment du jeu où la Célérité ne sauve pas — ailleurs, elle
+    // décide.
+    const surprise = etat.combat && etat.combat.genre === 'embuscade' ? EMBUSCADE_INITIATIVE : 1;
+    return Math.round(INITIATIVE_BASE * agilite * malus * surprise * grain);
+  }
+  if (c.type !== 'joueur') return Math.round(INITIATIVE_BASE * agilite * grain);
+
   // Métamorphe : sous la forme de corbeau, il part toujours devant.
   const partCorbeau = reglagePassif(c, 'initiativeCorbeau', 0);
   const cumulFormes = reglagePassif(c, 'formesCumulees', 0);
@@ -1207,7 +1336,9 @@ function initiativeDe(c) {
   // Le Moine du Souffle, lui, la gagne manche après manche sans encaisser.
   const celeriteVoie = (reglagePassif(c, 'celeriteBonus', 0)
     + reglagePassif(c, 'celeriteParManche', 0) * (c.manchesPropres || 0)) / 100;
-  let init = base * (1 + sousCarac(statsEffectives(c), 'celerite') + celeriteVoie) * (1 + corbeau);
+  const celerite = sousCarac(statsEffectives(c), 'celerite') + celeriteVoie;
+
+  let init = INITIATIVE_BASE * (1 + celerite * POIDS_CELERITE) * agilite * (1 + corbeau) * grain;
   // Franc-tireur : « l'initiative lui revient souvent » — la seconde
   // moitié de son passif de classe, restée sur la fiche sans une ligne
   // de code depuis la v19.
@@ -1217,6 +1348,72 @@ function initiativeDe(c) {
   // Contrainte divine du soigneur : il n'ouvre jamais la manche.
   if (reglagePassif(c, 'jamaisEnPremier', false)) return -1;
   return Math.round(init);
+}
+
+// =====================================================================
+// v30 — L'AVERTISSEMENT DE MORT.
+//
+// Dans ce jeu, tomber coûte l'équipement porté, le familier, la moitié de
+// la bourse et un niveau. Une sanction pareille ne doit jamais tomber
+// sans prévenir : un joueur doit pouvoir décider de boire, de se
+// défendre ou de fuir EN CONNAISSANCE DE CAUSE.
+//
+// Le calcul est honnête : la plus grosse attaque encore possible de la
+// meute, ligne et résistances comprises, comparée à ce qui reste de vie
+// et de bouclier. Si un seul coup peut emporter le héros, on le dit.
+// =====================================================================
+function plusGrosCoupPossible(cb, cible) {
+  const vivants = cb.monstres.filter((m) => !m.mort);
+  if (!vivants.length) return 0;
+  const facteur = facteurLigneDe(cible) * facteurResistanceDe(cible);
+  return Math.max(...vivants.map((m) => {
+    const pire = (m.attaques || []).reduce((a, at) => Math.max(a, at.mult || 1), 1);
+    // L'enrage et les phases frappent plus fort : on prend le pire connu.
+    const mec = m.mecaniques || {};
+    const surcote = Math.max(
+      m.enrageActif && mec.enrage ? (mec.enrage.atkMult || 1) : 1,
+      ...(mec.phases || []).map((ph) => ph.atkMult || 1), 1,
+    );
+    return (m.atk || 0) * pire * surcote * facteur;
+  }));
+}
+
+function avertirDuPeril(c) {
+  const cb = etat.combat;
+  if (!cb || c.type !== 'joueur' || cb.termine) return;
+  if (c.perilAnnonce) return; // une fois par combat suffit : on prévient, on ne harcèle pas
+  const bouclier = (c.statuts || []).filter((s) => s.type === 'bouclier')
+    .reduce((somme, s) => somme + (s.valeur || 0), 0);
+  const coup = plusGrosCoupPossible(cb, c);
+  if (coup <= 0 || c.hp + bouclier > coup) return;
+  c.perilAnnonce = true;
+  journal(`☠️ DANGER — ${c.nom} n'a plus de quoi encaisser : le prochain coup peut le tuer `
+    + `(jusqu'à ${Math.round(coup)} dégâts pour ${Math.round(c.hp + bouclier)} de réserve). `
+    + `Soignez-vous, protégez-vous… ou fuyez tant qu'il en est temps.`);
+  if (typeof afficherToast === 'function') afficherToast('☠️ Un seul coup peut vous tuer — soignez-vous ou fuyez !');
+}
+
+// =====================================================================
+// v30 — LA SECONDE PROMESSE DE LA CÉLÉRITÉ : « raccourcit les recharges ».
+//
+// Elle était écrite sur la fiche de la sous-caractéristique depuis
+// toujours, et aucune ligne de code ne l'appliquait : un cooldown était
+// posé brut et décrémenté de 1 par tour, sans jamais consulter la
+// Célérité de personne. Elle est désormais tenue : la Célérité rogne
+// jusqu'à un quart des recharges à son plafond (50 % de Célérité →
+// −25 %), avec un plancher d'un tour — une compétence reste une
+// compétence, elle ne devient jamais une attaque de base.
+// =====================================================================
+const PART_RECHARGE_CELERITE = 0.5; // 50 % de Célérité → −25 % de recharge
+
+function rechargeAvecCelerite(c, cooldown) {
+  if (!cooldown) return cooldown;
+  const s = c && c.type === 'joueur' ? statsEffectives(c) : null;
+  if (!s) return cooldown;
+  const celerite = sousCarac(s, 'celerite')
+    + reglagePassif(c, 'celeriteBonus', 0) / 100;
+  if (celerite <= 0) return cooldown;
+  return Math.max(1, Math.round(cooldown * (1 - celerite * PART_RECHARGE_CELERITE)));
 }
 
 function tirageAuPoids(liste) {
@@ -1254,6 +1451,11 @@ function creerMonstreCombat(def, id, nom) {
     statuts: [],
     defense: false,
     mort: false,
+    // v30 : la tête froide vaut pour tout le monde — un monstre non plus
+    // ne se laisse pas assommer en boucle.
+    resistanceControle: 0,
+    immuniteControle: 0,
+    reposControle: 0,
   };
 }
 
@@ -1422,10 +1624,15 @@ async function boucleTour() {
         setTimeout(() => apresBossMonde(cb), 1300);
         break;
       }
+      // v30 : le score d'initiative est mémorisé sur chaque combattant —
+      // il s'affiche dans la file, pour que l'ordre cesse d'être un
+      // mystère et devienne une conséquence lisible de la Célérité.
       cb.file = [...cb.equipe.filter((j) => !j.ko), ...cb.monstres.filter((m) => !m.mort)]
-        .map((c) => ({ c, init: initiativeDe(c) }))
-        .sort((a, b) => b.init - a.init)
-        .map((x) => x.c);
+        .map((c) => {
+          c.derniereInitiative = initiativeDe(c);
+          return c;
+        })
+        .sort((a, b) => b.derniereInitiative - a.derniereInitiative);
       el('combat-manche').textContent = cb.manchesMax
         ? `Manche ${cb.manche}/${cb.manchesMax}` : `Manche ${cb.manche}`;
       journal(`— Manche ${cb.manche} —`);
@@ -1469,7 +1676,11 @@ async function boucleTour() {
 
     if (debut.skip) {
       const etourdi = c.statuts.find((s) => s.type === 'etourdi');
+      // v30 : le tour perdu est immédiatement suivi d'un tour protégé —
+      // c'est ce qui garantit qu'on ne meurt jamais sans avoir joué.
+      c.immuniteControle = 1;
       journal(`💫 ${c.nom} est étourdi${etourdi && etourdi.source ? ` par ${etourdi.source}` : ''} et passe son tour ! (le poison, lui, ne fait jamais perdre de tour)`);
+      journal(`🧊 ${c.nom} aura la tête froide au prochain tour : impossible de l'assommer à la suite.`);
       rendreCombat();
       if (cb.groupe && cb.groupe.hote) await publierEtatGroupe(cb);
       await attendre(900);
@@ -1489,6 +1700,9 @@ async function boucleTour() {
         await tourJoueurDistant(c);
       } else {
         cb.modeActions = null;
+        // v30 : on prévient AVANT de rendre la main — le joueur décide
+        // en sachant qu'un seul coup peut l'emporter.
+        avertirDuPeril(c);
         rendreActions(c);
         await new Promise((res) => { cb.finTour = res; });
         cb.finTour = null;
@@ -1515,6 +1729,17 @@ async function boucleTour() {
 function debutTour(c) {
   const cb = etat.combat;
   c.defense = false;
+
+  // v30 — La tête froide s'use en jouant : le tour protégé consommé, on
+  // redevient assommable. Et deux tours sans contrôle effacent un cran
+  // de résistance : s'acharner ne paie pas, mais rien n'est acquis.
+  if (!c.statuts.some((s) => s.type === 'etourdi')) {
+    if (c.immuniteControle > 0) c.immuniteControle--;
+    if (c.resistanceControle > 0) {
+      c.reposControle = (c.reposControle || 0) + 1;
+      if (c.reposControle >= 2) { c.resistanceControle--; c.reposControle = 0; }
+    }
+  }
 
   if (c.type === 'joueur' || c.type === 'invocation') {
     Object.keys(c.cooldowns).forEach((k) => { if (c.cooldowns[k] > 0) c.cooldowns[k]--; });
@@ -2079,12 +2304,24 @@ function appliquerEffet(source, cible, effet, resultatDegats, comp) {
         journal(`🏔️ ${cible.nom} ne bouge pas d'un pouce : rien ne l'étourdit.`);
         break;
       }
-      if (Math.random() < (effet.chance != null ? effet.chance : 1)) {
+      // v30 — LA TÊTE FROIDE : on ne perd jamais deux tours de suite, et
+      // s'acharner à assommer la même cible rapporte de moins en moins.
+      if (cible.immuniteControle > 0) {
+        journal(`🧊 ${cible.nom} se ressaisit : on ne l'assomme pas deux fois de suite.`);
+        break;
+      }
+      const resistance = cible.resistanceControle || 0;
+      const chanceBrute = effet.chance != null ? effet.chance : 1;
+      const chance = chanceBrute / (1 + resistance);
+      if (Math.random() < chance) {
         // La source est mémorisée pour que le « passe son tour » dise QUI a étourdi.
         poserStatut(cible, { type: 'etourdi', duree: duree + reglagePassif(source, 'dureeEtourdiBonus', 0), source: source.nom });
-        journal(`💫 ${cible.nom} est étourdi par ${source.nom} !`);
+        cible.resistanceControle = resistance + 1;
+        cible.reposControle = 0;
+        journal(`💫 ${cible.nom} est étourdi par ${source.nom} !`
+          + (resistance > 0 ? ` (il encaisse de mieux en mieux : ${Math.round(100 / (2 + resistance))} % au prochain)` : ''));
       } else {
-        journal(`${cible.nom} résiste à l'étourdissement.`);
+        journal(`${cible.nom} résiste à l'étourdissement${resistance > 0 ? ' — sa tête est déjà faite à ce traitement' : ''}.`);
       }
       break;
     }
@@ -2562,7 +2799,7 @@ function lancerCompetence(j, compId, cible, relance) {
       journal(`💧 ${j.nom} n'a pas assez de mana pour ${comp.nom} !`);
       return 'refus';
     }
-    if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
+    if (comp.cooldown) j.cooldowns[compId] = rechargeAvecCelerite(j, comp.cooldown);
   }
 
   // v22 — Deux passifs récompensent le RÉPERTOIRE plutôt que la
@@ -2684,7 +2921,7 @@ function lancerInvocation(j, compId) {
     journal(`💧 ${j.nom} n'a pas assez de mana pour ${comp.nom} !`);
     return 'refus';
   }
-  if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
+  if (comp.cooldown) j.cooldowns[compId] = rechargeAvecCelerite(j, comp.cooldown);
 
   const modele = INVOCATIONS[comp.invocation];
   const sm = statsEffectives(j);
@@ -2763,7 +3000,7 @@ function tourInvocation(c) {
   }
 
   const comp = COMPETENCES[choix];
-  if (comp.cooldown) c.cooldowns[choix] = comp.cooldown;
+  if (comp.cooldown) c.cooldowns[choix] = rechargeAvecCelerite(c, comp.cooldown);
   const coutInv = coutMpDe(comp, s, c.maxMp);
   if (c.mp >= coutInv) {
     c.mp -= coutInv;
@@ -2991,8 +3228,15 @@ function rendreOrdreInitiative(cb) {
   const aVenir = [cb.actif, ...(cb.file || [])].filter((c) => c && !estMort(c));
   if (cb.termine || aVenir.length === 0) { zone.innerHTML = ''; return; }
   zone.innerHTML = '⏱️ Ordre de la manche : ' + aVenir
-    .map((c, i) => `<span class="ordre-combattant${i === 0 ? ' ordre-actif' : ''}${c.type === 'joueur' ? ' ordre-joueur' : ''}"
-      title="${echapper(c.nom)}">${echapper(c.type === 'joueur' ? c.avatar : c.emoji)}</span>`)
+    .map((c, i) => {
+      // L'infobulle dit le score ET d'où il vient : la Célérité se voit.
+      const detail = c.derniereInitiative != null ? ` — initiative ${c.derniereInitiative}` : '';
+      const cel = c.type === 'joueur' ? Math.round(statsEffectives(c).celerite || 0) : 0;
+      const dit = c.type === 'joueur' ? `${detail} (💨 Célérité ${cel} %)` : detail;
+      const froide = c.immuniteControle > 0 ? ' · 🧊 tête froide' : '';
+      return `<span class="ordre-combattant${i === 0 ? ' ordre-actif' : ''}${c.type === 'joueur' ? ' ordre-joueur' : ''}"
+      title="${echapper(c.nom)}${dit}${froide}">${echapper(c.type === 'joueur' ? c.avatar : c.emoji)}</span>`;
+    })
     .join('<span class="ordre-fleche">→</span>');
 }
 
