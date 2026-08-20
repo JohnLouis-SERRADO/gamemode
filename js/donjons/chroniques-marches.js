@@ -428,40 +428,9 @@ CHRONIQUES.push(
     },
     relique: { nom: 'Aiguille d’Ysoline', emoji: '🧵', bonus: { dex: 16, for: 10, deter: 8 }, desc: 'Du bois usé par trois générations de mains. Elle ne casse pas, et elle sait déjà où passer. Récompense de « Ceux Qui Recousent Le Matin ».' },
   },
-  {
-    zone: 'dernier-point', nom: 'Le Nœud Jamais Serré', emoji: '🪢', statAcces: 'for',
-    pnj: { nom: 'Vasque, cartographe', emoji: '🧭' },
-    resume: 'Passé le trône, il reste trois mètres de monde. Le fil s’arrête là, sur un nœud que personne n’a serré.',
-    scenes: [
-      'Derrière la salle du trône, un couloir, puis plus rien — non pas le vide, mais la fin du tissu. Trois mètres de sol, un bord net, et au-delà le blanc. Sur le bord, une aiguille posée à plat, à côté d’un nœud lâche.',
-      '« J’ai cartographié Valciel d’un bout à l’autre, » dit Vasque, qui n’a plus de parchemin. « Voilà l’autre bout. Il n’est pas déchiré, il n’est pas brûlé. Il est inachevé. Quelqu’un s’est arrêté ici en plein travail. »',
-      '« Un nœud non serré, ça veut dire deux choses. Soit on comptait reprendre. Soit on a hésité au dernier moment. » Elle regarde l’aiguille sans la toucher. « Six mondes qu’il recommence. Le septième n’est pas fini. Il s’est peut-être posé la question, lui aussi. »',
-    ],
-    ep1: { stat: 'for', texte: 'Le bord du monde tire. Ce n’est pas un vent, c’est une traction régulière, comme un tissu qu’on retend. S’avancer jusqu’au nœud demande de résister à ça sans rien lâcher.', ok: 'Vous atteignez le bord et vous vous y tenez debout. Personne n’avait fait ces trois mètres depuis six mondes.', ko: 'La traction vous met à genoux à un pas du nœud. On recule, on souffle, on recommence — mais quelque chose a mesuré votre force au passage.' },
-    combat1: 'Trois nœuds finaux se resserrent autour du bord. Ils ne défendent pas le monde : ils empêchent qu’on le termine.',
-    dilemme: {
-      texte: '« Deux gestes possibles, » dit Vasque, et sa voix est parfaitement calme. « Serrer le nœud : le monde est clos, fini, il ne peut plus se défaire — ni être recommencé. Ou le laisser ouvert, comme lui l’a laissé, et rendre l’aiguille. »',
-      optA: { stat: 'for', texte: '🪢 Serrer le nœud', detail: 'Valciel devient définitif — et le septième sera le dernier', resultat: 'Le nœud se serre avec un bruit très bref. Le bord cesse de tirer. Partout dans les Marches, les reprises tiennent, les balances s’équilibrent, l’eau revient au gué. Et il n’y aura plus jamais de huitième monde, parce qu’on ne recoud pas ce qui est noué.' },
-      optB: { texte: '🪡 Laisser ouvert et rendre l’aiguille', detail: 'il pourra recommencer — quelqu’un devra recommencer', resultat: 'Vous posez l’aiguille près du nœud, exactement comme vous l’avez trouvée. Le bord continue de tirer, doucement. Vasque note la position sur sa main, faute de parchemin. « Alors ce sera à quelqu’un d’autre, » dit-elle. « Un jour. Et il trouvera le nœud là où il est. »' },
-    },
-    tresor: { titre: '🪢 La réserve du couturier', texte: 'Contre le bord, une caisse d’outils rangée avec un soin extrême : bobines pleines, aiguilles alignées, tout prêt pour un huitième ouvrage qui n’a pas commencé.' },
-    combat2: 'Les ourlets du monde se replient sur vous. À trois mètres du bord, le tissu défend le peu qu’il lui reste.',
-    ep2: { stat: 'esp', texte: 'La Main s’approche du bord. Elle ne menace pas : elle vient reprendre son ouvrage, et il faut soutenir l’idée qu’on l’a interrompue.', ok: 'Vous tenez le regard du couturier. Il s’arrête. En six mondes, personne ne s’était mis entre l’aiguille et le tissu.', ko: 'Vous détournez les yeux une seconde. Quand vous les relevez, deux points de plus ont été faits, et le nœud est un peu plus loin.' },
-    avantBoss: '« Ce n’est pas un monstre, » dit Vasque. « C’est un artisan qui n’a jamais été interrompu. C’est peut-être pire. »',
-    boss: {
-      nom: 'La Main Qui Coud', intro: 'Une main seule, à l’échelle d’un homme, calleuse au pouce et à l’index. Elle tient l’aiguille avec l’assurance de sept mondes de pratique. Elle ne vous en veut pas : vous êtes sur le tissu.',
-      annonce: '🪢 Le nœud est entre vos mains : la Main Qui Coud ne décide plus seule de la suite !',
-      phase: '🧵 Le point arrière : ce qui vient d’être fait se défait pour être refait mieux !',
-      enrage: '⚠️ Elle prend le dernier point — celui qui ferme un monde !',
-    },
-    fins: {
-      variante: 'La Main s’ouvre et l’aiguille tombe sur le bord, à plat, exactement comme au début. Rien ne se referme, rien ne s’effondre. Vasque regarde longtemps les trois mètres de monde inachevé. « Il l’avait posée, » dit-elle enfin. « Il ne l’avait pas lâchée. Nous, si. »',
-      defaut: 'La Main retombe, doigts repliés, et le tissu cesse de tirer. Le nœud reste lâche. Vasque s’assoit au bord du monde, les jambes dans le blanc, et ne dit rien pendant très longtemps. Puis : « On rentre. Il y a une carte à refaire. »',
-    },
-    relique: { nom: 'Aiguille Reposée', emoji: '🪡', bonus: { for: 14, esp: 14, dex: 12, deter: 9 }, desc: 'Elle a cousu sept mondes et n’a pas une éraflure. Celui qui la porte sait qu’on peut poser un outil sans finir l’ouvrage. Récompense du « Nœud Jamais Serré ».' },
-  },
 );
 
-// Les quatorze récits repassent par le générateur commun : même format de
-// donjon, mêmes verrous d'accès, même relique à la clef.
-construireChroniques(CHRONIQUES.slice(-14));
+// Les treize récits repassent par le générateur commun : même format de
+// donjon, mêmes verrous d'accès, même relique à la clef. (Le « Nœud Jamais
+// Serré » est parti avec la carte du Dernier Point, fondue dans le Trône.)
+construireChroniques(CHRONIQUES.slice(-13));

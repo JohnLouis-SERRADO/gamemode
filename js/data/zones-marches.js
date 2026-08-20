@@ -149,20 +149,20 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Acte III · La Mer de Verre (60-68) ----------
-  vagueFigee: { nom: 'Vague figée', emoji: '🌊', niveau: 75, dex: 9,
-    drops: [{ id: 'verre-de-mer', chance: 0.45 }],
+  vagueFigee: { nom: 'Vague figée', emoji: '🌊', niveau: 65, dex: 9,
+    drops: [{ id: 'cristal-givre', chance: 0.5 }],
     attaques: [
       { nom: 'Déferlante immobile', emoji: '💧', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Éclats', emoji: '🔷', mult: 0.85, poids: 2, type: 'aoe' },
     ] },
-  noyeDebout: { nom: 'Noyé debout', emoji: '🧍', niveau: 76, dex: 11,
+  noyeDebout: { nom: 'Noyé debout', emoji: '🧍', niveau: 75, dex: 11,
     drops: [{ id: 'verre-de-mer', chance: 0.35 }, { id: 'encre-noyee', chance: 0.15 }],
     attaques: [
       { nom: 'Étreinte salée', emoji: '🫧', mult: 1.15, poids: 3, type: 'mono', effet: { type: 'drain', part: 0.3 } },
       { nom: 'Marée arrêtée', emoji: '🌀', mult: 0.9, poids: 1, type: 'aoe' },
     ] },
-  banquiseVive: { nom: 'Banquise vive', emoji: '🧊', niveau: 76, dex: 7,
-    drops: [{ id: 'verre-de-mer', chance: 0.6 }],
+  banquiseVive: { nom: 'Banquise vive', emoji: '🧊', niveau: 66, dex: 7,
+    drops: [{ id: 'cristal-givre', chance: 0.45 }, { id: 'nacre-abyssale', chance: 0.2 }],
     attaques: [
       { nom: 'Fracture', emoji: '💢', mult: 1.3, poids: 3, type: 'mono' },
       { nom: 'Craquement long', emoji: '❄️', mult: 0.95, poids: 2, type: 'aoe', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
@@ -263,7 +263,7 @@ const BESTIAIRE_MARCHES = {
       { nom: 'Dernière ronde', emoji: '🔦', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Couvre-feu', emoji: '🔕', mult: 0.9, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
     ] },
-  porteurDeLanterne: { nom: 'Porteur de lanterne', emoji: '🏮', niveau: 91, dex: 13,
+  porteurDeLanterne: { nom: 'Porteur de lanterne', emoji: '🏮', niveau: 90, dex: 13,
     drops: [{ id: 'braise-crepusculaire', chance: 0.4 }],
     attaques: [
       { nom: 'Lumière tenue', emoji: '💡', mult: 1.25, poids: 3, type: 'mono' },
@@ -296,7 +296,7 @@ const BESTIAIRE_MARCHES = {
       { nom: 'Répétition', emoji: '🔁', mult: 1.25, poids: 3, type: 'mono' },
       { nom: 'Superposition', emoji: '🌫️', mult: 0.95, poids: 2, type: 'aoe' },
     ] },
-  raccordRate: { nom: 'Raccord raté', emoji: '🩹', niveau: 94, dex: 14,
+  raccordRate: { nom: 'Raccord raté', emoji: '🩹', niveau: 93, dex: 14,
     drops: [{ id: 'fil-de-suture', chance: 0.45 }],
     attaques: [
       { nom: 'Couture qui lâche', emoji: '✂️', mult: 1.35, poids: 3, type: 'mono' },
@@ -323,7 +323,7 @@ const BESTIAIRE_MARCHES = {
       { nom: 'Ça craque', emoji: '⚡', mult: 1.4, poids: 3, type: 'mono' },
       { nom: 'Propagation', emoji: '🕸️', mult: 1.05, poids: 2, type: 'aoe' },
     ] },
-  memoireDuMondeAncien: { nom: 'Mémoire du monde ancien', emoji: '🌍', niveau: 98, dex: 12,
+  memoireDuMondeAncien: { nom: 'Mémoire du monde ancien', emoji: '🌍', niveau: 97, dex: 12,
     drops: [{ id: 'aiguille-premiere', chance: 0.3 }, { id: 'eclat-de-couronne', chance: 0.1 }],
     attaques: [
       { nom: 'Ce qui était avant', emoji: '🕰️', mult: 1.35, poids: 3, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
@@ -338,7 +338,7 @@ const BESTIAIRE_MARCHES = {
     ] },
 
   // ---------- Acte IV · Le Trône du Premier Roi (90-100) ----------
-  heraultSansVoix: { nom: 'Héraut sans voix', emoji: '📯', niveau: 99, dex: 14,
+  heraultSansVoix: { nom: 'Héraut sans voix', emoji: '📯', niveau: 98, dex: 14,
     drops: [{ id: 'eclat-de-couronne', chance: 0.15 }],
     attaques: [
       { nom: 'Annonce muette', emoji: '🤐', mult: 1.3, poids: 3, type: 'mono' },
@@ -350,7 +350,7 @@ const BESTIAIRE_MARCHES = {
       { nom: 'Mauvais conseil', emoji: '🗣️', mult: 1.35, poids: 3, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
       { nom: 'Cabale', emoji: '🕯️', mult: 1.05, poids: 2, type: 'aoe' },
     ] },
-  ombreCouronnee: { nom: 'Ombre couronnée', emoji: '👤', niveau: 100, dex: 15,
+  ombreCouronnee: { nom: 'Ombre couronnée', emoji: '👤', niveau: 99, dex: 15,
     drops: [{ id: 'eclat-de-couronne', chance: 0.3 }, { id: 'aiguille-premiere', chance: 0.15 }],
     attaques: [
       { nom: 'Ce qu’il fut', emoji: '👑', mult: 1.4, poids: 3, type: 'mono' },
@@ -398,11 +398,12 @@ const BESTIAIRE_MARCHES = {
       { nom: 'Traversée due', emoji: '〰️', mult: 1.2, poids: 3, type: 'mono' },
       { nom: 'Le prix d’abord', emoji: '🪙', mult: 0.9, poids: 2, type: 'mono', effet: { type: 'drain', part: 0.25 } },
     ] },
-  paroleGelee: { nom: 'Parole gelée', emoji: '🗨️', niveau: 88, dex: 8,
-    drops: [{ id: 'braise-crepusculaire', chance: 0.2 }, { id: 'os-divin', chance: 0.3 }],
+  paroleGelee: { nom: 'Parole gelée', emoji: '🗨️', niveau: 68, boss: true, dex: 8,
+    drops: [{ id: 'cristal-givre', chance: 1 }, { id: 'peau-de-mammouth', chance: 0.6 }, { id: 'obsidienne-brute', chance: 0.4 }],
     attaques: [
-      { nom: 'Ce qui a été dit', emoji: '❄️', mult: 1.25, poids: 3, type: 'mono' },
-      { nom: 'Silence tenu', emoji: '🤫', mult: 0.85, poids: 2, type: 'aoe', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
+      { nom: 'Mot de givre', emoji: '❄️', mult: 1.1, poids: 2, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
+      { nom: 'Silence polaire', emoji: '🌨️', mult: 0.65, poids: 1, type: 'aoe' },
+      { nom: 'Dernier mot', emoji: '🧊', mult: 1.45, poids: 2, type: 'mono' },
     ] },
   temoinDeGalet: { nom: 'Témoin de galet', emoji: '🏛️', niveau: 88, dex: 10,
     drops: [{ id: 'os-divin', chance: 0.45 }],
@@ -431,7 +432,7 @@ const BESTIAIRE_MARCHES = {
       { nom: 'Le blanc d’avant', emoji: '⬜', mult: 1.25, poids: 3, type: 'mono' },
       { nom: 'Rien dessous', emoji: '🕳️', mult: 0.95, poids: 2, type: 'mono', effet: { type: 'drain', part: 0.3 } },
     ] },
-  bordSansOurlet: { nom: 'Bord sans ourlet', emoji: '✂️', niveau: 96, dex: 15,
+  bordSansOurlet: { nom: 'Bord sans ourlet', emoji: '✂️', niveau: 95, dex: 15,
     drops: [{ id: 'fil-de-suture', chance: 0.4 }],
     attaques: [
       { nom: 'Coupe franche', emoji: '🔪', mult: 1.3, poids: 3, type: 'mono' },
@@ -458,14 +459,21 @@ const BESTIAIRE_MARCHES = {
       { nom: 'Point manquant', emoji: '❔', mult: 1.25, poids: 3, type: 'mono' },
       { nom: 'Laissé en plan', emoji: '🪫', mult: 0.95, poids: 2, type: 'mono', effet: { type: 'drain', part: 0.3 } },
     ] },
-  ourletDuMonde: { nom: 'Ourlet du monde', emoji: '〰️', niveau: 100, dex: 12,
+  ourletDuMonde: { nom: 'Ourlet du monde', emoji: '〰️', niveau: 99, dex: 12,
     drops: [{ id: 'aiguille-premiere', chance: 0.3 }, { id: 'eclat-de-couronne', chance: 0.2 }],
     attaques: [
       { nom: 'Bord du tissu', emoji: '📐', mult: 1.35, poids: 3, type: 'mono' },
       { nom: 'Au-delà, rien', emoji: '🌑', mult: 1.05, poids: 2, type: 'aoe' },
     ] },
-  laMainQuiCoud: { nom: 'La Main Qui Coud', emoji: '✋', niveau: 100, boss: true, dex: 15,
-    drops: [{ id: 'aiguille-premiere', chance: 1 }, { id: 'eclat-de-couronne', chance: 0.8 }],
+  eclatDeMiroir: {
+    nom: 'Éclat de miroir', emoji: '🪞', niveau: 76, dex: 10,
+    drops: [{ id: 'verre-de-mer', chance: 0.5 }, { id: 'encre-noyee', chance: 0.2 }],
+    attaques: [
+      { nom: 'Reflet coupant', emoji: '🪞', mult: 1.05, poids: 3, type: 'mono' },
+      { nom: 'Éclat renvoyé', emoji: '✨', mult: 1.35, poids: 1, type: 'mono' },
+    ] },
+  laMainQuiCoud: { nom: 'La Main Qui Coud', emoji: '✋', niveau: 100, miniBoss: true, dex: 15,
+    drops: [{ id: 'aiguille-premiere', chance: 1 }, { id: 'eclat-de-couronne', chance: 0.8 }, { id: 'de-du-couturier', chance: 0.25 }],
     attaques: [
       { nom: 'Point arrière', emoji: '↩️', mult: 1.4, poids: 3, type: 'mono' },
       { nom: 'Sept mondes de pratique', emoji: '🧵', mult: 1.15, poids: 2, type: 'aoe', effet: { type: 'affaibli', duree: 2 } },
@@ -498,7 +506,7 @@ ZONES.push(
   {
     id: 'mer-de-verre', nom: 'La Mer de Verre', emoji: '🔷', niveauMin: 74, niveauMax: 77, note: 'équipe conseillée',
     desc: 'Le dernier des déchaînements élémentaires, et le plus ancien : un océan arrêté en pleine vague, il y a si longtemps que l’écume est devenue pierre. On marche dessus. Dessous, on distingue des villes — celles de la sixième version du monde, exactement comme la Bibliothèque les décrivait.',
-    monstres: ['vagueFigee', 'noyeDebout', 'banquiseVive'], boss: 'celleQuiNaJamaisCoule',
+    monstres: ['noyeDebout', 'eclatDeMiroir'], boss: 'celleQuiNaJamaisCoule',
     recolte: [{ id: 'verre-de-mer', chance: 0.8 }, { id: 'encre-noyee', chance: 0.3 }, { id: 'corail-sanglant', chance: 0.35 }, { id: 'acier-celeste', chance: 0.25 }],
   },
   {
@@ -528,7 +536,7 @@ ZONES.push(
   {
     id: 'gue-des-serments', nom: 'Le Gué des Serments', emoji: '🌉', niveauMin: 86, niveauMax: 89, note: 'équipe requise',
     desc: 'Une rivière qu’on traverse à pied sec : l’eau s’est retirée le jour où le premier serment a été rompu. Sur les galets, des promesses déposées par milliers. Les gardiens du Sanctuaire juraient de veiller sur la couture du monde — c’est ici qu’on apprend qu’ils ont cessé, et ce que ça a coûté.',
-    monstres: ['passeurSansBarque', 'paroleGelee', 'temoinDeGalet'], boss: 'celuiQuiNaJamaisJure',
+    monstres: ['passeurSansBarque', 'temoinDeGalet'], boss: 'celuiQuiNaJamaisJure',
     recolte: [{ id: 'cendre-grise', chance: 0.5 }, { id: 'etoffe-du-neant', chance: 0.4 }, { id: 'os-divin', chance: 0.3 }, { id: 'plume-d-archon', chance: 0.25 }, { id: 'essence-primordiale', chance: 0.12 }],
   },
   {
@@ -558,14 +566,8 @@ ZONES.push(
   {
     id: 'trone-premier-roi', nom: 'Le Trône du Premier Roi', emoji: '👑', niveauMin: 98, niveauMax: 100, note: 'le dernier pas',
     desc: 'Le bout du chemin. Celui qui siège ici n’est pas un tyran : c’est le couturier. Il a recousu le monde six fois, il s’apprête à recommencer — et en six mondes, personne ne lui a jamais demandé s’il fallait continuer. Vous, vous pouvez encore poser la question. Ou l’en empêcher.',
-    monstres: ['heraultSansVoix', 'conseillerDeLaPremiereHeure', 'ombreCouronnee'], boss: 'lePremierRoi',
+    monstres: ['heraultSansVoix', 'conseillerDeLaPremiereHeure', 'ombreCouronnee', 'noeudFinal', 'repriseInachevee', 'ourletDuMonde', 'laMainQuiCoud'], boss: 'lePremierRoi',
     recolte: [{ id: 'eclat-de-couronne', chance: 0.6 }, { id: 'aiguille-premiere', chance: 0.4 }, { id: 'fil-de-suture', chance: 0.4 }, { id: 'essence-primordiale', chance: 0.2 }],
-  },
-  {
-    id: 'dernier-point', nom: 'Le Dernier Point', emoji: '🪢', niveauMin: 98, niveauMax: 100, note: 'après le Roi',
-    desc: 'Passé le trône, il reste trois mètres de monde. Le fil s’arrête là, sur un nœud qui n’a jamais été serré. Celui qui coud a posé son aiguille ici, un jour, et n’est pas revenu — on ne sait toujours pas s’il avait fini, ou s’il avait renoncé.',
-    monstres: ['noeudFinal', 'repriseInachevee', 'ourletDuMonde'], boss: 'laMainQuiCoud',
-    recolte: [{ id: 'fil-de-suture', chance: 0.6 }, { id: 'aiguille-premiere', chance: 0.5 }, { id: 'eclat-de-couronne', chance: 0.35 }, { id: 'essence-primordiale', chance: 0.25 }],
   },
 );
 
@@ -573,6 +575,10 @@ ZONES.push(
 // Les trophées des dix nouveaux boss.
 // ---------------------------------------------------------------------
 Object.assign(OBJETS, {
+  'ecaille-de-la-salamandre': { nom: 'Écaille de la Salamandre', emoji: '🔥', type: 'equipement', slot: 'accessoire', niveau: 32, rarete: 'legendaire', prixVente: 1030, bonus: { for: 9, vit: 7, pvMax: 40, deter: 4 }, desc: 'Trophée de la Salamandre d’Ambrezine. Encore tiède, quelle que soit la saison.' },
+  'dernier-mot-gele': { nom: 'Dernier Mot gelé', emoji: '🧊', type: 'equipement', slot: 'accessoire', niveau: 68, rarete: 'legendaire', prixVente: 2600, bonus: { int: 20, esp: 12, pmMax: 60, celerite: 6 }, desc: 'Trophée de la Parole gelée des Pics. Personne n’a jamais osé le décongeler pour l’entendre.' },
+  'insigne-du-heros-efface': { nom: 'Insigne du héros effacé', emoji: '🎖️', type: 'equipement', slot: 'accessoire', niveau: 44, rarete: 'legendaire', prixVente: 1500, bonus: { for: 12, dex: 8, pvMax: 50, crit: 4 }, desc: 'Trophée de l’Ombre des Cryptes. Le nom gravé dessus change selon qui le regarde.' },
+  'perle-de-regret': { nom: 'Perle de regret', emoji: '🫧', type: 'equipement', slot: 'accessoire', niveau: 71, rarete: 'legendaire', prixVente: 2800, bonus: { esp: 18, vit: 12, pvMax: 66, deter: 6 }, desc: 'Trophée du Regret dévorant. Elle pèse exactement le poids de ce qu’on n’a pas fait.' },
   'boulier-du-comptable': { nom: 'Boulier du Comptable', emoji: '🧮', type: 'equipement', slot: 'accessoire', niveau: 56, rarete: 'legendaire', prixVente: 1963, bonus: { int: 20, esp: 11, celerite: 7 }, desc: 'Trophée du Grand Comptable. Les boules glissent encore toutes seules, et le total tombe toujours juste.' },
   'baillon-du-taciturne': { nom: 'Bâillon du Taciturne', emoji: '🤐', type: 'equipement', slot: 'accessoire', niveau: 89, rarete: 'mythique', prixVente: 3973, bonus: { esp: 33, vit: 18, deter: 12 }, desc: 'Trophée de Celui Qui N’a Jamais Juré. Le porter n’empêche pas de parler — ça rappelle seulement le prix.' },
   'epingle-de-la-maille': { nom: 'Épingle de la Maille', emoji: '🧷', type: 'equipement', slot: 'accessoire', niveau: 96, rarete: 'mythique', prixVente: 5522, bonus: { dex: 32, int: 19, crit: 14 }, desc: 'Trophée de la Maille Tombée. Elle tient ce qui allait céder, le temps qu’on trouve mieux. On n’a jamais trouvé mieux.' },
@@ -590,6 +596,10 @@ Object.assign(OBJETS, {
 });
 
 Object.assign(COFFRES_BOSS, {
+  salamandreBraise: 'ecaille-de-la-salamandre',
+  paroleGelee: 'dernier-mot-gele',
+  ombreDeHeros: 'insigne-du-heros-efface',
+  regretDevorant: 'perle-de-regret',
   celuiQuiCompte: 'sablier-du-compteur',
   maitreDeChapelle: 'diapason-fele',
   celleQuiNaJamaisCoule: 'quille-de-verre',
@@ -603,7 +613,6 @@ Object.assign(COFFRES_BOSS, {
   leGrandComptable: 'boulier-du-comptable',
   celuiQuiNaJamaisJure: 'baillon-du-taciturne',
   laMailleTombee: 'epingle-de-la-maille',
-  laMainQuiCoud: 'de-du-couturier',
 });
 
 // ---------------------------------------------------------------------
@@ -671,13 +680,6 @@ Object.assign(HISTOIRES_ZONES, {
     { titre: 'L’envers du tissu', texte: 'En soulevant un pan mal recousu, on aperçoit l’envers. Il est couvert de reprises, sur toute sa surface, jusqu’aussi loin qu’on voit.', recompense: { materiau: 'braise-crepusculaire' } },
     { titre: 'La nuit où ça n’a pas lâché', texte: 'Ysoline vous montre une entrée dans son carnet, vieille de douze ans : « rien à recoudre ce matin ». Une seule ligne. Elle n’a jamais su pourquoi.', recompense: { soinPct: 0.5, xp: 260 } },
   ],
-  'dernier-point': [
-    { titre: 'Les trois mètres', texte: 'Passé le trône, il reste exactement trois mètres de monde. Vous les mesurez au pas. C’est peu pour une fin, et beaucoup pour un bord.', recompense: { xp: 480 } },
-    { titre: 'Le pouce calleux', texte: 'Sur le bord, l’empreinte d’un pouce dans la matière du monde. Elle est calleuse au même endroit que celle d’un tailleur. Elle est aussi vingt fois trop grande.', recompense: { materiau: 'aiguille-premiere' } },
-    { titre: 'Le fil qui dépasse', texte: 'Un bout de fil dépasse du nœud, long comme un avant-bras. De quoi faire encore quelques points. Quelqu’un a gardé de la marge.', recompense: { materiau: 'fil-de-suture' } },
-    { titre: 'La chaise absente', texte: 'Une marque au sol, à côté du nœud : quelque chose est resté posé là très longtemps, puis a été emporté. On travaillait assis, ici.', recompense: { po: 460 } },
-    { titre: 'Le compte des mondes', texte: 'Gravé au bord, très petit, sept traits. Les six premiers sont barrés. Le septième ne l’est pas encore, et le burin est posé juste à côté.', recompense: { po: 400, xp: 500 } },
-  ],
   'marches-grises': [
     { titre: 'La borne qui recule', texte: 'Une borne gravée « VALCIEL — FIN DES TERRES CONNUES ». Vous la dépassez. Le lendemain, elle est de nouveau devant vous, et la gravure n’a pas changé d’avis.', recompense: { xp: 260 } },
     { titre: 'La caravane qui marche encore', texte: 'Des voyageurs avancent en file, du même pas, depuis si longtemps que leurs sacs sont vides. Vous demandez où ils vont. Ils répondent « devant », et paient volontiers pour qu’on les accompagne un moment.', recompense: { po: 200 } },
@@ -742,6 +744,11 @@ Object.assign(HISTOIRES_ZONES, {
     { titre: 'La mémoire du monde d’avant', texte: 'Un souvenir du sixième monde vous traverse : ses rues, ses noms, sa dernière journée. Il s’en va comme il est venu, en laissant de quoi payer le dérangement.', recompense: { po: 360, xp: 380 } },
   ],
   'trone-premier-roi': [
+    { titre: 'Les trois mètres', texte: 'Passé le trône, il reste exactement trois mètres de monde. Vous les mesurez au pas. C’est peu pour une fin, et beaucoup pour un bord.', recompense: { xp: 480 } },
+    { titre: 'Le pouce calleux', texte: 'Sur le bord, l’empreinte d’un pouce dans la matière du monde. Elle est calleuse au même endroit que celle d’un tailleur. Elle est aussi vingt fois trop grande.', recompense: { materiau: 'aiguille-premiere' } },
+    { titre: 'Le fil qui dépasse', texte: 'Un bout de fil dépasse du nœud, long comme un avant-bras. De quoi faire encore quelques points. Quelqu’un a gardé de la marge.', recompense: { materiau: 'fil-de-suture' } },
+    { titre: 'La chaise absente', texte: 'Une marque au sol, à côté du nœud : quelque chose est resté posé là très longtemps, puis a été emporté. On travaillait assis, ici.', recompense: { po: 460 } },
+    { titre: 'Le compte des mondes', texte: 'Gravé au bord, très petit, sept traits. Les six premiers sont barrés. Le septième ne l’est pas encore, et le burin est posé juste à côté.', recompense: { po: 400, xp: 500 } },
     { titre: 'Les six couronnes brisées', texte: 'Dans l’antichambre, six couronnes cassées sur six coussins, une par monde recousu. Le septième coussin est vide, et son coussin a été battu ce matin.', recompense: { xp: 900 } },
     { titre: 'Le trésor jamais dépensé', texte: 'La salle du trésor n’a jamais servi : on ne fait pas de commerce quand on est seul. L’or y est intact, et il pèse le poids de six solitudes.', recompense: { po: 700 } },
     { titre: 'L’éclat sous le trône', texte: 'Sous le trône, un éclat de couronne oublié par le balai. Il est de la première — celle d’avant Valciel, celle qu’il a brisée lui-même.', recompense: { materiau: 'eclat-de-couronne' } },

@@ -83,7 +83,7 @@ const ZONES = [
   {
     id: 'foret', nom: 'Forêt des Murmures', emoji: '🌲', niveauMin: 4, niveauMax: 8,
     desc: 'Passé les Plaines, les arbres se resserrent et se mettent à chuchoter. Ils ne parlent pas de vous : ils répètent, en boucle, quelque chose qu’ils ont vu il y a très longtemps — et que personne ne comprend encore.',
-    monstres: ['araignee', 'bandit', 'treant'], boss: 'araigneeMatriarche',
+    monstres: ['bandit', 'araignee', 'treant'], boss: 'araigneeMatriarche',
     recolte: [{ id: 'bois-chene', chance: 0.8 }, { id: 'seve-ambree', chance: 0.5 }, { id: 'soie-araignee', chance: 0.35 }, { id: 'fibre-sauvage', chance: 0.4 }, { id: 'minerai-cuivre', chance: 0.3 }],
   },
   {
@@ -95,13 +95,13 @@ const ZONES = [
   {
     id: 'jungle-vai', nom: 'Jungle de Vaï-Sombre', emoji: '🌴', niveauMin: 12, niveauMax: 16,
     desc: 'Au sud du marais, la végétation devient folle : une jungle si dense que le jour n’y descend jamais tout à fait. Tout y pousse trop vite, tout y mord — comme si la terre elle-même avait la fièvre. Les chasseurs parlent d’arbres qui poussent en une nuit. Vous allez bientôt voir pire.',
-    monstres: ['grenouilleDard', 'panthereOmbre', 'hommeLiane'], boss: 'matriarcheSarpense',
+    monstres: ['hommeLiane', 'panthereOmbre'], boss: 'matriarcheSarpense',
     recolte: [{ id: 'liane-tressee', chance: 0.8 }, { id: 'orchidee-lunaire', chance: 0.5 }, { id: 'venin-concentre', chance: 0.35 }, { id: 'lotus-noir', chance: 0.3 }, { id: 'minerai-cuivre', chance: 0.25 }],
   },
   {
     id: 'foret-petrifiee', nom: 'Forêt Pétrifiée', emoji: '🗿', niveauMin: 16, niveauMax: 20,
     desc: 'Et soudain, plus un bruit. Une forêt entière changée en pierre en une seule nuit, il y a mille ans — chaque feuille, chaque oiseau, figés en plein geste. C’est ici que le monde pose sa première vraie question : QU’EST-CE qui peut faire ça à une forêt ? La réponse est plus loin sur la route.',
-    monstres: ['treantPetrifie', 'basilicRunique', 'moissonneurRunique'], boss: 'avatarQuartz',
+    monstres: ['basilicRunique', 'moissonneurRunique', 'treantPetrifie'], boss: 'avatarQuartz',
     recolte: [{ id: 'bois-petrifie', chance: 0.75 }, { id: 'ambre-noir', chance: 0.45 }, { id: 'sphere-runique', chance: 0.2 }, { id: 'venin-concentre', chance: 0.3 }, { id: 'seve-ambree', chance: 0.35 }],
   },
 ];
@@ -116,25 +116,25 @@ ZONES.push(
   {
     id: 'collines', nom: 'Collines de Cuivre', emoji: '⛰️', niveauMin: 20, niveauMax: 24,
     desc: 'Passé la forêt de pierre, la terre devient rousse et sèche. Les clans orcs tiennent les mines — et leurs galeries les plus profondes butent toutes sur le même mur lisse, trop parfait, qu’aucun pic n’entame. Les orcs creusent AILLEURS, et ne disent pas pourquoi.',
-    monstres: ['orc', 'chamanGobelin', 'golemMineur'], boss: 'chefOrc',
+    monstres: ['chamanGobelin', 'golemMineur', 'orc'], boss: 'chefOrc',
     recolte: [{ id: 'minerai-fer', chance: 0.8 }, { id: 'minerai-cuivre', chance: 0.5 }, { id: 'peau-de-loup', chance: 0.35 }, { id: 'fibre-sauvage', chance: 0.35 }, { id: 'ambre-noir', chance: 0.25 }],
   },
   {
     id: 'falaises-hurlantes', nom: 'Falaises Hurlantes', emoji: '🪨', niveauMin: 24, niveauMax: 28,
     desc: 'Des à-pics battus par des vents qui hurlent — et en écoutant bien, ce ne sont pas des cris : ce sont des NOMS. Des milliers de noms, récités sans fin, comme une liste qu’on refuse d’oublier. Personne n’a jamais retrouvé un seul de leurs porteurs.',
-    monstres: ['harpieHurlante', 'gargouilleVigie', 'elementaireBourrasque'], boss: 'rokhTempetueux',
+    monstres: ['elementaireBourrasque', 'poussinRokh'], boss: 'rokhTempetueux',
     recolte: [{ id: 'basalte-poli', chance: 0.8 }, { id: 'plume-de-rokh', chance: 0.5 }, { id: 'cristal-hurleur', chance: 0.3 }, { id: 'minerai-fer', chance: 0.35 }, { id: 'orchidee-lunaire', chance: 0.25 }],
   },
   {
     id: 'desert', nom: 'Désert d’Ambrezine', emoji: '🏜️', niveauMin: 28, niveauMax: 32,
     desc: 'Un océan de dunes ambrées, brûlant le jour, glacial la nuit. Sous le sable, les caravaniers déterrent des perles parfaites — et parfois des pans de murailles qui n’appartiennent à aucun royaume connu. Le désert recouvre quelque chose. Il le fait très bien.',
-    monstres: ['scorpionGeant', 'banditDunes', 'elementaireSable'], boss: 'verDesSables',
+    monstres: ['chacalCendre', 'scorpionGeant'], boss: 'salamandreBraise',
     recolte: [{ id: 'perle-des-sables', chance: 0.6 }, { id: 'basalte-poli', chance: 0.35 }, { id: 'plume-de-rokh', chance: 0.3 }, { id: 'venin-concentre', chance: 0.25 }, { id: 'herbe-lunaire', chance: 0.3 }],
   },
   {
     id: 'steppe-cendres', nom: 'Steppe des Cendres', emoji: '🌋', niveauMin: 32, niveauMax: 36,
     desc: 'Après le sable, la cendre. Une plaine grise où la terre couve encore, comme au lendemain d’un incendie que personne n’a vu brûler. Les cendres fertilisent tout — et quand le vent les soulève, elles dessinent une seconde les contours d’un paysage qui n’est pas celui-ci.',
-    monstres: ['chacalCendre', 'salamandreBraise', 'ogreMagmatique'], boss: 'behemothCendre',
+    monstres: ['ogreMagmatique', 'porteurDeCendres'], boss: 'behemothCendre',
     recolte: [{ id: 'cendre-fertile', chance: 0.7 }, { id: 'obsidienne-brute', chance: 0.45 }, { id: 'coeur-de-braise', chance: 0.25 }, { id: 'plume-de-rokh', chance: 0.3 }, { id: 'basalte-poli', chance: 0.3 }],
   },
   {
@@ -155,7 +155,7 @@ ZONES.push(
   {
     id: 'cryptes', nom: 'Cryptes Oubliées', emoji: '🕯️', niveauMin: 40, niveauMax: 44,
     desc: 'Sous la frontière des Arides, les tombeaux d’un royaume que l’Histoire a rayé. Ses rois n’ont pas de noms, ses dates ne collent à aucun calendrier — comme si ce royaume avait existé AVANT le début officiel du monde. Ses habitants, eux, se souviennent. Et ils n’apprécient pas les visites.',
-    monstres: ['squelette', 'archerSquelette', 'pretreDechu', 'spectre'], boss: 'roiDechu',
+    monstres: ['squelette', 'archerSquelette', 'spectre'], boss: 'ombreDeHeros',
     recolte: [{ id: 'os-ancien', chance: 0.8 }, { id: 'poussiere-spectre', chance: 0.45 }, { id: 'relique-antique', chance: 0.25 }, { id: 'os-de-geant', chance: 0.3 }, { id: 'cendre-fertile', chance: 0.3 }],
   },
 );
@@ -176,13 +176,13 @@ ZONES.push(
   {
     id: 'pics', nom: 'Pics Gelés', emoji: '🏔️', niveauMin: 64, niveauMax: 68,
     desc: 'Après l’eau, le froid. Des sommets où le blizzard souffle depuis des années sans une seule accalmie — les glaciers avancent à vue d’œil, comme si l’hiver cherchait à recouvrir quelque chose avant qu’on ne le trouve. Les cristaux qu’on y taille ne fondent jamais. Jamais.',
-    monstres: ['loupGlaces', 'elementaireGivre', 'yeti'], boss: 'elementaireAncien',
+    monstres: ['vagueFigee', 'banquiseVive'], boss: 'paroleGelee',
     recolte: [{ id: 'cristal-givre', chance: 0.75 }, { id: 'peau-de-mammouth', chance: 0.4 }, { id: 'nacre-abyssale', chance: 0.25 }, { id: 'obsidienne-brute', chance: 0.3 }],
   },
   {
     id: 'profondeurs', nom: 'Cœur des Profondeurs', emoji: '🌋', niveauMin: 68, niveauMax: 71,
     desc: 'Sous la glace, le feu. Le cœur incandescent du monde — et il a le hoquet : les coulées remontent, redescendent, s’arrêtent en plein air. Le Gardien éternel veille ici depuis la première aube, et pour la première fois de sa très longue garde, il a l’air INQUIET.',
-    monstres: ['golemAncien', 'ombre', 'dragonnet'], boss: 'gardienEternel',
+    monstres: ['golemAncien'], boss: 'regretDevorant',
     recolte: [{ id: 'noyau-golem', chance: 0.6 }, { id: 'ecaille-draconique', chance: 0.35 }, { id: 'cristal-givre', chance: 0.35 }, { id: 'coeur-de-braise', chance: 0.3 }, { id: 'cendre-fertile', chance: 0.25 }],
   },
   {

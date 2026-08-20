@@ -48,7 +48,7 @@ const MONSTRES = {
 
   // ----- Forêt des Murmures (niv. 3-6) -----
   araignee: {
-    nom: 'Araignée géante', emoji: '🕷️', niveau: 5, hp: 104, atk: 8, dex: 8, xp: 74, po: [17, 30],
+    nom: 'Araignée géante', emoji: '🕷️', niveau: 6, hp: 104, atk: 8, dex: 8, xp: 74, po: [17, 30],
     drops: [{ id: 'soie-araignee', chance: 0.5 }],
     attaques: [
       { nom: 'Morsure venimeuse', emoji: '🕷️', mult: 0.9, poids: 2, type: 'mono', effet: { type: 'poison', degats: 2, duree: 2 } },
@@ -56,7 +56,7 @@ const MONSTRES = {
     ],
   },
   bandit: {
-    nom: 'Bandit', emoji: '🦹', niveau: 6, hp: 127, atk: 11, dex: 6, xp: 84, po: [32, 55],
+    nom: 'Bandit', emoji: '🦹', niveau: 5, hp: 127, atk: 11, dex: 6, xp: 84, po: [32, 55],
     drops: [{ id: 'fibre-sauvage', chance: 0.3 }, { id: 'herbe-lunaire', chance: 0.25 }],
     attaques: [
       { nom: 'Coup de dague', emoji: '🗡️', mult: 1.0, poids: 3, type: 'mono' },
@@ -83,7 +83,7 @@ const MONSTRES = {
 
   // ----- Collines de Cuivre (niv. 6-10) -----
   orc: {
-    nom: 'Orc', emoji: '👹', niveau: 21, hp: 371, atk: 23, dex: 5, xp: 180, po: [70, 117],
+    nom: 'Orc', emoji: '👹', niveau: 23, hp: 371, atk: 23, dex: 5, xp: 180, po: [70, 117],
     drops: [{ id: 'minerai-cuivre', chance: 0.4 }],
     attaques: [
       { nom: 'Coup de hache', emoji: '🪓', mult: 1.0, poids: 3, type: 'mono' },
@@ -91,7 +91,7 @@ const MONSTRES = {
     ],
   },
   chamanGobelin: {
-    nom: 'Chaman gobelin', emoji: '🧙', niveau: 22, hp: 312, atk: 21, dex: 6, xp: 184, po: [70, 117],
+    nom: 'Chaman gobelin', emoji: '🧙', niveau: 21, hp: 312, atk: 21, dex: 6, xp: 184, po: [70, 117],
     drops: [{ id: 'herbe-lunaire', chance: 0.5 }, { id: 'minerai-cuivre', chance: 0.3 }],
     attaques: [
       { nom: 'Malédiction', emoji: '🕷️', mult: 0.9, poids: 2, type: 'mono', effet: { type: 'poison', degats: 8, duree: 2 } },
@@ -99,7 +99,7 @@ const MONSTRES = {
     ],
   },
   golemMineur: {
-    nom: 'Golem mineur', emoji: '🪨', niveau: 23, hp: 537, atk: 26, dex: 3, xp: 188, po: [83, 140],
+    nom: 'Golem mineur', emoji: '🪨', niveau: 22, hp: 537, atk: 26, dex: 3, xp: 188, po: [83, 140],
     drops: [{ id: 'minerai-cuivre', chance: 0.5 }, { id: 'minerai-fer', chance: 0.35 }, { id: 'noyau-golem', chance: 0.12 }],
     attaques: [
       { nom: 'Poing de pierre', emoji: '👊', mult: 1.0, poids: 3, type: 'mono' },
@@ -177,7 +177,7 @@ const MONSTRES = {
     ],
   },
   spectre: {
-    nom: 'Spectre', emoji: '👻', niveau: 43, hp: 574, atk: 40, dex: 11, xp: 240, po: [138, 220],
+    nom: 'Deuil rampant', emoji: '👻', niveau: 43, hp: 574, atk: 40, dex: 11, xp: 240, po: [138, 220],
     drops: [{ id: 'poussiere-spectre', chance: 0.55 }],
     attaques: [
       { nom: 'Toucher glacial', emoji: '🥶', mult: 1.1, poids: 3, type: 'mono' },
@@ -186,7 +186,7 @@ const MONSTRES = {
   },
   roiDechu: {
     nom: 'Roi déchu', emoji: '🫅', niveau: 44, boss: true, hp: 3122, atk: 45, dex: 8, xp: 1936, po: [961, 1441],
-    drops: [{ id: 'os-ancien', chance: 1 }, { id: 'poussiere-spectre', chance: 1 }, { id: 'poussiere-spectre', chance: 0.6 }],
+    drops: [{ id: 'os-ancien', chance: 1 }, { id: 'poussiere-spectre', chance: 1 }, { id: 'poussiere-spectre', chance: 0.6 }, { id: 'sceau-du-roi-dechu', chance: 0.25 }],
     attaques: [
       { nom: 'Lame maudite', emoji: '⚔️', mult: 1.2, poids: 2, type: 'mono' },
       { nom: 'Vague nécrotique', emoji: '🌊', mult: 0.7, poids: 2, type: 'aoe' },
@@ -196,7 +196,7 @@ const MONSTRES = {
 
   // ----- Désert d'Ambrezine (niv. 12-16) -----
   scorpionGeant: {
-    nom: 'Scorpion géant', emoji: '🦂', niveau: 29, hp: 447, atk: 26, dex: 9, xp: 208, po: [82, 126],
+    nom: 'Scorpion des sables', emoji: '🦂', niveau: 30, hp: 447, atk: 26, dex: 9, xp: 208, po: [82, 126],
     drops: [{ id: 'os-ancien', chance: 0.3 }, { id: 'perle-des-sables', chance: 0.2 }],
     attaques: [
       { nom: 'Pince broyeuse', emoji: '🦞', mult: 1.1, poids: 3, type: 'mono' },
@@ -222,7 +222,7 @@ const MONSTRES = {
   },
   verDesSables: {
     nom: 'Ver des sables colossal', emoji: '🪱', niveau: 32, boss: true, hp: 2816, atk: 37, dex: 6, xp: 1728, po: [866, 1300],
-    drops: [{ id: 'perle-des-sables', chance: 1 }, { id: 'perle-des-sables', chance: 0.6 }, { id: 'minerai-fer', chance: 0.8 }],
+    drops: [{ id: 'perle-des-sables', chance: 1 }, { id: 'perle-des-sables', chance: 0.6 }, { id: 'minerai-fer', chance: 0.8 }, { id: 'dent-du-ver', chance: 0.25 }],
     attaques: [
       { nom: 'Engloutissement', emoji: '🕳️', mult: 1.3, poids: 2, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.25 } },
       { nom: 'Séisme des dunes', emoji: '🌋', mult: 0.75, poids: 2, type: 'aoe' },
@@ -258,7 +258,7 @@ const MONSTRES = {
   },
   elementaireAncien: {
     nom: 'Élémentaire ancien', emoji: '🌨️', niveau: 68, boss: true, hp: 5466, atk: 62, dex: 10, xp: 11576, po: [1776, 2596],
-    drops: [{ id: 'cristal-givre', chance: 1 }, { id: 'cristal-givre', chance: 1 }, { id: 'noyau-golem', chance: 0.6 }],
+    drops: [{ id: 'cristal-givre', chance: 1 }, { id: 'cristal-givre', chance: 1 }, { id: 'noyau-golem', chance: 0.6 }, { id: 'noyau-de-l-ancien', chance: 0.25 }],
     attaques: [
       { nom: 'Tempête de givre', emoji: '🌨️', mult: 0.75, poids: 2, type: 'aoe' },
       { nom: 'Lance de glace', emoji: '🧊', mult: 1.3, poids: 2, type: 'mono' },
@@ -268,7 +268,7 @@ const MONSTRES = {
 
   // ----- Cœur des Profondeurs (niv. 18-20) -----
   golemAncien: {
-    nom: 'Golem ancien', emoji: '🗿', niveau: 69, hp: 1172, atk: 55, dex: 4, xp: 1527, po: [185, 278],
+    nom: 'Titan de pierre', emoji: '🗿', niveau: 69, hp: 1172, atk: 55, dex: 4, xp: 1527, po: [185, 278],
     drops: [{ id: 'noyau-golem', chance: 0.5 }, { id: 'minerai-fer', chance: 0.4 }],
     attaques: [
       { nom: 'Écrasement', emoji: '💥', mult: 1.25, poids: 2, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
@@ -296,12 +296,47 @@ const MONSTRES = {
     nom: 'Gardien éternel', emoji: '⚱️', niveau: 71, boss: true, hp: 5919, atk: 70, dex: 9, xp: 13536, po: [1726, 2466],
     drops: [
       { id: 'ecaille-draconique', chance: 1 }, { id: 'ecaille-draconique', chance: 0.5 },
-      { id: 'noyau-golem', chance: 1 }, { id: 'cristal-givre', chance: 0.8 },
-    ],
+      { id: 'noyau-golem', chance: 1 }, { id: 'cristal-givre', chance: 0.8 }, { id: 'larme-du-gardien', chance: 0.25 }],
     attaques: [
       { nom: 'Jugement', emoji: '⚖️', mult: 1.3, poids: 2, type: 'mono' },
       { nom: 'Séisme', emoji: '🌋', mult: 0.8, poids: 2, type: 'aoe' },
       { nom: 'Regard pétrifiant', emoji: '👁️', mult: 0.6, poids: 1, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.5 } },
+    ],
+  },
+
+  // ----- v27 : le bestiaire suit la liste des actes, zone par zone -----
+  poussinRokh: {
+    nom: 'Poussin Rokh', emoji: '🐤', niveau: 26, hp: 420, atk: 25, dex: 8, xp: 198, po: [80, 130],
+    drops: [{ id: 'plume-de-rokh', chance: 0.55 }, { id: 'basalte-poli', chance: 0.25 }],
+    attaques: [
+      { nom: 'Coup de bec', emoji: '🐤', mult: 1.0, poids: 3, type: 'mono' },
+      { nom: 'Piaillement perçant', emoji: '📢', mult: 1.25, poids: 1, type: 'mono' },
+    ],
+  },
+  porteurDeCendres: {
+    nom: 'Porteur de cendres', emoji: '🫂', niveau: 34, hp: 540, atk: 30, dex: 5, xp: 220, po: [95, 155],
+    drops: [{ id: 'cendre-fertile', chance: 0.5 }, { id: 'obsidienne-brute', chance: 0.25 }],
+    attaques: [
+      { nom: 'Jet de cendres', emoji: '🌫️', mult: 0.9, poids: 2, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
+      { nom: 'Fardeau brûlant', emoji: '🔥', mult: 1.3, poids: 2, type: 'mono' },
+    ],
+  },
+  ombreDeHeros: {
+    nom: 'Ombre de héros', emoji: '🛡️', niveau: 44, boss: true, hp: 3122, atk: 45, dex: 8, xp: 1940, po: [700, 1100],
+    drops: [{ id: 'os-ancien', chance: 1 }, { id: 'poussiere-spectre', chance: 0.7 }, { id: 'relique-antique', chance: 0.5 }],
+    attaques: [
+      { nom: 'Lame du souvenir', emoji: '🗡️', mult: 1.25, poids: 2, type: 'mono' },
+      { nom: 'Charge déchue', emoji: '💫', mult: 0.7, poids: 1, type: 'aoe' },
+      { nom: 'Cri d’outre-tombe', emoji: '😱', mult: 1.0, poids: 1, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.35 } },
+    ],
+  },
+  regretDevorant: {
+    nom: 'Regret dévorant', emoji: '🕳️', niveau: 71, boss: true, hp: 5919, atk: 70, dex: 7, xp: 13500, po: [1900, 2900],
+    drops: [{ id: 'noyau-golem', chance: 1 }, { id: 'ecaille-draconique', chance: 0.6 }, { id: 'cristal-givre', chance: 0.4 }],
+    attaques: [
+      { nom: 'Étreinte du regret', emoji: '🫥', mult: 1.15, poids: 2, type: 'mono', effet: { type: 'affaibli', duree: 2 } },
+      { nom: 'Vague de remords', emoji: '🌊', mult: 0.7, poids: 1, type: 'aoe' },
+      { nom: 'Dévorer l’espoir', emoji: '🕳️', mult: 1.45, poids: 2, type: 'mono' },
     ],
   },
 };
@@ -314,7 +349,7 @@ const MONSTRES = {
 Object.assign(MONSTRES, {
   // ----- Jungle de Vaï-Sombre (niv. 22-28) — plantes et venins -----
   panthereOmbre: {
-    nom: 'Panthère d’ombre', emoji: '🐆', niveau: 14, hp: 268, atk: 20, dex: 14, xp: 145, po: [17, 34],
+    nom: 'Tisseuse d’Ombre', emoji: '🐆', niveau: 14, hp: 268, atk: 20, dex: 14, xp: 145, po: [17, 34],
     drops: [{ id: 'liane-tressee', chance: 0.4 }, { id: 'venin-concentre', chance: 0.2 }],
     attaques: [
       { nom: 'Griffes jumelles', emoji: '🐾', mult: 1.1, poids: 3, type: 'mono' },
@@ -330,7 +365,7 @@ Object.assign(MONSTRES, {
     ],
   },
   hommeLiane: {
-    nom: 'Homme-liane', emoji: '🌿', niveau: 15, hp: 349, atk: 22, dex: 8, xp: 151, po: [20, 41],
+    nom: 'Homme-liane', emoji: '🌿', niveau: 13, hp: 349, atk: 22, dex: 8, xp: 151, po: [20, 41],
     drops: [{ id: 'liane-tressee', chance: 0.5 }, { id: 'orchidee-lunaire', chance: 0.25 }],
     attaques: [
       { nom: 'Fouet de liane', emoji: '🌿', mult: 1.0, poids: 3, type: 'mono' },
@@ -365,7 +400,7 @@ Object.assign(MONSTRES, {
     ],
   },
   elementaireBourrasque: {
-    nom: 'Élémentaire de bourrasque', emoji: '🌬️', niveau: 27, hp: 484, atk: 27, dex: 14, xp: 202, po: [27, 55],
+    nom: 'Élémentaire de bourrasque', emoji: '🌬️', niveau: 25, hp: 484, atk: 27, dex: 14, xp: 202, po: [27, 55],
     drops: [{ id: 'cristal-hurleur', chance: 0.35 }, { id: 'plume-de-rokh', chance: 0.3 }],
     attaques: [
       { nom: 'Rafale tranchante', emoji: '🌬️', mult: 1.0, poids: 2, type: 'mono' },
@@ -418,23 +453,24 @@ Object.assign(MONSTRES, {
 
   // ----- Steppe des Cendres (niv. 30-36) — feu et os -----
   chacalCendre: {
-    nom: 'Chacal cendré', emoji: '🐺', niveau: 33, hp: 467, atk: 28, dex: 13, xp: 219, po: [23, 47],
-    drops: [{ id: 'cendre-fertile', chance: 0.45 }],
+    nom: 'Chacal cendré', emoji: '🐺', niveau: 29, hp: 467, atk: 28, dex: 13, xp: 219, po: [23, 47],
+    drops: [{ id: 'perle-des-sables', chance: 0.4 }, { id: 'venin-concentre', chance: 0.2 }],
     attaques: [
       { nom: 'Crocs fumants', emoji: '🔥', mult: 1.1, poids: 3, type: 'mono' },
       { nom: 'Meute de cendre', emoji: '💨', mult: 0.8, poids: 1, type: 'aoe' },
     ],
   },
   salamandreBraise: {
-    nom: 'Salamandre de braise', emoji: '🦎', niveau: 34, hp: 533, atk: 30, dex: 10, xp: 221, po: [25, 50],
-    drops: [{ id: 'coeur-de-braise', chance: 0.25 }, { id: 'obsidienne-brute', chance: 0.35 }],
+    nom: 'Salamandre de braise', emoji: '🦎', niveau: 32, boss: true, hp: 533, atk: 30, dex: 10, xp: 221, po: [25, 50],
+    drops: [{ id: 'perle-des-sables', chance: 1 }, { id: 'basalte-poli', chance: 0.6 }, { id: 'coeur-de-braise', chance: 0.4 }],
     attaques: [
-      { nom: 'Langue de feu', emoji: '🔥', mult: 1.05, poids: 3, type: 'mono', effet: { type: 'poison', degats: 9, duree: 2 } },
-      { nom: 'Queue incandescente', emoji: '☄️', mult: 1.35, poids: 1, type: 'mono' },
+      { nom: 'Morsure incandescente', emoji: '🔥', mult: 1.25, poids: 2, type: 'mono', effet: { type: 'poison', degats: 12, duree: 2 } },
+      { nom: 'Vague de braise', emoji: '🌋', mult: 0.7, poids: 1, type: 'aoe' },
+      { nom: 'Fouet de queue', emoji: '💢', mult: 1.4, poids: 2, type: 'mono' },
     ],
   },
   ogreMagmatique: {
-    nom: 'Ogre magmatique', emoji: '👹', niveau: 35, hp: 650, atk: 33, dex: 7, xp: 224, po: [29, 58],
+    nom: 'Ogre magmatique', emoji: '👹', niveau: 33, hp: 650, atk: 33, dex: 7, xp: 224, po: [29, 58],
     drops: [{ id: 'obsidienne-brute', chance: 0.45 }, { id: 'coeur-de-braise', chance: 0.2 }],
     attaques: [
       { nom: 'Massue en fusion', emoji: '🌋', mult: 1.2, poids: 3, type: 'mono' },
@@ -452,7 +488,7 @@ Object.assign(MONSTRES, {
 
   // ----- Forêt Pétrifiée (niv. 38-44, équipe conseillée) -----
   treantPetrifie: {
-    nom: 'Tréant pétrifié', emoji: '🗿', niveau: 17, hp: 328, atk: 20, dex: 6, xp: 162, po: [9, 18],
+    nom: 'Tréant pétrifié', emoji: '🗿', niveau: 19, hp: 328, atk: 20, dex: 6, xp: 162, po: [9, 18],
     drops: [{ id: 'bois-petrifie', chance: 0.45 }, { id: 'ambre-noir', chance: 0.2 }],
     attaques: [
       { nom: 'Branche de granit', emoji: '🪨', mult: 1.15, poids: 3, type: 'mono' },
@@ -460,7 +496,7 @@ Object.assign(MONSTRES, {
     ],
   },
   basilicRunique: {
-    nom: 'Basilic runique', emoji: '🦎', niveau: 18, hp: 371, atk: 21, dex: 11, xp: 167, po: [10, 19],
+    nom: 'Basilic runique', emoji: '🦎', niveau: 17, hp: 371, atk: 21, dex: 11, xp: 167, po: [10, 19],
     drops: [{ id: 'ambre-noir', chance: 0.4 }, { id: 'sphere-runique', chance: 0.12 }],
     attaques: [
       { nom: 'Regard pétrifiant', emoji: '👁️', mult: 0.95, poids: 2, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.3 } },
@@ -468,7 +504,7 @@ Object.assign(MONSTRES, {
     ],
   },
   moissonneurRunique: {
-    nom: 'Moissonneur runique', emoji: '⚱️', niveau: 19, hp: 434, atk: 23, dex: 9, xp: 171, po: [11, 21],
+    nom: 'Moissonneur runique', emoji: '⚱️', niveau: 18, hp: 434, atk: 23, dex: 9, xp: 171, po: [11, 21],
     drops: [{ id: 'sphere-runique', chance: 0.2 }, { id: 'bois-petrifie', chance: 0.4 }],
     attaques: [
       { nom: 'Faux de quartz', emoji: '⚱️', mult: 1.2, poids: 3, type: 'mono', effet: { type: 'drain', part: 0.35 } },
@@ -538,7 +574,7 @@ Object.assign(MONSTRES, {
     ],
   },
   forgeronFoudroye: {
-    nom: 'Forgeron foudroyé', emoji: '⚒️', niveau: 73, hp: 1158, atk: 62, dex: 8, xp: 1863, po: [25, 50],
+    nom: 'Forgeron foudroyé', emoji: '⚒️', niveau: 72, hp: 1158, atk: 62, dex: 8, xp: 1863, po: [25, 50],
     drops: [{ id: 'acier-celeste', chance: 0.4 }, { id: 'fragment-de-foudre', chance: 0.35 }],
     attaques: [
       { nom: 'Marteau conducteur', emoji: '⚒️', mult: 1.25, poids: 3, type: 'mono' },
@@ -565,7 +601,7 @@ Object.assign(MONSTRES, {
     ],
   },
   tisseuseEtoiles: {
-    nom: 'Tisseuse d’étoiles', emoji: '🕷️', niveau: 85, hp: 1408, atk: 71, dex: 12, xp: 6706, po: [31, 62],
+    nom: 'Tisseuse d’étoiles', emoji: '🕷️', niveau: 84, hp: 1408, atk: 71, dex: 12, xp: 6706, po: [31, 62],
     drops: [{ id: 'eclat-d-etoile', chance: 0.4 }, { id: 'etoffe-du-neant', chance: 0.3 }],
     attaques: [
       { nom: 'Fil de constellation', emoji: '✨', mult: 1.1, poids: 2, type: 'mono', effet: { type: 'etourdi', duree: 1, chance: 0.25 } },
@@ -738,16 +774,16 @@ const ATK_CIBLE_BOSS = [
 // cible, de sorte qu'on ne puisse pas changer l'un sans voir l'autre bouger.
 // =====================================================================
 const XP_CIBLE_MONSTRE = [
-25,      39,      51,      63,      74,      84,      94,     103,     111,     119,  // 1–10
-      126,     133,     139,     145,     151,     157,     162,     167,     171,     176,  // 11–20
-      180,     184,     188,     192,     195,     198,     202,     205,     208,     211,  // 21–30
-      213,     216,     219,     221,     224,     226,     228,     230,     232,     234,  // 31–40
-      236,     238,     240,     242,     243,     245,     247,     248,     250,     255,  // 41–50
-      302,     354,     410,     470,     534,     602,     664,     726,     790,     856,  // 51–60
-      924,     994,    1065,    1138,    1213,    1289,    1367,    1447,    1527,    1609,  // 61–70
-     1692,    1777,    1863,    1950,    2038,    2128,    2218,    2309,    2402,    2523,  // 71–80
-     3164,    3878,    4664,    5523,    6454,    7458,    8534,    9539,   10575,   11655,  // 81–90
-    12778,   13942,   15146,   16390,   17673,   18992,   20348,   21740,   23167,   23167,  // 91–100
+    25,     39,     51,     63,     74,     84,     94,    103,    111,    119,  // 1–10
+   126,    133,    139,    145,    151,    157,    162,    167,    171,    176,  // 11–20
+   180,    184,    188,    192,    195,    198,    202,    205,    208,    211,  // 21–30
+   213,    216,    219,    221,    224,    226,    228,    230,    232,    234,  // 31–40
+   236,    238,    240,    242,    243,    245,    247,    248,    250,    255,  // 41–50
+   302,    354,    410,    470,    534,    602,    664,    726,    790,    856,  // 51–60
+   924,    994,   1065,   1138,   1213,   1289,   1367,   1447,   1527,   1609,  // 61–70
+  1692,   1777,   1863,   1950,   2038,   2128,   2218,   2309,   2402,   2523,  // 71–80
+  3164,   3878,   4664,   5523,   6454,   7458,   8534,   9539,  10575,  11655,  // 81–90
+ 12778,  13942,  15146,  16390,  17673,  18992,  20348,  21740,  23167,  23167,  // 91–100
 ];
 
 // Un boss vaut une poignée de monstres ordinaires : il tient plus longtemps

@@ -309,7 +309,7 @@ const CHRONIQUES = [
       '« À l’éclosion, ce qui sortira n’aura ni faim ni pitié : juste du vent et de la foudre avec un bec. Trois jours, d’après la pulsation. Il faut monter, passer le père, et décider quoi faire de l’œuf — le percer, le refroidir, ou le faire éclore AILLEURS. Moi je monte pas : quelqu’un doit noter ce qui vous arrive. C’est le métier. »',
     ],
     ep1: { stat: 'vit', texte: 'L’ascension des Falaises se fait DANS le vent qui hurle : chaque corniche est un gué de rafales, chaque prise un pari contre une bourrasque nommée. Il faut encaisser et monter quand même.', ok: 'Vous montez entre les rafales comme entre les gouttes, plaqués, patients, imperturbables. À mi-paroi, coincé dans une faille, le sac d’un monte-en-l’air que le vent a gardé en consigne.', ko: 'Une bourrasque vous décolle du rocher et vous rend trois mètres plus bas, dans un buisson d’épines providentiel et rancunier.' },
-    combat1: 'Des harpies hurlantes fondent sur vous — le père Rokh sous-traite la sécurité du nid, et elles sont payées au cri.',
+    combat1: 'Une bourrasque vivante et une nichée de poussins Rokh fondent sur vous — le nid ne sous-traite plus sa sécurité, il la couve.',
     dilemme: {
       texte: '« Le Rokh quitte le nid une fois par jour pour chasser l’orage frais, » observe Perrin depuis sa lunette, d’en bas, par signaux de miroir. « On peut monter PENDANT sa chasse — mais il faut d’abord occuper les gargouilles-vigies qui préviennent au moindre caillou. Quelqu’un de costaud peut décrocher leur perchoir. Sinon : montée directe, et le père rentrera en cours de route. »',
       optA: { stat: 'for', texte: '🪨 Décrocher le perchoir des vigies', detail: 'monter pendant la chasse du Rokh, sans alerte', resultat: 'Vous descellez le perchoir de guet d’une poussée d’épaule calculée — les gargouilles, trop occupées à retenir leur balcon, oublient de prévenir qui que ce soit. La voie du nid est libre… et le père est loin.' },
@@ -533,6 +533,9 @@ const CHRONIQUES = [
 function construireChroniques(liste) {
   liste.forEach((c) => {
   const z = ZONES.find((x) => x.id === c.zone);
+  // Une chronique dont la carte a disparu du monde ne se construit pas —
+  // mieux vaut une histoire en moins qu'un chargement qui casse.
+  if (!z) return;
   const niveau = Math.max(3, z.niveauMin + 2);
   const bossBase = MONSTRES[z.boss];
 
@@ -566,7 +569,13 @@ function construireChroniques(liste) {
   const cleZone = z.recolte.reduce((min, e) => (e.chance < min.chance ? e : min), z.recolte[0]).id;
   const difficulte = 13 + Math.round(z.niveauMin * 0.75);
   const seuilChoix = 6 + Math.round(z.niveauMin * 0.6);
-  const [m1, m2, m3] = z.monstres;
+  // Certaines cartes n'alignent qu'une ou deux espèces (le Cœur des
+  // Profondeurs n'a que son Titan) : la garde se complète par rotation
+  // plutôt que d'envoyer des `undefined` au combat.
+  const meute = z.monstres;
+  const m1 = meute[0];
+  const m2 = meute[1 % meute.length];
+  const m3 = meute[2 % meute.length];
   const xpFin = 80 + 4 * z.niveauMin * z.niveauMin;
 
   DONJONS.push({

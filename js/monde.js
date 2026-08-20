@@ -61,7 +61,6 @@ function rendreCarte() {
   // v26 : la carte se lit comme un livre — chaque terre est un chapitre
   // numéroté du grand récit, l'épilogue vient après le Trône.
   const numeroChapitre = (z) => {
-    if (z.id === 'dernier-point') return 'Épilogue';
     return `Chapitre ${ZONES.indexOf(z) + 1}`;
   };
 
@@ -247,7 +246,7 @@ function rendreZone(z) {
     // Le chapitre et l'acte : la carte se lit comme un livre, l'écran de
     // la terre rappelle où l'on en est du récit.
     const acte = ACTES_MONDE.find((a) => a.id === z.acte);
-    const chapitre = z.id === 'dernier-point' ? 'Épilogue' : `Chapitre ${ZONES.indexOf(z) + 1}`;
+    const chapitre = `Chapitre ${ZONES.indexOf(z) + 1}`;
     return acte ? `<p class="zone-fil">${chapitre} · ${acte.emoji} ${acte.nom}</p>` : '';
   })()}
     <p class="sous-titre gauche">${z.desc}</p>

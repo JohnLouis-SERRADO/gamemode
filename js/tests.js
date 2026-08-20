@@ -1217,8 +1217,10 @@ suite('Monde vivant', () => {
 // 11. Les Marches Fêlées et la Couture (v19)
 // =====================================================================
 suite('Actes III et IV', () => {
-  test('vingt-six cartes couvrent la route du niveau 1 au niveau 100', () => {
-    egal(ZONES.length, 30, 'cartes du monde');
+  test('vingt-neuf cartes couvrent la route du niveau 1 au niveau 100', () => {
+    // v27 : le Dernier Point a fondu dans le Trône — la liste du joueur
+    // compte vingt-neuf cartes, et le jeu aussi.
+    egal(ZONES.length, 29, 'cartes du monde');
     const plafond = Math.max(...ZONES.map((z) => z.niveauMin));
     verifier(plafond >= 90, `la dernière carte s'ouvre au niveau ${plafond}`);
   });
@@ -1248,7 +1250,9 @@ suite('Actes III et IV', () => {
     neuves.forEach((id) => {
       const z = ZONES.find((x) => x.id === id);
       if (!z) { fautives.push(`${id} absente`); return; }
-      if (z.monstres.length !== 3) fautives.push(`${id} : ${z.monstres.length} monstres`);
+      // v27 : le bestiaire suit la liste du joueur — de deux espèces (la
+      // Mer de Verre) à sept (le Trône, qui a hérité du Dernier Point).
+      if (z.monstres.length < 2 || z.monstres.length > 7) fautives.push(`${id} : ${z.monstres.length} monstres`);
       if (!MONSTRES[z.boss]) fautives.push(`${id} : boss introuvable`);
       if (!(z.recolte || []).length) fautives.push(`${id} : aucune récolte`);
       if (!COFFRES_BOSS[z.boss] || !OBJETS[COFFRES_BOSS[z.boss]]) fautives.push(`${id} : pas de trophée`);
@@ -1288,8 +1292,8 @@ suite('Actes III et IV', () => {
     aucun(fautifs, 'boss trop faibles');
   });
 
-  test('vingt-six Chroniques, une par carte', () => {
-    egal(CHRONIQUES.length, 30, 'Chroniques');
+  test('vingt-neuf Chroniques, une par carte', () => {
+    egal(CHRONIQUES.length, 29, 'Chroniques');
     const sansRecit = ZONES.filter((z) => !CHRONIQUES.some((c) => c.zone === z.id)).map((z) => z.id);
     aucun(sansRecit, 'cartes sans Chronique');
   });
