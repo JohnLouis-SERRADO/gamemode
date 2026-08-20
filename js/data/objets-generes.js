@@ -5,7 +5,8 @@
 // =====================================================================
 
 // =====================================================================
-// Butin d'aventure généré : ~1500 équipements introuvables en boutique.
+// Butin d'aventure généré : plus de 12 000 équipements introuvables en
+// boutique (le codex compte le chiffre exact à chaque publication).
 // Ils tombent des coffres de boss, de la Tour et des contrats de guilde.
 // Pour chaque archétype × niveau × rareté disponible, deux variantes.
 // =====================================================================
@@ -322,7 +323,9 @@ function ajouterObjet(p, idObjet, qte = 1) {
   const objet = OBJETS[idObjet];
   if (objet && p.compteurs) {
     const rarete = rareteDe(objet);
-    if (rarete === 'legendaire' || rarete === 'mythique') p.compteurs.legendaires += qte;
+    // « Toucheur de légende » compte tout ce qui vaut AU MOINS une
+    // légende — mythique et divin compris, et la fiche du haut fait le dit.
+    if (rarete === 'legendaire' || rarete === 'mythique' || rarete === 'divin') p.compteurs.legendaires += qte;
     if (rarete === 'divin') p.compteurs.divins += qte;
   }
 }

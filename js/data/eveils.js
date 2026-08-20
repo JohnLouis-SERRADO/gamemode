@@ -481,14 +481,20 @@ function tirerEveils(p, options = {}) {
 
   // La garantie : si rien d'assez rare n'est sorti, on remplace la
   // proposition la plus commune par la meilleure encore disponible.
+  // v28 : la proposition VERROUILLÉE est intouchable — la garantie
+  // remplaçait la première entrée du tri, c'est-à-dire, potentiellement,
+  // le verrou qu'on venait de payer 25 Sceaux.
   const rangs = ORDRE_EVEIL;
   if (garantie && !propositions.some((e) => rangs.indexOf(e.rarete) >= rangGarantie)) {
     const rares = candidats
       .filter((e) => rangs.indexOf(e.rarete) >= rangGarantie)
       .filter((e) => !propositions.includes(e));
-    if (rares.length) {
-      propositions.sort((a, b) => rangs.indexOf(a.rarete) - rangs.indexOf(b.rarete));
-      propositions[0] = rares[Math.floor(Math.random() * rares.length)];
+    const sacrifiables = propositions
+      .filter((e) => e !== verrouillee)
+      .sort((a, b) => rangs.indexOf(a.rarete) - rangs.indexOf(b.rarete));
+    if (rares.length && sacrifiables.length) {
+      const indexSacrifie = propositions.indexOf(sacrifiables[0]);
+      propositions[indexSacrifie] = rares[Math.floor(Math.random() * rares.length)];
     }
   }
   return propositions;

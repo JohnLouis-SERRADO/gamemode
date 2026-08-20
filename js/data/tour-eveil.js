@@ -86,7 +86,9 @@ const SERVICES_TOUR = {
   'relancer-eveil': {
     nom: 'Relancer l’Éveil', emoji: '🎲',
     sceaux: 40, majeurs: 1, or: 0,
-    desc: 'Un nouveau tirage de trois propositions. Après cinq relances, la garantie assure au moins un Mythique.',
+    // v28 : la description dit TOUT ce que le service fait — un Éveil déjà
+    // choisi est remplacé par le nouveau tirage, et il faut le savoir.
+    desc: 'Un nouveau tirage de trois propositions — si un Éveil est déjà choisi, il est oublié au profit du tirage. Après cinq relances, la garantie assure au moins un Mythique.',
     disponible: (p) => !!(p.eveil && (p.eveil.id || (p.eveil.propositions || []).length)),
     raison: () => `Vous n’avez pas encore d’Éveil — le premier tirage arrive au niveau ${NIVEAU_EVEIL}.`,
     appliquer: (p) => {
@@ -109,7 +111,7 @@ const SERVICES_TOUR = {
   'verrouiller': {
     nom: 'Verrouiller une proposition', emoji: '🔒',
     sceaux: 25, majeurs: 0, or: 0,
-    desc: 'Garder la meilleure proposition du tirage en attente : elle reviendra d’office au tirage suivant.',
+    desc: 'Verrouiller automatiquement la PLUS RARE des propositions en attente : elle reviendra d’office au tirage suivant — la garantie elle-même ne peut plus l’écraser.',
     disponible: (p) => !!(p.eveil && p.eveil.propositions && p.eveil.propositions.length),
     raison: () => 'Aucun tirage en attente. Reportez un tirage (« Plus tard ») ou relancez-en un, puis revenez.',
     appliquer: (p) => {
@@ -126,7 +128,9 @@ const SERVICES_TOUR = {
     nom: 'Forcer une rareté minimale', emoji: '💠',
     sceaux: 80, majeurs: 0, or: 0,
     desc: 'Garantir au moins une proposition Mythique dans le prochain tirage, sans attendre les cinq relances.',
-    disponible: () => true,
+    // v28 : plus proposé à un héros qui n'a encore aucun tirage à forcer.
+    disponible: (p) => (p.niveau || 1) >= NIVEAU_EVEIL || !!p.eveil,
+    raison: () => `Le premier tirage d’Éveil arrive au niveau ${NIVEAU_EVEIL} — rien à forcer d’ici là.`,
     appliquer: (p) => {
       p.eveil = { ...(p.eveil || { relances: 0 }), garantie: true };
       return `Le prochain tirage contiendra au moins un ${RARETES_EVEIL[RARETE_GARANTIE].nom}.`;
@@ -136,8 +140,13 @@ const SERVICES_TOUR = {
     nom: 'Révéler un Éveil caché', emoji: '🕯️',
     sceaux: 100, majeurs: 0, or: 0,
     desc: 'Afficher la condition exacte d’un Éveil caché de votre spécialité, au lieu de son simple indice.',
-    disponible: (p) => !!p.sousClasse,
-    raison: () => `Chaque Éveil caché appartient à une spécialité : choisissez la vôtre au niveau ${NIVEAU_SOUS_CLASSE}.`,
+    // v28 : le service n'est proposé que si l'Éveil caché EXISTE — les
+    // Sceaux étaient débités avant de découvrir qu'il n'y avait rien.
+    disponible: (p) => !!p.sousClasse && (SOUS_CLASSES[p.sousClasse].eveils || [])
+      .some((id) => EVEILS[id] && EVEILS[id].rarete === 'cache'),
+    raison: (p) => (p && p.sousClasse
+      ? 'Cette spécialité ne cache aucun Éveil — il n’y a rien à révéler.'
+      : `Chaque Éveil caché appartient à une spécialité : choisissez la vôtre au niveau ${NIVEAU_SOUS_CLASSE}.`),
     appliquer: (p) => {
       const cache = (SOUS_CLASSES[p.sousClasse].eveils || [])
         .map((id) => EVEILS[id]).find((e) => e.rarete === 'cache');

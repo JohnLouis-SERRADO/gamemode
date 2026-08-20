@@ -60,6 +60,20 @@ function herosTest(surcharges = {}) {
   return Object.assign(p, surcharges);
 }
 
+// v28 — Le monde est FIGÉ pour toute la suite : depuis que la météo est
+// vraiment branchée (brume qui fait rater, nuit qui majore les dégâts,
+// tempête qui secoue l'initiative), un combat mesuré à minuit sous le
+// blizzard ne donnerait pas le même chiffre qu'à midi sous un ciel clair.
+// Les tests qui éprouvent la météo elle-même passent leur propre date aux
+// fonctions du monde — ils ne passent pas par mondeMaintenant().
+if (typeof figerMonde === 'function') {
+  figerMonde({
+    phase: PHASES_JOUR[1],
+    meteo: { id: 'claire', ...METEOS.claire },
+    effets: {},
+  });
+}
+
 // =====================================================================
 // 1. Intégrité du catalogue — la famille qui protège les gros ajouts
 // =====================================================================
@@ -708,24 +722,33 @@ suite('Route jusqu\'au niveau 100', () => {
     });
   });
 
-  test('la courbe d\'XP d\'avant le niveau 50 est inchangée', () => {
-    // Les héros existants ne doivent voir aucune différence sur le chemin
-    // qu'ils ont déjà parcouru.
-    const ancienne = (n) => 14 * (n - 1) * (n - 1) + 30 * (n - 1);
+  test('la courbe d\'XP est une vraie géométrique, sans coude (v28)', () => {
+    // Chaque niveau coûte exactement 9 % de plus que le précédent, à
+    // l'arrondi près — c'est LA règle de la v28, et les repères des
+    // joueurs sont préservés aux deux extrémités.
+    egal(incrementXp(2), 44, 'le premier palier coûte toujours 44 XP');
     const ecarts = [];
-    for (let n = 1; n <= 50; n++) {
-      if (seuilXp(n) !== ancienne(n)) ecarts.push(`niv. ${n}`);
+    for (let n = 3; n <= NIVEAU_MAX; n++) {
+      // La formule exacte, à l'arrondi entier près (sur les petits paliers,
+      // l'arrondi fait dévier le rapport apparent — pas la courbe).
+      const attendu = Math.round(COUT_PREMIER_PALIER * Math.pow(RAISON_XP, n - 2));
+      if (incrementXp(n) !== attendu) ecarts.push(`niv. ${n}`);
+      const rapport = incrementXp(n) / incrementXp(n - 1);
+      if (rapport < 1.04 || rapport > 1.14) ecarts.push(`niv. ${n} (×${rapport.toFixed(3)})`);
     }
-    aucun(ecarts, 'paliers d\'XP modifiés sous le niveau 50');
+    aucun(ecarts, 'paliers hors de la géométrique ×1,09');
+    entre(seuilXp(NIVEAU_MAX), 2000000, 3000000, 'le cumul reste à l\'échelle historique (~2,5 M)');
+    entre(incrementXp(NIVEAU_MAX), 180000, 230000, 'le dernier palier reste à l\'échelle historique');
   });
 
-  test('les points par niveau suivent les trois tranches', () => {
-    egal(pointsPourNiveau(30), 2, 'tranche 1-50');
-    egal(pointsPourNiveau(60), 3, 'tranche 51-80');
-    egal(pointsPourNiveau(85), 4, 'tranche 81-100');
-    egal(pointsPourNiveau(90), 14, 'palier de respiration du niveau 90');
-    egal(pointsPourNiveau(100), 14, 'palier de respiration du niveau 100');
+  test('les points par niveau sont uniformes : deux, partout (v28)', () => {
     egal(pointsPourNiveau(1), 0, 'aucun point au niveau 1');
+    const ecarts = [];
+    for (let n = 2; n <= NIVEAU_MAX; n++) {
+      if (pointsPourNiveau(n) !== 2) ecarts.push(`niv. ${n} (${pointsPourNiveau(n)})`);
+    }
+    aucun(ecarts, 'niveaux qui ne donnent pas exactement 2 points');
+    egal(pointsCumules(NIVEAU_MAX), 198, 'dotation totale du niveau 100');
   });
 
   test('pointsCumules est cohérent avec pointsPourNiveau', () => {
@@ -2129,9 +2152,10 @@ suite('Modes de zone', () => {
     // de la filière ramassée, jusque dans le butin des monstres.
     egal(filiereAutorisee({ genre: 'chasse' }), 'peau', 'la battue rapporte des peaux');
     egal(filiereAutorisee({ genre: 'embuscade', filiereRecolte: 'mine' }), 'mine', 'l\'embuscade suit la récolte en cours');
-    ['exploration', 'boss'].forEach((genre) => {
-      egal(filiereAutorisee({ genre }), null, `« ${genre} » ne doit ouvrir aucune filière`);
-    });
+    egal(filiereAutorisee({ genre: 'exploration' }), null, '« exploration » ne doit ouvrir aucune filière');
+    // v28 : le boss de carte rend TOUT — ses tables de butin étaient
+    // écrites depuis toujours et toujours filtrées.
+    egal(filiereAutorisee({ genre: 'boss' }), 'toutes', '« boss » laisse son coffre, trophée ET matériaux');
   });
 
   test('la règle des modes s\'arrête aux frontières de la carte', () => {
@@ -2141,7 +2165,7 @@ suite('Modes de zone', () => {
     ['tour', 'tourBoss', 'donjon', 'bossMonde'].forEach((genre) => {
       egal(filiereAutorisee({ genre }), 'toutes', `« ${genre} » garde son butin`);
     });
-    GENRES_DE_CARTE.forEach((genre) => {
+    ['exploration', 'embuscade', 'chasse'].forEach((genre) => {
       verifier(filiereAutorisee({ genre, filiereRecolte: 'mine' }) !== 'toutes',
         `« ${genre} » est un mode de carte : il doit être filtré`);
     });
@@ -4658,10 +4682,401 @@ suite('Les Ordres de Valciel (v27)', () => {
   test('le Puits de Mémoire rend tous les points, sans toucher au niveau', () => {
     const p = heroDesOrdres(40);
     const avant = p.niveau;
+    // v28 : le Puits rend ce que le héros DÉTIENT — un héros d'avant la
+    // réforme des points (ou une éprouvette trop bien dotée) garde son
+    // avance, règle d'or oblige. Jamais moins que la dotation due.
+    const detenus = Object.keys(CARACS).reduce((somme, cle) => somme + p.stats[cle], 0)
+      - Object.keys(CARACS).length * STAT_BASE + p.pointsEnAttente;
     reinitialiserCaracteristiques(p);
     egal(p.niveau, avant, 'le niveau ne bouge pas');
     Object.keys(CARACS).forEach((cle) => egal(p.stats[cle], STAT_BASE, `stat ${cle} à la base`));
-    egal(p.pointsEnAttente, POINTS_CREATION + pointsCumules(avant), 'tous les points rendus');
+    egal(p.pointsEnAttente, Math.max(detenus, POINTS_CREATION + pointsCumules(avant)),
+      'tous les points détenus rendus');
+    verifier(p.pointsEnAttente >= POINTS_CREATION + pointsCumules(avant),
+      'jamais moins que la dotation due au niveau');
     verifier(p.hp <= p.maxHp && p.maxHp > 0, 'les PV suivent la nouvelle répartition');
+  });
+});
+
+// =====================================================================
+// v28 — La grande réforme : courbe d'XP géométrique, points uniformes,
+// titres à bonus, nouveaux familiers, Ordres qui montrent la route,
+// météo enfin branchée — et les écarts du codex refermés un à un.
+// =====================================================================
+suite('Réforme v28 — titres, familiers, météo & écarts', () => {
+  window.rendreJournal = () => {};
+
+  const MONDE_NEUTRE = { phase: PHASES_JOUR[1], meteo: { id: 'claire', ...METEOS.claire }, effets: {} };
+
+  const cobaye = (extra) => Object.assign({
+    type: 'joueur', classe: 'guerrier', sousClasse: null, niveau: 50, bid: 'v28',
+    nom: 'Cobaye', avatar: '🧪', race: 'elfe',
+    stats: { for: 40, int: 10, dex: 20, esp: 10, vit: 30, cha: 10 },
+    equipement: {}, familiers: [], familier: null, inventaire: [],
+    statuts: [], cooldowns: {}, competences: [], rangs: {}, ligne: 'avant',
+    hautsFaits: [], titre: null, compteurs: { soinsProdigues: 0 },
+    hp: 1000, maxHp: 1000, mp: 100, maxMp: 100, ko: false,
+  }, extra || {});
+
+  const mannequin = (extra) => Object.assign({
+    type: 'monstre', id: 'm0', nom: 'Mannequin', emoji: '🎯', niveau: 50,
+    atk: 10, dex: 5, statuts: [], hp: 100000, maxHp: 100000, mort: false, defense: false,
+  }, extra || {});
+
+  const arene = (equipe, monstres) => {
+    etat.combat = {
+      genre: 'exploration', equipe, monstres, manche: 1, file: [],
+      actif: null, termine: false, journalLignes: [],
+    };
+    return etat.combat;
+  };
+
+  // Le hasard mis en cage le temps d'une mesure : varie() rend ×1,0 et
+  // aucun critique ne tombe quand Math.random répond toujours 0,5.
+  const sansHasard = (mesure) => {
+    const vrai = Math.random;
+    Math.random = () => 0.5;
+    try { return mesure(); } finally { Math.random = vrai; }
+  };
+
+  test('un titre porté applique son bonus — au placard, il ne fait rien', () => {
+    const p = cobaye({ hautsFaits: ['craft-200'] });
+    const sans = statsEffectives(p).cha;
+    p.titre = 'craft-200';                      // « le Grand Artisan » : +3 Chance
+    egal(statsEffectives(p).cha, sans + 3, 'porté, le titre ajoute ses 3 points de Chance');
+    p.titre = null;
+    egal(statsEffectives(p).cha, sans, 'retiré, il ne laisse rien');
+  });
+
+  test('les bonus d\'XP et d\'or du titre paient vraiment', () => {
+    const p = cobaye({ niveau: 90, hautsFaits: ['quetes-200', 'or-100000'] });
+    const sansXp = xpReelle(p, 5000);
+    p.titre = 'quetes-200';                     // +3 % d'XP
+    verifier(xpReelle(p, 5000) > sansXp, 'le titre d\'XP doit payer à la source');
+    const sansOr = multiplicateurOr(p);
+    p.titre = 'or-100000';                      // +5 % d'or
+    entre(multiplicateurOr(p) - sansOr, 0.049, 0.051, 'le titre d\'or entre dans le multiplicateur');
+  });
+
+  test('le bonus de dégâts d\'un titre pèse dans le coup', () => {
+    const frappe = (titre) => sansHasard(() => {
+      const p = cobaye({ race: 'nain', hautsFaits: ['monstres-1000'], titre });
+      const cible = mannequin();
+      arene([p], [cible]);
+      const r = infligerDegats(p, cible, 200, {});
+      etat.combat = null;
+      return r.degats;
+    });
+    const sans = frappe(null);
+    const avec = frappe('monstres-1000');       // « le Purgateur » : +3 % de dégâts
+    entre(avec / sans, 1.02, 1.04, 'le coup doit porter les +3 % du titre');
+  });
+
+  test('la Détermination majore les soins, comme sa fiche le promet', () => {
+    const soigne = (deter) => sansHasard(() => {
+      const source = cobaye({ statsEff: { deter } });
+      const blesse = cobaye({ hp: 1 });
+      return soigner(blesse, 100, source);
+    });
+    egal(soigne(30), 130, '30 % de Détermination doivent rendre 130 PV au lieu de 100');
+    verifier(soigne(0) === 100, 'sans Détermination, le soin reste le soin');
+  });
+
+  test('les soins prodigués se comptent, et leur haut fait tombe', () => {
+    sansHasard(() => {
+      const source = cobaye();
+      const blesse = cobaye({ hp: 1 });
+      soigner(blesse, 100, source);
+      egal(source.compteurs.soinsProdigues, 100, 'chaque PV rendu se compte');
+    });
+    const devoue = herosTest();
+    devoue.compteurs.soinsProdigues = 50000;
+    sansAnnonces(() => verifierHautsFaits(devoue));
+    verifier(devoue.hautsFaits.includes('soigneur-devoue'), '« Cœur immense » doit se décrocher');
+  });
+
+  test('la Célérité raccourcit les recharges — plancher à un tour', () => {
+    const rapide = cobaye({ statsEff: { celerite: 50 } });
+    const lent = cobaye({ statsEff: {} });
+    egal(rechargeAjustee(lent, { cooldown: 4 }), 4, 'sans Célérité, rien ne bouge');
+    egal(rechargeAjustee(rapide, { cooldown: 4 }), 3, 'au plafond (50 %), une recharge de 4 dure 3');
+    egal(rechargeAjustee(rapide, { cooldown: 1 }), 1, 'jamais moins d\'un tour');
+    egal(rechargeAjustee(mannequin(), { cooldown: 4 }), 4, 'les monstres ne sont pas concernés');
+  });
+
+  test('la Brume fait rater, et cache les PV ennemis', () => {
+    try {
+      figerMonde({ ...MONDE_NEUTRE, effets: { precision: 0 } });
+      const p = cobaye();
+      const cible = mannequin();
+      arene([p], [cible]);
+      const r = infligerDegats(p, cible, 200, {});
+      egal(r.degats, 0, 'à précision nulle, le coup se perd dans le blanc');
+      verifier(r.esquive, 'le coup perdu est une esquive, pas un dégât de 1');
+      figerMonde({ ...MONDE_NEUTRE, effets: { pvEnnemisCaches: true } });
+      const carte = carteCombattant(cible);
+      verifier(/\?/.test(carte.innerHTML), 'la carte du monstre doit cacher ses PV');
+      verifier(!carte.innerHTML.includes('100000'), 'et ne jamais les écrire');
+    } finally {
+      figerMonde(MONDE_NEUTRE);
+      etat.combat = null;
+    }
+  });
+
+  test('la Canicule évapore le mana, le Blizzard gèle, la Tempête secoue', () => {
+    try {
+      figerMonde({ ...MONDE_NEUTRE, effets: { manaParTour: -0.03 } });
+      egal(regainDeMana(cobaye({ maxMp: 200 })), 2 - 6, 'le regain de base fond sous la Canicule');
+
+      figerMonde({ ...MONDE_NEUTRE, effets: { gelPeriodique: 3 } });
+      const equipe = [cobaye()];
+      const monstres = [mannequin()];
+      const cb = arene(equipe, monstres);
+      cb.manche = 3;
+      gelDuBlizzard(cb);
+      verifier(equipe[0].statuts.some((s) => s.type === 'etourdi'), 'un héros gèle à la manche 3');
+      verifier(monstres[0].statuts.some((s) => s.type === 'etourdi'), 'un monstre aussi');
+
+      figerMonde({ ...MONDE_NEUTRE, effets: { initiativeAleatoire: true } });
+      const valeurs = new Set();
+      for (let i = 0; i < 60; i++) valeurs.add(secousseTempete(100));
+      verifier(valeurs.size > 1, 'la Tempête doit secouer l\'initiative');
+      verifier([...valeurs].every((v) => v >= 70 && v <= 130), 'de ±30 %, pas davantage');
+    } finally {
+      figerMonde(MONDE_NEUTRE);
+      etat.combat = null;
+    }
+  });
+
+  test('les sorts élémentaires déclarent un élément que le ciel connaît', () => {
+    const elements = new Set(['feu', 'foudre', 'givre']);
+    const declares = Object.entries(COMPETENCES).filter(([, c]) => c.element);
+    verifier(declares.length >= 10, 'au moins dix sorts élémentaires déclarés');
+    const inconnus = declares.filter(([, c]) => !elements.has(c.element)).map(([id]) => id);
+    aucun(inconnus, 'éléments que la météo ne connaît pas');
+    ['boule-de-feu', 'eclair', 'fleche-de-givre'].forEach((id) => {
+      verifier(!!COMPETENCES[id].element, `${id} doit porter son élément`);
+    });
+    // Et le multiplicateur du ciel s'applique bien à un sort déclaré.
+    const pluie = { phase: PHASES_JOUR[1], meteo: { id: 'pluie', ...METEOS.pluie }, effets: { feu: 0.8 } };
+    egal(multElementMonde('feu', pluie), 0.8, 'le feu prend l\'eau sous la pluie');
+  });
+
+  test('le dépeçage a enfin son heure — la nuit et la brume', () => {
+    const nuit = { phase: PHASES_JOUR[2], meteo: { id: 'claire', ...METEOS.claire }, effets: { recoltePeau: 1.2 } };
+    egal(multRecolteMonde('peau', nuit), 1.2, 'la nuit paie le tanneur');
+    egal(multRecolteMonde('peau', MONDE_NEUTRE), 1, 'le jour, rien de spécial');
+  });
+
+  test('le verrou d\'Éveil survit à la garantie', () => {
+    const p = herosTest();
+    p.sousClasse = 'berserker';
+    const candidats = (SOUS_CLASSES.berserker.eveils || []).map((id) => EVEILS[id])
+      .filter((e) => e && e.rarete === 'rare');
+    verifier(candidats.length > 0, 'il faut un Éveil rare à verrouiller');
+    const verrou = candidats[0].id;
+    for (let i = 0; i < 40; i++) {
+      const tirage = tirerEveils(p, { verrouillee: verrou, garantirLegendaire: true });
+      verifier(tirage.some((e) => e.id === verrou),
+        'la proposition verrouillée doit revenir, garantie ou pas');
+      verifier(tirage.some((e) => ORDRE_EVEIL.indexOf(e.rarete) >= ORDRE_EVEIL.indexOf(RARETE_GARANTIE)),
+        'et la garantie doit quand même mordre');
+    }
+  });
+
+  test('les Sceaux se récoltent à tout niveau', () => {
+    const jeune = cobaye({ niveau: 30, distant: false });
+    const lignes = [];
+    recolterSceaux(jeune, 10, lignes);
+    verifier(jeune.sceaux.normaux > 0, 'un héros de niveau 30 encaisse ses Sceaux');
+    egal(jeune.sceaux.majeurs, 1, 'l\'étage 10 donne son Sceau Majeur');
+    verifier(lignes[0].includes('patiente'), 'et la ligne prévient que la Tour ouvre au niveau 60');
+  });
+
+  test('la Tour Sans Fin rebat ses cartes après la dernière', () => {
+    egal(zonePourEtage(70).id, ZONES[Math.floor(69 / 2.5)].id, 'sous le plafond, rien ne change');
+    const hautes = new Set();
+    for (let etage = 73; etage <= 145; etage += 1) hautes.add(zonePourEtage(etage).id);
+    verifier(hautes.size >= 5, `au-delà de l'étage 71, le bestiaire doit tourner (${hautes.size} cartes vues)`);
+  });
+
+  test('les contrats du jour ne partagent plus jamais un type', () => {
+    [3, 12, 50].forEach((niveau) => {
+      const p = herosTest();
+      sansAnnonces(() => adminFixerNiveau(p, niveau));
+      const quetes = genererQuetesDuJour(p);
+      const types = quetes.liste.map((q) => q.type);
+      egal(new Set(types).size, types.length, `niv. ${niveau} : deux contrats du même type ne cohabitent plus`);
+      verifier(quetes.liste.length >= 5, `niv. ${niveau} : le tableau reste garni (${quetes.liste.length})`);
+    });
+  });
+
+  test('la migration d\'XP recale les vieilles sauvegardes sans rien reprendre', () => {
+    // Un héros dont l'XP dépasse désormais le palier suivant MONTE, points
+    // et maîtrise dus compris.
+    const gagnant = herosTest();
+    sansAnnonces(() => adminFixerNiveau(gagnant, 50));
+    const pointsAvant = gagnant.pointsEnAttente;
+    gagnant.xp = seuilXp(53) + 5;
+    sansAnnonces(() => normaliserPerso(gagnant));
+    egal(gagnant.niveau, 53, 'le niveau suit la nouvelle courbe vers le haut');
+    egal(gagnant.pointsEnAttente, pointsAvant + pointsCumules(53) - pointsCumules(50),
+      'les points des niveaux gagnés arrivent avec');
+    // Un héros dont l'XP est passée SOUS le plancher de son niveau est
+    // recalé au plancher : il ne redescend jamais.
+    const protege = herosTest();
+    sansAnnonces(() => adminFixerNiveau(protege, 80));
+    protege.xp = seuilXp(80) - 10000;
+    sansAnnonces(() => normaliserPerso(protege));
+    egal(protege.niveau, 80, 'le niveau ne redescend jamais');
+    egal(protege.xp, seuilXp(80), 'l\'XP se recale au plancher du niveau');
+  });
+
+  test('l\'épreuve d\'Ascension éprouve les six caractéristiques', () => {
+    const vues = new Set();
+    for (let etage = 3; etage <= 300; etage += 1) {
+      if (etage % 3 === 0 && etage % 5 !== 0) vues.add(statEpreuveAscension(etage));
+    }
+    egal(vues.size, Object.keys(CARACS).length,
+      `la rotation doit couvrir les six caractéristiques (vues : ${[...vues].join(', ')})`);
+  });
+
+  test('ce qui se paie à la Tour de l\'Éveil monte au cloud — la race aussi', () => {
+    const p = herosTest();
+    p.race = 'sylvain';
+    p.choixClasseOffert = true;
+    p.cachesReveles = ['eveil-cache-x'];
+    const d = donneesCloud(p);
+    egal(d.race, 'sylvain', 'la race voyage');
+    egal(d.choixClasseOffert, true, 'le choix de rôle payé voyage');
+    egal(JSON.stringify(d.cachesReveles), '["eveil-cache-x"]', 'les révélations payées voyagent');
+  });
+
+  test('chaque compagnon du chenil a un vrai bonus et une vraie source', () => {
+    const sansBonus = Object.entries(FAMILIERS)
+      .filter(([, f]) => !f.bonus || !Object.keys(f.bonus).length).map(([id]) => id);
+    aucun(sansBonus, 'familiers sans bonus');
+    const tourInconnus = Object.values(FAMILIERS_TOUR).filter((id) => !FAMILIERS[id]);
+    aucun(tourInconnus, 'paliers de Tour pointant un familier inconnu');
+    const donjonsInconnus = DONJONS.filter((d) => d.familier && !FAMILIERS[d.familier])
+      .map((d) => d.id);
+    aucun(donjonsInconnus, 'donjons pointant un familier inconnu');
+    // Les cinq grandes épopées tardives ont désormais leur compagnon.
+    ['sanctuaire', 'couronne-celeste', 'nihelm', 'temps-brise', 'neant'].forEach((id) => {
+      const donjon = DONJONS.find((d) => d.id === id);
+      verifier(donjon && donjon.familier, `« ${id} » doit laisser un familier`);
+    });
+  });
+
+  test('les nouveaux titres se décrochent par leurs conditions', () => {
+    const p = herosTest();
+    sansAnnonces(() => adminFixerNiveau(p, 100));
+    p.compteurs.monstres = 1000;
+    p.compteurs.orTotal = 100000;
+    p.familiers = Object.keys(FAMILIERS).slice(0, 8);
+    sansAnnonces(() => verifierHautsFaits(p));
+    ['niveau-60', 'niveau-80', 'niveau-100', 'monstres-1000', 'or-100000', 'familiers-8']
+      .forEach((id) => verifier(p.hautsFaits.includes(id), `« ${id} » doit se décrocher`));
+  });
+
+  test('l\'écran des Ordres connaît toutes les Voies, trois par spécialité', () => {
+    Object.entries(CLASSES_BASE).forEach(([, base]) => {
+      (base.sousClasses || []).forEach((idSc) => {
+        const sc = SOUS_CLASSES[idSc];
+        egal((sc.voies || []).length, 3, `${sc.nom} doit proposer trois Voies`);
+        (sc.voies || []).forEach((idVoie) => {
+          verifier(!!VOIES[idVoie].passif, `${idVoie} doit dire son passif dans la maison de l'ordre`);
+        });
+      });
+    });
+    egal(NIVEAU_VOIE, 50, 'les Voies restent le palier du niveau 50');
+  });
+
+  test('les fiches ne mentent plus : Franc-tireur, Flux, Tempête, verrouillage', () => {
+    const francTireur = Object.values(CLASSES_BASE).find((c) => (c.passif || '').includes('Ligne de tir'));
+    verifier(francTireur && francTireur.passif.includes('protection'),
+      'la fiche du Franc-tireur doit dire les DEUX avantages de l\'arrière');
+    const arcaniste = Object.values(CLASSES_BASE).find((c) => (c.passif || '').includes('Flux'));
+    verifier(arcaniste && !arcaniste.passif.includes('pleine puissance'),
+      'la fiche de Flux ne s\'attribue plus une propriété universelle');
+    const tempete = Object.values(EVEILS).find((e) => e.nom === 'Tempête');
+    verifier(tempete && /75\s*%/.test(tempete.effet || ''),
+      `la fiche de Tempête doit dire la retenue de ses zones — « ${tempete && tempete.effet} »`);
+    verifier(SERVICES_TOUR['relancer-eveil'].desc.includes('oublié'),
+      'relancer l\'Éveil doit prévenir qu\'un Éveil choisi est remplacé');
+    verifier(!SERVICES_TOUR['forcer-rarete'].disponible(cobaye({ niveau: 60, eveil: null })),
+      'forcer une rareté n\'est plus proposé à qui n\'a rien à forcer');
+  });
+
+  test('« Toucheur de légende » compte tout ce qui vaut au moins une légende', () => {
+    const p = herosTest();
+    const idLegendaire = Object.keys(OBJETS).find((id) => rareteDe(OBJETS[id]) === 'legendaire');
+    const idMythique = Object.keys(OBJETS).find((id) => rareteDe(OBJETS[id]) === 'mythique');
+    const idDivin = Object.keys(OBJETS).find((id) => rareteDe(OBJETS[id]) === 'divin');
+    [idLegendaire, idMythique, idDivin].forEach((id) => verifier(!!id, 'il faut un objet de chaque rareté'));
+    ajouterObjet(p, idLegendaire, 1);
+    ajouterObjet(p, idMythique, 1);
+    ajouterObjet(p, idDivin, 1);
+    egal(p.compteurs.legendaires, 3, 'légendaire, mythique et divin comptent tous les trois');
+    egal(p.compteurs.divins, 1, 'le compteur divin reste à part');
+    verifier(HAUTS_FAITS.find((h) => h.id === 'legendaire-1').desc.includes('ou mieux'),
+      'et la fiche du haut fait le dit');
+  });
+
+  test('un boucl' + 'ier de phase s\'ajoute au précédent au lieu de l\'effacer', () => {
+    const boss = mannequin({
+      boss: true, hp: 1000, maxHp: 100000,
+      mecaniques: { phases: [
+        { seuil: 0.9, annonce: 'Phase 2 !', bouclier: 300 },
+        { seuil: 0.5, annonce: 'Phase 3 !', bouclier: 500 },
+      ] },
+      phaseIndex: 0,
+    });
+    const cb = arene([cobaye()], [boss]);
+    traiterPhasesBoss(cb);
+    const carapace = boss.statuts.find((s) => s.type === 'bouclier');
+    verifier(!!carapace, 'les phases doivent poser leur bouclier');
+    egal(carapace.valeur, 800, 'deux seuils franchis d\'un coup : 300 + 500, pas 500');
+    etat.combat = null;
+  });
+
+  test('un renfort invoqué entre dans la manche en cours', () => {
+    const cb = arene([cobaye()], [mannequin()]);
+    cb.file = [];
+    const cle = Object.keys(MONSTRES).find((id) => MONSTRES[id] && MONSTRES[id].hp);
+    invoquerMonstresCombat(cb, [cle]);
+    egal(cb.monstres.length, 2, 'le renfort est sur le terrain');
+    verifier(cb.file.includes(cb.monstres[1]), 'et dans la file de la manche EN COURS');
+    etat.combat = null;
+  });
+
+  test('le boss d\'une Chronique reste vraiment renforcé après calibration', () => {
+    // Le ×1,7 déclaré était recentré comme n'importe quel écart : dès
+    // l'acte II le boss de Chronique retombait au niveau du boss ordinaire
+    // de la carte. La surcote déclarée est désormais préservée.
+    const plats = [];
+    DONJONS.filter((d) => d.famille === 'chronique').forEach((c) => {
+      const etape = Object.values(c.etapes).find((et) => et.type === 'boss');
+      const zone = ZONES.find((z) => `chronique-${z.id}` === c.id);
+      if (!etape || !etape.monstre || !zone) return;
+      const renforce = MONSTRES_DONJONS[etape.monstre];
+      const normal = MONSTRES[zone.boss];
+      if (!renforce || !normal) return;
+      const rapport = renforce.hp / normal.hp;
+      if (rapport < 1.3) plats.push(`${c.id} (×${rapport.toFixed(2)})`);
+    });
+    aucun(plats, 'boss de Chronique retombés au niveau du boss ordinaire');
+  });
+
+  test('le rythme d\'XP des monstres suit la douceur de la nouvelle courbe', () => {
+    // La table est régénérée par outils/generer-tables.js : d'un niveau au
+    // suivant, l'XP d'un monstre croît sans à-coup (la géométrique de la
+    // courbe divisée par celle du rythme), et sans jamais reculer.
+    const accrocs = [];
+    for (let n = 2; n < NIVEAU_MAX - 1; n++) {
+      const rapport = cibleMonstre(XP_CIBLE_MONSTRE, n + 1) / cibleMonstre(XP_CIBLE_MONSTRE, n);
+      if (rapport < 1 || rapport > 1.13) accrocs.push(`niv. ${n} (×${rapport.toFixed(3)})`);
+    }
+    aucun(accrocs, 'à-coups dans la courbe d\'XP des monstres');
   });
 });

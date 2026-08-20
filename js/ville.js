@@ -673,6 +673,10 @@ function rendreFournisseur() {
         retirerObjet(p, entree.id, vendu);
         p.po += prixUnite * vendu;
         p.compteurs.orTotal += prixUnite * vendu;
+        // v28 : le rachat du fournisseur alimente le compteur d'or, il
+        // doit donc aussi VÉRIFIER — un seuil franchi ici n'était constaté
+        // qu'au prochain événement qui, lui, vérifiait.
+        verifierHautsFaits(p);
         sauvegarder(p);
         afficherToast(`💰 ${objet.emoji} ${objet.nom} ×${vendu} — +${formatNombre(prixUnite * vendu)} po.`);
         rendreFournisseur();
@@ -873,11 +877,14 @@ function rendreTourEveil() {
     bouton.disabled = !dispo || !payable;
     bouton.addEventListener('click', () => {
       if (!service.disponible(p) || !peutPayerService(p, service)) return;
+      // v28 : le service s'EXÉCUTE d'abord, le débit vient ensuite — un
+      // service qui n'aurait rien à rendre ne prélève plus 100 Sceaux
+      // pour répondre « rien à faire ».
+      const message = service.appliquer(p);
       const bourseVive = sceauxDe(p);
       bourseVive.normaux -= service.sceaux;
       bourseVive.majeurs -= service.majeurs;
       if (service.or) p.po -= service.or;
-      const message = service.appliquer(p);
       // Un service employé réveille tout tirage mis en attente : le
       // joueur qui vient de payer veut voir le résultat.
       if (p.eveil && p.eveil.reporte) p.eveil.reporte = false;
@@ -1313,8 +1320,13 @@ function changerDeSpecialite(p, idSousClasse) {
 }
 
 function reinitialiserCaracteristiques(p) {
+  // v28 : le Puits rend ce que le héros DÉTIENT vraiment — jamais moins.
+  // Un héros d'avant la réforme des points (paliers à 3 et 4, primes des
+  // niveaux 90 et 100) garde ainsi son avance, règle d'or oblige.
+  const detenus = Object.keys(CARACS).reduce((somme, cle) => somme + (p.stats[cle] || 0), 0)
+    + (p.pointsEnAttente || 0) - Object.keys(CARACS).length * STAT_BASE;
   Object.keys(CARACS).forEach((cle) => { p.stats[cle] = STAT_BASE; });
-  p.pointsEnAttente = POINTS_CREATION + pointsCumules(p.niveau);
+  p.pointsEnAttente = Math.max(detenus, POINTS_CREATION + pointsCumules(p.niveau));
   p.maxHp = maxHpDe(p);
   p.maxMp = maxMpDe(p);
   bornerVie(p);
@@ -1377,6 +1389,48 @@ function rendreOrdres() {
       <div class="objet-desc">${base.emoji} <strong>${base.nom}</strong> — ${base.role} · ${base.resume}</div>
       <div class="objet-note">« ${maison.devise} »</div>
       <div class="objet-bonus">Passif : ${base.passif}</div>`;
+
+    // v28 — La route de l'ordre, palier par palier : chaque maison affiche
+    // ce qu'on y choisit et à quel niveau, coche ce que le héros a déjà
+    // franchi — et déplie les Voies du niveau 50, trois par spécialité.
+    const paliersOrdre = [
+      [1, 'Classe'],
+      [NIVEAU_SPECIALITE, 'Métier ⭐'],
+      [NIVEAU_SOUS_CLASSE, 'Spécialité'],
+      [NIVEAU_VOIE, 'Voie'],
+      [NIVEAU_TOUR_EVEIL, 'Tour de l’Éveil'],
+      [NIVEAU_EVEIL, 'Éveil'],
+    ];
+    carte.insertAdjacentHTML('beforeend', `<div class="paliers-ordre">${paliersOrdre
+      .map(([niv, nom]) => `<span class="palier-ordre${p.niveau >= niv ? ' palier-ouvert' : ''}"
+        title="${nom} — se choisit au niveau ${niv}">${p.niveau >= niv ? '✔' : '🔒'} niv. ${niv} — ${nom}</span>`)
+      .join('<span class="fleche-palier">➜</span>')}</div>`);
+
+    const depliantVoies = document.createElement('details');
+    depliantVoies.className = 'voies-ordre';
+    const nbVoies = (base.sousClasses || [])
+      .reduce((somme, idSc) => somme + (((SOUS_CLASSES[idSc] || {}).voies) || []).length, 0);
+    depliantVoies.innerHTML = `<summary>🛤️ Les ${nbVoies} Voies de l'ordre — niveau ${NIVEAU_VOIE}${p.niveau >= NIVEAU_VOIE ? '' : ` (dans ${NIVEAU_VOIE - p.niveau} niveau${NIVEAU_VOIE - p.niveau > 1 ? 'x' : ''})`}</summary>`;
+    (base.sousClasses || []).forEach((idSc) => {
+      const sc = SOUS_CLASSES[idSc];
+      if (!sc) return;
+      const blocVoies = document.createElement('div');
+      blocVoies.className = 'voies-specialite';
+      blocVoies.innerHTML = `<div class="voies-titre">${sc.emoji} <strong>${sc.nom}</strong>
+          <span class="niveau">spécialité · niv. ${NIVEAU_SOUS_CLASSE}</span>${p.sousClasse === idSc ? ' <span class="badge-signature">⭐ la vôtre</span>' : ''}</div>`
+        + (sc.voies || []).map((idVoie) => {
+          const voie = VOIES[idVoie];
+          if (!voie) return '';
+          const portee = p.voie === idVoie;
+          return `<div class="ligne-voie${portee ? ' voie-portee' : ''}">
+            <div class="voie-nom">${voie.emoji} <strong>${voie.nom}</strong>
+              <span class="niveau">niv. ${NIVEAU_VOIE}${portee ? ' · ✔ la vôtre' : ''}</span></div>
+            <div class="voie-passif">${voie.passif}</div>
+          </div>`;
+        }).join('');
+      depliantVoies.appendChild(blocVoies);
+    });
+    carte.appendChild(depliantVoies);
 
     if (estLaMienne) {
       // Sa propre maison : on n'y recommence pas sa classe, on y change de

@@ -36,8 +36,10 @@ const PHASES_JOUR = [
   {
     id: 'nuit', nom: 'Nuit', emoji: '🌙', de: 20, a: 6,
     resume: 'Ce qui dort le jour se réveille — et ce qu’on y trouve vaut plus cher.',
-    effets: { butin: 1.2, degatsSubis: 1.1 },
-    detail: '🎁 Butin +20 % · ⚠️ les monstres frappent 10 % plus fort',
+    // v28 : le gibier sort la nuit — le dépeçage a enfin son heure, comme
+    // l'aube a la sienne pour les herbes et les filons.
+    effets: { butin: 1.2, degatsSubis: 1.1, recoltePeau: 1.2 },
+    detail: '🎁 Butin +20 % · 🔪 dépeçage +20 % · ⚠️ les monstres frappent 10 % plus fort',
   },
 ];
 
@@ -55,9 +57,10 @@ const METEOS = {
   },
   brume: {
     nom: 'Brume', emoji: '🌫️', poids: 14,
-    resume: 'On ne voit pas à dix pas — ni ce qu’on frappe, ni ce qui approche.',
-    effets: { precision: 0.9, pvEnnemisCaches: true },
-    detail: '🎯 Précision −10 % · les PV ennemis restent cachés',
+    resume: 'On ne voit pas à dix pas — ni ce qu’on frappe, ni ce qui approche. Le gibier non plus.',
+    // v28 : la Brume couvre aussi l'approche du chasseur.
+    effets: { precision: 0.9, pvEnnemisCaches: true, recoltePeau: 1.15 },
+    detail: '🎯 Précision −10 % · les PV ennemis restent cachés · 🔪 dépeçage +15 %',
   },
   tempete: {
     nom: 'Tempête', emoji: '⛈️', poids: 12,
@@ -122,9 +125,19 @@ function minutesAvantChangementMeteo(maintenant) {
   return Math.max(1, reste);
 }
 
+// Les tests et le banc d'équilibrage peuvent FIGER le monde : un combat
+// mesuré ne doit pas changer de résultat selon l'heure de la machine qui
+// le mesure. figerMonde(null) rend le ciel au temps réel.
+let MONDE_FIGE = null;
+
+function figerMonde(monde) {
+  MONDE_FIGE = monde;
+}
+
 // L'état complet du monde à cet instant : c'est ce que lit le combat,
 // la récolte et le header.
 function mondeMaintenant(maintenant) {
+  if (MONDE_FIGE && !maintenant) return MONDE_FIGE;
   const phase = phaseCourante(maintenant);
   const meteo = meteoCourante(maintenant);
   const effets = { ...phase.effets };
@@ -145,9 +158,12 @@ function multElementMonde(element, monde) {
 }
 
 // Multiplicateurs de récolte et de gains, lus par l'exploration.
+// v28 : les TROIS filières ont leur heure — la chasse ne gagnait rien,
+// jamais, pendant que l'aube payait les herbes et les filons.
 function multRecolteMonde(famille, monde) {
   const m = monde || mondeMaintenant();
   if (famille === 'plante') return m.effets.recolteHerbe || 1;
   if (famille === 'mine') return m.effets.recolteMine || 1;
+  if (famille === 'peau') return m.effets.recoltePeau || 1;
   return 1;
 }

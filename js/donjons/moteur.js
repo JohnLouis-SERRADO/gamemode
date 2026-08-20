@@ -813,6 +813,19 @@ function demarrerEtageAscension() {
   let defs;
   let intro;
   if (etage % 5 === 0) {
+    // v28 — Les campements (multiples de 10) tombent tous sur un étage
+    // d'écho (multiples de 5) : l'équipe était soignée juste APRÈS le
+    // combat le plus dur de la série, jamais avant. Le campement se monte
+    // désormais EN VUE du sommet : souffle rendu avant l'écho, palier
+    // toujours gravé après la victoire.
+    if (etage % 10 === 0) {
+      membres.forEach((m) => {
+        m.statuts = [];
+        bornerVie(m);
+        m.hp = m.maxHp;
+        m.mp = m.maxMp;
+      });
+    }
     const cleBoss = bossDeLEpopee(donjon);
     const base = defMonstreDonjon(cleBoss);
     defs = [{
@@ -823,7 +836,9 @@ function demarrerEtageAscension() {
       atk: Math.round(base.atk * croissanceAtk * multAtkEquipe),
       xp: Math.round(base.xp * (0.5 + etage * 0.05)),
     }];
-    intro = `⛰️ Étage ${etage} — le donjon reforme l'écho de son maître, plus dense à chaque cycle.`;
+    intro = etage % 10 === 0
+      ? `⛰️ Étage ${etage} — l'équipe campe en vue du sommet (PV et PM rendus)… puis le donjon reforme l'écho de son maître.`
+      : `⛰️ Étage ${etage} — le donjon reforme l'écho de son maître, plus dense à chaque cycle.`;
   } else {
     const pool = monstresDeLEpopee(donjon);
     const nb = Math.min(4, 2 + Math.floor(etage / 6));
@@ -853,6 +868,22 @@ function demarrerEtageAscension() {
   rendreCombat();
 }
 
+// v28 — La rotation des épreuves couvre les SIX caractéristiques, et elle
+// compte les ÉPREUVES plutôt que les étages : l'ancienne formule (étage ÷ 3
+// modulo cinq) ne tombait sur la Force qu'aux multiples de 15 — tous
+// convertis en étage-écho avant l'épreuve — et ignorait l'Esprit. Mesuré
+// sur 300 étages : Force 0 épreuve, Esprit 0. Deux caractéristiques sur
+// six étaient hors jeu.
+const STATS_EPREUVE_ASCENSION = ['for', 'int', 'dex', 'esp', 'vit', 'cha'];
+
+function statEpreuveAscension(etage) {
+  // Rang de CETTE épreuve : combien d'étages-épreuve jusqu'ici (les
+  // multiples de 3, moins les multiples de 15 avalés par les boss).
+  const rang = Math.floor(etage / 3) - Math.floor(etage / 15) - 1;
+  const n = STATS_EPREUVE_ASCENSION.length;
+  return STATS_EPREUVE_ASCENSION[((rang % n) + n) % n];
+}
+
 // Étage-épreuve : un jet de d20 dont la difficulté grimpe avec l'étage.
 function rendreEpreuveAscension() {
   const a = etat.ascension;
@@ -861,9 +892,11 @@ function rendreEpreuveAscension() {
   const scene = el('donjon-scene');
   scene.innerHTML = '';
 
-  const stats = ['for', 'int', 'dex', 'vit', 'cha'];
-  const stat = stats[Math.floor(etage / 3) % stats.length];
-  const difficulte = 12 + Math.round(donjon.niveauMin * 0.6) + etage;
+  const stat = statEpreuveAscension(etage);
+  // v28 — Le niveau de DÉFI sert enfin aux épreuves : le Gouffre de Nihelm
+  // (défi 52), la Forteresse (défi 60) et l'Œil du Néant (défi 88)
+  // éprouvent à la hauteur de leur étiquette, plus à celle de leur porte.
+  const difficulte = 12 + Math.round((donjon.defi || donjon.niveauMin) * 0.6) + etage;
 
   const membres = membresEquipe();
   let champion = membres[0];
@@ -1063,25 +1096,31 @@ function terminerDonjon(etape) {
   const poParHeros = Math.round(donjon.recompenses.po * mult);
   lignes.push(`⭐ ${texteGainXp(membres, xpParHeros)} et 💰 +${formatNombre(poParHeros)} po par héros${premiere ? '' : ' (histoire déjà vécue)'}`);
 
-  // L'objet unique de l'histoire (variante selon la fin), première fois seulement.
+  // L'objet unique de l'histoire (variante selon la fin), première fois
+  // seulement — et pour TOUS les héros de l'équipe locale (v28) : « les
+  // récompenses vont à l'équipe » incluait l'XP et l'or, mais l'objet
+  // unique et le familier n'allaient qu'au héros actif.
   if (premiere) {
     let idObjet = donjon.recompenses.objet;
     Object.entries(donjon.recompenses.objetParDrapeau || {}).forEach(([drapeau, id]) => {
       if (drapeaux[drapeau]) idObjet = id;
     });
     if (idObjet) {
-      ajouterObjet(p, idObjet, 1);
+      membres.forEach((m) => ajouterObjet(m, idObjet, 1));
       const objet = OBJETS[idObjet];
-      lignes.push(`✨ ${objet.emoji} ${objet.nom}${texteRarete(objet)} — récompense unique de l'histoire !`);
+      lignes.push(`✨ ${objet.emoji} ${objet.nom}${texteRarete(objet)} — récompense unique de l'histoire${membres.length > 1 ? ', pour chaque héros' : ''} !`);
     }
     Object.entries(donjon.recompenses.objets || {}).forEach(([id, qte]) => {
-      ajouterObjet(p, id, qte);
-      lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}`);
+      membres.forEach((m) => ajouterObjet(m, id, qte));
+      lignes.push(`${OBJETS[id].emoji} ${OBJETS[id].nom} ×${qte}${membres.length > 1 ? ' chacun' : ''}`);
     });
-    if (donjon.familier && !p.familiers.includes(donjon.familier)) {
-      p.familiers.push(donjon.familier);
+    if (donjon.familier) {
       const compagnon = FAMILIERS[donjon.familier];
-      lignes.push(`🐾 ${compagnon.emoji} ${compagnon.nom} vous adopte à la fin de l'histoire !`);
+      const adoptes = membres.filter((m) => !m.familiers.includes(donjon.familier));
+      adoptes.forEach((m) => m.familiers.push(donjon.familier));
+      if (adoptes.length) {
+        lignes.push(`🐾 ${compagnon.emoji} ${compagnon.nom} adopte ${adoptes.length > 1 ? 'toute l\'équipe' : 'votre héros'} à la fin de l'histoire !`);
+      }
     }
   }
 

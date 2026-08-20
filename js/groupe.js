@@ -60,13 +60,10 @@ function snapshotPourGroupe(p) {
     rangs: p.rangs || {},
     bossVaincus: p.bossVaincus,
     familiers: p.familiers,
-    // v16 : la progression qui ouvre les expéditions de groupe.
-    tourMax: p.tourMax || 0,
-    tourBoss: p.tourBoss || { normal: 0, heroique: 0, cauchemar: 0 },
-    donjonsDebloques: typeof donjonsDebloquesPour === 'function' ? donjonsDebloquesPour(p) : [],
-    // v16.2 : l'Ascension éternelle en groupe — épopées terminées + records.
-    epopeesFinies: DONJONS.filter((d) => !d.chronique && progresDonjon(p, d.id).fini > 0).map((d) => d.id),
-    ascensions: p.ascensions || {},
+    // v28 — L'instantané transportait encore tourMax, tourBoss,
+    // donjonsDebloques, epopeesFinies et ascensions, que plus rien ne
+    // lisait : depuis la v16.3, seule la progression du CHEF ouvre les
+    // expéditions. Les cinq champs morts sont partis.
     potions: p.inventaire.filter((e) => OBJETS[e.id] && OBJETS[e.id].type === 'consommable')
       .map((e) => ({ id: e.id, qte: e.qte })),
   };
@@ -590,10 +587,17 @@ async function lancerExpeditionGroupe(ligne) {
     }
     const mult = DIFFICULTES[difficulte] || DIFFICULTES.normal;
     const cles = genre === 'boss' ? [zone.boss] : composerPack(zone, tailleDuPack(membres));
+    // v28 — Le boss de zone était le seul combat de groupe que RIEN ne
+    // renforçait : à quatre, il avait les points de vie d'un duel en
+    // solitaire. Il reçoit le même barème que la Tour des Boss et
+    // l'assaut de donjon : +35 % de PV et +10 % d'attaque par héros
+    // supplémentaire. L'exploration, elle, compense déjà par le nombre.
+    const multBoss = genre === 'boss' ? multEquipe : 1;
+    const multBossAtk = genre === 'boss' ? multAtkEquipe : 1;
     defs = cles.map((cle) => ({
       ...MONSTRES[cle], cle,
-      hp: Math.round(MONSTRES[cle].hp * mult.hp),
-      atk: Math.round(MONSTRES[cle].atk * mult.atk),
+      hp: Math.round(MONSTRES[cle].hp * mult.hp * multBoss),
+      atk: Math.round(MONSTRES[cle].atk * mult.atk * multBossAtk),
     }));
     genreCombat = genre === 'boss' ? 'boss' : 'exploration';
   } else if (genre === 'tour') {

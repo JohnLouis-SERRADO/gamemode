@@ -54,7 +54,7 @@ Elles étaient six : la **Ténacité** retranchait jusqu'à 40 % des dégâts su
 
 Un mage ne porte pas d'armure de fer. Quatre **catégories d'armure** (tissu · cuir · maille · plaque) et six **familles d'arme** (lame · arc · bâton · calice · runique · pavois), chacune réservée aux classes qui en ont l'usage — et l'inventaire dit *pourquoi* un objet vous est refusé plutôt que de le griser en silence.
 
-**18 298 objets** en 7 raretés (jusqu'au Divin ✨), dont **5 314 en boutique** et **386 recettes** d'artisanat. Chaque objet affiche, en face de ce que vous portez déjà, l'écart exact : `+3 💪 / −2 ❤️ ▲ mieux que l'équipé`.
+**18 336 objets** en 7 raretés (jusqu'au Divin ✨), dont **5 344 en boutique** et **412 recettes** d'artisanat. Chaque objet affiche, en face de ce que vous portez déjà, l'écart exact : `+3 💪 / −2 ❤️ ▲ mieux que l'équipé`.
 
 ### Un monde qui tourne sans vous
 
@@ -121,7 +121,7 @@ Le coût suit la gravité du changement, et **aucun service ne retire quoi que c
 - **Invocations** 🐾 : six créatures qui combattent seules, en payant leur mana — puis les PV de leur maître.
 - **Tours sans fin** : la Tour Sans Fin et la Tour des Boss (16 boss, Normal/Héroïque/Cauchemar). **Un point de sauvegarde tous les 10 étages** : l'équipe y campe (PV et PM rendus) et le palier est gravé — l'ascension suivante peut repartir de là, ou du bas pour ceux qui veulent la course entière. Entre deux paliers, rien ne change : aucun soin, aucune pitié. La même règle vaut pour l'Ascension éternelle des épopées, avec un palier par épopée et par difficulté.
 - **Taverne** : chat, sept classements, boss du monde à barre de vie partagée, comptoir d'échange.
-- **37 hauts faits**, 6 races à passifs, 13 familiers à bonus.
+- **48 hauts faits** — chacun débloque un titre, et les plus durs portent un **bonus tant qu'ils sont portés** (XP, or, dégâts, soins ou caractéristiques) : porter un titre redevient un choix. 6 races à passifs, **23 familiers à bonus** (boss de zone, grandes histoires, paliers de la Tour).
 - **Un bac à sable admin** 🛠️ : **cliquer sur le portrait du héros**, en haut à gauche, ouvre un verrou — le code donne accès à une console rangée en 9 sections, qui règle à la main le niveau (à la hausse comme à la baisse), les points de caractéristiques et de maîtrise, l'or, les Sceaux, les objets, les compétences, les métiers et les donjons. Le statut reste acquis au héros : le portrait mène ensuite droit à la console, et la « Zone rouge » permet d'y renoncer. L'autre porte existe toujours : taper `admin-valciel` dans « Reprendre un héros » crée un héros admin de zéro, local par défaut.
   Le verrou est un garde-fou de confort, pas une sécurité : tout le jeu tourne dans le navigateur du joueur.
 
@@ -129,7 +129,7 @@ Le coût suit la gravité du changement, et **aucun service ne retire quoi que c
 
 Le jeu détecte tout seul s'il peut joindre le monde en ligne (un backend Supabase — PostgreSQL + API REST) :
 
-- **En ligne** : héros synchronisés, taverne active, boss du monde commun, groupes multi-appareils, échanges entre joueurs. Toutes les écritures passent par des fonctions RPC vérifiant un token secret par personnage (avec plafonds anti-triche). Le token n'est jamais lisible publiquement.
+- **En ligne** : héros synchronisés, taverne active, boss du monde commun, groupes multi-appareils, échanges entre joueurs. Les écritures s'authentifient par un token secret par personnage, jamais lisible publiquement ; le dépôt versionne dans `sql/` les fonctions RPC de création, de renommage et d'instantané de groupe — les autres passent par l'API PostgREST, et les plafonds anti-triche restent aujourd'hui côté client.
 - **Les expéditions de groupe** (jusqu'à 4 appareils) proposent six genres : explorer une zone, son boss, un étage de la **Tour Sans Fin**, la **Tour des Boss**, l'**assaut du boss final d'un donjon**, ou l'**Ascension éternelle d'une épopée**. C'est la **progression du chef** qui ouvre les expéditions — chacun combat à pleine puissance, et le record de chacun progresse. La défaite est mortelle, comme en solo.
 - **Le groupe vit en direct** : chaque héros republie son état tant qu'il est au salon — l'**auberge**, un **niveau gagné**, une **compétence apprise** ou une **pièce d'équipement** arrivent sur les écrans des autres tout seuls, et c'est cet état-là que le chef fait combattre. On peut même quitter l'écran du groupe pour filer au Bourg : la veille continue en arrière-plan et ramène au combat quand le chef le lance. Et **recharger la page ne coûte plus le groupe** : on le retrouve au démarrage. Une expédition lancée fige les combattants — personne ne se soigne au milieu d'un combat.
 - **Hors ligne** : tout le reste du jeu fonctionne normalement, sauvegardé sur l'appareil.
@@ -158,13 +158,14 @@ Deux courbes gouvernent le jeu, et elles sont désormais **mesurées, pas devin�
   frappe plus fort qu'un soigneur. Chaque sort garde son caractère — recharge, portée, cibles — donc
   deux compétences de valeur égale par tour n'ont pas du tout la même tête : l'une entretient la
   pression, l'autre s'économise pour achever.
-- **Le niveau 100 ne s'atteint pas en une soirée.** Il demande environ 2 800 combats en farmant de
+- **Le niveau 100 ne s'atteint pas en une soirée.** Il demande environ 2 450 combats en farmant de
   façon optimale — soit **une trentaine d'heures**, délais du moteur compris. Un combat ne peut pas
   durer moins de ~45 s : le moteur impose 900 ms par tour de monstre et 400 ms entre deux tours, et
-  une bataille tient une dizaine de manches. Jalons : niveau 26 en 3 h, niveau 51 en 10 h, niveau 81
-  en 24 h. La progression est étirée de 1,45× au niveau 1 à
+  une bataille tient une dizaine de manches. Jalons : niveau 26 en 3 h 30, niveau 51 en 8 h,
+  niveau 81 en 19 h. La courbe d'XP est **géométrique** depuis la v28 — chaque niveau coûte 9 % de
+  plus que le précédent, sans coude ni mur — et la progression est étirée de 1,45× au niveau 1 à
   3,1× au niveau 99 : les premiers niveaux restent vifs, la route se durcit à mesure qu'on approche
-  du bout. Quatre heures de jeu mènent au niveau 30 environ, pas au bout — et ce décompte ne
+  du bout. Quatre heures de jeu mènent au niveau 29 environ, pas au bout — et ce décompte ne
   couvre que la montée en niveau : ni les trajets, ni l'inventaire, ni les donjons, ni les morts.
 - **Aucun niveau ne se gagne en moins de dix combats.** Le plancher est posé là où il ne peut pas
   être contourné — au moment où l'expérience est créditée — et non dans la table des monstres : une
@@ -200,7 +201,7 @@ Le jeu embarque sa propre page de tests, qui charge exactement les mêmes fichie
 npx serve .   # puis ouvrir /tests.html
 ```
 
-**251 tests** en 23 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, l'instantané publié au groupe est toujours le héros tel qu'il est *maintenant* — et, depuis la v20, **l'équilibrage lui-même est sous test** : l'équipement ne doit jamais peser plus de la moitié d'un héros, la puissance conseillée doit rester atteignable par les six classes, la tension d'un combat doit rester dans la même fourchette du niveau 1 au niveau 100, et personne ne doit pouvoir tuer d'un seul coup — ni les monstres, ni vous.
+**366 tests** en 32 suites vérifient les invariants qui ne doivent jamais casser : la courbe d'XP est strictement croissante jusqu'au niveau 100, chaque spécialité reçoit la même dotation de statistiques, aucune migration de sauvegarde ne retire quoi que ce soit à un héros existant, l'instantané publié au groupe est toujours le héros tel qu'il est *maintenant* — et, depuis la v20, **l'équilibrage lui-même est sous test** : l'équipement ne doit jamais peser plus de la moitié d'un héros, la puissance conseillée doit rester atteignable par les six classes, la tension d'un combat doit rester dans la même fourchette du niveau 1 au niveau 100, et personne ne doit pouvoir tuer d'un seul coup — ni les monstres, ni vous.
 
 ## 🗂️ Structure du projet
 
@@ -209,7 +210,7 @@ index.html                       — tous les écrans du jeu
 tests.html                       — la page de tests
 css/style.css                    — thème sombre fantasy, mobile d'abord (35 jetons de design)
 
-js/data/base.js                  — 6 attributs, 6 sous-caractéristiques, raretés, races
+js/data/base.js                  — 6 attributs, 5 sous-caractéristiques, raretés, races
 js/data/competences.js           — moteur de compétences, coût en mana, portées
 js/data/classes.js               — les 6 classes de base
 js/data/sous-classes.js          — 27 spécialités et leurs compétences

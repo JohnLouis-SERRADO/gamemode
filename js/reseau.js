@@ -406,6 +406,10 @@ function puissancePublique(j) {
     stats: { for: 4, int: 4, dex: 4, vit: 4, cha: 2, ...j.dstats },
     equipement: j.dequip || {},
     familier: j.dfam || null,
+    // v28 : la spécialité compte — sans elle, la puissance publiée était
+    // systématiquement plus basse que celle lue sur sa propre fiche
+    // (jusqu'à +8 dans un attribut).
+    sousClasse: j.dsc || null,
     niveau: j.niveau || 1,
   });
 }
@@ -447,9 +451,12 @@ async function chargerDonneesTaverne() {
       // v17 : on ramène de quoi construire PLUSIEURS classements (puissance,
       // fortune, tours, hauts faits…) — champs ciblés du JSON de sauvegarde.
       apiRequete('/rest/v1/personnages?select=id,nom,avatar,niveau,xp,degats_boss_total,'
-        + 'dstats:donnees->stats,dequip:donnees->equipement,dfam:donnees->familier,'
+        + 'dstats:donnees->stats,dequip:donnees->equipement,dfam:donnees->familier,dsc:donnees->sousClasse,'
         + 'dpo:donnees->po,dhf:donnees->hautsFaits,dtb:donnees->tourBoss,dtour:donnees->tourMax'
-        + '&order=niveau.desc,xp.desc&limit=20'),
+        // v28 : l'échantillon passe de 20 à 50 héros — un joueur riche ou
+        // couvert de hauts faits mais de niveau modeste a désormais une
+        // vraie chance d'apparaître dans les classements thématiques.
+        + '&order=niveau.desc,xp.desc&limit=50'),
       apiRequete('/rest/v1/echanges?statut=eq.ouvert&select=*&order=maj.desc&limit=30'),
       p && p.cloud
         ? apiRequete(`/rest/v1/echanges?vendeur_id=eq.${p.cloud.id}&statut=eq.vendu&reclame=eq.false&select=id,prix,objet_id,acheteur_nom`)

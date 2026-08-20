@@ -5,41 +5,46 @@
 // =====================================================================
 
 // =====================================================================
-// v19 — La route va désormais jusqu'au niveau 100.
+// v28 — LA COURBE D'XP DEVIENT GÉOMÉTRIQUE, ET ELLE LE DIT.
 //
-// La courbe d'XP se lit en trois tronçons, et le raccord est continu :
-//   1 → 50   la courbe historique, inchangée (les héros existants ne
-//            voient aucune différence sur le chemin déjà parcouru) ;
-//   51 → 80  les Marches Fêlées : la pente se redresse nettement ;
-//   81 → 100 la Couture : le dernier palier se mérite.
+// L'ancienne courbe se lisait en trois tronçons (linéaire jusqu'au 50,
+// puis deux quadratiques de plus en plus raides). Les raccords étaient
+// continus, mais la FORME ne l'était pas : sur le graphique du codex, le
+// coût d'un niveau rampait pendant soixante niveaux puis explosait — le
+// joueur ne sentait aucune pente, puis un mur.
 //
-// Les points de caractéristiques suivent le même découpage, avec deux
-// paliers de respiration à 90 et 100.
+// La v28 remplace tout ça par UNE seule règle, lisible et sans couture :
+// chaque niveau coûte 9 % de plus que le précédent. C'est une vraie
+// exponentielle, douce au début, ferme à la fin, sans le moindre coude.
+// Les deux extrémités de l'ancienne courbe sont préservées : le niveau 2
+// coûte toujours 44 XP, le niveau 100 coûte ~205 000 XP et le cumul
+// reste ~2,5 millions — les repères des joueurs ne bougent pas.
+//
+// Les points de caractéristiques suivent la même philosophie : DEUX par
+// niveau, tous les niveaux, sans palier ni prime cachée (voir
+// pointsPourNiveau).
 // =====================================================================
 const NIVEAU_MAX = 100;
-const POINTS_PAR_NIVEAU = 2;   // tranche 1-50 ; voir pointsPourNiveau()
+const POINTS_PAR_NIVEAU = 2;   // pour TOUS les niveaux — voir pointsPourNiveau()
 
-// Bornes des trois tronçons de la courbe.
+// La raison de la progression : chaque niveau coûte 9 % de plus que le
+// précédent. Et le premier vrai palier — passer du niveau 1 au niveau 2 —
+// coûte 44 XP, comme depuis la première version du jeu.
+const RAISON_XP = 1.09;
+const COUT_PREMIER_PALIER = 44;
+
+// Les tranches de CONTENU, elles, ne bougent pas : les Marches Fêlées
+// s'ouvrent après le niveau 50, la Couture après le 80. Ces bornes ne
+// pilotent plus la courbe d'XP — elles disent où commence chaque acte.
 const PALIER_XP_MOYEN = 50;
 const PALIER_XP_HAUT = 80;
 
-// La courbe se définit par ses INCRÉMENTS plutôt que par son cumul : c'est
-// le seul moyen de garantir qu'elle ne fait ni marche ni creux aux raccords.
-// Un niveau ne doit jamais coûter moins cher que le précédent — sinon le
-// joueur sent la couture, et la progression paraît cassée.
-//
-// Sous le niveau 50, l'incrément vaut exactement 28n − 12, ce qui redonne
-// la courbe historique au palier près : les héros existants ne voient
-// aucune différence sur le chemin déjà parcouru.
+// La courbe se définit par ses INCRÉMENTS plutôt que par son cumul. Un
+// niveau ne coûte jamais moins cher que le précédent : avec une raison
+// fixe au-dessus de 1, c'est garanti par construction.
 function incrementXp(n) {
   if (n <= 1) return 0;
-  if (n <= PALIER_XP_MOYEN) return 28 * n - 12;
-  const raccordMoyen = 28 * PALIER_XP_MOYEN - 12;
-  if (n <= PALIER_XP_HAUT) {
-    return Math.round(raccordMoyen * Math.pow(1 + (n - PALIER_XP_MOYEN) * 0.09, 2));
-  }
-  const raccordHaut = Math.round(raccordMoyen * Math.pow(1 + (PALIER_XP_HAUT - PALIER_XP_MOYEN) * 0.09, 2));
-  return Math.round(raccordHaut * Math.pow(1 + (n - PALIER_XP_HAUT) * 0.12, 2));
+  return Math.round(COUT_PREMIER_PALIER * Math.pow(RAISON_XP, n - 2));
 }
 
 // XP cumulée requise pour atteindre le niveau n. Mémorisée : la courbe est
@@ -59,21 +64,21 @@ function niveauPour(xp) {
 }
 
 // Points de caractéristiques gagnés EN ATTEIGNANT le niveau n.
-// Les niveaux 90 et 100 offrent une dotation exceptionnelle : franchir un
-// palier rond doit se sentir.
+//
+// v28 : DEUX points, à chaque niveau, sans exception. L'ancienne grille
+// (2 puis 3 puis 4, plus deux primes de +10 aux niveaux 90 et 100) rendait
+// la dotation illisible : personne ne pouvait dire de tête ce que valait
+// un niveau. Désormais un niveau vaut deux points, point. Les héros
+// d'avant la réforme gardent leur avance : la migration ne reprend jamais
+// rien (voir migrerCaracteristiques et le Puits de Mémoire).
 function pointsPourNiveau(n) {
-  if (n <= 1) return 0;
-  let points = n <= PALIER_XP_MOYEN ? 2 : (n <= PALIER_XP_HAUT ? 3 : 4);
-  if (n === 90 || n === 100) points += 10;
-  return points;
+  return n <= 1 ? 0 : POINTS_PAR_NIVEAU;
 }
 
 // Total des points distribués entre le niveau 1 et le niveau n (hors
 // création). Sert à recalculer une dotation après une migration.
 function pointsCumules(n) {
-  let total = 0;
-  for (let i = 2; i <= n; i++) total += pointsPourNiveau(i);
-  return total;
+  return Math.max(0, (n || 1) - 1) * POINTS_PAR_NIVEAU;
 }
 
 // =====================================================================
@@ -128,6 +133,16 @@ function statsEffectives(p) {
   const familier = familierActif(p);
   if (familier) {
     Object.entries(familier.bonus).forEach(([cle, valeur]) => {
+      if (cle in s) s[cle] += valeur;
+    });
+  }
+  // v28 — Le titre PORTÉ compte : certains hauts faits offrent un bonus,
+  // appliqué seulement quand leur titre est affiché. Les bonus en % (XP,
+  // or, dégâts, soins) sont servis à leurs points d'application, comme
+  // ceux du familier.
+  const titrePorte = typeof titreActifDe === 'function' ? titreActifDe(p) : null;
+  if (titrePorte && titrePorte.bonus) {
+    Object.entries(titrePorte.bonus).forEach(([cle, valeur]) => {
       if (cle in s) s[cle] += valeur;
     });
   }
@@ -295,20 +310,22 @@ function puissanceDe(p) {
 // pour chaque niveau, la puissance du héros LE PLUS FORT que le jeu
 // autorise — dans la classe la MOINS bien lotie, parce qu'un contenu
 // taillé pour la meilleure classe serait infranchissable pour les autres.
-// Le tableau est produit par js/data/equilibrage.js et vérifié à chaque
-// exécution des tests : s'il dérive d'un point, la suite passe au rouge.
+// Le tableau est produit par js/data/equilibrage.js — régénérable d'une
+// commande : `node outils/generer-tables.js --ecrire` — et vérifié à
+// chaque exécution des tests : s'il dérive d'un point, la suite passe au
+// rouge. (v28 : régénéré pour la dotation à deux points par niveau.)
 // =====================================================================
 const PUISSANCE_ETALON = [
-   411,    504,    639,    729,    799,    979,   1051,   1127,   1165,   1516,  // 1–10
-  1572,   1755,   1806,   2265,   2342,   2400,   2663,   2721,   2785,   2848,  // 11–20
-  2888,   2952,   3010,   3311,   3373,   3663,   3748,   3805,   3870,   3932,  // 21–30
-  3997,   4318,   4375,   4440,   4552,   4708,   4772,   4830,   4966,   5418,  // 31–40
-  5480,   5544,   5602,   5667,   5777,   5913,   5977,   6035,   6099,   6163,  // 41–50
-  6236,   6306,   7271,   7368,   7440,   7512,   7585,   7656,   7729,   7873,  // 51–60
-  7917,   8018,   8066,   8234,   8278,   8379,   8424,   9158,   9201,   9303,  // 61–70
-  9346,   9448,   9495,   9688,   9732,   9833,   9877,   9979,  10023,  10149,  // 71–80
- 10204,  10434,  10489,  10596,  10651,  10763,  10815,  12152,  12203,  12482,  // 81–90
- 12537,  12670,  12726,  12832,  12888,  13071,  13123,  14544,  14593,  14849,  // 91–100
+     411,    504,    639,    729,    799,    979,   1051,   1127,   1165,   1516,  // 1–10
+    1572,   1755,   1806,   2265,   2342,   2400,   2663,   2721,   2785,   2848,  // 11–20
+    2888,   2952,   3010,   3311,   3373,   3663,   3748,   3805,   3870,   3932,  // 21–30
+    3997,   4318,   4375,   4440,   4552,   4708,   4772,   4830,   4966,   5418,  // 31–40
+    5480,   5544,   5602,   5667,   5777,   5913,   5977,   6035,   6099,   6163,  // 41–50
+    6228,   6290,   7241,   7328,   7393,   7458,   7522,   7578,   7642,   7780,  // 51–60
+    7815,   7909,   7940,   8101,   8136,   8231,   8266,   8985,   9020,   9115,  // 61–70
+    9150,   9243,   9275,   9461,   9496,   9589,   9625,   9713,   9748,   9865,  // 71–80
+    9901,  10115,  10147,  10237,  10274,  10365,  10401,  11714,  11751,  11914,  // 81–90
+   11950,  12068,  12100,  12190,  12227,  12390,  12425,  13804,  13841,  13991,  // 91–100
 ];
 
 // Ce que l'étalon a de plus qu'un joueur réel : huit pièces DIVINES, la

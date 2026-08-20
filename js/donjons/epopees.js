@@ -1177,6 +1177,7 @@ DONJONS.push(
     resume: 'La cité engloutie d’Azuria se réveille — et sa Gardienne veut rendre la mer à la surface. Toute la mer. Équipe conseillée.',
     hautFait: 'donjon-sanctuaire',
     depart: 'intro',
+    familier: 'ondin-de-poche',
     recompenses: { xp: 4200, po: 2600, objet: 'trident-des-profondeurs' },
     etapes: {
       intro: {
@@ -1339,6 +1340,7 @@ DONJONS.push(
     resume: 'La citadelle des Archontes tombe du ciel — droit sur Valciel. Il faudra une équipe entière pour atteindre la salle du trône.',
     hautFait: 'donjon-couronne',
     depart: 'intro',
+    familier: 'griffonneau-celeste',
     recompenses: {
       xp: 11000, po: 7000,
       objet: 'sceptre-de-l-archonte',
@@ -1738,6 +1740,7 @@ DONJONS.push(
     resume: 'Tout ce que les héros ont vaincu coule quelque part. Ce quelque part vient de déborder. Défi de niveau 52 — équipe complète recommandée.',
     hautFait: 'donjon-nihelm',
     depart: 'intro',
+    familier: 'ombre-apprivoisee',
     recompenses: { xp: 14000, po: 9000, objet: 'linceul-de-nihelm' },
     etapes: {
       intro: {
@@ -1905,6 +1908,7 @@ DONJONS.push(
     resume: 'Une forteresse fige sa dernière heure en boucle depuis mille ans. Son Horloger refuse que minuit sonne. Défi de niveau 60 — équipe complète recommandée.',
     hautFait: 'donjon-temps-brise',
     depart: 'intro',
+    familier: 'sablier-eveille',
     recompenses: { xp: 20000, po: 13000, objet: 'couronne-des-heures' },
     etapes: {
       intro: {
@@ -2071,6 +2075,7 @@ DONJONS.push(
     resume: 'Sous le gouffre, derrière le temps, quelque chose attendait depuis avant les Royaumes. Il a fini d’attendre. Défi de niveau 88 — le dernier.',
     hautFait: 'donjon-neant',
     depart: 'intro',
+    familier: 'lueur-de-fin',
     recompenses: {
       xp: 30000, po: 20000,
       objet: 'coeur-du-neant',

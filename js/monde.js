@@ -774,11 +774,13 @@ function demarrerCombatBossMonde(boss) {
 // =====================================================================
 // v20 : quelle filière de matériaux un combat a-t-il le droit de rendre ?
 //
-// La règle des cinq modes vaut sur une CARTE du monde, et là seulement :
+// La règle des modes vaut sur une CARTE du monde, et là seulement :
 //   • une battue (Chasse) rapporte des peaux ;
 //   • une embuscade rapporte la filière qu'on était en train de récolter ;
-//   • une expédition et un boss de carte n'en rapportent aucune — l'un
-//     paie en or et en vivres, l'autre en coffre et en trophée.
+//   • une expédition n'en rapporte aucune — elle paie en or et en vivres ;
+//   • un boss de carte (v28) rend TOUT : ses tables de butin étaient
+//     écrites depuis toujours, et toujours filtrées — « son coffre et son
+//     trophée » incluent enfin ses matériaux.
 //
 // Les donjons, les deux tours et le boss du monde ne sont pas des modes
 // d'une carte : ils gardent leurs propres tables de butin, intactes.
@@ -789,6 +791,7 @@ function filiereAutorisee(cb) {
   if (!GENRES_DE_CARTE.includes(cb.genre)) return 'toutes';
   if (cb.genre === 'chasse') return METIERS.tanneur.famille;
   if (cb.genre === 'embuscade') return cb.filiereRecolte || null;
+  if (cb.genre === 'boss') return 'toutes';
   return null;
 }
 
@@ -971,7 +974,14 @@ function demanderDepartAscension({ titre, texte, cle, lancer, retour }) {
 // La Tour Sans Fin : étages enchaînés sans repos
 // =====================================================================
 function zonePourEtage(etage) {
-  return ZONES[Math.min(ZONES.length - 1, Math.floor((etage - 1) / 2.5))];
+  const rang = Math.floor((etage - 1) / 2.5);
+  if (rang < ZONES.length) return ZONES[rang];
+  // v28 — La Tour saturait à l'étage 71 : au-delà de la dernière carte,
+  // c'était le Trône du Premier Roi pour l'éternité. Elle REBAT désormais
+  // les dix dernières cartes en boucle — la difficulté continue de monter
+  // (+6 % par étage), et le bestiaire, lui, recommence à changer.
+  const boucle = Math.min(10, ZONES.length);
+  return ZONES[ZONES.length - boucle + ((rang - ZONES.length) % boucle)];
 }
 
 function demarrerTour() {
@@ -1010,14 +1020,19 @@ function demarrerCombatTourEtage(etage) {
 }
 
 // Les deux Tours alimentent la même bourse de Sceaux : monter n'importe
-// quel escalier finance la Tour de l'Éveil. On ne récolte qu'à partir du
-// niveau requis, sinon les Sceaux s'accumuleraient sans rien à en faire.
+// quel escalier finance la Tour de l'Éveil.
+// v28 : la récolte n'attend plus le niveau 60 — « un Sceau Majeur à
+// chaque étage multiple de dix » vaut pour tout le monde. Un héros de
+// niveau 30 qui grimpe quarante étages arrive à la Tour de l'Éveil avec
+// sa bourse pleine, au lieu d'avoir grimpé pour rien sans le savoir.
 function recolterSceaux(m, etage, lignes) {
-  if (m.niveau < NIVEAU_TOUR_EVEIL) return;
   const gain = gagnerSceaux(m, etage);
   if (m.distant) return;
   const majeur = gain.majeurs > 0 ? ' et 💠 1 Sceau Majeur' : '';
-  lignes.push(`🔹 +${gain.normaux} Sceau${gain.normaux > 1 ? 'x' : ''}${majeur} — à dépenser à la Tour de l'Éveil`);
+  const note = m.niveau < NIVEAU_TOUR_EVEIL
+    ? ` (la Tour de l'Éveil s'ouvre au niveau ${NIVEAU_TOUR_EVEIL} — la bourse patiente)`
+    : '';
+  lignes.push(`🔹 +${gain.normaux} Sceau${gain.normaux > 1 ? 'x' : ''}${majeur} — à dépenser à la Tour de l'Éveil${note}`);
 }
 
 function apresVictoireTour(cb) {

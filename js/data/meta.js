@@ -21,18 +21,63 @@ const FAMILIERS = {
   'chaton-celeste':   { nom: 'Chaton céleste', emoji: '🐱', bonus: { cha: 2, crit: 2 }, desc: '+2 Chance, +2 % critique', source: 'tour-15' },
   'phenix-miniature': { nom: 'Phénix miniature', emoji: '🐦‍🔥', bonus: { xpBonus: 0.05, poBonus: 0.05 }, desc: '+5 % XP et or', source: 'tour-20' },
   'salamandre-de-forge': { nom: 'Salamandre de forge', emoji: '🦎', bonus: { for: 2, cha: 2 }, desc: '+2 Force, +2 Chance', source: 'donjon-volcan' },
+  // v28 — Le chenil s'agrandit : chaque grande histoire et chaque sommet
+  // laisse désormais son compagnon, et chacun apporte un vrai bonus.
+  'poussin-de-rokh':  { nom: 'Poussin de rokh', emoji: '🐦', bonus: { dex: 2, celerite: 2 }, desc: '+2 Dextérité, +2 % célérité', source: 'rokhTempetueux' },
+  'coralline':        { nom: 'Coralline', emoji: '🪸', bonus: { esp: 3 }, desc: '+3 Esprit', source: 'leviathanCorallien' },
+  'echo-du-neant':    { nom: 'Écho du Néant', emoji: '🌌', bonus: { deter: 3 }, desc: '+3 % détermination', source: 'devoreurMondes' },
+  'ondin-de-poche':   { nom: 'Ondin de poche', emoji: '🫧', bonus: { esp: 2, pmMax: 15 }, desc: '+2 Esprit, +15 PM max', source: 'donjon-sanctuaire' },
+  'griffonneau-celeste': { nom: 'Griffonneau céleste', emoji: '🦅', bonus: { crit: 2, celerite: 2 }, desc: '+2 % critique, +2 % célérité', source: 'donjon-couronne-celeste' },
+  'ombre-apprivoisee': { nom: 'Ombre apprivoisée', emoji: '🕳️', bonus: { int: 2, crit: 2 }, desc: '+2 Intelligence, +2 % critique', source: 'donjon-nihelm' },
+  'sablier-eveille':  { nom: 'Sablier éveillé', emoji: '⏳', bonus: { celerite: 4 }, desc: '+4 % célérité', source: 'donjon-temps-brise' },
+  'lueur-de-fin':     { nom: 'Lueur de fin', emoji: '🕯️', bonus: { xpBonus: 0.03, poBonus: 0.03 }, desc: '+3 % XP et or', source: 'donjon-neant' },
+  'carpe-lunaire':    { nom: 'Carpe lunaire', emoji: '🐟', bonus: { piete: 4 }, desc: '+4 % piété', source: 'tour-25' },
+  'hibou-des-sommets': { nom: 'Hibou des sommets', emoji: '🦉', bonus: { xpBonus: 0.07 }, desc: '+7 % d’XP gagnée', source: 'tour-30' },
 };
 
 // Familier obtenu par palier de la Tour Sans Fin (première ascension).
-const FAMILIERS_TOUR = { 5: 'feu-follet', 10: 'golem-de-poche', 15: 'chaton-celeste', 20: 'phenix-miniature' };
+const FAMILIERS_TOUR = {
+  5: 'feu-follet', 10: 'golem-de-poche', 15: 'chaton-celeste', 20: 'phenix-miniature',
+  25: 'carpe-lunaire', 30: 'hibou-des-sommets',
+};
 
 function familierActif(p) {
   return p.familier ? FAMILIERS[p.familier] : null;
 }
 
 // =====================================================================
-// Hauts faits : chacun débloque un titre affichable
+// Hauts faits : chacun débloque un titre affichable.
+//
+// v28 — Certains titres portent désormais un BONUS, appliqué uniquement
+// quand le titre est PORTÉ (un seul à la fois, depuis la fiche du héros) :
+//   • caractéristiques et sous-caractéristiques → statsEffectives ;
+//   • xpBonus → xpReelle · poBonus → multiplicateurOr ;
+//   • degatsBonus → infligerDegats · soinsBonus → soigner.
+// Porter un titre redevient un choix, pas seulement une coquetterie.
 // =====================================================================
+function titreActifDe(p) {
+  return p && p.titre ? HAUTS_FAITS.find((h) => h.id === p.titre) || null : null;
+}
+
+function bonusTitre(p, cle) {
+  const titre = titreActifDe(p);
+  return (titre && titre.bonus && titre.bonus[cle]) || 0;
+}
+
+// Libellé lisible du bonus d'un titre, pour la fiche du héros et le codex.
+function texteBonusTitre(bonus) {
+  return Object.entries(bonus || {}).map(([cle, valeur]) => {
+    if (cle === 'xpBonus') return `+${Math.round(valeur * 100)} % XP`;
+    if (cle === 'poBonus') return `+${Math.round(valeur * 100)} % or`;
+    if (cle === 'degatsBonus') return `+${Math.round(valeur * 100)} % dégâts`;
+    if (cle === 'soinsBonus') return `+${Math.round(valeur * 100)} % soins`;
+    if (typeof CARACS !== 'undefined' && CARACS[cle]) return `+${valeur} ${CARACS[cle].nom}`;
+    if (typeof SOUS_CARACS !== 'undefined' && SOUS_CARACS[cle]) return `+${valeur} % ${SOUS_CARACS[cle].nom.toLowerCase()}`;
+    if (cle === 'pvMax') return `+${valeur} PV max`;
+    if (cle === 'pmMax') return `+${valeur} PM max`;
+    return `+${valeur} ${cle}`;
+  }).join(', ');
+}
 const HAUTS_FAITS = [
   { id: 'niveau-5',    nom: 'Apprenti héros', emoji: '🌱', titre: 'l’Apprenti', desc: 'Atteindre le niveau 5', cond: (p) => p.niveau >= 5 },
   { id: 'niveau-10',   nom: 'Aventurier confirmé', emoji: '⚔️', titre: 'le Vétéran', desc: 'Atteindre le niveau 10', cond: (p) => p.niveau >= 10 },
@@ -48,7 +93,7 @@ const HAUTS_FAITS = [
   { id: 'craft-50',    nom: 'Maître forgeron', emoji: '🔨', titre: 'le Forgeron', desc: 'Fabriquer 50 objets', cond: (p) => p.compteurs.crafts >= 50 },
   { id: 'quetes-10',   nom: 'Contractuel', emoji: '📜', titre: 'de la Guilde', desc: 'Remplir 10 contrats de guilde', cond: (p) => p.compteurs.quetes >= 10 },
   { id: 'quetes-50',   nom: 'Pilier de guilde', emoji: '🏰', titre: 'Pilier de Guilde', desc: 'Remplir 50 contrats de guilde', cond: (p) => p.compteurs.quetes >= 50 },
-  { id: 'legendaire-1', nom: 'Toucheur de légende', emoji: '🌟', titre: 'le Fortuné', desc: 'Obtenir un objet légendaire', cond: (p) => p.compteurs.legendaires >= 1 },
+  { id: 'legendaire-1', nom: 'Toucheur de légende', emoji: '🌟', titre: 'le Fortuné', desc: 'Obtenir un objet légendaire (ou mieux)', cond: (p) => p.compteurs.legendaires >= 1 },
   { id: 'divin-1',     nom: 'Élu des dieux', emoji: '⚡', titre: 'l’Élu', desc: 'Obtenir un objet divin', cond: (p) => p.compteurs.divins >= 1 },
   { id: 'tour-5',      nom: 'Grimpeur', emoji: '🗼', titre: 'du Cinquième Étage', desc: 'Atteindre l’étage 5 de la Tour', cond: (p) => p.tourMax >= 5 },
   { id: 'tour-10',     nom: 'Conquérant des hauteurs', emoji: '🪜', titre: 'des Hauteurs', desc: 'Atteindre l’étage 10 de la Tour', cond: (p) => p.tourMax >= 10 },
@@ -77,6 +122,27 @@ const HAUTS_FAITS = [
   { id: 'tour-boss-8',        nom: 'Fléau des seigneurs', emoji: '🏯', titre: 'Tueur de Rois', desc: 'Atteindre l’étage 8 de la Tour des Boss', cond: (p) => p.tourBoss && Math.max(p.tourBoss.normal, p.tourBoss.heroique, p.tourBoss.cauchemar) >= 8 },
   { id: 'niveau-35',          nom: 'Au-delà des Royaumes', emoji: '🌅', titre: 'des Terres lointaines', desc: 'Atteindre le niveau 35', cond: (p) => p.niveau >= 35 },
   { id: 'niveau-50',          nom: 'Sommet du possible', emoji: '🌟', titre: 'l’Éternel', desc: 'Atteindre le niveau 50', cond: (p) => p.niveau >= 50 },
+  // v28 — La route continue après le 50 : les grands jalons de la fin de
+  // partie ont leurs titres, et les plus durs portent un bonus.
+  { id: 'niveau-60',   nom: 'Aux portes de l’Éveil', emoji: '🗝️', titre: 'des Hautes Marches', desc: 'Atteindre le niveau 60', cond: (p) => p.niveau >= 60 },
+  { id: 'niveau-80',   nom: 'L’Éveil accompli', emoji: '🔮', titre: 'l’Éveillé', desc: 'Atteindre le niveau 80', cond: (p) => p.niveau >= 80 },
+  { id: 'niveau-100',  nom: 'Au bout des cent', emoji: '💯', titre: 'Centenaire de Valciel', desc: 'Atteindre le niveau 100', cond: (p) => p.niveau >= 100,
+    bonus: { for: 2, dex: 2, int: 2, esp: 2, vit: 2, cha: 2 } },
+  { id: 'monstres-1000', nom: 'Fléau des mille crocs', emoji: '⚔️', titre: 'le Purgateur', desc: 'Vaincre 1 000 monstres', cond: (p) => p.compteurs.monstres >= 1000,
+    bonus: { degatsBonus: 0.03 } },
+  { id: 'or-100000',   nom: 'Trésor vivant', emoji: '👑', titre: 'le Magnat', desc: 'Amasser 100 000 po au total', cond: (p) => p.compteurs.orTotal >= 100000,
+    bonus: { poBonus: 0.05 } },
+  { id: 'quetes-200',  nom: 'Âme de la Guilde', emoji: '🏛️', titre: 'Main de la Guilde', desc: 'Remplir 200 contrats de guilde', cond: (p) => p.compteurs.quetes >= 200,
+    bonus: { xpBonus: 0.03 } },
+  { id: 'craft-200',   nom: 'Main de maître', emoji: '🛠️', titre: 'le Grand Artisan', desc: 'Fabriquer 200 objets', cond: (p) => p.compteurs.crafts >= 200,
+    bonus: { cha: 3 } },
+  { id: 'familiers-8', nom: 'Grand cortège', emoji: '🐾', titre: 'le Meneur de Meute', desc: 'Adopter 8 familiers', cond: (p) => p.familiers.length >= 8,
+    bonus: { vit: 3 } },
+  { id: 'ascension-50', nom: 'Au-delà des échos', emoji: '⛰️', titre: 'l’Infatigable', desc: 'Atteindre l’étage 50 d’une Ascension éternelle', cond: (p) => p.ascensions && Object.values(p.ascensions).some((e) => e >= 50),
+    bonus: { crit: 2 } },
+  { id: 'tour-40',     nom: 'Plus haut que le ciel', emoji: '🌤️', titre: 'des Nuées', desc: 'Atteindre l’étage 40 de la Tour', cond: (p) => p.tourMax >= 40 },
+  { id: 'soigneur-devoue', nom: 'Cœur immense', emoji: '💞', titre: 'la Bonne Étoile', desc: 'Prodiguer 50 000 points de soin', cond: (p) => (p.compteurs.soinsProdigues || 0) >= 50000,
+    bonus: { soinsBonus: 0.03 } },
 ];
 
 function donjonFini(p, idDonjon) {
@@ -142,11 +208,18 @@ function genererQuetesDuJour(p) {
   // Pas de contrat inaccessible : la Tour et les donjons demandent un niveau.
   const disponibles = MODELES_QUETES.filter((m) => !m.niveauMin || p.niveau >= m.niveauMin);
   // Six contrats par jour, tous différents — mais trois récompenses au plus.
-  const nbContrats = Math.min(6, disponibles.length);
+  // v28 : différents jusqu'au TYPE. Trois paires de modèles partagent un
+  // identifiant de type, et deux contrats jumeaux avançaient ensemble :
+  // un seul combat nourrissait deux lignes. Un type, une ligne.
+  const typesDistincts = new Set(disponibles.map((m) => m.type));
+  const nbContrats = Math.min(6, typesDistincts.size);
   const indices = [];
+  const typesPris = new Set();
   while (indices.length < nbContrats) {
     const i = Math.floor(alea2() * disponibles.length);
-    if (!indices.includes(i)) indices.push(i);
+    if (indices.includes(i) || typesPris.has(disponibles[i].type)) continue;
+    indices.push(i);
+    typesPris.add(disponibles[i].type);
   }
   return {
     date,

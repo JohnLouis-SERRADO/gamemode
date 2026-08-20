@@ -201,7 +201,10 @@ const CLASSES_BASE = {
     nom: 'Franc-tireur', emoji: '🏹', role: 'DPS distance physique', stat: 'dex', ligne: 'arriere', armure: 'cuir',
     armes: ['arc', 'arbalète', 'dagues de lancer'],
     resume: 'La bonne distance, la bonne seconde. Il n’a jamais eu besoin d’autre chose.',
-    passif: 'Ligne de tir — aucun malus depuis la ligne arrière, et l’initiative lui revient souvent.',
+    // v28 : la fiche dit TOUT ce que la ligne arrière lui donne — il tire à
+    // pleine puissance ET garde les 40 % de protection de l'arrière. Les
+    // deux avantages existaient déjà ; seul le second n'était pas écrit.
+    passif: 'Ligne de tir — aucun malus depuis la ligne arrière (dont il garde la protection : −40 % sur les coups physiques reçus), et l’initiative lui revient souvent.',
     competences: ['archer-fleche-perforante', 'archer-tir-double', 'archer-fleche-trempee',
       'archer-oeil-de-lynx', 'archer-fleche-entravante', 'archer-double-tir',
       'archer-deluge', 'signature-fleche-du-destin'],
@@ -210,7 +213,10 @@ const CLASSES_BASE = {
     nom: 'Arcaniste', emoji: '🔮', role: 'DPS distance magique', stat: 'int', ligne: 'arriere', armure: 'tissu',
     armes: ['bâton', 'grimoire', 'focus'],
     resume: 'Fragile de près, catastrophique de loin.',
-    passif: 'Flux — ses sorts partent à pleine puissance de n’importe quelle ligne, et son mana revient plus vite que celui de tous les autres (5 par tour de base, au lieu de 2).',
+    // v28 : la magie ignore les lignes pour TOUT le monde — la fiche ne
+    // s'attribue plus cette propriété universelle et ne revendique que ce
+    // qui lui appartient : le plancher de régénération.
+    passif: 'Flux — son mana revient plus vite que celui de tous les autres : 5 par tour de base, au lieu de 2 (la part liée à la Piété, elle, est servie à tous).',
     competences: ['mage-trait-arcanique', 'mage-explosion-runique', 'mage-barriere',
       'mage-siphon-de-mana', 'mage-flux-arcanique', 'mage-orbe-fracassant',
       'mage-tempete-de-mana', 'signature-comete-arcanique'],

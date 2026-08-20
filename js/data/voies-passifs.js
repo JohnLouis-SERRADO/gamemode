@@ -84,7 +84,10 @@ const PHRASES_VOIE = {
   reductionLigneAvant: (v) => `les alliés de la ligne avant subissent ${pct(v)} de moins`,
   bouclierLigneAvantDepart: (v) => `au premier tour, il couvre la ligne avant d'un bouclier valant ${pct(v)} de ses PV max`,
   alliesDegats: (v) => `ses alliés frappent +${pct(v)}`,
-  manaSurDegatsAllies: (v) => `et leurs coups lui rendent ${pct(v)} de sa réserve`,
+  // v28 : « leurs coups », au sens strict — CHAQUE instance de dégâts
+  // (chaque coup d'un enchaînement, chaque cible d'une zone) déclenche
+  // l'aura. La phrase le dit pour que personne ne croie à un « par tour ».
+  manaSurDegatsAllies: (v) => `et chacun de leurs coups (chaque coup d'un enchaînement, chaque cible d'une zone) lui rend ${pct(v)} de sa réserve`,
   esquiveEquipe: (v) => `l'équipe esquive ${pct(v)} des coups reçus`,
 
   // --- Coups, actions, ripostes ---
@@ -119,8 +122,11 @@ const PHRASES_VOIE = {
   bonusBrisGlace: (v) => `ses coups sur une cible étourdie valent +${pct(v)} et consument le gel`,
   brisureEclabousse: (v) => `et la brisure éclabousse les autres ennemis à ${pct(v)}`,
   terreur: (v) => `${pct(v)} de chances qu'un ennemi entravé — rongé par au moins un état — perde la tête et frappe l'un des siens`,
-  partExplosion: (v) => `une cible qui meurt en brûlant explose sur tout ce qui l'entoure`,
-  explosionPvMax: (v) => `un ennemi qu'il abat explose pour ${pct(v)} de ses PV maximum`,
+  // v28 : les explosions de cadavre retranchent les PV DIRECTEMENT — ni
+  // bouclier, ni garde, ni résistance ne les arrêtent. Les fiches le
+  // disent, plutôt que de le laisser découvrir sous un bouclier intact.
+  partExplosion: (v) => `une cible qui meurt en brûlant explose sur tout ce qui l'entoure (dégâts bruts : aucune garde ni bouclier ne les arrête)`,
+  explosionPvMax: (v) => `un ennemi qu'il abat explose pour ${pct(v)} de ses PV maximum (dégâts bruts : aucune garde ni bouclier ne les arrête)`,
   reductionBerce: (v, m) => `ce qu'il touche inflige ${pct(v)} de moins pendant ${m.dureeBerce} tours`,
   ignoreMeteoSubis: () => 'et le ciel ne lui prend rien : la nuit et les intempéries ne majorent plus les dégâts qu'.concat('il subit'),
 

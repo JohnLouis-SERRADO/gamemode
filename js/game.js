@@ -962,9 +962,24 @@ function normaliserPerso(p) {
   if (!p.stats) p.stats = {};
   migrerCaracteristiques(p);
   if (!p.compteurs) p.compteurs = {};
-  ['monstres', 'orTotal', 'crafts', 'quetes', 'legendaires', 'divins'].forEach((cle) => {
+  ['monstres', 'orTotal', 'crafts', 'quetes', 'legendaires', 'divins', 'soinsProdigues'].forEach((cle) => {
     if (p.compteurs[cle] == null) p.compteurs[cle] = 0;
   });
+  // v28 — La courbe d'XP est devenue géométrique : l'XP accumulée d'une
+  // vieille sauvegarde se recale sur la nouvelle échelle. Personne ne perd
+  // un niveau ; si la nouvelle courbe rend le palier suivant déjà atteint,
+  // le héros monte, points et maîtrise dus compris.
+  const niveauRecalcule = niveauPour(p.xp || 0);
+  if (niveauRecalcule > (p.niveau || 1)) {
+    p.pointsEnAttente = (p.pointsEnAttente || 0)
+      + pointsCumules(niveauRecalcule) - pointsCumules(p.niveau || 1);
+    if (p.maitrise != null) {
+      p.maitrise += pointsMaitrisePourNiveau(niveauRecalcule) - pointsMaitrisePourNiveau(p.niveau || 1);
+    }
+    p.niveau = niveauRecalcule;
+  } else if ((p.xp || 0) < seuilXp(p.niveau || 1)) {
+    p.xp = seuilXp(p.niveau || 1);
+  }
   if (!Array.isArray(p.familiers)) p.familiers = [];
   if (p.familier === undefined) p.familier = null;
   if (!Array.isArray(p.hautsFaits)) p.hautsFaits = [];
@@ -1277,11 +1292,62 @@ function annoncerReequilibrage() {
     <p><strong>On montait trop vite :</strong> les gains d’expérience sont réduits de deux tiers, et
     <strong>aucun niveau ne se gagne désormais en moins de dix combats</strong> — quel que soit ce
     que vous affrontez, et quels que soient vos bonus d’expérience. La route jusqu’au niveau 100
-    demande maintenant près de 3 800 combats : les premiers niveaux restent vifs, et le chemin se
-    durcit à mesure qu’on approche du bout. Il y a vingt-six zones et trente-cinq donjons à
+    demande plusieurs milliers de combats : les premiers niveaux restent vifs, et le chemin se
+    durcit à mesure qu’on approche du bout. Il y a ${ZONES.length} zones et ${DONJONS.length} donjons à
     habiter — autant leur en laisser le temps.</p>
     <p class="aide">Les raretés, elles, s’écartent davantage qu’avant : une pièce divine vaut
     maintenant quatre communes. Trouver du beau butin compte plus, pas moins.</p>`;
+  const bouton = document.createElement('button');
+  bouton.className = 'btn-principal';
+  bouton.textContent = '⚔️ Reprendre l’aventure';
+  bouton.addEventListener('click', () => voile.remove());
+  modale.appendChild(bouton);
+  voile.appendChild(modale);
+  document.body.appendChild(voile);
+}
+
+// =====================================================================
+// v28 — L'annonce de la réforme : courbe d'XP, points, titres, familiers,
+// météo. Montrée une seule fois, aux seuls héros qui ont un passé.
+// =====================================================================
+const CLE_ANNONCE_REFORME_V28 = 'gamemode2.annonce.v28';
+
+function annoncerReformeV28() {
+  let deja = null;
+  try { deja = localStorage.getItem(CLE_ANNONCE_REFORME_V28); } catch (e) { deja = 'vu'; }
+  if (deja) return;
+  if (!etat.profils.some((p) => (p.niveau || 1) > 1)) return;
+  // Une seule grande annonce à la fois : si celle du rééquilibrage v20
+  // vient de s'ouvrir sur cet appareil, la v28 attendra le prochain
+  // lancement plutôt que de s'empiler dessus.
+  if (document.getElementById('voile-renaissance')) return;
+  try { localStorage.setItem(CLE_ANNONCE_REFORME_V28, 'vu'); } catch (e) { /* tant pis */ }
+
+  const voile = document.createElement('div');
+  voile.id = 'voile-renaissance';
+  const modale = document.createElement('div');
+  modale.className = 'modale-joueur modale-equilibrage';
+  modale.innerHTML = `
+    <div class="crane-mort">📜</div>
+    <h2>La réforme de Valciel (v28)</h2>
+    <p><strong>La courbe d'expérience est désormais géométrique.</strong> Chaque niveau coûte
+    exactement 9 % de plus que le précédent — plus de plat interminable, plus de mur soudain.
+    Le niveau 2 coûte toujours 44 XP, le niveau 100 toujours ses ~205 000 : vos repères tiennent,
+    et votre expérience a été recalée sans rien vous reprendre (elle peut même vous faire monter).</p>
+    <p><strong>Deux points de caractéristiques par niveau, tous les niveaux.</strong> Les paliers à
+    3 et 4 points et les primes des niveaux 90 et 100 disparaissent — mais les héros qui les ont
+    déjà touchés gardent leur avance, Puits de Mémoire compris. Personne ne perd quoi que ce soit.</p>
+    <p><strong>Les titres travaillent enfin.</strong> Onze nouveaux hauts faits jusqu'au niveau 100,
+    et les plus durs offrent un bonus <em>tant que leur titre est porté</em> : XP, or, dégâts, soins
+    ou caractéristiques. Dix nouveaux familiers gardent les grandes histoires et les sommets des tours.</p>
+    <p><strong>La météo fait ce qu'elle disait.</strong> La brume fait rater un coup sur dix et
+    cache les PV ennemis, la canicule évapore le mana, le blizzard gèle, la tempête secoue
+    l'initiative — et les sorts de feu, de foudre et de givre lisent enfin le ciel. La Détermination
+    majore les soins, la Célérité raccourcit les recharges : leurs fiches disaient vrai, le moteur
+    suit.</p>
+    <p class="aide">Et une pluie de retouches promises par le codex : les Sceaux se récoltent à tout
+    niveau, un boss de carte laisse ses matériaux, la Tour Sans Fin rebat ses cartes après l'étage 71,
+    les Ordres de Valciel affichent la route de chaque maison — paliers et Voies compris.</p>`;
   const bouton = document.createElement('button');
   bouton.className = 'btn-principal';
   bouton.textContent = '⚔️ Reprendre l’aventure';
@@ -1320,6 +1386,11 @@ function donneesCloud(p) {
     tourBoss: p.tourBoss, metiers: p.metiers, metierPrincipal: p.metierPrincipal,
     ascensions: p.ascensions, histoiresVues: p.histoiresVues,
     forme: p.forme, paliersTour: p.paliersTour,
+    // v28 : ce que la Tour de l'Éveil fait payer doit monter au cloud —
+    // « Changer de rôle » et « Révéler un Éveil caché » écrivaient des
+    // champs qui disparaissaient en reprenant le héros ailleurs.
+    choixClasseOffert: p.choixClasseOffert || false,
+    cachesReveles: p.cachesReveles || [],
   };
 }
 
@@ -1523,6 +1594,9 @@ function xpReelle(p, xp) {
   if (familier && familier.bonus.xpBonus) xp = Math.round(xp * (1 + familier.bonus.xpBonus));
   const sets = bonusSetActifs(p);
   if (sets.xpBonus) xp = Math.round(xp * (1 + sets.xpBonus));
+  // v28 : le titre porté peut lui aussi payer en expérience.
+  const titreXp = typeof bonusTitre === 'function' ? bonusTitre(p, 'xpBonus') : 0;
+  if (titreXp) xp = Math.round(xp * (1 + titreXp));
   // Les reliques portent parfois un bonus d'XP : compté ici, comme son
   // jumeau poBonus l'est dans multiplicateurOr — pas seulement affiché.
   Object.values(p.equipement || {}).forEach((id) => {
@@ -2870,15 +2944,18 @@ function rendreBlocFaits(zone, p) {
   const blocFaits = document.createElement('div');
   blocFaits.className = 'panneau';
   blocFaits.innerHTML = `<h3>🏅 Hauts faits (${p.hautsFaits.length}/${HAUTS_FAITS.length})</h3>
-    <p class="aide">Chaque haut fait débloque un titre. Touchez un haut fait accompli pour porter son titre.</p>`;
+    <p class="aide">Chaque haut fait débloque un titre — un seul se porte à la fois. Les titres marqués ✨
+    offrent un bonus tant qu'ils sont portés : porter un titre redevient un choix.</p>`;
   const grilleFaits = document.createElement('div');
   grilleFaits.className = 'rangee-chips';
   HAUTS_FAITS.forEach((hautFait) => {
     const obtenu = p.hautsFaits.includes(hautFait.id);
     const chip = document.createElement('button');
     chip.className = 'chip chip-haut-fait' + (obtenu ? ' obtenu' : ' verrouille') + (p.titre === hautFait.id ? ' titre-porte' : '');
-    chip.title = hautFait.desc + (obtenu ? ` — titre : « ${hautFait.titre} »` : '');
-    chip.textContent = obtenu ? `${hautFait.emoji} ${hautFait.nom}` : `🔒 ${hautFait.desc}`;
+    chip.title = hautFait.desc + (obtenu ? ` — titre : « ${hautFait.titre} »` : '')
+      + (hautFait.bonus ? ` · bonus quand il est porté : ${texteBonusTitre(hautFait.bonus)}` : '');
+    chip.textContent = (obtenu ? `${hautFait.emoji} ${hautFait.nom}` : `🔒 ${hautFait.desc}`)
+      + (hautFait.bonus ? ' ✨' : '');
     if (obtenu) {
       chip.addEventListener('click', () => {
         p.titre = p.titre === hautFait.id ? null : hautFait.id;
@@ -3316,6 +3393,9 @@ function chargerHerosImporte(donnees, id, token) {
   if (Array.isArray(d.grimoire)) {
     d.grimoire.forEach((id) => { if (!p.grimoire.includes(id)) p.grimoire.push(id); });
   }
+  // v28 : la race voyage aussi — tout héros repris redevenait humain et
+  // troquait son passif racial contre l'Ambition sans qu'on le lui dise.
+  if (d.race && RACES[d.race]) p.race = d.race;
   if (d.classe && (CLASSES[d.classe] || MIGRATION_CLASSES[d.classe])) p.classe = d.classe;
   if (d.sousClasse !== undefined) p.sousClasse = d.sousClasse;
   if (d.voie !== undefined) p.voie = d.voie;
@@ -3323,6 +3403,8 @@ function chargerHerosImporte(donnees, id, token) {
   if (d.sceaux) p.sceaux = d.sceaux;
   if (d.versionClasses != null) p.versionClasses = d.versionClasses;
   if (d.kitMigre !== undefined) p.kitMigre = d.kitMigre;
+  if (d.choixClasseOffert) p.choixClasseOffert = true;
+  if (Array.isArray(d.cachesReveles)) p.cachesReveles = d.cachesReveles;
   if (d.rangs && typeof d.rangs === 'object') p.rangs = d.rangs;
   if (d.maitrise != null) p.maitrise = d.maitrise;
   normaliserPerso(p); // signature de classe, maîtrise et grimoire cohérents
@@ -3396,6 +3478,7 @@ function initialiser() {
   rendreTitre();
   montrerEcran('ecran-titre');
   annoncerReequilibrage();
+  annoncerReformeV28();
   if (typeof demarrerReseau === 'function') {
     const reseau = demarrerReseau();
     // v20 : recharger la page ne coûte plus le groupe — dès que le monde

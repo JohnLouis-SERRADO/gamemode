@@ -169,7 +169,13 @@ function regainDeMana(c) {
   const base = aPassif(c, 'Flux') ? 5 : 2;   // Arcaniste : le flux, son passif
   if (!c || c.type !== 'joueur') return base;
   const s = statsEffectives(c);
-  return base + Math.round((c.maxMp || 0) * sousCarac(s, 'piete') * PART_REGAIN_PIETE);
+  let regain = base + Math.round((c.maxMp || 0) * sousCarac(s, 'piete') * PART_REGAIN_PIETE);
+  // v28 — La Canicule évapore le mana : −3 % de la réserve par tour,
+  // retranchés du regain (il peut devenir négatif — l'air brûle vraiment).
+  // L'effet était déclaré depuis la v19 sans qu'une ligne ne le lise.
+  const ciel = mondeMaintenant().effets.manaParTour || 0;
+  if (ciel) regain += Math.round((c.maxMp || 0) * ciel);
+  return regain;
 }
 
 // Runelame : « Gravure — ses sorts lui rendent une part de ce qu'ils
@@ -280,6 +286,18 @@ function auraDesAllies(source) {
 }
 
 // Une cible « entravée » : tout ce qui la ralentit, l'abîme ou la désigne.
+// v28 — La Célérité raccourcit les recharges, comme sa fiche le promet
+// depuis la v19 : à son plafond (50 %), une recharge dure un quart de
+// moins. Toujours au moins un tour — une compétence à recharge ne
+// redevient jamais gratuite. Les monstres et les invocations ne sont pas
+// concernés : la Célérité est une sous-caractéristique d'équipement.
+function rechargeAjustee(c, comp) {
+  if (!comp || !comp.cooldown) return 0;
+  if (c && c.type && c.type !== 'joueur') return comp.cooldown;
+  const celerite = sousCarac(statsEffectives(c), 'celerite');
+  return Math.max(1, Math.round(comp.cooldown * (1 - celerite * 0.5)));
+}
+
 function estEntravee(cible) {
   return !!cible && (cible.statuts || [])
     .some((s) => ['poison', 'affaibli', 'etourdi', 'marque', 'berce'].includes(s.type));
@@ -1194,11 +1212,11 @@ function ligneParDefaut(c) {
 // ajoute son bonus — c'est elle qui décide qui frappe en premier.
 function initiativeDe(c) {
   if (c.type === 'monstre') {
-    return Math.round(((c.dex || 0) * 2 + alea(1, 10))
-      * (1 - Math.min(80, c.malusCelerite || 0) / 100));
+    return secousseTempete(Math.round(((c.dex || 0) * 2 + alea(1, 10))
+      * (1 - Math.min(80, c.malusCelerite || 0) / 100)));
   }
   const base = statDe(c, 'dex') * 2 + alea(1, 10);
-  if (c.type !== 'joueur') return base;
+  if (c.type !== 'joueur') return secousseTempete(base);
   // Métamorphe : sous la forme de corbeau, il part toujours devant.
   const partCorbeau = reglagePassif(c, 'initiativeCorbeau', 0);
   const cumulFormes = reglagePassif(c, 'formesCumulees', 0);
@@ -1216,7 +1234,7 @@ function initiativeDe(c) {
   if (reglagePassif(c, 'initiativeMoitie', false)) init *= 0.5;
   // Contrainte divine du soigneur : il n'ouvre jamais la manche.
   if (reglagePassif(c, 'jamaisEnPremier', false)) return -1;
-  return Math.round(init);
+  return secousseTempete(Math.round(init));
 }
 
 function tirageAuPoids(liste) {
@@ -1271,6 +1289,10 @@ function invoquerMonstresCombat(cb, cles) {
     noms[nom] = true;
     const monstre = creerMonstreCombat({ ...source, cle, invoque: true }, `m${cb.monstres.length}`, nom);
     cb.monstres.push(monstre);
+    // v28 : un renfort annoncé est une menace immédiate — il entre dans la
+    // file de la manche EN COURS (en dernier), au lieu d'attendre la
+    // suivante en spectateur.
+    if (Array.isArray(cb.file)) cb.file.push(monstre);
     journal(`⚔️ ${monstre.emoji} ${monstre.nom} rejoint le combat !`);
   });
 }
@@ -1287,7 +1309,16 @@ function traiterPhasesBoss(cb) {
       if (phase.atkMult) m.atk = Math.round(m.atk * phase.atkMult);
       if (phase.attaques) m.attaques = phase.attaques;
       if (phase.bouclier) {
-        poserStatut(m, { type: 'bouclier', duree: 4, valeur: phase.bouclier });
+        // v28 : « chaque phase pose son bouclier » — deux seuils franchis
+        // dans la même manche se CUMULENT, le second n'efface plus le
+        // premier (poserStatut remplace, on additionne donc à la main).
+        const carapace = m.statuts.find((s) => s.type === 'bouclier' && s.valeur > 0);
+        if (carapace) {
+          carapace.valeur += phase.bouclier;
+          carapace.duree = Math.max(carapace.duree || 0, 4);
+        } else {
+          poserStatut(m, { type: 'bouclier', duree: 4, valeur: phase.bouclier });
+        }
         journal(`🛡️ ${m.nom} se couvre d'une carapace (${phase.bouclier} points) !`);
       }
       if (phase.invoque) invoquerMonstresCombat(cb, phase.invoque);
@@ -1315,6 +1346,33 @@ function traiterMecaniquesManche(cb) {
       }
     }
   });
+}
+
+// v28 — Le Blizzard mord enfin : « un gel frappe le terrain tous les
+// 3 tours » était déclaré depuis la v19 sans qu'une ligne ne le lise. À
+// chaque manche multiple de la période, le froid saisit un combattant de
+// chaque camp — étourdi un tour, immunités de statut respectées.
+function gelDuBlizzard(cb) {
+  const periode = mondeMaintenant().effets.gelPeriodique;
+  if (!periode || cb.manche <= 0 || cb.manche % periode !== 0) return;
+  const geler = (liste) => {
+    const exposes = liste.filter((x) => !estMort(x)
+      && !(x.statuts || []).some((s) => s.type === 'etourdi')
+      && !reglagePassif(x, 'immuniteStatuts', false));
+    if (!exposes.length) return;
+    const cible = exposes[Math.floor(Math.random() * exposes.length)];
+    poserStatut(cible, { type: 'etourdi', duree: 1, source: 'le blizzard' });
+    journal(`🌨️ Le blizzard fige ${cible.nom} sur place — étourdi un tour !`);
+  };
+  geler(cb.equipe);
+  geler(cb.monstres);
+}
+
+// v28 — La Tempête brouille l'ordre des choses, comme sa fiche l'annonce :
+// sous elle, l'initiative de chacun est secouée de ±30 % à chaque manche.
+function secousseTempete(valeur) {
+  if (!mondeMaintenant().effets.initiativeAleatoire) return valeur;
+  return Math.round(valeur * (0.7 + Math.random() * 0.6));
 }
 
 // =====================================================================
@@ -1445,6 +1503,7 @@ async function boucleTour() {
         if (cb.manche === 1) { ouvertureDesVoies(j); ouvertureDesEveils(j); annoncerInitiative(j); }
       });
       traiterMecaniquesManche(cb);
+      gelDuBlizzard(cb);
     }
 
     const c = cb.file.shift();
@@ -1518,7 +1577,9 @@ function debutTour(c) {
 
   if (c.type === 'joueur' || c.type === 'invocation') {
     Object.keys(c.cooldowns).forEach((k) => { if (c.cooldowns[k] > 0) c.cooldowns[k]--; });
-    c.mp = Math.min(c.maxMp, c.mp + regainDeMana(c));
+    // Le regain peut être négatif sous la Canicule : le mana ne descend
+    // jamais sous zéro pour autant.
+    c.mp = Math.max(0, Math.min(c.maxMp, c.mp + regainDeMana(c)));
   }
   // Une invocation à durée limitée (l'esprit du Chaman) tient le compte.
   if (c.type === 'invocation' && c.toursRestants != null) {
@@ -1705,6 +1766,15 @@ function infligerDegats(source, cible, brut, options = {}) {
     journal(`🔮 ${cible.nom} voyait le coup venir : il ne touche pas.`);
     return { degats: 0, crit: false, direct: false, absorbe: 0, esquive: true };
   }
+  // v28 — La Brume voile la visée : sa « précision réduite », déclarée
+  // depuis la v19, se branche enfin. À 0,9, un coup sur dix se perd dans
+  // le blanc — dans les deux sens : on ne voit ni ce qu'on frappe, ni ce
+  // qui approche.
+  const precision = mondeMaintenant().effets.precision;
+  if (typeof precision === 'number' && precision < 1 && Math.random() >= precision) {
+    journal(`🌫️ La brume avale le coup de ${source.nom} — perdu dans le blanc !`);
+    return { degats: 0, crit: false, direct: false, absorbe: 0, esquive: true };
+  }
   let d = varie(brut);
   // v19 : le ciel entre dans l'équation. Sous la pluie le feu prend mal,
   // sous l'orage la foudre porte. Le physique reste neutre — le temps
@@ -1740,6 +1810,9 @@ function infligerDegats(source, cible, brut, options = {}) {
     chanceCrit += sousCarac(s, 'crit');
     chanceDirect = sousCarac(s, 'direct');
     d *= 1 + sousCarac(s, 'deter');
+    // v28 : le titre porté peut peser dans le coup (« le Purgateur »).
+    const titreDegats = typeof bonusTitre === 'function' ? bonusTitre(source, 'degatsBonus') : 0;
+    if (titreDegats) d *= 1 + titreDegats;
     if (source.race === 'elfe') chanceCrit += 0.05; // Précision millénaire
     chanceCrit += bonusCritDuel(source, cible, options); // « Duel » : un adversaire à la fois
   }
@@ -1903,6 +1976,14 @@ function soinAutorise(cible, source) {
 function soigner(cible, brut, source) {
   // Éveils de soigneur : ses soins et ses boucliers pèsent plus lourd.
   let soin = Math.max(1, Math.round(varie(brut) * (1 + reglagePassif(source, 'soinsBonus', 0))));
+  // v28 — La Détermination majore TOUS les soins, comme sa fiche le
+  // promet depuis la v19 (« augmente TOUS les dégâts et TOUS les soins ») :
+  // elle n'était lue que par les dégâts. Le titre porté peut s'y ajouter.
+  if (source && source.type === 'joueur') {
+    soin = Math.round(soin * (1 + sousCarac(statsEffectives(source), 'deter')));
+    const titreSoin = typeof bonusTitre === 'function' ? bonusTitre(source, 'soinsBonus') : 0;
+    if (titreSoin) soin = Math.round(soin * (1 + titreSoin));
+  }
   // Contraintes : plus aucun soin, ou plus aucun soin VENANT D'UN ALLIÉ.
   if (!soinAutorise(cible, source)) return 0;
   // Voie du Sang : ce qu'il prend aux autres le nourrit, ce que les
@@ -1916,10 +1997,16 @@ function soigner(cible, brut, source) {
   // « Clairvoyance » : ce qui dépasse les points de vie maximum ne tombe
   // pas dans le vide, il se fige en bouclier.
   if (source) surplusDeSoin(source, cible, soin - (cible.hp - avant));
+  // v28 : les soins réellement rendus se comptent — « Cœur immense » se
+  // décroche en soignant, pas en le racontant.
+  const rendu = cible.hp - avant;
+  if (rendu > 0 && source && source.type === 'joueur' && source.compteurs) {
+    source.compteurs.soinsProdigues = (source.compteurs.soinsProdigues || 0) + rendu;
+  }
   // La vérité, rien qu'elle : les PV réellement rendus. Une cible à pleine
   // vie renvoie 0 — au journal de le dire, plutôt que d'annoncer un soin
   // qui n'a pas eu lieu.
-  return cible.hp - avant;
+  return rendu;
 }
 
 function gererMort(c) {
@@ -2562,7 +2649,7 @@ function lancerCompetence(j, compId, cible, relance) {
       journal(`💧 ${j.nom} n'a pas assez de mana pour ${comp.nom} !`);
       return 'refus';
     }
-    if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
+    if (comp.cooldown) j.cooldowns[compId] = rechargeAjustee(j, comp);
   }
 
   // v22 — Deux passifs récompensent le RÉPERTOIRE plutôt que la
@@ -2597,6 +2684,10 @@ function lancerCompetence(j, compId, cible, relance) {
         const brut = (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * multRang * part;
         const r = infligerDegats(j, c, brut, {
           critBonus: comp.critBonus || 0, magique: estSortMagique(comp), compId, zone, coupIndex: coup,
+          // v28 : l'élément déclaré par le sort rencontre enfin le ciel —
+          // le multiplicateur météo existait depuis la v19, mais aucune
+          // compétence ne déclarait d'élément.
+          element: comp.element || null,
         });
         journal(`→ ${c.nom} subit ${texteDegats(r)}`);
         moissonDuFaucheur(j, r.degats);   // Faucheur : tous ses sorts le nourrissent
@@ -2684,7 +2775,7 @@ function lancerInvocation(j, compId) {
     journal(`💧 ${j.nom} n'a pas assez de mana pour ${comp.nom} !`);
     return 'refus';
   }
-  if (comp.cooldown) j.cooldowns[compId] = comp.cooldown;
+  if (comp.cooldown) j.cooldowns[compId] = rechargeAjustee(j, comp);
 
   const modele = INVOCATIONS[comp.invocation];
   const sm = statsEffectives(j);
@@ -3065,7 +3156,14 @@ function carteCombattant(c) {
     .join('');
   const defense = c.defense ? '<span title="En garde">🛡️</span>' : '';
 
-  let barres = `
+  // v28 — Sous la Brume, les PV ennemis restent cachés, comme la météo le
+  // promet depuis la v19 : la barre s'affiche pleine et muette, et il faut
+  // frapper pour savoir. Les alliés, eux, se lisent toujours.
+  const brumeVoile = c.type === 'monstre' && !mort
+    && mondeMaintenant().effets.pvEnnemisCaches === true;
+  let barres = brumeVoile ? `
+    <div class="barre pv barre-voilee"><div class="remplissage" style="width:100%"></div>
+      <span>🌫️ ? / ?</span></div>` : `
     <div class="barre pv"><div class="remplissage" style="width:${pctHp}%"></div>
       <span>${c.hp}/${c.maxHp}</span></div>`;
   if (c.type === 'joueur' || c.type === 'invocation') {

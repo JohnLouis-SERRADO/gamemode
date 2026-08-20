@@ -346,16 +346,19 @@ const COMPETENCES = {
   'boule-de-feu': {
     nom: 'Boule de feu', emoji: '🔥', categorie: 'magie', type: 'degats', cible: 'ennemi',
     stat: 'int', puissance: 9, ratio: 1.5, coutMp: 5, cooldown: 2,
+    element: 'feu',
     desc: 'Une explosion de feu sur un ennemi. Basée sur l’Intelligence.',
   },
   'eclair': {
     nom: 'Éclair', emoji: '⚡', categorie: 'magie', type: 'degats', cible: 'ennemi',
     stat: 'int', puissance: 6, ratio: 1.2, coutMp: 4, cooldown: 0, critBonus: 0.15,
+    element: 'foudre',
     desc: 'Un éclair rapide, utilisable à chaque tour. +15 % de critique.',
   },
   'nova-de-givre': {
     nom: 'Nova de givre', emoji: '❄️', categorie: 'magie', type: 'degats', cible: 'ennemis',
     stat: 'int', puissance: 4, ratio: 0.9, coutMp: 9, cooldown: 3,
+    element: 'givre',
     desc: 'Une vague de froid qui frappe tous les ennemis.',
   },
   'drain-de-vie': {
@@ -572,12 +575,14 @@ const COMPETENCES = {
   'orage-elementaire': {
     nom: 'Orage élémentaire', emoji: '🌩️', categorie: 'magie', type: 'degats', cible: 'ennemis',
     stat: 'int', puissance: 5, ratio: 0.95, coutMp: 10, cooldown: 3,
+    element: 'foudre',
     desc: 'Feu, glace et foudre s’abattent sur tous les ennemis.',
   },
   'lance-de-glace': {
     nom: 'Lance de glace', emoji: '🧊', categorie: 'magie', type: 'degats', cible: 'ennemi',
     stat: 'int', puissance: 7, ratio: 1.25, coutMp: 6, cooldown: 3,
     effet: { type: 'etourdi', duree: 1, chance: 0.3 },
+    element: 'givre',
     desc: 'Un pieu de glace qui peut figer la cible (30 %).',
   },
   'bouclier-de-lave': {
@@ -629,18 +634,21 @@ const COMPETENCES = {
     nom: 'Déflagration', emoji: '💥', categorie: 'magie', type: 'degats', cible: 'ennemi',
     stat: 'int', puissance: 12, ratio: 1.8, coutMp: 9, cooldown: 4,
     effet: { type: 'poison', duree: 3, stat: 'int' },
+    element: 'feu',
     desc: 'Une explosion concentrée d’une chaleur insoutenable — et qui continue de brûler.',
   },
   'mur-de-flammes': {
     nom: 'Mur de flammes', emoji: '🔥', categorie: 'magie', type: 'degats', cible: 'ennemis',
     stat: 'int', puissance: 3, ratio: 0.65, coutMp: 10, cooldown: 4,
     effet: { type: 'poison', duree: 2, stat: 'int' },
+    element: 'feu',
     desc: 'Les flammes lèchent tous les ennemis et les brûlent sur la durée.',
   },
   'combustion': {
     nom: 'Combustion', emoji: '🎇', categorie: 'magie', type: 'degats', cible: 'ennemi',
     stat: 'int', puissance: 6, ratio: 1.1, coutMp: 7, cooldown: 3,
     effet: { type: 'affaibli', duree: 2 },
+    element: 'feu',
     desc: 'Enflamme la cible : ses coups perdent 30 % de puissance.',
   },
 
@@ -649,12 +657,14 @@ const COMPETENCES = {
     nom: 'Flèche de givre', emoji: '❄️', categorie: 'magie', type: 'degats', cible: 'ennemi',
     stat: 'int', puissance: 6, ratio: 1.15, coutMp: 5, cooldown: 2,
     effet: { type: 'etourdi', duree: 1, chance: 0.35 },
+    element: 'givre',
     desc: 'Un trait glacial qui peut figer la cible (35 %).',
   },
   'blizzard': {
     nom: 'Blizzard', emoji: '🌨️', categorie: 'magie', type: 'degats', cible: 'ennemis',
     stat: 'int', puissance: 3, ratio: 0.7, coutMp: 11, cooldown: 4,
     effet: { type: 'affaibli', duree: 2 },
+    element: 'givre',
     desc: 'Une tempête de neige qui blesse et engourdit tous les ennemis.',
   },
   'armure-de-glace': {
@@ -668,11 +678,13 @@ const COMPETENCES = {
   'totem-tonnerre': {
     nom: 'Totem tonnerre', emoji: '🗿', categorie: 'magie', type: 'degats', cible: 'ennemis',
     stat: 'int', puissance: 4, ratio: 0.8, coutMp: 9, cooldown: 3,
+    element: 'foudre',
     desc: 'Un totem foudroie tous les ennemis.',
   },
   'chaine-d-eclairs': {
     nom: 'Chaîne d’éclairs', emoji: '⚡', categorie: 'magie', type: 'degats', cible: 'ennemi',
     stat: 'int', puissance: 3, ratio: 0.7, coups: 2, coutMp: 6, cooldown: 2,
+    element: 'foudre',
     desc: 'La foudre frappe, rebondit, et frappe encore.',
   },
   'totem-gardien': {

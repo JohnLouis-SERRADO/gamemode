@@ -767,23 +767,26 @@ const ATK_CIBLE_BOSS = [
 //
 // L'XP d'un monstre est désormais DÉRIVÉE du rythme voulu : cinq combats
 // par niveau au départ, une petite trentaine à la fin. La pente reste
-// franche — six fois plus long à la fin qu'au début — mais régulière.
+// franche — cinq fois plus long à la fin qu'au début — mais régulière.
 //
-// La table est générée pour le facteur d'XP en vigueur (voir xpReelle dans
-// js/game.js) ; un test vérifie que le rythme obtenu colle toujours à la
-// cible, de sorte qu'on ne puisse pas changer l'un sans voir l'autre bouger.
+// La table est générée pour le facteur d'XP en vigueur (voir xpReelle
+// dans js/game.js) par `node outils/generer-tables.js --ecrire` ; un test
+// vérifie que le rythme obtenu colle toujours à la cible, de sorte qu'on
+// ne puisse pas changer l'un sans voir l'autre bouger. (v28 : régénérée
+// pour la courbe d'XP géométrique — le rythme suit la même douceur,
+// en progression géométrique de 5 à 27.)
 // =====================================================================
 const XP_CIBLE_MONSTRE = [
-    25,     39,     51,     63,     74,     84,     94,    103,    111,    119,  // 1–10
-   126,    133,    139,    145,    151,    157,    162,    167,    171,    176,  // 11–20
-   180,    184,    188,    192,    195,    198,    202,    205,    208,    211,  // 21–30
-   213,    216,    219,    221,    224,    226,    228,    230,    232,    234,  // 31–40
-   236,    238,    240,    242,    243,    245,    247,    248,    250,    255,  // 41–50
-   302,    354,    410,    470,    534,    602,    664,    726,    790,    856,  // 51–60
-   924,    994,   1065,   1138,   1213,   1289,   1367,   1447,   1527,   1609,  // 61–70
-  1692,   1777,   1863,   1950,   2038,   2128,   2218,   2309,   2402,   2523,  // 71–80
-  3164,   3878,   4664,   5523,   6454,   7458,   8534,   9539,  10575,  11655,  // 81–90
- 12778,  13942,  15146,  16390,  17673,  18992,  20348,  21740,  23167,  23167,  // 91–100
+      25,     26,     28,     30,     32,     35,     37,     40,     43,     46,  // 1–10
+      49,     53,     57,     60,     65,     69,     74,     79,     85,     91,  // 11–20
+      98,    105,    112,    120,    129,    138,    148,    159,    170,    182,  // 21–30
+     195,    209,    224,    240,    257,    275,    295,    316,    339,    363,  // 31–40
+     389,    417,    447,    478,    513,    549,    588,    630,    675,    724,  // 41–50
+     775,    831,    890,    954,   1022,   1095,   1173,   1256,   1346,   1442,  // 51–60
+    1545,   1656,   1774,   1900,   2036,   2182,   2337,   2504,   2683,   2875,  // 61–70
+    3080,   3300,   3535,   3788,   4058,   4348,   4659,   4991,   5348,   5729,  // 71–80
+    6138,   6577,   7046,   7550,   8089,   8666,   9285,   9948,  10658,  11419,  // 81–90
+   12235,  13108,  14044,  15047,  16122,  17273,  18506,  19827,  21243,  21243,  // 91–100
 ];
 
 // Un boss vaut une poignée de monstres ordinaires : il tient plus longtemps
@@ -842,8 +845,11 @@ function calibrerRegistreMonstres(registre) {
   bêtes.forEach((m) => {
     const estBoss = !!m.boss;
     const avant = origine.get(m).hp;
-    m.hp = recentre(avant, moyenneAutour(m.niveau, estBoss, 'hp'),
-      cibleMonstre(estBoss ? PV_CIBLE_BOSS : PV_CIBLE_MONSTRE, m.niveau));
+    // v28 — Une SURCOTE déclarée (le ×1,7 du boss de Chronique) est un
+    // choix de design, pas un accident d'écriture : elle s'applique à la
+    // cible du palier au lieu d'être rabotée par le recentrage.
+    m.hp = Math.round(recentre(avant / (m.surcote || 1), moyenneAutour(m.niveau, estBoss, 'hp'),
+      cibleMonstre(estBoss ? PV_CIBLE_BOSS : PV_CIBLE_MONSTRE, m.niveau)) * (m.surcote || 1));
     m.atk = recentre(origine.get(m).atk, moyenneAutour(m.niveau, estBoss, 'atk'),
       cibleMonstre(estBoss ? ATK_CIBLE_BOSS : ATK_CIBLE_MONSTRE, m.niveau));
 

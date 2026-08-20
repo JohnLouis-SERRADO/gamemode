@@ -360,8 +360,10 @@ function degatsParTourHeros(p) {
     if (!comp || comp.type !== 'degats') return;
     const brut = (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * (comp.coups || 1)
       * facteurLigneSortante(p, comp);
-    // Une compétence qui recharge n'est disponible qu'un tour sur (1+n).
-    const parts = 1 / (1 + (comp.cooldown || 0));
+    // Une compétence qui recharge n'est disponible qu'un tour sur (1+n) —
+    // et la Célérité raccourcit les recharges (v28), le banc le sait.
+    const cd = typeof rechargeAjustee === 'function' ? rechargeAjustee(p, comp) : (comp.cooldown || 0);
+    const parts = 1 / (1 + cd);
     const moyenne = brut * parts + base * (1 - parts);
     if (moyenne > meilleure) meilleure = moyenne;
   });
@@ -401,10 +403,13 @@ const PART_TOURS_DE_SOIN = 0.3;
 
 function meilleurSoinDe(p, s) {
   let meilleur = null;
+  // v28 : la Détermination majore tous les soins — le banc compte comme
+  // le moteur, sinon il sous-estime ce qu'un héros se rend.
+  const deter = 1 + sousCarac(s, 'deter');
   (p.competences || []).forEach((id) => {
     const comp = COMPETENCES[id];
     if (!comp || comp.type !== 'soin') return;
-    const soin = comp.puissance + statDeCompetence(comp, s) * comp.ratio;
+    const soin = (comp.puissance + statDeCompetence(comp, s) * comp.ratio) * deter;
     if (!meilleur || soin > meilleur.soin) meilleur = { comp, soin };
   });
   return meilleur;
@@ -416,8 +421,10 @@ function autoSoinPendantCombat(p, toursAttaque) {
   const s = statsEffectives(p);
   const meilleur = meilleurSoinDe(p, s);
   if (!meilleur) return { soinTotal: 0, toursDeSoin: 0 };
-  // On ne peut pas relancer un soin plus souvent que sa recharge.
-  const parRecharge = toursAttaque / (1 + (meilleur.comp.cooldown || 0));
+  // On ne peut pas relancer un soin plus souvent que sa recharge —
+  // raccourcie par la Célérité, comme dans le moteur (v28).
+  const cdSoin = typeof rechargeAjustee === 'function' ? rechargeAjustee(p, meilleur.comp) : (meilleur.comp.cooldown || 0);
+  const parRecharge = toursAttaque / (1 + cdSoin);
   const parTemps = toursAttaque * PART_TOURS_DE_SOIN;
   const cout = Math.max(1, coutMpDe(meilleur.comp, s, p.maxMp));
   const parMana = p.maxMp / cout;

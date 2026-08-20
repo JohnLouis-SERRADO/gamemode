@@ -61,7 +61,9 @@ const PHRASES_EVEIL = {
   frappeDesDegatsRecus: (v) => `+${pct(v)} de dégâts par tranche de 100 PV encaissés depuis le début du combat`,
   transfertDegatsEquipe: (v) => `${pct(v)} des dégâts destinés à un allié passent par lui — il n'en encaisse que la moitié, et ils le nourrissent`,
   marqueTerrain: () => 'il marque TOUS les ennemis dès le premier tour',
-  attaqueTousLesEnnemis: () => 'ses attaques simples frappent tous les ennemis à la fois',
+  // v28 : la retenue s'écrit avec la zone — chaque cible ne reçoit que
+  // 75 % de l'attaque de base, et la fiche ne le cachait qu'à moitié.
+  attaqueTousLesEnnemis: () => 'ses attaques simples frappent tous les ennemis à la fois (à 75 % de leur puissance sur chaque cible)',
   parCadavreDevore: (v, m) => `+${pct(v)} de dégâts par cadavre dévoré, jusqu'à ${m.maxCadavres} fois`,
 
   // --- Les contraintes. Elles retirent une option, jamais de la puissance. ---

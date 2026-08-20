@@ -34,7 +34,8 @@ const RECETTES = [
 ];
 
 // =====================================================================
-// Séries d'artisanat : 14 séries × 5 pièces, générées ci-dessous.
+// Séries d'artisanat : une trentaine de séries de 13 pièces, générées
+// ci-dessous (le codex compte le chiffre exact à chaque publication).
 // Chaque série a son niveau, sa rareté, ses matériaux et son coût.
 // =====================================================================
 // v26 — Les séries suivent la nouvelle route du monde : chaque acte a
@@ -218,7 +219,7 @@ function bonusSetActifs(p) {
   return cumul;
 }
 
-// Multiplicateur d'or gagné : familier + panoplies + équipement.
+// Multiplicateur d'or gagné : familier + panoplies + équipement + titre.
 // Les reliques de Chronique portent un bonus d'or (`poBonus`) qui n'était
 // jusqu'ici jamais compté nulle part — il l'est désormais.
 function multiplicateurOr(p) {
@@ -227,9 +228,11 @@ function multiplicateurOr(p) {
     const objet = id && OBJETS[id];
     return somme + ((objet && objet.bonus && objet.bonus.poBonus) || 0);
   }, 0);
+  // v28 : le titre porté peut remplir la bourse, comme le familier.
+  const titre = typeof bonusTitre === 'function' ? bonusTitre(p, 'poBonus') : 0;
   // « Poches percées » : le Voleur repart toujours avec plus.
   return 1 + ((familier && familier.bonus.poBonus) || 0) + bonusSetActifs(p).poBonus + equipement
-    + reglagePassif(p, 'bonusOr', 0);
+    + titre + reglagePassif(p, 'bonusOr', 0);
 }
 
 // Ligne d'affichage de la panoplie d'un objet (cartes d'inventaire/boutique).

@@ -544,6 +544,12 @@ function construireChroniques(liste) {
     ...bossBase,
     nom: c.boss.nom,
     boss: true,
+    // v28 — Le « boss renforcé » l'est VRAIMENT : la surcote est déclarée
+    // à part, et la calibration du bestiaire la préserve. Avant, le ×1,7
+    // écrit ici était recentré sur le palier comme n'importe quel écart —
+    // dès l'acte II, le boss de Chronique retombait au niveau du boss
+    // ordinaire de la carte, quand il ne passait pas dessous.
+    surcote: 1.7,
     hp: Math.round(bossBase.hp * 1.7),
     atk: Math.round(bossBase.atk * 1.15),
     xp: Math.round(bossBase.xp * 2.2),
