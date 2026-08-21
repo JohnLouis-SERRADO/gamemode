@@ -5045,77 +5045,124 @@ suite('Combat v30 — initiative et contrôle', () => {
     return somme / tirages;
   };
 
-  test('héros et monstres sont enfin sur la MÊME échelle', () => {
-    // Le cœur du bug : deux échelles incompatibles. Un héros médian et un
-    // monstre médian doivent désormais se valoir, à quelques % près.
+  // De la vraie Célérité sur un héros de laboratoire : elle ne vient que
+  // de l'équipement, jamais des points de caractéristique.
+  function herosAvecCelerite(cible) {
+    const c = combattant();
+    const slots = ['acc1', 'acc2', 'tete', 'mains', 'pieds', 'torse', 'jambes'];
+    const pieces = Object.entries(OBJETS)
+      .filter(([, o]) => o.type === 'equipement' && o.bonus && o.bonus.celerite && o.niveau <= 50)
+      .sort((a, b) => b[1].bonus.celerite - a[1].bonus.celerite);
+    for (const slot of slots) {
+      if (celeriteDe(c) >= cible) break;
+      const voulu = (slot === 'acc1' || slot === 'acc2') ? 'accessoire' : slot;
+      const trouve = pieces.find(([, o]) => o.slot === voulu);
+      if (trouve) c.equipement[slot] = trouve[0];
+    }
+    return c;
+  }
+  // La bête dont la vivacité vaut EXACTEMENT la Célérité d'un héros — le
+  // seul moyen honnête de prouver que les deux camps sont sur une toise
+  // commune, sans recopier un chiffre à la main.
+  function beteDeMemeCelerite(celerite) {
+    let meilleure = monstre(DEX_MONSTRE_MIN);
+    let ecart = Infinity;
+    for (let dex = 0; dex <= 30; dex++) {
+      const e = Math.abs(celeriteDe(monstre(dex)) - celerite);
+      if (e < ecart) { ecart = e; meilleure = monstre(dex); }
+    }
+    return meilleure;
+  }
+
+  test('héros et monstres sont sur la MÊME toise — la Célérité', () => {
+    // Le cœur du bug d'origine : deux échelles étrangères. Le `dex` du
+    // bestiaire (3 à 16) était comparé à la Dextérité d'un héros (2 à
+    // 264) — une bête battait donc n'importe qui, quoi qu'il porte.
+    // Désormais les deux camps déclarent une CÉLÉRITÉ, et rien d'autre
+    // ne décide.
+    egal(celeriteDe(monstre(DEX_MONSTRE_MIN)), 0, 'la bête la plus lente n’a aucune Célérité');
+    entre(celeriteDe(monstre(DEX_MONSTRE_MEDIANE)), 0.08, 0.14,
+      'la bête médiane porte la Célérité d’un héros médian équipé (~10 %)');
+    entre(celeriteDe(monstre(16)), 0.18, CELERITE_MONSTRE_MAX,
+      'la plus vive du bestiaire plafonne sous le maximum d’un héros');
+    verifier(CELERITE_MONSTRE_MAX < CELERITE_HEROS_MAX,
+      'un héros qui construit pour la vitesse doit pouvoir dépasser toute bête');
+    // Et l'échelle ne dérive plus avec l'équipement : c'est la PART de
+    // Dextérité qui donne l'accent, pas sa valeur absolue (qui monte à 258).
     const heros = combattant();
-    const bete = monstre(DEX_MONSTRE_MEDIANE);
-    const rapport = initMoyenne(heros) / initMoyenne(bete);
-    entre(rapport, 0.9, 1.1, 'un héros sans Célérité vaut un monstre médian');
-    // Et l'échelle ne dérive pas avec l'équipement : c'est la PART de
-    // Dextérité qui compte, pas sa valeur absolue (qui monte à 258).
     const bienEquipe = combattant({ stats: { for: 80, dex: 40, int: 40, esp: 40, vit: 200, cha: 40 } });
     entre(initMoyenne(bienEquipe) / initMoyenne(heros), 0.9, 1.15,
       'multiplier toutes les stats par dix ne change pas la place dans la file');
   });
 
   test('LA CÉLÉRITÉ décide qui commence — la promesse de la fiche', () => {
-    const sans = combattant();
-    const peu = combattant({ stats: { ...sans.stats }, bonusTest: 1 });
-    // On force la Célérité par l'équipement effectif : statsEffectives la lit.
-    const avec = (valeur) => {
-      const c = combattant();
-      c.statsForcees = valeur;
-      return c;
-    };
-    // Sans pouvoir injecter d'équipement ici, on éprouve la formule elle-même.
-    const base = INITIATIVE_BASE * 1;
-    const a10 = INITIATIVE_BASE * (1 + 0.10 * POIDS_CELERITE);
-    const a30 = INITIATIVE_BASE * (1 + 0.30 * POIDS_CELERITE);
-    const a50 = INITIATIVE_BASE * (1 + 0.50 * POIDS_CELERITE);
-    verifier(a10 > base * 1.1, '10 % de Célérité pèsent déjà plus de 10 %');
-    verifier(a30 > base * 1.4, '30 % de Célérité changent franchement la donne');
-    entre(a50 / base, 1.7, 1.9, 'au plafond, la Célérité vaut près du double');
-    // Et elle doit peser plus lourd que le profil qu'on ne choisit pas.
-    verifier(POIDS_CELERITE > POIDS_AGILITE,
-      'la Célérité (choisie) pèse plus que l’agilité de classe (subie)');
-    verifier(peu && sans && avec(1), 'garde-fou de lisibilité du test');
+    // La promesse, mesurée pour de vrai : plus on porte de Célérité,
+    // plus on ouvre souvent. Une courbe qui monte, sans un seul palier
+    // qui recule.
+    const bete = monstre(DEX_MONSTRE_MEDIANE);
+    const paliers = [0, 0.10, 0.20, 0.30, 0.50];
+    const taux = paliers.map((cible) => {
+      const h = herosAvecCelerite(cible);
+      let ouvre = 0;
+      for (let i = 0; i < 3000; i++) if (initiativeDe(h) > initiativeDe(bete)) ouvre++;
+      return ouvre / 3000;
+    });
+    const recule = [];
+    for (let i = 1; i < taux.length; i++) {
+      if (taux[i] < taux[i - 1] - 0.02) {
+        recule.push(`${Math.round(paliers[i] * 100)} % : ${Math.round(taux[i] * 100)} %`
+          + ` après ${Math.round(taux[i - 1] * 100)} %`);
+      }
+    }
+    aucun(recule, 'paliers de Célérité où la chance d’ouvrir RECULE');
+    verifier(taux[taux.length - 1] > taux[0] + 0.25,
+      `porter de la Célérité doit changer la donne (de ${Math.round(taux[0] * 100)} %`
+      + ` à ${Math.round(taux[taux.length - 1] * 100)} %)`);
+    // Et elle doit peser bien plus lourd que le profil qu'on ne choisit pas.
+    verifier(POIDS_CELERITE > POIDS_AGILITE * 4,
+      'la Célérité (choisie) écrase l’agilité de classe (subie)');
   });
 
-  test('un profil agile reste rapide, un lourdaud reste lent', () => {
+  test('un profil agile est un ACCENT, pas un verdict', () => {
     const agile = combattant({ stats: { for: 4, dex: 60, int: 4, esp: 4, vit: 8, cha: 4 } });
     const lourd = combattant({ stats: { for: 8, dex: 2, int: 4, esp: 4, vit: 40, cha: 4 } });
     verifier(partAgilite(agile) > partAgilite(lourd), 'le profil agile est reconnu comme tel');
-    verifier(initMoyenne(agile) > initMoyenne(lourd) * 1.2, 'et il joue nettement avant');
+    const ecart = initMoyenne(agile) / initMoyenne(lourd);
+    verifier(ecart > 1.02, 'le profil agile part quand même devant');
+    verifier(ecart < 1.4,
+      `mais sans écraser la Célérité : ${ecart.toFixed(2)}× d’écart seulement, quand porter`
+      + ' 30 % de Célérité en vaut 1,6');
     // Côté bestiaire, la même règle, lue sur le champ dex.
     verifier(partAgilite(monstre(16)) > partAgilite(monstre(4)), 'un félin devance un colosse');
-    verifier(initMoyenne(monstre(16)) > initMoyenne(monstre(4)) * 1.2, 'et ça se voit dans la file');
+    verifier(initMoyenne(monstre(16)) > initMoyenne(monstre(4)) * 1.2,
+      'et ça se voit dans la file — la vivacité d’une bête EST sa Célérité');
   });
 
   test('personne n’est condamné : plus aucun 0 % ni 100 % par construction', () => {
-    // L'ancien barème produisait des taux binaires (0 % ou 100 %, jamais
-    // entre les deux). On vérifie que les fourchettes se recouvrent : le
-    // hasard a toujours son mot à dire entre deux combattants comparables.
-    // Le héros est calé sur la part de Dextérité MÉDIANE mesurée dans le
-    // jeu (2 % du profil), le monstre sur la dex médiane du bestiaire.
-    const heros = combattant({ stats: { for: 8, dex: 2, int: 4, esp: 4, vit: 80, cha: 2 } });
-    entre(partAgilite(heros), -0.05, 0.05, 'le cobaye est bien au profil médian');
-    const bete = monstre(DEX_MONSTRE_MEDIANE);
+    // À CÉLÉRITÉ ÉGALE, c'est pile ou face. La bête est choisie pour
+    // porter exactement celle du héros : si la toise est commune, aucun
+    // des deux ne peut être favorisé.
+    const heros = herosAvecCelerite(0.10);
+    const jumelle = beteDeMemeCelerite(celeriteDe(heros));
     let ouvre = 0;
-    for (let i = 0; i < 4000; i++) if (initiativeDe(heros) >= initiativeDe(bete)) ouvre++;
-    entre(ouvre / 4000, 0.35, 0.65, 'à armes égales, c’est pile ou face');
-    // Face au plus vif du bestiaire, un héros qui n'a RIEN investi en
-    // vitesse passe après : c'est le prix de son choix, pas une fatalité.
-    // Ce qui compte, et que l'ancien barème rendait impossible, c'est
-    // qu'il puisse y remédier — et le voici qui repasse devant.
+    for (let i = 0; i < 4000; i++) if (initiativeDe(heros) >= initiativeDe(jumelle)) ouvre++;
+    entre(ouvre / 4000, 0.35, 0.65,
+      `à Célérité égale (${Math.round(celeriteDe(heros) * 100)} %), c’est pile ou face`);
+    // Le hasard garde toujours son mot à dire : même la bête la plus vive
+    // du bestiaire ne peut pas verrouiller la file contre un héros lent.
+    const lent = combattant({ stats: { for: 8, dex: 2, int: 4, esp: 4, vit: 80, cha: 2 } });
     const vif = monstre(16);
-    const initVifMoyenne = initMoyenne(vif);
-    const agiliteHeros = Math.max(0.3, 1 + partAgilite(heros) * POIDS_AGILITE);
-    const avecCelerite = (pct) => INITIATIVE_BASE * (1 + pct * POIDS_CELERITE) * agiliteHeros;
-    verifier(avecCelerite(0) < initVifMoyenne,
-      'sans Célérité, le lourdaud passe après le plus vif du bestiaire');
-    verifier(avecCelerite(0.25) > initVifMoyenne,
-      'avec 25 % de Célérité, il repasse devant : la statistique paie');
+    let coups = 0;
+    for (let i = 0; i < 4000; i++) if (initiativeDe(lent) > initiativeDe(vif)) coups++;
+    verifier(coups > 0, 'un héros lent doit pouvoir surprendre la bête la plus vive');
+    // Et surtout : il peut y REMÉDIER. C'est ce que l'ancien barème
+    // rendait impossible — aucune statistique ne le sortait de là.
+    const rapide = herosAvecCelerite(0.30);
+    let apres = 0;
+    for (let i = 0; i < 4000; i++) if (initiativeDe(rapide) > initiativeDe(vif)) apres++;
+    verifier(apres / 4000 > coups / 4000 + 0.2,
+      `porter de la Célérité doit sortir le héros de là (${Math.round(coups / 40)} %`
+      + ` → ${Math.round(apres / 40)} % face au plus vif du bestiaire)`);
   });
 
   test('la Célérité raccourcit les recharges — la seconde promesse', () => {

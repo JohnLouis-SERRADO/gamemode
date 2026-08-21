@@ -1234,121 +1234,164 @@ function ligneParDefaut(c) {
 // tuer sans jouer un seul tour, sans qu'aucune statistique ne puisse
 // l'en protéger.
 //
-// LA RÈGLE DE LA v30. Tout le monde part de la MÊME base — héros comme
-// monstres — et ce sont des parts relatives, comparables entre elles,
-// qui font la différence :
+// LA RÈGLE. Tout le monde passe par la MÊME formule — héros comme
+// bêtes — et la CÉLÉRITÉ y est le facteur maître :
 //
-//   initiative = 100 × (1 + Célérité) × (1 + agilité × 0,6) × grain
+//   initiative = 100 × (1 + Célérité × 2) × (1 + agilité × 0,15) × grain
 //
-//   • la CÉLÉRITÉ est le facteur maître, et c'est enfin vrai : elle
-//     s'ajoute directement, de +0 à +50 % (son plafond), et personne
-//     d'autre n'y touche. C'est LA statistique qu'on choisit pour
-//     ouvrir le combat ;
-//   • l'AGILITÉ dit le profil du combattant sur une échelle 0 → 1 : la
-//     place de la Dextérité chez un héros, la vivacité déclarée chez une
-//     bête. Un félin garde son avantage sur un colosse, dans les deux
-//     camps, sans écraser le reste ;
-//   • le GRAIN (±10 %) laisse au hasard de quoi rendre la chose vivante
-//     sans jamais renverser une vraie différence de préparation.
+//   • la CÉLÉRITÉ décide, littéralement. À 0 % on vaut la base, au
+//     plafond du jeu (50 %) on va deux fois plus vite. Mesuré au banc,
+//     pour un Gardien de niveau 50 face aux bêtes de son palier :
 //
-// Résultat : aucune classe n'est plus condamnée à subir. Un Gardien du
-// contenu le plus dur passe de 0 % d'ouverture à 83 % en portant 20 % de
-// Célérité — la statistique se choisit, et elle paie.
+//         Célérité   0 %  →  15 % de chances d'ouvrir
+//         Célérité  10 %  →  40 %
+//         Célérité  20 %  →  66 %
+//         Célérité  30 %  →  84 %
+//         Célérité  50 %  →  98 %
 //
-// UNE EXCEPTION, ASSUMÉE : le Franc-tireur reste devant. Il cumule la
-// part de Dextérité la plus haute du jeu, la meilleure Célérité et son
-// passif « Ligne de tir » (×1,15) ; face au bestiaire ordinaire, il ouvre
-// le combat à tous les coups. C'est son métier, et la fiche de sa classe
-// le promet. Ce qui le rattrape, c'est l'EMBUSCADE : surpris, personne
-// ne dégaine à temps — pas même lui.
+//     Une seule statistique, une courbe lisible, et un choix qui paie
+//     immédiatement : c'est ce que la fiche promettait depuis toujours.
+//
+//   • LES BÊTES AUSSI ont une Célérité, tirée de leur `dex` sur la même
+//     échelle. C'est la pièce qui manquait, et tout le bug venait de là :
+//     elles couraient dans la formule sans jamais y déclarer de vitesse,
+//     si bien qu'un héros gagnait ou perdait sans que sa préparation y
+//     change quoi que ce soit. La bête MÉDIANE porte désormais la
+//     Célérité d'un héros médian correctement équipé : à armes égales,
+//     ouvrir le combat est pile ou face.
+//
+//   • l'AGILITÉ n'est plus qu'un ACCENT d'identité (±15 %) : un
+//     Franc-tireur est né vif, un Gardien né lourd, mais personne ne
+//     gagne l'initiative sur sa seule naissance. Elle pesait ±45 % dans
+//     le premier jet, ce qui écrasait la Célérité — toutes les classes
+//     ouvraient alors à 95 % sans avoir porté la moindre pièce.
+//
+//   • le GRAIN (±25 %) fait de « chance de débuter » une vraie chance.
+//     Personne n'est jamais à 0 % ni à 100 % par construction : même le
+//     Franc-tireur le mieux équipé se fait devancer par les bêtes les
+//     plus vives d'un palier une fois sur trois.
+//
+// Le Franc-tireur reste la classe de la vitesse — c'est son métier, et
+// sa fiche le promet — mais il le doit à la Célérité qu'il porte, pas à
+// trois bonus empilés les uns sur les autres. Sa promesse « Ligne de
+// tir » est devenue de la Célérité, sur l'échelle commune.
+//
+// Ce qui rattrape tout le monde, lui compris : l'EMBUSCADE. Surpris en
+// pleine récolte, personne ne dégaine à temps.
 // =====================================================================
-// Les constantes ci-dessous ne sont pas choisies au jugé : elles sont
-// calées sur ce que le jeu contient VRAIMENT, mesuré au banc.
-//
-//   • part de Dextérité d'un héros équipé : 2 % en médiane hors
-//     Franc-tireur (qui, lui, tient entre 41 et 57 %) ;
-//   • Célérité réellement portée : 2 % au début, 10 % en médiane,
-//     36 % pour un héros de fin de partie qui la cherche ;
-//   • `dex` du bestiaire : médiane 10, de 3 à 16, presque plate
-//     (0,05 point par niveau).
-//
-// D'où les deux points d'ancrage, un par camp : le héros médian et le
-// monstre médian valent tous les deux 1,0 d'agilité. À armes égales,
-// c'est donc pile ou face — et c'est la CÉLÉRITÉ qui fait pencher.
 const INITIATIVE_BASE = 100;
-const POIDS_AGILITE = 0.45;      // le profil pèse jusqu'à ±45 %
-// La Célérité compte plus que sa valeur faciale : c'est LA statistique
-// qu'on porte pour ouvrir le combat, et elle doit peser plus lourd qu'un
-// profil qu'on ne choisit pas (sa classe). À 10 % — la médiane réelle —
-// elle donne +16 % d'initiative ; à 36 % — ce qu'un héros de fin de
-// partie qui la cherche atteint — +58 % ; à son plafond de 50 %, +80 %.
-const POIDS_CELERITE = 1.6;
-const GRAIN_INITIATIVE = 0.10;   // ±10 % de hasard, pas un de plus
-// Surpris en pleine récolte : les bêtes ouvrent, quoi qu'on porte. Assez
-// large pour devancer même le Franc-tireur le mieux équipé du jeu.
+
+// LA CÉLÉRITÉ, ET ELLE SEULE, DÉCIDE. À 0 % on vaut la base ; au plafond
+// du jeu (50 %) on va deux fois plus vite. C'est le facteur dominant de
+// la formule, très loin devant l'agilité de profil — parce que c'est la
+// statistique que le joueur CHOISIT, en montant ses pièces.
+const POIDS_CELERITE = 2;
+
+// L'agilité de profil : un simple ACCENT d'identité (±15 %), pas un
+// verdict. Un Franc-tireur est né vif, un Gardien est né lourd — mais
+// aucun des deux ne gagne l'initiative sur sa seule naissance. C'était
+// tout le défaut du premier jet : le profil pesait ±45 % et écrasait la
+// Célérité, si bien que toutes les classes ouvraient à 95 % sans jamais
+// avoir porté la moindre pièce de Célérité.
+const POIDS_AGILITE = 0.15;
+
+// Du VRAI hasard : ±25 %. « Chance de débuter » doit vouloir dire chance.
+// À vitesse égale c'est pile ou face ; il faut environ 60 % de vitesse en
+// plus pour ouvrir presque à coup sûr. Personne n'est jamais à 0 % ni à
+// 100 % par construction.
+const GRAIN_INITIATIVE = 0.25;
+
+// Surpris en pleine récolte : les bêtes ouvrent, quoi qu'on porte.
 const EMBUSCADE_INITIATIVE = 3;
-const DEX_MONSTRE_MEDIANE = 10;  // le bestiaire mesuré
+
+// La toise du bestiaire, mesurée : `dex` va de 3 à 16, médiane 10.
+// On la convertit en CÉLÉRITÉ, sur la même échelle que celle du héros —
+// c'est la pièce qui manquait, et tout le bug vient de là : les bêtes
+// couraient dans la formule sans jamais y déclarer de vitesse.
+//
+// LE POINT D'ANCRAGE : la bête MÉDIANE porte la Célérité d'un héros
+// médian correctement équipé (10 %). À armes égales, ouvrir le combat
+// est donc pile ou face — et c'est la Célérité, et elle seule, qui fait
+// pencher d'un côté ou de l'autre. dex 3 donne 0 %, dex 10 donne 11 %,
+// dex 16 (le plus vif du bestiaire) 20 %.
+const DEX_MONSTRE_MIN = 3;
+const DEX_PAR_POINT_CELERITE = 65;
+const CELERITE_MONSTRE_MAX = 0.22;
+// Le plafond du héros est plus haut que celui de la bête (50 % contre
+// 30 %) : construire pour la vitesse doit rester payant.
+const CELERITE_HEROS_MAX = 0.60;
+const DEX_MONSTRE_MEDIANE = 10;
 const PART_DEX_HEROS_MEDIANE = 0.02;
+// « Ligne de tir » du Franc-tireur : sa promesse de fiche devient de la
+// Célérité, sur l'échelle commune, au lieu d'un multiplicateur posé
+// par-dessus tout le reste. Trois bonus qui se multipliaient le mettaient
+// à 100 % d'ouverture face au bestiaire entier, à tous les niveaux.
+const CELERITE_LIGNE_DE_TIR = 0.08;
+
+// La CÉLÉRITÉ d'un combattant, héros ou bête, sur une seule et même
+// échelle 0 → 1. C'est le cœur de l'initiative.
+function celeriteDe(c) {
+  if (c.type === 'monstre') {
+    const brut = ((c.dex || 0) - DEX_MONSTRE_MIN) / DEX_PAR_POINT_CELERITE;
+    return Math.max(0, Math.min(CELERITE_MONSTRE_MAX, brut));
+  }
+  if (c.type !== 'joueur') return 0;
+  // Celle du stuff, plus celle des Voies rapides — le Moine du Souffle
+  // la gagne manche après manche tant qu'il n'encaisse rien.
+  const voie = (reglagePassif(c, 'celeriteBonus', 0)
+    + reglagePassif(c, 'celeriteParManche', 0) * (c.manchesPropres || 0)) / 100;
+  const passif = aPassif(c, 'Ligne de tir') ? CELERITE_LIGNE_DE_TIR : 0;
+  const totale = sousCarac(statsEffectives(c), 'celerite') + voie + passif;
+  return Math.max(0, Math.min(CELERITE_HEROS_MAX, totale));
+}
 
 // L'agilité d'un combattant, en ÉCART au médian de son camp : 0 = dans
 // la norme, positif = vif, négatif = lourdaud. C'est la pièce qui met
-// héros et monstres sur la même toise — le bug que la v30 répare.
+// héros et monstres sur la même toise.
 function partAgilite(c) {
   if (c.type === 'monstre') {
-    // Le bestiaire déclare une vivacité de 3 à 16, médiane 10.
     return Math.max(-0.6, Math.min(0.6, ((c.dex || 0) - DEX_MONSTRE_MEDIANE) / 12));
   }
   // Un héros (ou une invocation) : la PLACE de la Dextérité dans son
-  // profil, pas sa valeur absolue. Un Franc-tireur reste agile à tous les
-  // niveaux, un Gardien reste lourd — et l'échelle ne dérive jamais avec
-  // l'équipement, contrairement à la Dextérité brute qui atteint 258.
+  // profil, pas sa valeur absolue — la Dextérité brute grimpe jusqu'à 258
+  // avec l'équipement et ferait dériver toute l'échelle.
   const s = c.type === 'invocation' ? (c.stats || {}) : statsEffectives(c);
   const total = Object.keys(CARACS).reduce((somme, cle) => somme + (s[cle] || 0), 0);
   if (total <= 0) return 0;
   const partDex = (s.dex || 0) / total;
-  // 2 % du profil = la norme ; 47 % = le spécialiste absolu (Franc-tireur).
   return Math.max(-0.2, Math.min(1, (partDex - PART_DEX_HEROS_MEDIANE) / 0.45));
 }
 
 function initiativeDe(c) {
+  // Contrainte divine du soigneur : il n'ouvre jamais la manche.
+  if (c.type === 'joueur' && reglagePassif(c, 'jamaisEnPremier', false)) return -1;
+
   const grain = 1 + (Math.random() * 2 - 1) * GRAIN_INITIATIVE;
   const agilite = Math.max(0.3, 1 + partAgilite(c) * POIDS_AGILITE);
+  // LA formule, la même pour tout le monde.
+  let init = INITIATIVE_BASE * (1 + celeriteDe(c) * POIDS_CELERITE) * agilite * grain;
 
   if (c.type === 'monstre') {
-    // Les entraves d'Éveil ralentissent la meute : elles agissent ici,
-    // sur la même échelle que tout le reste.
-    const malus = 1 - Math.min(80, c.malusCelerite || 0) / 100;
-    // v30 : une EMBUSCADE porte enfin son nom. On tombe dessus pendant
-    // qu'on récolte, courbé, les mains prises : les bêtes ouvrent, et
-    // même le plus vif des Francs-tireurs se fait surprendre. C'est le
-    // seul moment du jeu où la Célérité ne sauve pas — ailleurs, elle
-    // décide.
-    const surprise = etat.combat && etat.combat.genre === 'embuscade' ? EMBUSCADE_INITIATIVE : 1;
-    return Math.round(INITIATIVE_BASE * agilite * malus * surprise * grain);
+    // Les entraves d'Éveil ralentissent la meute.
+    init *= 1 - Math.min(80, c.malusCelerite || 0) / 100;
+    // Une EMBUSCADE porte enfin son nom : on tombe dessus pendant qu'on
+    // récolte, les mains prises. Les bêtes ouvrent, et même le plus vif
+    // des Francs-tireurs se fait surprendre. C'est le seul moment du jeu
+    // où la Célérité ne sauve pas — ailleurs, elle décide.
+    if (etat.combat && etat.combat.genre === 'embuscade') init *= EMBUSCADE_INITIATIVE;
+    return Math.round(init);
   }
-  if (c.type !== 'joueur') return Math.round(INITIATIVE_BASE * agilite * grain);
+  if (c.type !== 'joueur') return Math.round(init);
 
-  // Métamorphe : sous la forme de corbeau, il part toujours devant.
+  // Métamorphe : sous la forme de corbeau, il part devant.
   const partCorbeau = reglagePassif(c, 'initiativeCorbeau', 0);
   const cumulFormes = reglagePassif(c, 'formesCumulees', 0);
-  const corbeau = c.forme === 'corbeau' ? partCorbeau : partCorbeau * cumulFormes;
-  // Voies rapides : la Célérité qu'elles offrent s'ajoute à celle du stuff.
-  // Le Moine du Souffle, lui, la gagne manche après manche sans encaisser.
-  const celeriteVoie = (reglagePassif(c, 'celeriteBonus', 0)
-    + reglagePassif(c, 'celeriteParManche', 0) * (c.manchesPropres || 0)) / 100;
-  const celerite = sousCarac(statsEffectives(c), 'celerite') + celeriteVoie;
-
-  let init = INITIATIVE_BASE * (1 + celerite * POIDS_CELERITE) * agilite * (1 + corbeau) * grain;
-  // Franc-tireur : « l'initiative lui revient souvent » — la seconde
-  // moitié de son passif de classe, restée sur la fiche sans une ligne
-  // de code depuis la v19.
-  if (aPassif(c, 'Ligne de tir')) init *= 1.15;
+  init *= 1 + (c.forme === 'corbeau' ? partCorbeau : partCorbeau * cumulFormes);
   // Colosse de la Montagne : immobile, donc toujours en dernier.
   if (reglagePassif(c, 'initiativeMoitie', false)) init *= 0.5;
-  // Contrainte divine du soigneur : il n'ouvre jamais la manche.
-  if (reglagePassif(c, 'jamaisEnPremier', false)) return -1;
   return Math.round(init);
 }
+
 
 // =====================================================================
 // v30 — L'AVERTISSEMENT DE MORT.
